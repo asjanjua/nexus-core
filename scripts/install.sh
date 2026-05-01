@@ -5,6 +5,7 @@ REPO="${NEXUS_REPO:-asjanjua/nexus-core}"
 REF="${NEXUS_REF:-main}"
 BOOTSTRAP_URL="https://raw.githubusercontent.com/${REPO}/${REF}/scripts/nexus-bootstrap.sh"
 DOCTOR_URL="https://raw.githubusercontent.com/${REPO}/${REF}/scripts/nexus-doctor.sh"
+NEXUS_WRAPPER_URL="https://raw.githubusercontent.com/${REPO}/${REF}/scripts/nexus"
 
 say() {
   printf "[nexus-install] %s\n" "$1"
@@ -22,10 +23,11 @@ main() {
     exit 1
   fi
 
-  local tmp_bootstrap tmp_doctor
+  local tmp_bootstrap tmp_doctor tmp_nexus
   tmpdir="$(mktemp -d)"
   tmp_bootstrap="$tmpdir/nexus-bootstrap.sh"
   tmp_doctor="$tmpdir/nexus-doctor.sh"
+  tmp_nexus="$tmpdir/nexus"
   cleanup() {
     rm -rf "${tmpdir:-}"
   }
@@ -34,7 +36,8 @@ main() {
   say "Downloading bootstrap script..."
   curl -fsSL "$BOOTSTRAP_URL" -o "$tmp_bootstrap"
   curl -fsSL "$DOCTOR_URL" -o "$tmp_doctor"
-  chmod +x "$tmp_bootstrap" "$tmp_doctor"
+  curl -fsSL "$NEXUS_WRAPPER_URL" -o "$tmp_nexus"
+  chmod +x "$tmp_bootstrap" "$tmp_doctor" "$tmp_nexus"
 
   say "Running Nexus bootstrap..."
   bash "$tmp_bootstrap"

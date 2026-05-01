@@ -79,19 +79,34 @@ EOF
 
 install_local_scripts() {
   mkdir -p "$NEXUS_HOME/scripts"
-  if [[ -n "$NEXUS_SCRIPT_BASE_URL" ]] && command -v curl >/dev/null 2>&1; then
-    curl -fsSL "${NEXUS_SCRIPT_BASE_URL}/nexus-doctor.sh" -o "$NEXUS_HOME/scripts/nexus-doctor.sh"
-  else
-    local local_doctor
-    local_doctor="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/nexus-doctor.sh"
-    if [[ -f "$local_doctor" ]]; then
-      cp "$local_doctor" "$NEXUS_HOME/scripts/nexus-doctor.sh"
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+  install_one() {
+    local name="$1"
+    local dest="$NEXUS_HOME/scripts/$name"
+    if [[ -n "$NEXUS_SCRIPT_BASE_URL" ]] && command -v curl >/dev/null 2>&1; then
+      curl -fsSL "${NEXUS_SCRIPT_BASE_URL}/$name" -o "$dest"
     else
-      say "Could not locate nexus-doctor.sh locally and no remote script base URL provided."
-      exit 1
+      local source="$script_dir/$name"
+      if [[ -f "$source" ]]; then
+        cp "$source" "$dest"
+      else
+        say "Could not locate $name locally and no remote script base URL provided."
+        exit 1
+      fi
     fi
-  fi
-  chmod +x "$NEXUS_HOME/scripts/nexus-doctor.sh"
+    chmod +x "$dest"
+  }
+
+  install_one "nexus-doctor.sh"
+  install_one "nexus"
+}
+
+install_helper_command() {
+  mkdir -p "$NEXUS_HOME/bin"
+  cp "$NEXUS_HOME/scripts/nexus" "$NEXUS_HOME/bin/nexus"
+  chmod +x "$NEXUS_HOME/bin/nexus"
 }
 
 print_path_hint() {
@@ -108,7 +123,7 @@ main() {
   install_openclaw_if_missing
   write_nexus_config
   install_local_scripts
-  write_helper_command
+  install_helper_command
   print_path_hint
   say "Bootstrap complete."
   say "Run: $NEXUS_HOME/scripts/nexus-doctor.sh"

@@ -60,6 +60,12 @@ Then verify:
 $HOME/.nexus/scripts/nexus-doctor.sh
 ```
 
+Or, after adding `~/.nexus/bin` to your `PATH`:
+
+```bash
+nexus doctor
+```
+
 Full guide: [docs/INSTALL.md](docs/INSTALL.md)
 
 ## Production Readiness

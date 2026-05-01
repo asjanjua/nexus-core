@@ -35,7 +35,7 @@ nexus doctor
 3. Creates Nexus home at `~/.nexus`.
 4. Writes config: `~/.nexus/config/nexus.env`.
 5. Installs helper scripts under `~/.nexus/scripts`.
-6. Installs optional helper command at `~/.nexus/bin/nexus`.
+6. Installs helper command at `~/.nexus/bin/nexus`.
 
 ## Requirements
 - macOS or Linux shell
