@@ -8,12 +8,15 @@ Nexus Core is an open-source executive intelligence command layer that turns doc
 
 If you want a faster way to understand what matters across your company, Nexus is built for you.
 
+![Nexus preview](demo/preview.svg)
+
 ## Try It Fast
 - Install in one command.
 - Scaffold a workspace with `nexus init`.
 - Check health with `nexus doctor`.
 - Generate role-aware executive outputs from your own sources.
 - See a sample output in [demo/README.md](demo/README.md).
+- See a sample install and output in [demo/sample-install-and-output.md](demo/sample-install-and-output.md).
 
 Quick install:
 ```bash
@@ -98,6 +101,8 @@ nexus help
 ```
 
 Full guide: [docs/INSTALL.md](docs/INSTALL.md)
+
+Release notes: [CHANGELOG.md](CHANGELOG.md)
 
 ## Production Readiness
 Current status: **Pilot-ready, not production-ready at scale**.
