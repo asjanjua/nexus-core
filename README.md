@@ -54,5 +54,4 @@ See [docs/PRODUCTION_READINESS.md](docs/PRODUCTION_READINESS.md) for:
 - Transformation office sponsors who need faster, trusted situational awareness
 
 ## License
-This repo currently uses `All Rights Reserved` pending final licensing strategy.
-
+This project is open-source under the `MIT License` and is free for everyone to use, modify, and share.
