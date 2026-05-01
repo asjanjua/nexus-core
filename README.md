@@ -41,6 +41,21 @@ Nexus adds:
 - `templates/` pilot outputs and operating artifacts
 - `scripts/` utility scripts for pilot generation and checks
 
+## Install
+Nexus can bootstrap OpenClaw automatically if it is not already installed.
+
+```bash
+bash scripts/nexus-bootstrap.sh
+```
+
+Then verify:
+
+```bash
+$HOME/.nexus/scripts/nexus-doctor.sh
+```
+
+Full guide: [docs/INSTALL.md](docs/INSTALL.md)
+
 ## Production Readiness
 Current status: **Pilot-ready, not production-ready at scale**.
 
