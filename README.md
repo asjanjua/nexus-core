@@ -44,6 +44,12 @@ Nexus adds:
 ## Install
 Nexus can bootstrap OpenClaw automatically if it is not already installed.
 
+Quick install:
+```bash
+curl -fsSL https://raw.githubusercontent.com/asjanjua/nexus-core/main/scripts/install.sh | bash
+```
+
+Repo-local install:
 ```bash
 bash scripts/nexus-bootstrap.sh
 ```

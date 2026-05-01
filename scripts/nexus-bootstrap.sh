@@ -4,6 +4,7 @@ set -euo pipefail
 NEXUS_HOME="${NEXUS_HOME:-$HOME/.nexus}"
 OPENCLAW_WORKSPACE="${OPENCLAW_WORKSPACE:-$HOME/.openclaw/workspace}"
 OPENCLAW_BIN="${OPENCLAW_BIN:-openclaw}"
+NEXUS_SCRIPT_BASE_URL="${NEXUS_SCRIPT_BASE_URL:-}"
 
 say() {
   printf "[nexus] %s\n" "$1"
@@ -78,7 +79,18 @@ EOF
 
 install_local_scripts() {
   mkdir -p "$NEXUS_HOME/scripts"
-  cp "$(dirname "$0")/nexus-doctor.sh" "$NEXUS_HOME/scripts/nexus-doctor.sh"
+  if [[ -n "$NEXUS_SCRIPT_BASE_URL" ]] && command -v curl >/dev/null 2>&1; then
+    curl -fsSL "${NEXUS_SCRIPT_BASE_URL}/nexus-doctor.sh" -o "$NEXUS_HOME/scripts/nexus-doctor.sh"
+  else
+    local local_doctor
+    local_doctor="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/nexus-doctor.sh"
+    if [[ -f "$local_doctor" ]]; then
+      cp "$local_doctor" "$NEXUS_HOME/scripts/nexus-doctor.sh"
+    else
+      say "Could not locate nexus-doctor.sh locally and no remote script base URL provided."
+      exit 1
+    fi
+  fi
   chmod +x "$NEXUS_HOME/scripts/nexus-doctor.sh"
 }
 
@@ -103,4 +115,3 @@ main() {
 }
 
 main "$@"
-

@@ -4,6 +4,12 @@ Nexus installs as an overlay around OpenClaw.
 If OpenClaw is missing, bootstrap will install it automatically.
 
 ## Quick Install
+From anywhere:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/asjanjua/nexus-core/main/scripts/install.sh | bash
+```
+
 From repo root:
 
 ```bash
@@ -34,8 +40,17 @@ nexus doctor
 ## Requirements
 - macOS or Linux shell
 - `bash`
+- `curl` (for hosted installer path)
 - `git`
 - `npm` (only needed when OpenClaw is not already installed)
+
+## Safer Variant (No Pipe-To-Shell)
+If your policy avoids direct pipe execution:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/asjanjua/nexus-core/main/scripts/install.sh -o /tmp/nexus-install.sh
+bash /tmp/nexus-install.sh
+```
 
 ## Troubleshooting
 - If `openclaw` is installed but not found, restart your shell and re-run bootstrap.
@@ -46,4 +61,3 @@ nexus doctor
 echo "$PATH"
 command -v openclaw
 ```
-
