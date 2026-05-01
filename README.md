@@ -1,5 +1,9 @@
 # Nexus Core
 
+[![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/asjanjua/nexus-core?style=social)](https://github.com/asjanjua/nexus-core)
+[![Open issues](https://img.shields.io/github/issues/asjanjua/nexus-core)](https://github.com/asjanjua/nexus-core/issues)
+
 Nexus Core is an open-source executive intelligence command layer that turns documents and communications into evidence-backed briefs, dashboards, decisions, and recommendations.
 
 If you want a faster way to understand what matters across your company, Nexus is built for you.
@@ -9,6 +13,7 @@ If you want a faster way to understand what matters across your company, Nexus i
 - Scaffold a workspace with `nexus init`.
 - Check health with `nexus doctor`.
 - Generate role-aware executive outputs from your own sources.
+- See a sample output in [demo/README.md](demo/README.md).
 
 Quick install:
 ```bash
@@ -118,6 +123,13 @@ If Nexus looks useful:
 - open an issue with your use case
 - share it with one person who manages decisions, operations, or strategy
 - try the install and tell us what would make it more useful for your workflow
+
+## Contribute
+Want to help improve Nexus?
+- start with [CONTRIBUTING.md](CONTRIBUTING.md)
+- file a small issue instead of a vague one
+- include a sample source or expected output when possible
+- prefer focused pull requests over large rewrites
 
 ## License
 This project is open-source under the `MIT License` and is free for everyone to use, modify, and share.
