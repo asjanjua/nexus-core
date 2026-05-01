@@ -32,10 +32,19 @@ main() {
   }
   trap cleanup EXIT
 
-  say "Downloading bootstrap script..."
-  curl -fsSL "$BOOTSTRAP_URL" -o "$tmp_bootstrap"
-  curl -fsSL "$DOCTOR_URL" -o "$tmp_doctor"
-  cat >"$tmp_nexus" <<'EOF'
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+  say "Preparing installer payload..."
+  if [[ -f "$script_dir/nexus-bootstrap.sh" && -f "$script_dir/nexus-doctor.sh" && -f "$script_dir/nexus" ]]; then
+    cp "$script_dir/nexus-bootstrap.sh" "$tmp_bootstrap"
+    cp "$script_dir/nexus-doctor.sh" "$tmp_doctor"
+    cp "$script_dir/nexus" "$tmp_nexus"
+  else
+    say "Downloading bootstrap script..."
+    curl -fsSL "$BOOTSTRAP_URL" -o "$tmp_bootstrap"
+    curl -fsSL "$DOCTOR_URL" -o "$tmp_doctor"
+    cat >"$tmp_nexus" <<'EOF'
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -94,6 +103,7 @@ USAGE
     ;;
 esac
 EOF
+  fi
   chmod +x "$tmp_bootstrap" "$tmp_doctor" "$tmp_nexus"
 
   say "Running Nexus bootstrap..."

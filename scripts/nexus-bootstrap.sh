@@ -90,7 +90,9 @@ install_local_scripts() {
     else
       local source="$script_dir/$name"
       if [[ -f "$source" ]]; then
-        cp "$source" "$dest"
+        if [[ "$(cd "$(dirname "$source")" && pwd)/$(basename "$source")" != "$(cd "$(dirname "$dest")" && pwd)/$(basename "$dest")" ]]; then
+          cp "$source" "$dest"
+        fi
       else
         say "Could not locate $name locally and no remote script base URL provided."
         exit 1
