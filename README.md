@@ -17,6 +17,7 @@ If you want a faster way to understand what matters across your company, Nexus i
 - Generate role-aware executive outputs from your own sources.
 - See a sample output in [demo/README.md](demo/README.md).
 - See a sample install and output in [demo/sample-install-and-output.md](demo/sample-install-and-output.md).
+- See the launch kit in [launch/README.md](launch/README.md).
 
 Quick install:
 ```bash
