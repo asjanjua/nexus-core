@@ -27,6 +27,9 @@ Optional PATH helper:
 ```bash
 export PATH="$HOME/.nexus/bin:$PATH"
 nexus doctor
+nexus status
+nexus setup
+nexus help
 ```
 
 ## What The Bootstrap Does
@@ -36,6 +39,12 @@ nexus doctor
 4. Writes config: `~/.nexus/config/nexus.env`.
 5. Installs helper scripts under `~/.nexus/scripts`.
 6. Installs helper command at `~/.nexus/bin/nexus`.
+
+## Available Commands
+- `nexus doctor`
+- `nexus status`
+- `nexus setup`
+- `nexus help`
 
 ## Requirements
 - macOS or Linux shell

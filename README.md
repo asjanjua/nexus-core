@@ -64,6 +64,9 @@ Or, after adding `~/.nexus/bin` to your `PATH`:
 
 ```bash
 nexus doctor
+nexus status
+nexus setup
+nexus help
 ```
 
 Full guide: [docs/INSTALL.md](docs/INSTALL.md)

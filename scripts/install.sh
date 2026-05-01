@@ -50,15 +50,47 @@ case "${1:-}" in
     shift
     exec "$NEXUS_HOME/scripts/nexus-doctor.sh" "$@"
     ;;
-  *)
+  status)
+    shift || true
+    echo "Nexus status"
+    echo "NEXUS_HOME: $NEXUS_HOME"
+    if [[ -f "$NEXUS_HOME/config/nexus.env" ]]; then
+      echo "config: present"
+    else
+      echo "config: missing"
+    fi
+    if command -v openclaw >/dev/null 2>&1; then
+      echo "openclaw: $(command -v openclaw)"
+    else
+      echo "openclaw: missing"
+    fi
+    exec "$NEXUS_HOME/scripts/nexus-doctor.sh" "$@"
+    ;;
+  setup)
+    shift || true
+    exec "$NEXUS_HOME/scripts/nexus-bootstrap.sh" "$@"
+    ;;
+  help|-h|--help|"")
     cat <<USAGE
 Nexus command
 
 Usage:
   nexus doctor
+  nexus status
+  nexus setup
+  nexus help
+
+Commands:
+  doctor  Run health checks for the installed Nexus/OpenClaw stack.
+  status  Show a short runtime summary and then run doctor checks.
+  setup   Rerun the Nexus bootstrap.
+  help    Show this help.
 
 This helper bootstraps Nexus around OpenClaw.
 USAGE
+    ;;
+  *)
+    exec "$NEXUS_HOME/scripts/nexus" help
     ;;
 esac
 EOF
