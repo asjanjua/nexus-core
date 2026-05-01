@@ -12,6 +12,10 @@ case "${1:-}" in
     shift
     exec "$NEXUS_HOME/scripts/nexus-doctor.sh" "$@"
     ;;
+  init)
+    shift
+    exec "$NEXUS_HOME/scripts/nexus-init.sh" "$@"
+    ;;
   status)
     shift || true
     echo "Nexus status"
@@ -38,12 +42,14 @@ Nexus command
 
 Usage:
   nexus doctor
+  nexus init [target]
   nexus status
   nexus setup
   nexus help
 
 Commands:
   doctor  Run health checks for the installed Nexus/OpenClaw stack.
+  init    Scaffold a new Nexus workspace in the current directory or target path.
   status  Show a short runtime summary and then run doctor checks.
   setup   Rerun the Nexus bootstrap.
   help    Show this help.

@@ -64,6 +64,9 @@ Or, after adding `~/.nexus/bin` to your `PATH`:
 
 ```bash
 nexus doctor
+nexus doctor --json
+nexus init
+nexus init /path/to/workspace
 nexus status
 nexus setup
 nexus help

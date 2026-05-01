@@ -27,6 +27,9 @@ Optional PATH helper:
 ```bash
 export PATH="$HOME/.nexus/bin:$PATH"
 nexus doctor
+nexus doctor --json
+nexus init
+nexus init /path/to/workspace
 nexus status
 nexus setup
 nexus help
@@ -42,6 +45,9 @@ nexus help
 
 ## Available Commands
 - `nexus doctor`
+- `nexus doctor --json`
+- `nexus init`
+- `nexus init /path/to/workspace`
 - `nexus status`
 - `nexus setup`
 - `nexus help`

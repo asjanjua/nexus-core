@@ -102,6 +102,7 @@ install_local_scripts() {
   }
 
   install_one "nexus-doctor.sh"
+  install_one "nexus-init.sh"
   install_one "nexus-bootstrap.sh"
   install_one "nexus"
 }
