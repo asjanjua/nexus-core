@@ -1,6 +1,26 @@
 # Nexus Core
 
-Nexus Core is an executive intelligence command layer for organizations that need faster, evidence-backed decision support across documents and communication streams.
+Nexus Core is an open-source executive intelligence command layer that turns documents and communications into evidence-backed briefs, dashboards, decisions, and recommendations.
+
+If you want a faster way to understand what matters across your company, Nexus is built for you.
+
+## Try It Fast
+- Install in one command.
+- Scaffold a workspace with `nexus init`.
+- Check health with `nexus doctor`.
+- Generate role-aware executive outputs from your own sources.
+
+Quick install:
+```bash
+curl -fsSL https://raw.githubusercontent.com/asjanjua/nexus-core/main/scripts/install.sh | bash
+```
+
+Then:
+```bash
+export PATH="$HOME/.nexus/bin:$PATH"
+nexus init
+nexus doctor
+```
 
 ## What Nexus Does
 - Ingests enterprise content from document and comms sources.
@@ -85,6 +105,19 @@ See [docs/PRODUCTION_READINESS.md](docs/PRODUCTION_READINESS.md) for:
 ## Ideal Pilot Buyer
 - CEO / COO / Chief Strategy Officer / Managing Director
 - Transformation office sponsors who need faster, trusted situational awareness
+
+## Why People Star This Repo
+- It is practical, not hype-driven.
+- It is open-source and free to use.
+- It focuses on evidence and provenance instead of generic AI output.
+- It gives a clean path from docs and comms to executive decision support.
+
+## Call To Action
+If Nexus looks useful:
+- star the repo
+- open an issue with your use case
+- share it with one person who manages decisions, operations, or strategy
+- try the install and tell us what would make it more useful for your workflow
 
 ## License
 This project is open-source under the `MIT License` and is free for everyone to use, modify, and share.
