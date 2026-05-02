@@ -1,7 +1,14 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { SideNav } from "@/components/side-nav";
-import { ClerkProvider, Show, UserButton, OrganizationSwitcher, SignInButton } from "@clerk/nextjs";
+import {
+  ClerkProvider,
+  UserButton,
+  OrganizationSwitcher,
+  SignInButton,
+  SignedIn,
+  SignedOut
+} from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
 import { repository } from "@/lib/data/repository";
 import { isDbRequired } from "@/lib/data/db-policy";
@@ -44,11 +51,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <body>
           <ClerkProvider>
             <header className="flex items-center justify-end gap-3 px-6 py-3 border-b border-white/10">
-              <Show when="signed-out">
+              <SignedOut>
                 <SignInButton mode="redirect">
                   <button className="btn-primary text-sm">Sign in</button>
                 </SignInButton>
-              </Show>
+              </SignedOut>
             </header>
             <main className="min-h-screen p-6">{children}</main>
           </ClerkProvider>
@@ -72,7 +79,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               {/* Top bar */}
               <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-xs text-white/70">
                 <div className="flex items-center gap-4">
-                  <Show when="signed-in">
+                  <SignedIn>
                     <OrganizationSwitcher
                       hidePersonal
                       afterCreateOrganizationUrl="/onboarding"
@@ -89,17 +96,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                         },
                       }}
                     />
-                  </Show>
+                  </SignedIn>
                   <span>workspace: {workspaceId}</span>
                   <span>mode: {process.env.NEXUS_ENV ?? "pilot"}</span>
                 </div>
-                <Show when="signed-in">
+                <SignedIn>
                   <UserButton
                     appearance={{
                       elements: { avatarBox: "w-7 h-7" },
                     }}
                   />
-                </Show>
+                </SignedIn>
               </div>
 
               {staleFound && (

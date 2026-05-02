@@ -14,7 +14,7 @@
  */
 
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
 // Routes that are always public (no auth required at all)
 const isPublicRoute = createRouteMatcher([
@@ -42,7 +42,7 @@ const isAgentApiRoute = createRouteMatcher([
   "/api/workspace(.*)",
 ]);
 
-export default clerkMiddleware(async (auth: { protect: () => Promise<void> }, request: NextRequest) => {
+export default clerkMiddleware(async (auth, request) => {
   // Let public routes through unconditionally
   if (isPublicRoute(request)) return NextResponse.next();
 

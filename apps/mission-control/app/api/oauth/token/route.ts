@@ -19,7 +19,6 @@
  * by the middleware / route handlers that need scope checking.
  */
 
-import { fail } from "@/lib/api";
 import { agentScopeSchema } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
 import { NextResponse } from "next/server";
@@ -99,6 +98,3 @@ export async function POST(request: Request) {
     scope: grantedScopes.join(" ")
   });
 }
-
-// Re-export for callers that previously imported from this route file.
-export { decodeBearerToken } from "@/lib/tokens";
