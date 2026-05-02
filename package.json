@@ -1,0 +1,19 @@
+{
+  "name": "nexus-core",
+  "private": true,
+  "version": "0.2.0",
+  "description": "Nexus Core monorepo",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "dev": "npm run dev -w @nexus/mission-control",
+    "build": "npm run build -w @nexus/mission-control",
+    "lint": "npm run lint -w @nexus/mission-control",
+    "test": "npm run test -w @nexus/mission-control",
+    "db:generate": "npm run db:generate -w @nexus/mission-control",
+    "db:migrate": "npm run db:migrate -w @nexus/mission-control",
+    "db:seed": "npm run db:seed -w @nexus/mission-control",
+    "db:check": "npm run db:check -w @nexus/mission-control"
+  }
+}

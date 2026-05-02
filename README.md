@@ -65,10 +65,41 @@ Nexus adds:
 - governance and approval controls
 
 ## Repository Layout
+- `apps/mission-control/` Next.js Mission Control app (dashboard-first UI + API routes)
 - `docs/` product architecture, scope, decisions, rollout
 - `contracts/` schemas and interface contracts
 - `templates/` pilot outputs and operating artifacts
 - `scripts/` utility scripts for pilot generation and checks
+
+Mission Control quick start:
+```bash
+cp .env.example .env.local
+cd apps/mission-control
+npm install
+npm run db:migrate
+npm run db:seed
+npm run dev
+```
+
+Then open `http://localhost:3000/login` and sign in with your configured `MISSION_CONTROL_DEFAULT_USER` and `MISSION_CONTROL_PASSWORD`.
+In DB mode, login is validated against the `users` + `roles` tables (workspace-scoped), with hashed passwords.
+
+Database mode:
+- `NEXUS_DB_REQUIRED=false` (default for local dev): app can fall back to in-memory store if DB is unavailable.
+- `NEXUS_DB_REQUIRED=true` (recommended for staging/prod): startup fails fast unless `DATABASE_URL` is valid and reachable.
+
+DB utility commands:
+```bash
+npm run db:check
+npm run db:migrate
+npm run db:seed
+```
+
+Pilot operations docs:
+- [docs/PILOT_ONBOARDING_CHECKLIST.md](docs/PILOT_ONBOARDING_CHECKLIST.md)
+- [docs/SECURITY_DATA_HANDLING.md](docs/SECURITY_DATA_HANDLING.md)
+- [docs/PILOT_SUCCESS_SCORECARD.md](docs/PILOT_SUCCESS_SCORECARD.md)
+- [docs/EXECUTIVE_PACK_TEMPLATE.md](docs/EXECUTIVE_PACK_TEMPLATE.md)
 
 ## Install
 Nexus can bootstrap OpenClaw automatically if it is not already installed.

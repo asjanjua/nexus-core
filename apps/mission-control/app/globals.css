@@ -1,0 +1,55 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+body {
+  @apply bg-nexus-bg text-nexus-text antialiased;
+}
+
+a {
+  @apply text-nexus-accent;
+}
+
+.panel {
+  @apply rounded-xl border border-white/10 bg-white/5 p-4;
+}
+
+.panel-title {
+  @apply text-sm font-semibold uppercase tracking-wide text-white/80;
+}
+
+.badge {
+  @apply inline-flex items-center rounded-full border border-white/20 px-2 py-0.5 text-xs;
+}
+
+.btn-primary {
+  @apply rounded-lg bg-nexus-accent px-3 py-2 text-sm font-medium text-black transition hover:opacity-90;
+}
+
+.btn-subtle {
+  @apply rounded-lg border border-white/20 px-3 py-2 text-sm transition hover:bg-white/10;
+}
+
+.btn-secondary {
+  @apply rounded-lg border border-white/20 px-3 py-1.5 text-sm transition hover:bg-white/10;
+}
+
+.label {
+  @apply block text-xs font-medium uppercase tracking-wide text-white/50 mb-1;
+}
+
+.input {
+  @apply w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 text-sm text-white placeholder-white/30 focus:border-nexus-accent focus:outline-none;
+}
+
+.badge-green {
+  @apply border-green-500/40 bg-green-500/10 text-green-300;
+}
+
+.badge-muted {
+  @apply border-white/10 bg-white/5 text-white/40;
+}
