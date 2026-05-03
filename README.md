@@ -133,6 +133,8 @@ nexus help
 ```
 
 Full guide: [docs/INSTALL.md](docs/INSTALL.md)
+Infrastructure decision memo: [docs/INFRA_DECISION_MEMO.md](docs/INFRA_DECISION_MEMO.md)
+Model routing policy: [docs/MODEL_ROUTING.md](docs/MODEL_ROUTING.md)
 
 Release notes: [CHANGELOG.md](CHANGELOG.md)
 

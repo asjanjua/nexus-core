@@ -1,17 +1,27 @@
 /**
  * Evidence retrieval + LLM synthesis for the Ask panel.
  *
- * Flow:
- *   1. Keyword-rank processed, non-restricted evidence records.
- *   2. Pass top candidates to Claude for executive synthesis.
- *   3. Return a governed AskResponse with evidence refs, confidence, freshness.
+ * Retrieval strategy (two-tier):
  *
- * Falls back to bullet summary when ANTHROPIC_API_KEY is absent (dev / demo).
+ *   Tier 1 — Vector search (when NEXUS_VECTOR_SEARCH=enabled):
+ *     Embeds the query via OpenAI text-embedding-3-small and runs an HNSW
+ *     cosine-similarity search against evidence_records.embedding. This path
+ *     surfaces semantically related records that keyword matching would miss.
+ *     Falls back to Tier 2 if the query embedding fails or no results are found.
+ *
+ *   Tier 2 — Keyword ranking (always available):
+ *     TF-style term matching with a confidence bonus. Used when vector search
+ *     is disabled, unavailable, or returns nothing. This was the only path
+ *     before migration 0007.
+ *
+ * After ranking, top candidates go to Claude for executive synthesis.
+ * Falls back to a bullet summary when ANTHROPIC_API_KEY is absent (dev / demo).
  */
 
 import type { AskResponse, EvidenceRecord } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
 import { ask } from "@/lib/services/llm";
+import { generateEmbedding, isVectorSearchEnabled } from "@/lib/services/embeddings";
 
 // ---------------------------------------------------------------------------
 // Keyword ranking (pre-filter before LLM call)
@@ -50,7 +60,24 @@ function keywordScore(query: string, text: string): number {
   return matches / terms.length;
 }
 
+/**
+ * Attempt vector search first; fall back to keyword ranking.
+ * The two-tier approach means semantic retrieval is always additive:
+ * turning NEXUS_VECTOR_SEARCH off reverts silently to keyword mode.
+ */
 async function rankEvidence(query: string, workspaceId: string): Promise<EvidenceRecord[]> {
+  // --- Tier 1: Vector search -------------------------------------------------
+  if (isVectorSearchEnabled()) {
+    const queryVec = await generateEmbedding(query);
+    if (queryVec) {
+      const vectorResults = await repository.searchEvidenceByVector(workspaceId, queryVec, 6);
+      if (vectorResults.length > 0) return vectorResults;
+      // No results from vector path (empty workspace or all embeddings NULL) —
+      // fall through to keyword ranking rather than returning empty.
+    }
+  }
+
+  // --- Tier 2: Keyword ranking -----------------------------------------------
   const all = await repository.getEvidenceForWorkspace(workspaceId);
   return all
     .filter(

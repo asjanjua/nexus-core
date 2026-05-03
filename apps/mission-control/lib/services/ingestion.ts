@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import type { EvidenceRecord, IngestionStatus } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
+import { generateEmbedding, isVectorSearchEnabled } from "@/lib/services/embeddings";
 
 export const MAX_UPLOAD_BYTES = 50 * 1024 * 1024; // 50 MB hard cap
 
@@ -17,22 +18,39 @@ type IngestionInput = {
   text: string;
 };
 
+type IngestionThresholds = {
+  quarantineThreshold: number;
+  processedThreshold: number;
+};
+
+const DEFAULT_THRESHOLDS: IngestionThresholds = {
+  quarantineThreshold: 0.35,
+  processedThreshold: 0.75
+};
+
 /**
  * Three-tier confidence routing:
  *
- *   < 0.35  → quarantined      (very low quality — blocked, needs re-upload)
- *   0.35–0.75 → pending_approval (moderate — staged for human sign-off before LLM synthesis)
+ *   < quarantineThreshold  → quarantined      (very low quality — blocked, needs re-upload)
+ *   quarantineThreshold–0.75 → pending_approval (moderate — staged for human sign-off before LLM synthesis)
  *   > 0.75  → processed        (high confidence — auto-cleared for synthesis)
  *
  * Missing provenance (no hash or timestamp) always quarantines regardless of confidence.
+ * Workspace settings currently tune the lower quarantine floor; the auto-clear
+ * floor remains fixed at 0.75 for V1.
  */
 export function deriveIngestionStatus(
   extractionConfidence: number,
-  hasProvenance: boolean
+  hasProvenance: boolean,
+  thresholds: IngestionThresholds = DEFAULT_THRESHOLDS
 ): IngestionStatus {
+  const quarantineThreshold = Math.min(
+    Math.max(thresholds.quarantineThreshold, 0),
+    thresholds.processedThreshold
+  );
   if (!hasProvenance) return "quarantined";
-  if (extractionConfidence < 0.35) return "quarantined";
-  if (extractionConfidence <= 0.75) return "pending_approval";
+  if (extractionConfidence < quarantineThreshold) return "quarantined";
+  if (extractionConfidence <= thresholds.processedThreshold) return "pending_approval";
   return "processed";
 }
 
@@ -51,9 +69,14 @@ export async function ingestEvidence(input: IngestionInput): Promise<EvidenceRec
   const hasProvenance = Boolean(
     input.sourcePath && input.hash && input.sourceTimestamp
   );
+  const workspaceSettings = await repository.getWorkspaceSettings(input.workspaceId);
   const ingestionStatus = deriveIngestionStatus(
     input.extractionConfidence,
-    hasProvenance
+    hasProvenance,
+    {
+      quarantineThreshold: workspaceSettings.quarantineThreshold,
+      processedThreshold: DEFAULT_THRESHOLDS.processedThreshold
+    }
   );
 
   const record: EvidenceRecord = {
@@ -73,5 +96,18 @@ export async function ingestEvidence(input: IngestionInput): Promise<EvidenceRec
     text: input.text
   };
 
-  return repository.addEvidenceRecord(record);
+  const saved = await repository.addEvidenceRecord(record);
+
+  // Async embedding generation — fire-and-forget.
+  // Only runs when NEXUS_VECTOR_SEARCH=enabled and OPENAI_API_KEY is set.
+  // Failure here never blocks ingest; the record is already committed.
+  if (isVectorSearchEnabled()) {
+    void generateEmbedding(input.text).then((embedding) => {
+      if (embedding) {
+        void repository.storeEmbedding(saved.id, embedding);
+      }
+    });
+  }
+
+  return saved;
 }

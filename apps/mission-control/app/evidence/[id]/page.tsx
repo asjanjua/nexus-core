@@ -1,10 +1,10 @@
 import { notFound } from "next/navigation";
 import { PageShell } from "@/components/page-shell";
-import { store } from "@/lib/data/store";
+import { repository } from "@/lib/data/repository";
 
 export default async function EvidenceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const row = store.getEvidenceById(id);
+  const row = await repository.getEvidenceById(id);
   if (!row) return notFound();
 
   return (
@@ -13,6 +13,19 @@ export default async function EvidenceDetailPage({ params }: { params: Promise<{
         <p>source type: {row.sourceType}</p>
         <p>source path: {row.sourcePath}</p>
         <p>source uri: {row.sourceUri ?? "n/a"}</p>
+        {row.sourceUri?.startsWith("r2://") && (
+          <p>
+            original file:{" "}
+            <a
+              href={`/api/evidence/${row.id}/original`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-cyan-300 underline underline-offset-4"
+            >
+              open stored original
+            </a>
+          </p>
+        )}
         <p>source timestamp: {row.sourceTimestamp}</p>
         <p>ingested at: {row.ingestedAt}</p>
         <p>hash: {row.hash}</p>

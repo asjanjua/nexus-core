@@ -5,6 +5,7 @@ import { sensitivitySchema } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
 import { ingestEvidence, MAX_UPLOAD_BYTES } from "@/lib/services/ingestion";
 import { extractTextFromBuffer } from "@/lib/services/extract";
+import { isOriginalStorageEnabled, storeOriginalFile } from "@/lib/services/object-storage";
 
 export const runtime = "nodejs";
 
@@ -66,15 +67,40 @@ export async function POST(request: Request) {
   if (!parsed.success) return fail("invalid_metadata", 400);
 
   const buf = Buffer.from(await file.arrayBuffer());
-  const extracted = await extractTextFromBuffer(file.name, buf);
   const hash = `sha256:${crypto.createHash("sha256").update(buf).digest("hex")}`;
+  let storedOriginalUri = parsed.data.sourceUri;
+
+  if (isOriginalStorageEnabled()) {
+    try {
+      const stored = await storeOriginalFile({
+        workspaceId: parsed.data.workspaceId,
+        fileName: file.name,
+        contentType: file.type,
+        hash,
+        buffer: buf
+      });
+      storedOriginalUri = stored?.sourceUri ?? storedOriginalUri;
+    } catch (error) {
+      await repository.pushAudit({
+        workspaceId: parsed.data.workspaceId,
+        type: "ingestion_original_storage_failed",
+        actor: "mission_control_upload",
+        payload: {
+          fileName: file.name,
+          error: error instanceof Error ? error.message : "unknown_error"
+        }
+      });
+    }
+  }
+
+  const extracted = await extractTextFromBuffer(file.name, buf);
 
   const record = await ingestEvidence({
     workspaceId: parsed.data.workspaceId,
     tenantId: parsed.data.tenantId,
     sourceType: parsed.data.sourceType,
     sourcePath: parsed.data.sourcePath ?? `/uploads/${file.name}`,
-    sourceUri: parsed.data.sourceUri,
+    sourceUri: storedOriginalUri,
     sourceTimestamp: parsed.data.sourceTimestamp ?? new Date().toISOString(),
     hash,
     sensitivity: parsed.data.sensitivity,
@@ -93,9 +119,22 @@ export async function POST(request: Request) {
     }
   });
 
+  if (storedOriginalUri?.startsWith("r2://")) {
+    await repository.pushAudit({
+      workspaceId: record.workspaceId,
+      type: "ingestion_original_stored",
+      actor: "mission_control_upload",
+      payload: {
+        evidenceId: record.id,
+        sourceUri: storedOriginalUri
+      }
+    });
+  }
+
   return ok({
     id: record.id,
     sourcePath: record.sourcePath,
+    sourceUri: record.sourceUri ?? null,
     ingestionStatus: record.ingestionStatus,
     extractionConfidence: record.extractionConfidence
   });

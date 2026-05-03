@@ -1,5 +1,6 @@
 import {
   boolean,
+  customType,
   integer,
   jsonb,
   pgEnum,
@@ -9,7 +10,42 @@ import {
   varchar
 } from "drizzle-orm/pg-core";
 
-const vector = (name: string) => jsonb(name).$type<number[]>();
+/**
+ * Real pgvector column type for Drizzle ORM.
+ *
+ * Postgres stores vectors as "[0.1,0.2,...]" strings via the pgvector extension.
+ * This customType handles encoding (JS number[] → Postgres "[...]") and decoding
+ * (Postgres string → JS number[]) transparently at the ORM layer.
+ *
+ * Migration 0007 switches the evidence_records.embedding column from JSONB to
+ * vector(1536) and builds an HNSW index. Until that migration runs, the column
+ * does not exist in the DB — all embedding writes/reads are no-ops.
+ *
+ * Dimensions: 1536 matches OpenAI text-embedding-3-small output.
+ */
+const pgVector = customType<{
+  data: number[];
+  driverData: string;
+  config: { dimensions: number };
+}>({
+  dataType(config) {
+    return config?.dimensions ? `vector(${config.dimensions})` : "vector";
+  },
+  fromDriver(value: string): number[] {
+    // Postgres returns vector as "[0.1,0.2,...]"
+    return value
+      .replace(/^\[/, "")
+      .replace(/\]$/, "")
+      .split(",")
+      .map(Number);
+  },
+  toDriver(value: number[]): string {
+    return `[${value.join(",")}]`;
+  }
+});
+
+// Alias kept for readability at the column definition site.
+const vector = (name: string) => pgVector(name, { dimensions: 1536 });
 
 export const sensitivityEnum = pgEnum("sensitivity", ["public", "internal", "confidential", "restricted"]);
 export const ingestionStatusEnum = pgEnum("ingestion_status", ["queued", "triaged", "pending_approval", "quarantined", "processed", "failed"]);
@@ -67,6 +103,8 @@ export const evidenceRecords = pgTable("evidence_records", {
   ingestedAt: timestamp("ingested_at", { withTimezone: true }).defaultNow().notNull(),
   hash: varchar("hash", { length: 128 }).notNull(),
   sensitivity: sensitivityEnum("sensitivity").notNull(),
+  // Stored as a 0-100 integer percentage to keep comparisons/indexing simple.
+  // The application contract exposes this as a 0-1 float.
   extractionConfidence: integer("extraction_confidence").notNull(),
   ingestionStatus: ingestionStatusEnum("ingestion_status").notNull(),
   freshnessHours: integer("freshness_hours").notNull().default(0),
@@ -88,6 +126,7 @@ export const recommendations = pgTable("recommendations", {
   title: text("title").notNull(),
   owner: varchar("owner", { length: 120 }).notNull(),
   status: recommendationStatusEnum("status").notNull(),
+  // Stored as a 0-100 integer percentage. The application contract exposes 0-1.
   confidence: integer("confidence").notNull(),
   evidenceRefs: jsonb("evidence_refs").$type<string[]>().default([]).notNull(),
   affectedEntityIds: jsonb("affected_entity_ids").$type<string[]>().default([]).notNull(),

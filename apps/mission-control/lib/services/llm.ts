@@ -2,11 +2,16 @@
  * Lightweight Anthropic Claude client using native fetch.
  * No SDK required - calls the Messages API directly.
  * Set ANTHROPIC_API_KEY in your environment.
+ * Optionally set ANTHROPIC_BASE_URL to route through Cloudflare AI Gateway.
  *
  * Falls back gracefully when the key is absent (dev / offline mode).
  */
 
-const ANTHROPIC_API = "https://api.anthropic.com/v1/messages";
+const ANTHROPIC_BASE_URL = (
+  process.env.ANTHROPIC_BASE_URL?.trim().replace(/\/+$/, "") ||
+  "https://api.anthropic.com"
+);
+const ANTHROPIC_API = `${ANTHROPIC_BASE_URL}/v1/messages`;
 const ANTHROPIC_VERSION = "2023-06-01";
 const DEFAULT_MODEL = process.env.NEXUS_LLM_MODEL ?? "claude-opus-4-6";
 const MAX_TOKENS = 1024;
@@ -30,6 +35,22 @@ export type LLMResponse = {
 
 function apiKey(): string | null {
   return process.env.ANTHROPIC_API_KEY ?? null;
+}
+
+function buildHeaders(key: string): Record<string, string> {
+  const headers: Record<string, string> = {
+    "x-api-key": key,
+    "anthropic-version": ANTHROPIC_VERSION,
+    "content-type": "application/json"
+  };
+
+  const gatewayToken = process.env.CLOUDFLARE_AI_GATEWAY_TOKEN?.trim();
+  if (gatewayToken) {
+    // Cloudflare AI Gateway supports authenticated gateways with this header.
+    headers["cf-aig-authorization"] = `Bearer ${gatewayToken}`;
+  }
+
+  return headers;
 }
 
 /**
@@ -63,11 +84,7 @@ export async function callLLM(
 
   const res = await fetch(ANTHROPIC_API, {
     method: "POST",
-    headers: {
-      "x-api-key": key,
-      "anthropic-version": ANTHROPIC_VERSION,
-      "content-type": "application/json"
-    },
+    headers: buildHeaders(key),
     body: JSON.stringify(body)
   });
 

@@ -25,3 +25,10 @@ Provide executive intelligence outputs that are evidence-backed, role-aware, and
 Nexus Core does not replace upstream systems in V1.
 It sits as a decision-support layer above existing sources and workflows.
 
+## V1 Infrastructure Position
+
+- Mission Control stays on Vercel for V1 and pilot delivery.
+- Clerk remains the browser auth and organization-tenancy layer.
+- Postgres plus `pgvector` remains the primary evidence and retrieval store.
+- Cloudflare is adopted selectively: AI Gateway first, R2 next, Queues later if scale requires it.
+- D1 and Vectorize are out of scope for V1.

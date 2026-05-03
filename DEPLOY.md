@@ -62,7 +62,15 @@ psql $DATABASE_URL -f db/migrations/0002_auth_users.sql
 psql $DATABASE_URL -f db/migrations/0003_agent_keys_and_settings.sql
 psql $DATABASE_URL -f db/migrations/0004_connectors.sql
 psql $DATABASE_URL -f db/migrations/0005_pending_approval_status.sql
+psql $DATABASE_URL -f db/migrations/0006_recommendation_status_index.sql
+psql $DATABASE_URL -f db/migrations/0007_pgvector.sql
 ```
+
+> **Note on migration 0007 and CONCURRENTLY**: The HNSW index creation uses
+> `CREATE INDEX CONCURRENTLY`. Some migration runners wrap statements in a
+> transaction block, which is incompatible with CONCURRENTLY. If you see
+> `ERROR: CREATE INDEX CONCURRENTLY cannot run inside a transaction block`,
+> extract that statement and run it separately against the non-pooling URL.
 
 Verify:
 ```bash
@@ -165,7 +173,16 @@ In the Vercel dashboard, go to **Settings → Environment Variables** and add al
 | `CLERK_WEBHOOK_SECRET` | `whsec_...` | From Clerk webhook settings |
 | `AUTH_SECRET` | 64-char random string | Signs agent Bearer tokens and Slack OAuth state |
 | `ANTHROPIC_API_KEY` | `sk-ant-...` | |
+| `ANTHROPIC_BASE_URL` | `https://gateway.ai.cloudflare.com/v1/<account>/<gateway>/anthropic` | Optional. Set this to use Cloudflare AI Gateway with Anthropic. |
+| `CLOUDFLARE_AI_GATEWAY_TOKEN` | `replace_me` | Optional. Only needed if your AI Gateway is configured as authenticated. |
 | `NEXUS_LLM_MODEL` | `claude-opus-4-6` | Or `gpt-4o` if using OpenAI |
+| `NEXUS_VECTOR_SEARCH` | `enabled` | Optional. Set to `enabled` to activate pgvector semantic retrieval. Requires `OPENAI_API_KEY` and migration 0007. Defaults to keyword search when unset. |
+| `OPENAI_API_KEY` | `sk-...` | Optional. Required only when `NEXUS_VECTOR_SEARCH=enabled`. Used exclusively for text-embedding-3-small (1536-dim). Claude remains the synthesis model. |
+| `NEXUS_R2_ORIGINALS` | `enabled` | Optional. Set to `enabled` to retain original uploaded files in Cloudflare R2 for provenance and re-review. |
+| `R2_ACCOUNT_ID` | `replace_me` | Required when `NEXUS_R2_ORIGINALS=enabled`. |
+| `R2_ACCESS_KEY_ID` | `replace_me` | Required when `NEXUS_R2_ORIGINALS=enabled`. |
+| `R2_SECRET_ACCESS_KEY` | `replace_me` | Required when `NEXUS_R2_ORIGINALS=enabled`. |
+| `R2_BUCKET` | `nexus-evidence` | Required when `NEXUS_R2_ORIGINALS=enabled`. |
 | `NEXUS_ENV` | `pilot` | |
 | `NEXT_PUBLIC_NEXUS_ENV` | `pilot` | Shown in UI |
 
@@ -257,6 +274,48 @@ Visit `/dashboard/ceo` and verify:
 - [ ] Charts render (SVG-based, no external deps)
 - [ ] `Ask` page returns answers based on uploaded evidence
 
+### 6.6 Optional Cloudflare AI Gateway
+
+If you want V1 to use Cloudflare AI Gateway without changing application code:
+
+1. Create an AI Gateway in Cloudflare.
+2. Set:
+
+```bash
+ANTHROPIC_BASE_URL=https://gateway.ai.cloudflare.com/v1/<account_id>/<gateway_id>/anthropic
+```
+
+3. If the gateway requires authenticated access, also set:
+
+```bash
+CLOUDFLARE_AI_GATEWAY_TOKEN=<your_cloudflare_gateway_token>
+```
+
+4. Redeploy and re-run an `Ask` query plus one role dashboard generation.
+
+This preserves the Vercel-hosted Mission Control runtime while adding Cloudflare-side LLM observability, rate limiting, and usage control.
+
+### 6.7 Optional Cloudflare R2 Originals
+
+If you want Nexus to retain original uploaded files for evidence provenance:
+
+1. Create an R2 bucket in Cloudflare.
+2. Create an R2 API token with read/write access to that bucket.
+3. Set:
+
+```bash
+NEXUS_R2_ORIGINALS=enabled
+R2_ACCOUNT_ID=<your_cloudflare_account_id>
+R2_ACCESS_KEY_ID=<your_r2_access_key_id>
+R2_SECRET_ACCESS_KEY=<your_r2_secret_access_key>
+R2_BUCKET=<your_bucket_name>
+```
+
+4. Redeploy and upload a test document.
+5. Open the evidence detail page and confirm the `open stored original` link appears.
+
+When enabled, Mission Control uploads the original file to R2 during ingestion, stores the resulting `r2://...` URI in `sourceUri`, and exposes the original back through an authenticated download route.
+
 ---
 
 ## 7. Custom Domain (optional)
@@ -284,6 +343,15 @@ Each client signs up, creates a Clerk Organization, and gets their own `tenantId
 ### 8.3 LLM Cost Management
 
 Set `NEXUS_LLM_MODEL=claude-haiku-4-5-20251001` for pilots where cost sensitivity matters. Switch to `claude-opus-4-6` for high-stakes executive briefings.
+
+Recommended V1 posture:
+
+- keep Mission Control on Vercel
+- keep Clerk for auth and org tenancy
+- keep Postgres plus `pgvector`
+- add Cloudflare AI Gateway first
+- add R2 for original file retention when provenance review is needed
+- defer Cloudflare Queues until ingestion volume justifies async complexity
 
 ### 8.4 Evidence Volume
 
@@ -342,4 +410,7 @@ NEXT_PUBLIC_NEXUS_ENV=pilot
 SLACK_CLIENT_ID=<optional>
 SLACK_CLIENT_SECRET=<optional>
 SLACK_SIGNING_SECRET=<optional>
+# Vector search (optional — keyword search works without these)
+NEXUS_VECTOR_SEARCH=enabled
+OPENAI_API_KEY=<sk-...>
 ```

@@ -59,6 +59,14 @@ type DbShape = ReturnType<typeof drizzle>;
 let dbInstance: DbShape | null | undefined;
 let dbPool: Pool | null = null;
 
+function decodeStoredPercent(value: number): number {
+  return Number((value / 100).toFixed(2));
+}
+
+function encodeStoredPercent(value: number): number {
+  return Math.round(value * 100);
+}
+
 function getDb(): DbShape | null {
   if (dbInstance !== undefined) return dbInstance;
   assertDbConfigured();
@@ -87,7 +95,7 @@ function toEvidenceRecord(row: typeof evidenceRecords.$inferSelect): EvidenceRec
     ingestedAt,
     hash: row.hash,
     sensitivity: row.sensitivity,
-    extractionConfidence: Number((row.extractionConfidence / 100).toFixed(2)),
+    extractionConfidence: decodeStoredPercent(row.extractionConfidence),
     ingestionStatus: row.ingestionStatus,
     // Recompute on every read so freshness reflects actual elapsed time,
     // not the value frozen at ingest.
@@ -108,7 +116,7 @@ function toRecommendation(row: typeof recommendations.$inferSelect): Recommendat
     title: row.title,
     owner: row.owner,
     status: row.status,
-    confidence: Number((row.confidence / 100).toFixed(2)),
+    confidence: decodeStoredPercent(row.confidence),
     affectedEntityIds: Array.isArray(row.affectedEntityIds) ? (row.affectedEntityIds as string[]) : [],
     evidenceRefs: Array.isArray(row.evidenceRefs) ? (row.evidenceRefs as string[]) : [],
     createdAt,
@@ -213,7 +221,7 @@ export const repository = {
         sourceTimestamp: new Date(record.sourceTimestamp),
         hash: record.hash,
         sensitivity: record.sensitivity,
-        extractionConfidence: Math.round(record.extractionConfidence * 100),
+        extractionConfidence: encodeStoredPercent(record.extractionConfidence),
         ingestionStatus: record.ingestionStatus,
         freshnessHours: record.freshnessHours,
         body: record.text
@@ -767,5 +775,65 @@ export const repository = {
         .where(eq(connectors.id, id))
     );
     store.revokeConnector(workspaceId, type);
+  },
+
+  // -------------------------------------------------------------------------
+  // Vector embedding storage + retrieval
+  // -------------------------------------------------------------------------
+
+  /**
+   * Persist a pre-computed embedding vector against an existing evidence record.
+   * Called fire-and-forget from ingestEvidence after the record is committed.
+   * Safe to call multiple times — overwrites the previous value if present.
+   *
+   * No-op when the DB is unavailable (in-memory mode doesn't store embeddings).
+   * The column only exists after migration 0007 has been applied.
+   */
+  async storeEmbedding(evidenceId: string, embedding: number[]): Promise<void> {
+    await runDb((db) =>
+      db
+        .update(evidenceRecords)
+        // Pass the vector as a raw SQL literal so the pg driver sends the
+        // correct pgvector wire format rather than a quoted JSON array.
+        .set({ embedding: sql`${JSON.stringify(embedding)}::vector` as unknown as number[] })
+        .where(eq(evidenceRecords.id, evidenceId))
+    );
+    // No in-memory fallback — store.ts holds EvidenceRecord objects which
+    // don't carry embeddings. Vector search falls back to keyword in dev.
+  },
+
+  /**
+   * Approximate nearest-neighbour search using HNSW cosine similarity.
+   * Returns up to `limit` processed, non-restricted records ordered by
+   * decreasing similarity to the query vector.
+   *
+   * Falls back to an empty array (triggering keyword fallback in retrieval)
+   * when the DB is unavailable or the vector column doesn't exist yet.
+   *
+   * The <=> operator is pgvector cosine distance (lower = more similar),
+   * so we ORDER BY ASC to get the closest matches first.
+   */
+  async searchEvidenceByVector(
+    workspaceId: string,
+    queryVector: number[],
+    limit = 6
+  ): Promise<EvidenceRecord[]> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(evidenceRecords)
+        .where(
+          sql`${evidenceRecords.workspaceId} = ${workspaceId}
+            AND ${evidenceRecords.ingestionStatus} = 'processed'
+            AND ${evidenceRecords.sensitivity} <> 'restricted'
+            AND ${evidenceRecords.embedding} IS NOT NULL`
+        )
+        .orderBy(
+          sql`${evidenceRecords.embedding} <=> ${JSON.stringify(queryVector)}::vector`
+        )
+        .limit(limit)
+    );
+    if (!rows) return [];
+    return rows.map(toEvidenceRecord);
   }
 };

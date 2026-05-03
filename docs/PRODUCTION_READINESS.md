@@ -17,6 +17,7 @@ It is **not yet production-ready** for broad multi-tenant enterprise scale.
 - End-to-end connector action writeback controls for enterprise systems
 - Production-grade observability SLAs and incident automation
 - Certification posture (SOC2/ISO/compliance package)
+- Real pgvector-backed semantic retrieval in the DB layer (current embedding column is still JSON-backed)
 
 ## Minimum Hardening Before Production
 1. Identity and access hardening:
@@ -41,4 +42,3 @@ It is **not yet production-ready** for broad multi-tenant enterprise scale.
 2. Measure impact (time-to-brief, decision clarity, recommendation adoption)
 3. Expand connector coverage and governance controls
 4. Production rollout only after hardening gates pass
-

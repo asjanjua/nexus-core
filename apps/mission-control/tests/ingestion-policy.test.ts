@@ -3,8 +3,8 @@ import { deriveIngestionStatus } from "@/lib/services/ingestion";
 
 /**
  * Three-tier routing (updated in Task 23):
- *   < 0.35  → quarantined       (very low quality — blocked)
- *   0.35–0.75 → pending_approval (moderate — needs human sign-off)
+ *   < quarantineThreshold  → quarantined       (very low quality — blocked)
+ *   quarantineThreshold–0.75 → pending_approval (moderate — needs human sign-off)
  *   > 0.75  → processed          (high confidence — auto-cleared)
  *   missing provenance → always quarantined regardless of confidence
  */
@@ -34,5 +34,11 @@ describe("ingestion policy", () => {
     expect(deriveIngestionStatus(0.90, true)).toBe("processed");
     expect(deriveIngestionStatus(1.00, true)).toBe("processed");
   });
-});
 
+  it("honors the workspace-configured quarantine threshold", () => {
+    const stricter = { quarantineThreshold: 0.55, processedThreshold: 0.75 };
+    expect(deriveIngestionStatus(0.54, true, stricter)).toBe("quarantined");
+    expect(deriveIngestionStatus(0.55, true, stricter)).toBe("pending_approval");
+    expect(deriveIngestionStatus(0.76, true, stricter)).toBe("processed");
+  });
+});
