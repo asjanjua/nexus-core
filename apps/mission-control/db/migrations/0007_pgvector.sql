@@ -10,7 +10,8 @@
 --   3. Adds a real vector(1536) column for OpenAI text-embedding-3-small output.
 --   4. Builds an HNSW index for approximate cosine-similarity search.
 --      m=16, ef_construction=128 are the standard balanced defaults for 1536-dim.
---      CONCURRENTLY avoids an exclusive table lock in production.
+--      This rescue/pilot migration uses a regular CREATE INDEX so the Node
+--      migration runner can safely execute it inside a transaction.
 --   5. Adds the composite indexes from 0006 that were missing on evidence_records
 --      and audit_events (recommendations index was already in 0006).
 --
@@ -27,10 +28,7 @@ ALTER TABLE evidence_records DROP COLUMN IF EXISTS embedding;
 ALTER TABLE evidence_records ADD COLUMN embedding vector(1536);
 
 -- 3. HNSW index --------------------------------------------------------------
--- Build CONCURRENTLY to avoid a full table lock.
--- In psql you cannot run CONCURRENTLY inside a transaction block;
--- run this statement on its own if your migration runner wraps in BEGIN/COMMIT.
-CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_evidence_embedding_hnsw
+CREATE INDEX IF NOT EXISTS idx_evidence_embedding_hnsw
   ON evidence_records
   USING hnsw (embedding vector_cosine_ops)
   WITH (m = 16, ef_construction = 128);

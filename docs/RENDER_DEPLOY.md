@@ -44,9 +44,8 @@ cd /Users/alijanjua/Documents/Playground/nexus-core
 DATABASE_URL="<direct Neon connection string>" npm run db:migrate
 ```
 
-If migration `0007_pgvector.sql` fails on `CREATE INDEX CONCURRENTLY`, run the
-non-concurrent statements first and the concurrent index statement separately
-with `psql` against the direct connection string.
+The rescue migration uses a regular HNSW index build so the repository's Node
+migration runner can execute every migration in order without requiring `psql`.
 
 ## 3. Create Render Web Service
 

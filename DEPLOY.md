@@ -66,11 +66,10 @@ psql $DATABASE_URL -f db/migrations/0006_recommendation_status_index.sql
 psql $DATABASE_URL -f db/migrations/0007_pgvector.sql
 ```
 
-> **Note on migration 0007 and CONCURRENTLY**: The HNSW index creation uses
-> `CREATE INDEX CONCURRENTLY`. Some migration runners wrap statements in a
-> transaction block, which is incompatible with CONCURRENTLY. If you see
-> `ERROR: CREATE INDEX CONCURRENTLY cannot run inside a transaction block`,
-> extract that statement and run it separately against the non-pooling URL.
+> **Note on migration 0007**: The HNSW index creation uses a regular
+> `CREATE INDEX IF NOT EXISTS` so the repository's Node migration runner can
+> apply it inside its transaction wrapper. For a large production table, switch
+> this to `CREATE INDEX CONCURRENTLY` and run that statement separately.
 
 Verify:
 ```bash
