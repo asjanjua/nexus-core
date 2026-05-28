@@ -1,0 +1,70 @@
+services:
+  - type: web
+    name: nexus-mission-control
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: .
+    buildCommand: npm ci && npm run build
+    startCommand: npm run start -w @nexus/mission-control -- -p $PORT
+    autoDeploy: true
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: NEXUS_ENV
+        value: pilot
+      - key: NEXT_PUBLIC_NEXUS_ENV
+        value: pilot
+      - key: NEXUS_DB_REQUIRED
+        value: "true"
+      - key: NEXUS_LLM_PROVIDER
+        value: deepseek
+      - key: DEEPSEEK_BASE_URL
+        value: https://api.deepseek.com
+      - key: NEXUS_LLM_MODEL
+        value: deepseek-v4-pro
+      - key: NEXUS_VECTOR_SEARCH
+        value: enabled
+      - key: NEXUS_R2_ORIGINALS
+        value: enabled
+      - key: NEXT_PUBLIC_CLERK_SIGN_IN_URL
+        value: /sign-in
+      - key: NEXT_PUBLIC_CLERK_SIGN_UP_URL
+        value: /sign-up
+      - key: NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL
+        value: /dashboard/ceo
+      - key: NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL
+        value: /onboarding
+      - key: NEXT_PUBLIC_APP_NAME
+        value: NexusAI Mission Control
+      - key: DATABASE_URL
+        sync: false
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+      - key: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+        sync: false
+      - key: CLERK_SECRET_KEY
+        sync: false
+      - key: CLERK_WEBHOOK_SECRET
+        sync: false
+      - key: AUTH_SECRET
+        generateValue: true
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: R2_ACCOUNT_ID
+        sync: false
+      - key: R2_ACCESS_KEY_ID
+        sync: false
+      - key: R2_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_BUCKET
+        sync: false
+      - key: SLACK_CLIENT_ID
+        sync: false
+      - key: SLACK_CLIENT_SECRET
+        sync: false
+      - key: SLACK_SIGNING_SECRET
+        sync: false

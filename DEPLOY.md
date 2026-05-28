@@ -172,10 +172,13 @@ In the Vercel dashboard, go to **Settings → Environment Variables** and add al
 | `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL` | `/onboarding` | |
 | `CLERK_WEBHOOK_SECRET` | `whsec_...` | From Clerk webhook settings |
 | `AUTH_SECRET` | 64-char random string | Signs agent Bearer tokens and Slack OAuth state |
-| `ANTHROPIC_API_KEY` | `sk-ant-...` | |
+| `NEXUS_LLM_PROVIDER` | `deepseek` | Use `anthropic` if you want Claude as the synthesis provider. |
+| `DEEPSEEK_API_KEY` | `sk-...` | Required when `NEXUS_LLM_PROVIDER=deepseek`. |
+| `DEEPSEEK_BASE_URL` | `https://api.deepseek.com` | DeepSeek OpenAI-compatible endpoint. |
+| `ANTHROPIC_API_KEY` | `sk-ant-...` | Required only when `NEXUS_LLM_PROVIDER=anthropic`. |
 | `ANTHROPIC_BASE_URL` | `https://gateway.ai.cloudflare.com/v1/<account>/<gateway>/anthropic` | Optional. Set this to use Cloudflare AI Gateway with Anthropic. |
 | `CLOUDFLARE_AI_GATEWAY_TOKEN` | `replace_me` | Optional. Only needed if your AI Gateway is configured as authenticated. |
-| `NEXUS_LLM_MODEL` | `claude-opus-4-6` | Or `gpt-4o` if using OpenAI |
+| `NEXUS_LLM_MODEL` | `deepseek-v4-pro` | Use `claude-opus-4-6` when `NEXUS_LLM_PROVIDER=anthropic`. |
 | `NEXUS_VECTOR_SEARCH` | `enabled` | Optional. Set to `enabled` to activate pgvector semantic retrieval. Requires `OPENAI_API_KEY` and migration 0007. Defaults to keyword search when unset. |
 | `OPENAI_API_KEY` | `sk-...` | Optional. Required only when `NEXUS_VECTOR_SEARCH=enabled`. Used exclusively for text-embedding-3-small (1536-dim). Claude remains the synthesis model. |
 | `NEXUS_R2_ORIGINALS` | `enabled` | Optional. Set to `enabled` to retain original uploaded files in Cloudflare R2 for provenance and re-review. |
@@ -342,7 +345,7 @@ Each client signs up, creates a Clerk Organization, and gets their own `tenantId
 
 ### 8.3 LLM Cost Management
 
-Set `NEXUS_LLM_MODEL=claude-haiku-4-5-20251001` for pilots where cost sensitivity matters. Switch to `claude-opus-4-6` for high-stakes executive briefings.
+Set `NEXUS_LLM_PROVIDER=deepseek` with `NEXUS_LLM_MODEL=deepseek-v4-pro` for the default paid API path. Use `deepseek-v4-flash` for lower-stakes draft and triage routes when that model is enabled in your provider account. Switch to `NEXUS_LLM_PROVIDER=anthropic` with `claude-opus-4-6` only for high-stakes executive briefings where you explicitly want Claude.
 
 Recommended V1 posture:
 
@@ -403,8 +406,10 @@ NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard/ceo
 NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/onboarding
 CLERK_WEBHOOK_SECRET=whsec_...
 AUTH_SECRET=<64-char random hex>
-ANTHROPIC_API_KEY=sk-ant-...
-NEXUS_LLM_MODEL=claude-opus-4-6
+NEXUS_LLM_PROVIDER=deepseek
+DEEPSEEK_API_KEY=<deepseek-api-key>
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+NEXUS_LLM_MODEL=deepseek-v4-pro
 NEXUS_ENV=pilot
 NEXT_PUBLIC_NEXUS_ENV=pilot
 SLACK_CLIENT_ID=<optional>

@@ -6,11 +6,9 @@
  * single hard-coded LLM call path.
  *
  * Important current-state note:
- * - Mission Control runtime currently supports Anthropic directly.
- * - OpenAI and Azure OpenAI are exposed in workspace settings, but the shared
- *   LLM execution path has not yet been generalized beyond Anthropic.
- * - Experimental low-cost models are documented here for policy clarity, not
- *   enabled by default in V1.
+ * - Mission Control runtime supports Anthropic and OpenAI-compatible providers.
+ * - DeepSeek is the preferred paid API route when NEXUS_LLM_PROVIDER=deepseek.
+ * - Experimental low-cost models are documented here for policy clarity.
  */
 
 export type NexusMode = "ask" | "think" | "make" | "run";
@@ -19,6 +17,7 @@ export type ModelTier = "economy" | "standard" | "premium" | "restricted_safe";
 
 export type ProviderId =
   | "anthropic"
+  | "deepseek"
   | "openai"
   | "azure_openai"
   | "experimental_gateway";
@@ -108,6 +107,28 @@ export const PROVIDER_PROFILES: Record<ProviderId, ProviderProfile> = {
     policyNotes:
       "Visible in settings, but not yet wired into the shared runtime execution path."
   },
+  deepseek: {
+    id: "deepseek",
+    label: "DeepSeek",
+    enabledNow: true,
+    currentRuntimeSupported: true,
+    bestUse: [
+      "coding and agent workflows",
+      "cost-aware executive synthesis",
+      "draft-to-final reasoning when Claude is not required"
+    ],
+    notFor: [
+      "vision inputs",
+      "workflows where the customer contract excludes third-party non-US model providers"
+    ],
+    defaultModels: {
+      standard: "deepseek-v4-pro",
+      premium: "deepseek-v4-pro",
+      economy: "deepseek-v4-flash"
+    },
+    policyNotes:
+      "Primary paid API route when configured. Keep provenance and sensitivity gates active for all sponsor-facing outputs."
+  },
   azure_openai: {
     id: "azure_openai",
     label: "Azure OpenAI",
@@ -159,6 +180,12 @@ export const NEXUS_MODEL_ROUTING: RoutePolicy[] = [
     allowedTiers: ["standard", "premium", "restricted_safe"],
     fallbackChain: [
       {
+        provider: "deepseek",
+        model: "deepseek-v4-pro",
+        tier: "standard",
+        enabledNow: true
+      },
+      {
         provider: "anthropic",
         model: "claude-sonnet-4-6",
         tier: "standard",
@@ -186,6 +213,12 @@ export const NEXUS_MODEL_ROUTING: RoutePolicy[] = [
     defaultTier: "standard",
     allowedTiers: ["standard", "restricted_safe"],
     fallbackChain: [
+      {
+        provider: "deepseek",
+        model: "deepseek-v4-pro",
+        tier: "restricted_safe",
+        enabledNow: true
+      },
       {
         provider: "anthropic",
         model: "claude-sonnet-4-6",
@@ -215,6 +248,12 @@ export const NEXUS_MODEL_ROUTING: RoutePolicy[] = [
     allowedTiers: ["standard", "premium", "restricted_safe"],
     fallbackChain: [
       {
+        provider: "deepseek",
+        model: "deepseek-v4-pro",
+        tier: "premium",
+        enabledNow: true
+      },
+      {
         provider: "anthropic",
         model: "claude-opus-4-6",
         tier: "premium",
@@ -242,6 +281,12 @@ export const NEXUS_MODEL_ROUTING: RoutePolicy[] = [
     defaultTier: "economy",
     allowedTiers: ["economy", "standard"],
     fallbackChain: [
+      {
+        provider: "deepseek",
+        model: "deepseek-v4-flash",
+        tier: "economy",
+        enabledNow: true
+      },
       {
         provider: "anthropic",
         model: "claude-haiku-4-5-20251001",
@@ -277,6 +322,12 @@ export const NEXUS_MODEL_ROUTING: RoutePolicy[] = [
     allowedTiers: ["standard", "premium", "restricted_safe"],
     fallbackChain: [
       {
+        provider: "deepseek",
+        model: "deepseek-v4-pro",
+        tier: "premium",
+        enabledNow: true
+      },
+      {
         provider: "anthropic",
         model: "claude-opus-4-6",
         tier: "premium",
@@ -304,6 +355,12 @@ export const NEXUS_MODEL_ROUTING: RoutePolicy[] = [
     defaultTier: "premium",
     allowedTiers: ["premium", "restricted_safe"],
     fallbackChain: [
+      {
+        provider: "deepseek",
+        model: "deepseek-v4-pro",
+        tier: "premium",
+        enabledNow: true
+      },
       {
         provider: "anthropic",
         model: "claude-opus-4-6",
@@ -333,6 +390,12 @@ export const NEXUS_MODEL_ROUTING: RoutePolicy[] = [
     allowedTiers: ["standard", "premium"],
     fallbackChain: [
       {
+        provider: "deepseek",
+        model: "deepseek-v4-pro",
+        tier: "premium",
+        enabledNow: true
+      },
+      {
         provider: "anthropic",
         model: "claude-opus-4-6",
         tier: "premium",
@@ -360,6 +423,12 @@ export const NEXUS_MODEL_ROUTING: RoutePolicy[] = [
     defaultTier: "economy",
     allowedTiers: ["economy", "standard"],
     fallbackChain: [
+      {
+        provider: "deepseek",
+        model: "deepseek-v4-flash",
+        tier: "economy",
+        enabledNow: true
+      },
       {
         provider: "anthropic",
         model: "claude-haiku-4-5-20251001",
@@ -389,6 +458,12 @@ export const NEXUS_MODEL_ROUTING: RoutePolicy[] = [
     allowedTiers: ["standard", "restricted_safe"],
     fallbackChain: [
       {
+        provider: "deepseek",
+        model: "deepseek-v4-pro",
+        tier: "restricted_safe",
+        enabledNow: true
+      },
+      {
         provider: "anthropic",
         model: "claude-sonnet-4-6",
         tier: "restricted_safe",
@@ -410,6 +485,12 @@ export const NEXUS_MODEL_ROUTING: RoutePolicy[] = [
     defaultTier: "restricted_safe",
     allowedTiers: ["restricted_safe", "standard"],
     fallbackChain: [
+      {
+        provider: "deepseek",
+        model: "deepseek-v4-pro",
+        tier: "restricted_safe",
+        enabledNow: true
+      },
       {
         provider: "anthropic",
         model: "claude-sonnet-4-6",

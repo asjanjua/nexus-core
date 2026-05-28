@@ -1,8 +1,7 @@
 /**
- * Lightweight Anthropic Claude client using native fetch.
- * No SDK required - calls the Messages API directly.
- * Set ANTHROPIC_API_KEY in your environment.
- * Optionally set ANTHROPIC_BASE_URL to route through Cloudflare AI Gateway.
+ * Lightweight LLM client using native fetch.
+ * Anthropic remains the default Nexus V1 provider. DeepSeek and other
+ * OpenAI-compatible providers can be selected with NEXUS_LLM_PROVIDER.
  *
  * Falls back gracefully when the key is absent (dev / offline mode).
  */
@@ -13,7 +12,18 @@ const ANTHROPIC_BASE_URL = (
 );
 const ANTHROPIC_API = `${ANTHROPIC_BASE_URL}/v1/messages`;
 const ANTHROPIC_VERSION = "2023-06-01";
-const DEFAULT_MODEL = process.env.NEXUS_LLM_MODEL ?? "claude-opus-4-6";
+const LLM_PROVIDER = (process.env.NEXUS_LLM_PROVIDER ?? "anthropic").trim().toLowerCase();
+const DEFAULT_MODEL =
+  process.env.NEXUS_LLM_MODEL ??
+  (LLM_PROVIDER === "deepseek" ? "deepseek-v4-pro" : "claude-opus-4-6");
+const DEEPSEEK_BASE_URL = (
+  process.env.DEEPSEEK_BASE_URL?.trim().replace(/\/+$/, "") ||
+  "https://api.deepseek.com"
+);
+const OPENAI_COMPAT_BASE_URL = (
+  process.env.OPENAI_COMPAT_BASE_URL?.trim().replace(/\/+$/, "") ||
+  DEEPSEEK_BASE_URL
+);
 const MAX_TOKENS = 1024;
 
 export type LLMMessage = { role: "user" | "assistant"; content: string };
@@ -34,6 +44,14 @@ export type LLMResponse = {
 };
 
 function apiKey(): string | null {
+  if (LLM_PROVIDER === "deepseek") {
+    return process.env.DEEPSEEK_API_KEY ?? null;
+  }
+
+  if (LLM_PROVIDER === "openai_compatible") {
+    return process.env.OPENAI_COMPAT_API_KEY ?? process.env.DEEPSEEK_API_KEY ?? null;
+  }
+
   return process.env.ANTHROPIC_API_KEY ?? null;
 }
 
@@ -53,6 +71,68 @@ function buildHeaders(key: string): Record<string, string> {
   return headers;
 }
 
+function buildOpenAICompatibleHeaders(key: string): Record<string, string> {
+  return {
+    authorization: `Bearer ${key}`,
+    "content-type": "application/json"
+  };
+}
+
+async function callOpenAICompatible(
+  messages: LLMMessage[],
+  opts: LLMOptions,
+  provider: "deepseek" | "openai_compatible"
+): Promise<LLMResponse> {
+  const key = apiKey();
+
+  if (!key) {
+    return {
+      text: `[LLM unavailable - set ${provider === "deepseek" ? "DEEPSEEK_API_KEY" : "OPENAI_COMPAT_API_KEY"} to enable AI synthesis]`,
+      model: "none",
+      inputTokens: 0,
+      outputTokens: 0,
+      fromFallback: true
+    };
+  }
+
+  const baseUrl = provider === "deepseek" ? DEEPSEEK_BASE_URL : OPENAI_COMPAT_BASE_URL;
+  const model = opts.model ?? DEFAULT_MODEL ?? (provider === "deepseek" ? "deepseek-v4-pro" : "");
+  const requestMessages = [
+    ...(opts.systemPrompt ? [{ role: "system", content: opts.systemPrompt }] : []),
+    ...messages.map((m) => ({ role: m.role, content: m.content }))
+  ];
+
+  const res = await fetch(`${baseUrl}/chat/completions`, {
+    method: "POST",
+    headers: buildOpenAICompatibleHeaders(key),
+    body: JSON.stringify({
+      model,
+      max_tokens: opts.maxTokens ?? MAX_TOKENS,
+      temperature: opts.temperature ?? 0.2,
+      messages: requestMessages
+    })
+  });
+
+  if (!res.ok) {
+    const err = await res.text().catch(() => res.statusText);
+    throw new Error(`${provider} API error ${res.status}: ${err}`);
+  }
+
+  const json = (await res.json()) as {
+    model?: string;
+    choices?: Array<{ message?: { content?: string } }>;
+    usage?: { prompt_tokens?: number; completion_tokens?: number };
+  };
+
+  return {
+    text: (json.choices?.[0]?.message?.content ?? "").trim(),
+    model: json.model ?? model,
+    inputTokens: json.usage?.prompt_tokens ?? 0,
+    outputTokens: json.usage?.completion_tokens ?? 0,
+    fromFallback: false
+  };
+}
+
 /**
  * Call Claude with a system prompt + user messages.
  * Returns a fallback marker when the key is missing so callers
@@ -62,6 +142,10 @@ export async function callLLM(
   messages: LLMMessage[],
   opts: LLMOptions = {}
 ): Promise<LLMResponse> {
+  if (LLM_PROVIDER === "deepseek" || LLM_PROVIDER === "openai_compatible") {
+    return callOpenAICompatible(messages, opts, LLM_PROVIDER);
+  }
+
   const key = apiKey();
 
   if (!key) {
