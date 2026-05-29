@@ -6,6 +6,13 @@
   "workspaces": [
     "apps/*"
   ],
+  "overrides": {
+    "esbuild": "^0.25.12",
+    "postcss": "^8.5.15",
+    "next@15.5.18": {
+      "postcss": "^8.5.15"
+    }
+  },
   "scripts": {
     "dev": "npm run dev -w @nexus/mission-control",
     "build": "npm run build -w @nexus/mission-control",

@@ -154,12 +154,17 @@ Expected:
 - [ ] Slack events verify signatures in production when Slack is enabled.
 - [ ] Clerk webhook signature verification is enabled when webhooks are enabled.
 - [ ] No public API route returns workspace data without auth.
+- [ ] Agent key routes are scoped to the authenticated caller's workspace.
+- [ ] OAuth callback state is HMAC-signed with `AUTH_SECRET`.
+- [ ] Security headers are present: `x-content-type-options`, `x-frame-options`, `referrer-policy`, and `permissions-policy`.
 - [ ] Restricted or unprovenanced evidence does not appear in Slack summaries.
 
 Current residual dependency notes:
 
-- `drizzle-kit` retains a moderate dev-tooling advisory through `@esbuild-kit/*`.
-- `next@15.5.18` retains an npm audit moderate advisory through bundled `postcss`; no high/critical Next advisories remain on the 15.x line.
+- `next@15.5.18` retains an npm audit moderate advisory through its bundled `postcss@8.4.31`.
+- npm's suggested fix for that advisory is a destructive downgrade to `next@9.3.3`, so it is intentionally not applied.
+- `drizzle-kit` is not installed in the committed dependency tree; `db:generate` uses `npx --yes drizzle-kit@0.31.10` only when schema generation is explicitly needed.
+- No high or critical npm audit advisories should remain in the committed dependency tree.
 
 ---
 

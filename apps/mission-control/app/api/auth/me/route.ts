@@ -3,18 +3,19 @@
  *
  * Returns the current caller's identity derived from their session cookie
  * or Bearer token. Used by client components that need workspaceId without
- * hardcoding it. Always returns 200 — unauthenticated callers get the
- * default demo workspace so the settings page still renders in dev.
+ * hardcoding it.
  */
 
 import { ok } from "@/lib/api";
-import { resolveAuth, DEFAULT_WORKSPACE } from "@/lib/api-auth";
+import { requireScope } from "@/lib/api-auth";
 
 export async function GET(request: Request) {
-  const auth = await resolveAuth(request);
+  const { ctx, error } = await requireScope(request, "read:dashboard");
+  if (error) return error;
+
   return ok({
-    workspaceId: auth?.workspaceId ?? DEFAULT_WORKSPACE,
-    userId: auth?.userId ?? "anonymous",
-    authType: auth?.authType ?? null,
+    workspaceId: ctx.workspaceId,
+    userId: ctx.userId,
+    authType: ctx.authType,
   });
 }

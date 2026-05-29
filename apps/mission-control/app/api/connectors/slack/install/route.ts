@@ -19,6 +19,7 @@
 import crypto from "crypto";
 import { fail } from "@/lib/api";
 import { requireScope } from "@/lib/api-auth";
+import { requireAuthSecret } from "@/lib/security";
 import { NextResponse } from "next/server";
 
 // Bot token scopes needed for evidence ingestion
@@ -35,7 +36,7 @@ function signState(workspaceId: string): string {
   const payload = JSON.stringify({ workspaceId, ts: Date.now() });
   const encoded = Buffer.from(payload).toString("base64url");
   const sig = crypto
-    .createHmac("sha256", process.env.AUTH_SECRET ?? "dev-secret")
+    .createHmac("sha256", requireAuthSecret())
     .update(encoded)
     .digest("hex");
   return `${encoded}.${sig}`;

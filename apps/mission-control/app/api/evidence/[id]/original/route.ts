@@ -5,6 +5,10 @@ import { fetchOriginalFile } from "@/lib/services/object-storage";
 
 export const runtime = "nodejs";
 
+function safeDownloadName(fileName: string): string {
+  return fileName.replace(/[\r\n"\\]/g, "_").replace(/[^\w .-]/g, "_").slice(0, 160) || "original";
+}
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -25,7 +29,7 @@ export async function GET(
     status: 200,
     headers: {
       "content-type": file.contentType,
-      "content-disposition": `inline; filename="${file.fileName}"`,
+      "content-disposition": `inline; filename="${safeDownloadName(file.fileName)}"`,
       "cache-control": "private, max-age=60"
     }
   });

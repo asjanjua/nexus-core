@@ -12,6 +12,7 @@
  */
 
 import crypto from "crypto";
+import { requireAuthSecret } from "@/lib/security";
 
 const ALGORITHM = "aes-256-gcm";
 const IV_BYTES = 12;
@@ -19,7 +20,7 @@ const TAG_BYTES = 16;
 const SALT = "nexus-connector-credentials-v1"; // static salt — key material comes from AUTH_SECRET
 
 function deriveKey(): Buffer {
-  const secret = process.env.AUTH_SECRET ?? "nexus-dev-secret";
+  const secret = requireAuthSecret();
   return crypto.pbkdf2Sync(secret, SALT, 100_000, 32, "sha256");
 }
 

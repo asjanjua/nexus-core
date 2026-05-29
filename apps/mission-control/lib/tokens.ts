@@ -9,11 +9,12 @@
  */
 
 import crypto from "crypto";
+import { requireAuthSecret } from "@/lib/security";
 
 export const TOKEN_TTL_SECONDS = 60 * 60; // 1 hour
 
 function secret(): string {
-  return process.env.AUTH_SECRET ?? "nexus-dev-secret";
+  return requireAuthSecret();
 }
 
 export function signToken(payload: Record<string, unknown>): string {

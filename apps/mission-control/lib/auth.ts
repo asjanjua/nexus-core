@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { SESSION_COOKIE_NAME } from "@/lib/auth-constants";
+import { requireAuthSecret, timingSafeEqualString } from "@/lib/security";
 
 const SESSION_TTL_SECONDS = 60 * 60 * 12;
 
@@ -10,7 +11,7 @@ type SessionPayload = {
 };
 
 function secret(): string {
-  return process.env.AUTH_SECRET || "nexus-dev-secret";
+  return requireAuthSecret();
 }
 
 function defaultUser(): string {
@@ -48,7 +49,7 @@ function encode(payload: SessionPayload): string {
 function decode(token: string): SessionPayload | null {
   const [body, signature] = token.split(".");
   if (!body || !signature) return null;
-  if (sign(body) !== signature) return null;
+  if (!timingSafeEqualString(sign(body), signature, "hex")) return null;
   try {
     const payload = JSON.parse(Buffer.from(body, "base64url").toString("utf-8")) as SessionPayload;
     if (!payload.userId || !payload.workspaceId || !payload.exp) return null;

@@ -19,6 +19,7 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { repository } from "@/lib/data/repository";
+import { requireAuthSecret, timingSafeEqualString } from "@/lib/security";
 
 // ---------------------------------------------------------------------------
 // State verification
@@ -32,15 +33,11 @@ function verifyState(state: string): StatePayload | null {
   const [encoded, sig] = parts;
 
   const expected = crypto
-    .createHmac("sha256", process.env.AUTH_SECRET ?? "dev-secret")
+    .createHmac("sha256", requireAuthSecret())
     .update(encoded)
     .digest("hex");
 
-  // Timing-safe comparison
-  const left = Buffer.from(expected, "utf-8");
-  const right = Buffer.from(sig, "utf-8");
-  if (left.length !== right.length) return null;
-  if (!crypto.timingSafeEqual(left, right)) return null;
+  if (!timingSafeEqualString(expected, sig, "hex")) return null;
 
   // Reject states older than 10 minutes
   try {

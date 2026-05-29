@@ -15,6 +15,7 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { repository } from "@/lib/data/repository";
+import { timingSafeEqualString } from "@/lib/security";
 
 export const runtime = "nodejs";
 
@@ -48,8 +49,11 @@ function verifyWebhookSignature(
     .digest("base64");
 
   // svix-signature may have multiple values (v1,sig1 v1,sig2 ...)
-  const signatures = svixSignature.split(" ").map((s) => s.split(",")[1]);
-  return signatures.some((sig) => sig === computed);
+  const signatures = svixSignature
+    .split(" ")
+    .map((s) => s.split(",")[1])
+    .filter(Boolean);
+  return signatures.some((sig) => timingSafeEqualString(sig, computed));
 }
 
 type ClerkOrgCreatedEvent = {

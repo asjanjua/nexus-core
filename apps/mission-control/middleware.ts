@@ -37,24 +37,37 @@ const isAgentApiRoute = createRouteMatcher([
   "/api/ingestion(.*)",
   "/api/approvals(.*)",
   "/api/auth/me(.*)",
+  "/api/agent-keys(.*)",
   "/api/settings(.*)",
   "/api/connectors(.*)",  // includes install, callback, and list/revoke
   "/api/workspace(.*)",
 ]);
 
+function withSecurityHeaders(response: NextResponse): NextResponse {
+  response.headers.set("x-content-type-options", "nosniff");
+  response.headers.set("x-frame-options", "DENY");
+  response.headers.set("referrer-policy", "strict-origin-when-cross-origin");
+  response.headers.set("permissions-policy", "camera=(), microphone=(), geolocation=(), payment=()");
+  if (process.env.NODE_ENV === "production") {
+    response.headers.set("strict-transport-security", "max-age=31536000; includeSubDomains");
+  }
+  return response;
+}
+
 export default clerkMiddleware(async (auth, request) => {
   // Let public routes through unconditionally
-  if (isPublicRoute(request)) return NextResponse.next();
+  if (isPublicRoute(request)) return withSecurityHeaders(NextResponse.next());
 
   // If the request carries a Bearer token on an agent-compatible route,
   // pass it through — the route handler performs token validation.
   const authHeader = request.headers.get("authorization") ?? "";
   if (authHeader.startsWith("Bearer ") && isAgentApiRoute(request)) {
-    return NextResponse.next();
+    return withSecurityHeaders(NextResponse.next());
   }
 
   // All other routes require a Clerk session
   await auth.protect();
+  return withSecurityHeaders(NextResponse.next());
 });
 
 export const config = {
