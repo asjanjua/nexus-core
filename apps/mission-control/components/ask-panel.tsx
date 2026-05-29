@@ -11,7 +11,7 @@ type AskResult = {
   evidenceRefs: string[];
 };
 
-export function AskPanel() {
+export function AskPanel({ workspaceId, userId }: { workspaceId: string; userId: string }) {
   const [query, setQuery] = useState("What are the top risks right now?");
   const [result, setResult] = useState<AskResult | null>(null);
   const [history, setHistory] = useState<Array<{ role: "user" | "assistant"; text: string }>>([]);
@@ -26,8 +26,8 @@ export function AskPanel() {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          workspaceId: "workspace-demo",
-          userId: "user-demo",
+          workspaceId,
+          userId,
           query
         })
       });

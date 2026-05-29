@@ -3,9 +3,9 @@ import type { Role } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
 import { DashboardCharts } from "@/components/dashboard-charts";
 
-export async function DashboardPanel({ role }: { role: Role }) {
-  const cards = await cardsForRole(role);
-  const recs = await repository.getRecommendations("workspace-demo");
+export async function DashboardPanel({ role, workspaceId }: { role: Role; workspaceId: string }) {
+  const cards = await cardsForRole(role, workspaceId);
+  const recs = await repository.getRecommendations(workspaceId);
 
   return (
     <div className="space-y-4">
@@ -37,7 +37,7 @@ export async function DashboardPanel({ role }: { role: Role }) {
       {/* Role-specific chart analytics */}
       <section>
         <p className="text-xs uppercase tracking-wide text-white/40 mb-4">Analytics</p>
-        <DashboardCharts role={role} />
+        <DashboardCharts role={role} workspaceId={workspaceId} />
       </section>
     </div>
   );

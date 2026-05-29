@@ -9,9 +9,11 @@ type IngestionResult = {
   sourcePath: string;
 };
 
+const MAX_FILES = 10;
+
 export function IngestionUpload() {
-  const [file, setFile] = useState<File | null>(null);
-  const [result, setResult] = useState<IngestionResult | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [results, setResults] = useState<IngestionResult[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [workspaceId, setWorkspaceId] = useState<string>("workspace-demo");
@@ -25,19 +27,28 @@ export function IngestionUpload() {
   }, []);
 
   async function upload() {
-    if (!file) return;
+    if (!files.length) return;
     setLoading(true);
     setError(null);
-    const body = new FormData();
-    body.append("file", file);
-    body.append("workspaceId", workspaceId);
-    body.append("tenantId", workspaceId);
-    body.append("sensitivity", "internal");
+    setResults([]);
     try {
-      const res = await fetch("/api/ingestion/status", { method: "POST", body });
-      const payload = await res.json();
-      if (!res.ok || !payload.ok) throw new Error(payload.error ?? "ingestion_failed");
-      setResult(payload.data as IngestionResult);
+      const uploaded: IngestionResult[] = [];
+      for (const file of files) {
+        const body = new FormData();
+        body.append("file", file);
+        body.append("workspaceId", workspaceId);
+        body.append("tenantId", workspaceId);
+        body.append("sensitivity", "internal");
+        body.append("sourceType", "upload");
+
+        const res = await fetch("/api/ingestion/status", { method: "POST", body });
+        const payload = await res.json();
+        if (!res.ok || !payload.ok) {
+          throw new Error(`${file.name}: ${payload.error ?? "ingestion_failed"}`);
+        }
+        uploaded.push(payload.data as IngestionResult);
+        setResults([...uploaded]);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "unknown_error");
     } finally {
@@ -51,25 +62,49 @@ export function IngestionUpload() {
       <input
         type="file"
         accept=".pdf,.docx,.pptx,.xlsx,.txt,.md"
-        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+        multiple
+        onChange={(e) => {
+          const selected = Array.from(e.target.files ?? []).slice(0, MAX_FILES);
+          setFiles(selected);
+          setResults([]);
+          setError((e.target.files?.length ?? 0) > MAX_FILES ? `Only the first ${MAX_FILES} files will be uploaded.` : null);
+        }}
         className="block w-full text-sm"
       />
+      {files.length ? (
+        <div className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs text-white/70">
+          <p className="mb-2 font-medium text-white/80">
+            Selected {files.length} of {MAX_FILES} maximum files
+          </p>
+          <ul className="space-y-1">
+            {files.map((item) => (
+              <li key={`${item.name}-${item.size}`}>{item.name}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
       <div className="flex items-center gap-2">
-        <button className="btn-primary" onClick={upload} disabled={!file || loading}>
-          {loading ? "Processing..." : "Ingest File"}
+        <button className="btn-primary" onClick={upload} disabled={!files.length || loading}>
+          {loading ? "Processing..." : files.length > 1 ? `Ingest ${files.length} Files` : "Ingest File"}
         </button>
         <span className="text-xs text-white/60">Low confidence or missing provenance will be quarantined.</span>
       </div>
       {error ? <p className="text-sm text-red-300">{error}</p> : null}
-      {result ? (
+      {results.length ? (
         <div className="rounded-lg border border-white/10 bg-black/20 p-3 text-sm">
-          <p>Evidence ID: {result.id}</p>
-          <p>Status: {result.ingestionStatus}</p>
-          <p>Confidence: {Math.round(result.extractionConfidence * 100)}%</p>
-          <p>Source: {result.sourcePath}</p>
+          <p className="mb-2 font-medium">Ingested {results.length} file{results.length === 1 ? "" : "s"}</p>
+          <ul className="space-y-3">
+            {results.map((result) => (
+              <li key={result.id}>
+                <p>Evidence ID: {result.id}</p>
+                <p>Status: {result.ingestionStatus}</p>
+                <p>Confidence: {Math.round(result.extractionConfidence * 100)}%</p>
+                <p>Source: {result.sourcePath}</p>
+              </li>
+            ))}
+          </ul>
         </div>
       ) : null}
     </section>
   );
 }
-

@@ -1,9 +1,12 @@
 import { IngestionUpload } from "@/components/ingestion-upload";
 import { PageShell } from "@/components/page-shell";
-import { store } from "@/lib/data/store";
+import { auth } from "@clerk/nextjs/server";
+import { repository } from "@/lib/data/repository";
 
-export default function IngestionPage() {
-  const rows = store.getEvidenceForWorkspace("workspace-demo");
+export default async function IngestionPage() {
+  const { orgId } = await auth();
+  const workspaceId = orgId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
+  const rows = await repository.getEvidenceForWorkspace(workspaceId);
   const quarantined = rows.filter((item) => item.ingestionStatus === "quarantined");
 
   return (
@@ -30,4 +33,3 @@ export default function IngestionPage() {
     </PageShell>
   );
 }
-

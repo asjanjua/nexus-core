@@ -22,8 +22,6 @@ import {
 } from "@/components/charts";
 import type { DonutSegment, BarItem, RadarDimension } from "@/components/charts";
 
-const WORKSPACE_ID = process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
-
 // ---------------------------------------------------------------------------
 // Data helpers
 // ---------------------------------------------------------------------------
@@ -86,10 +84,10 @@ function scoreRiskDimensions(evidence: EvidenceRecord[]): RadarDimension[] {
 // CEO Charts
 // ---------------------------------------------------------------------------
 
-async function CEOCharts() {
+async function CEOCharts({ workspaceId }: { workspaceId: string }) {
   const [evidence, recs] = await Promise.all([
-    repository.getEvidenceForWorkspace(WORKSPACE_ID),
-    repository.getRecommendations(WORKSPACE_ID),
+    repository.getEvidenceForWorkspace(workspaceId),
+    repository.getRecommendations(workspaceId),
   ]);
 
   const processed = evidence.filter((e) => e.ingestionStatus === "processed");
@@ -108,7 +106,7 @@ async function CEOCharts() {
   const totalRecs = recs.length;
 
   // Mini stats
-  const openDecisions = (await repository.getDecisions(WORKSPACE_ID)).filter(
+  const openDecisions = (await repository.getDecisions(workspaceId)).filter(
     (d) => d.status === "open"
   ).length;
 
@@ -150,8 +148,8 @@ async function CEOCharts() {
 // COO Charts
 // ---------------------------------------------------------------------------
 
-async function COOCharts() {
-  const evidence = await repository.getEvidenceForWorkspace(WORKSPACE_ID);
+async function COOCharts({ workspaceId }: { workspaceId: string }) {
+  const evidence = await repository.getEvidenceForWorkspace(workspaceId);
 
   const byStatus = countBy(evidence, (e) => e.ingestionStatus);
   const bySource = countBy(evidence, (e) => e.sourceType);
@@ -222,11 +220,11 @@ async function COOCharts() {
 // CBO Charts
 // ---------------------------------------------------------------------------
 
-async function CBOCharts() {
+async function CBOCharts({ workspaceId }: { workspaceId: string }) {
   const [evidence, decisions, recs] = await Promise.all([
-    repository.getEvidenceForWorkspace(WORKSPACE_ID),
-    repository.getDecisions(WORKSPACE_ID),
-    repository.getRecommendations(WORKSPACE_ID),
+    repository.getEvidenceForWorkspace(workspaceId),
+    repository.getDecisions(workspaceId),
+    repository.getRecommendations(workspaceId),
   ]);
 
   const byDecisionStatus = countBy(decisions, (d) => d.status);
@@ -298,8 +296,8 @@ async function CBOCharts() {
 // CTO/CDO Charts
 // ---------------------------------------------------------------------------
 
-async function CTOCharts() {
-  const evidence = await repository.getEvidenceForWorkspace(WORKSPACE_ID);
+async function CTOCharts({ workspaceId }: { workspaceId: string }) {
+  const evidence = await repository.getEvidenceForWorkspace(workspaceId);
 
   const processed = evidence.filter((e) => e.ingestionStatus === "processed");
   const quality = avgConfidence(processed);
@@ -379,11 +377,11 @@ async function CTOCharts() {
 // Public export — role router
 // ---------------------------------------------------------------------------
 
-export async function DashboardCharts({ role }: { role: Role }) {
+export async function DashboardCharts({ role, workspaceId }: { role: Role; workspaceId: string }) {
   switch (role) {
-    case "ceo": return <CEOCharts />;
-    case "coo": return <COOCharts />;
-    case "cbo": return <CBOCharts />;
-    case "cto": return <CTOCharts />;
+    case "ceo": return <CEOCharts workspaceId={workspaceId} />;
+    case "coo": return <COOCharts workspaceId={workspaceId} />;
+    case "cbo": return <CBOCharts workspaceId={workspaceId} />;
+    case "cto": return <CTOCharts workspaceId={workspaceId} />;
   }
 }

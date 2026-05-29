@@ -193,8 +193,10 @@ async function generateCard(
 // Public interface
 // ---------------------------------------------------------------------------
 
-export async function cardsForRole(role: Role): Promise<DashboardCard[]> {
-  const workspaceId = process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
+export async function cardsForRole(
+  role: Role,
+  workspaceId = process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo"
+): Promise<DashboardCard[]> {
   const allEvidence = await repository.getEvidenceForWorkspace(workspaceId);
 
   const processedEvidence = allEvidence.filter(

@@ -22,6 +22,8 @@ type Props = {
 
 type Step = 1 | 2 | 3 | 4;
 
+const MAX_ONBOARDING_FILES = 10;
+
 // ---------------------------------------------------------------------------
 // Step indicator
 // ---------------------------------------------------------------------------
@@ -291,28 +293,38 @@ function Step2({
   onNext,
 }: {
   workspaceId: string;
-  onNext: (result: IngestionResult) => void;
+  onNext: (results: IngestionResult[]) => void;
 }) {
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [uploadedCount, setUploadedCount] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   async function handleUpload() {
-    if (!file) return;
+    if (files.length === 0) return;
     setUploading(true);
+    setUploadedCount(0);
     setError(null);
-    const body = new FormData();
-    body.append("file", file);
-    body.append("workspaceId", workspaceId);
-    body.append("tenantId", workspaceId);
-    body.append("sensitivity", "internal");
-    body.append("sourceType", "upload");
     try {
-      const res = await fetch("/api/ingestion/status", { method: "POST", body });
-      const payload = await res.json();
-      if (!res.ok || !payload.ok) throw new Error(payload.error ?? "ingestion_failed");
-      onNext(payload.data as IngestionResult);
+      const nextResults: IngestionResult[] = [];
+      for (const selectedFile of files) {
+        const body = new FormData();
+        body.append("file", selectedFile);
+        body.append("workspaceId", workspaceId);
+        body.append("tenantId", workspaceId);
+        body.append("sensitivity", "internal");
+        body.append("sourceType", "upload");
+
+        const res = await fetch("/api/ingestion/status", { method: "POST", body });
+        const payload = await res.json();
+        if (!res.ok || !payload.ok) {
+          throw new Error(`${selectedFile.name}: ${payload.error ?? "ingestion_failed"}`);
+        }
+        nextResults.push(payload.data as IngestionResult);
+        setUploadedCount(nextResults.length);
+      }
+      onNext(nextResults);
     } catch (err) {
       setError(err instanceof Error ? err.message : "unknown_error");
     } finally {
@@ -368,7 +380,7 @@ function Step2({
               </span>
             </div>
             <p className="text-sm text-white/50 mt-0.5">
-              PDF, DOCX, PPTX, XLSX, TXT, or Markdown — up to 50MB.
+              PDF, DOCX, PPTX, XLSX, TXT, or Markdown — up to {MAX_ONBOARDING_FILES} files, 50MB each.
             </p>
           </div>
         </div>
@@ -377,7 +389,7 @@ function Step2({
           onClick={() => fileRef.current?.click()}
           className={[
             "flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-8 transition",
-            file
+            files.length > 0
               ? "border-nexus-accent/50 bg-nexus-accent/5"
               : "border-white/20 hover:border-white/40 hover:bg-white/5",
           ].join(" ")}
@@ -385,21 +397,33 @@ function Step2({
           <input
             ref={fileRef}
             type="file"
+            multiple
             accept=".pdf,.docx,.pptx,.xlsx,.txt,.md"
             className="hidden"
-            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+            onChange={(e) => {
+              const selected = Array.from(e.target.files ?? []).slice(0, MAX_ONBOARDING_FILES);
+              setFiles(selected);
+              setUploadedCount(0);
+            }}
           />
-          {file ? (
-            <div className="text-center">
-              <p className="text-sm font-medium text-white">{file.name}</p>
-              <p className="text-xs text-white/40 mt-1">
-                {(file.size / 1024).toFixed(1)} KB
+          {files.length > 0 ? (
+            <div className="w-full space-y-2">
+              <p className="text-center text-sm font-medium text-white">
+                {files.length} file{files.length === 1 ? "" : "s"} selected
               </p>
+              <div className="max-h-32 space-y-1 overflow-auto rounded-lg border border-white/10 bg-black/20 p-2">
+                {files.map((selectedFile) => (
+                  <div key={`${selectedFile.name}-${selectedFile.lastModified}`} className="flex items-center justify-between gap-3 text-xs">
+                    <span className="truncate text-white/70">{selectedFile.name}</span>
+                    <span className="shrink-0 text-white/35">{(selectedFile.size / 1024).toFixed(1)} KB</span>
+                  </div>
+                ))}
+              </div>
             </div>
           ) : (
             <div className="text-center">
               <p className="text-2xl mb-2 text-white/30">⊕</p>
-              <p className="text-sm text-white/60">Click to select a file</p>
+              <p className="text-sm text-white/60">Click to select up to {MAX_ONBOARDING_FILES} files</p>
               <p className="text-xs text-white/30 mt-1">or drag and drop</p>
             </div>
           )}
@@ -413,10 +437,12 @@ function Step2({
 
         <button
           onClick={handleUpload}
-          disabled={!file || uploading}
+          disabled={files.length === 0 || uploading}
           className="btn-primary w-full"
         >
-          {uploading ? "Extracting and indexing..." : "Ingest Document →"}
+          {uploading
+            ? `Extracting ${uploadedCount}/${files.length}...`
+            : `Ingest ${files.length || ""} Document${files.length === 1 ? "" : "s"} →`}
         </button>
       </div>
 
@@ -449,12 +475,15 @@ function Step2({
 // ---------------------------------------------------------------------------
 
 function Step3({
-  result,
+  results,
   onNext,
 }: {
-  result: IngestionResult;
+  results: IngestionResult[];
   onNext: () => void;
 }) {
+  const result = results[0];
+  const averageConfidence =
+    results.reduce((sum, item) => sum + item.extractionConfidence, 0) / results.length;
   const filename = result.sourcePath.split("/").pop() ?? result.sourcePath;
   const ext = filename.split(".").pop()?.toUpperCase() ?? "FILE";
 
@@ -470,8 +499,8 @@ function Step3({
       <div>
         <h2 className="text-2xl font-semibold text-white">Intelligence extracted</h2>
         <p className="mt-2 text-white/60">
-          NexusAI has parsed your document and staged it for LLM synthesis.
-          Review the evidence record before generating your first dashboard.
+          NexusAI has parsed {results.length === 1 ? "your document" : `${results.length} documents`} and staged the evidence for LLM synthesis.
+          Review the evidence summary before generating your first dashboard.
         </p>
       </div>
 
@@ -490,7 +519,23 @@ function Step3({
           </span>
         </div>
 
-        <ConfidenceBar value={result.extractionConfidence} />
+        <ConfidenceBar value={averageConfidence} />
+
+        {results.length > 1 && (
+          <div className="max-h-36 space-y-1 overflow-auto rounded-lg border border-white/10 bg-black/20 p-2">
+            {results.map((item) => {
+              const itemName = item.sourcePath.split("/").pop() ?? item.sourcePath;
+              return (
+                <div key={item.id} className="flex items-center justify-between gap-3 text-xs">
+                  <span className="truncate text-white/70">{itemName}</span>
+                  <span className="shrink-0 text-white/35">
+                    {Math.round(item.extractionConfidence * 100)}% · {item.ingestionStatus.replace(/_/g, " ")}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         <div className="flex items-center justify-between border-t border-white/10 pt-3">
           <div className="flex items-center gap-2">
@@ -505,7 +550,7 @@ function Step3({
       </div>
 
       {/* Confidence guidance */}
-      {result.extractionConfidence < 0.4 && (
+      {averageConfidence < 0.4 && (
         <div className="rounded-xl border border-amber-300/40 bg-amber-300/10 px-4 py-3 text-sm text-amber-100 space-y-1">
           <p className="font-medium">Low extraction confidence</p>
           <p className="text-amber-100/70">
@@ -515,7 +560,7 @@ function Step3({
         </div>
       )}
 
-      {result.extractionConfidence >= 0.4 && (
+      {averageConfidence >= 0.4 && (
         <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-white/60 space-y-1.5">
           <p className="font-medium text-white/80">What happens next:</p>
           <ul className="space-y-1 text-white/50">
@@ -604,10 +649,10 @@ function Step4() {
 
 export function OnboardingWizard({ workspaceId, displayName, isAuthenticated }: Props) {
   const [step, setStep] = useState<Step>(1);
-  const [ingestionResult, setIngestionResult] = useState<IngestionResult | null>(null);
+  const [ingestionResults, setIngestionResults] = useState<IngestionResult[]>([]);
 
-  function handleIngestionComplete(result: IngestionResult) {
-    setIngestionResult(result);
+  function handleIngestionComplete(results: IngestionResult[]) {
+    setIngestionResults(results);
     setStep(3);
   }
 
@@ -639,9 +684,9 @@ export function OnboardingWizard({ workspaceId, displayName, isAuthenticated }: 
           />
         )}
 
-        {step === 3 && ingestionResult && (
+        {step === 3 && ingestionResults.length > 0 && (
           <Step3
-            result={ingestionResult}
+            results={ingestionResults}
             onNext={() => setStep(4)}
           />
         )}

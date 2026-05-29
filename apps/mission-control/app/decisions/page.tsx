@@ -1,8 +1,11 @@
 import { PageShell } from "@/components/page-shell";
-import { store } from "@/lib/data/store";
+import { repository } from "@/lib/data/repository";
+import { auth } from "@clerk/nextjs/server";
 
-export default function DecisionsPage() {
-  const decisions = store.getDecisions("workspace-demo");
+export default async function DecisionsPage() {
+  const { orgId } = await auth();
+  const workspaceId = orgId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
+  const decisions = await repository.getDecisions(workspaceId);
 
   return (
     <PageShell title="Decisions" description="Decision register with owner, rationale, and linked evidence.">
@@ -23,4 +26,3 @@ export default function DecisionsPage() {
     </PageShell>
   );
 }
-
