@@ -3,8 +3,8 @@ import { repository } from "@/lib/data/repository";
 import { auth } from "@clerk/nextjs/server";
 
 export default async function DecisionsPage() {
-  const { orgId } = await auth();
-  const workspaceId = orgId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
+  const { orgId, userId } = await auth();
+  const workspaceId = orgId ?? userId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
   const decisions = await repository.getDecisions(workspaceId);
 
   return (

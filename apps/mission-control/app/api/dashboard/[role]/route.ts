@@ -10,5 +10,5 @@ export async function GET(request: Request, { params }: { params: Promise<{ role
   const { role } = await params;
   const parsed = roleSchema.safeParse(role);
   if (!parsed.success) return fail("invalid_role", 400);
-  return ok({ role: parsed.data, workspaceId: ctx.workspaceId, cards: await cardsForRole(parsed.data) });
+  return ok({ role: parsed.data, workspaceId: ctx.workspaceId, cards: await cardsForRole(parsed.data, ctx.workspaceId) });
 }

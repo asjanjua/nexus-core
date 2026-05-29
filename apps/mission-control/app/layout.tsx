@@ -41,7 +41,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   }
 
   const { userId, orgId } = await auth();
-  const workspaceId = orgId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
+  const workspaceId = orgId ?? userId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
 
   // Unauthenticated shell — middleware redirects to /sign-in but we render
   // a bare frame in case the redirect hasn't fired yet.
@@ -80,25 +80,35 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-xs text-white/70">
                 <div className="flex items-center gap-4">
                   <SignedIn>
-                    <OrganizationSwitcher
-                      hidePersonal
-                      afterCreateOrganizationUrl="/onboarding"
-                      afterSelectOrganizationUrl="/dashboard/ceo"
-                      appearance={{
-                        elements: {
-                          rootBox: "text-xs",
-                          organizationSwitcherTrigger:
-                            "text-white/70 hover:text-white text-xs py-1 px-2 rounded border border-white/10 bg-transparent",
-                          organizationSwitcherPopoverCard:
-                            "bg-[#101a2f] border border-white/10",
-                          organizationSwitcherPopoverActionButton:
-                            "text-white/70 hover:text-white",
-                        },
-                      }}
-                    />
+                    {orgId ? (
+                      <OrganizationSwitcher
+                        afterCreateOrganizationUrl="/onboarding"
+                        afterSelectOrganizationUrl="/dashboard/ceo"
+                        appearance={{
+                          elements: {
+                            rootBox: "text-xs",
+                            organizationSwitcherTrigger:
+                              "text-white/70 hover:text-white text-xs py-1 px-2 rounded border border-white/10 bg-transparent",
+                            organizationSwitcherPopoverCard:
+                              "bg-[#101a2f] border border-white/10",
+                            organizationSwitcherPopoverActionButton:
+                              "text-white/70 hover:text-white",
+                          },
+                        }}
+                      />
+                    ) : (
+                      <span className="rounded border border-white/10 px-2 py-1 text-xs text-white/40">
+                        Personal workspace
+                      </span>
+                    )}
                   </SignedIn>
-                  <span>workspace: {workspaceId}</span>
-                  <span>mode: {process.env.NEXUS_ENV ?? "pilot"}</span>
+                  <span
+                    className="font-mono text-white/30"
+                    title={workspaceId}
+                  >
+                    {workspaceId.length > 20 ? `${workspaceId.slice(0, 16)}…` : workspaceId}
+                  </span>
+                  <span className="text-white/30">mode: {process.env.NEXUS_ENV ?? "pilot"}</span>
                 </div>
                 <SignedIn>
                   <UserButton
@@ -111,7 +121,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
               {staleFound && (
                 <div className="mb-4 rounded-lg border border-amber-300/40 bg-amber-300/10 px-4 py-2 text-sm text-amber-100">
-                  Stale-data warning: one or more records exceed freshness policy and should be reviewed.
+                  One or more evidence records are older than 7 days.{" "}
+                  <a href="/ingestion" className="underline hover:text-amber-50">Re-ingest updated files</a>{" "}
+                  or{" "}
+                  <a href="/sources" className="underline hover:text-amber-50">review your sources</a>.
                 </div>
               )}
 

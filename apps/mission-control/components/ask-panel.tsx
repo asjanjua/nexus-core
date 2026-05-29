@@ -98,11 +98,22 @@ export function AskPanel({ workspaceId, userId }: { workspaceId: string; userId:
           ))}
         </div>
         <div className="mt-3 flex items-center gap-2">
-          <button className="btn-primary" onClick={onAsk} disabled={loading}>
-            {loading ? "Thinking..." : "Ask"}
+          <button
+            className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
+            onClick={onAsk}
+            disabled={loading || !query.trim()}
+          >
+            {loading ? (
+              <span className="flex items-center gap-2">
+                <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-black border-t-transparent" />
+                Thinking...
+              </span>
+            ) : (
+              "Ask"
+            )}
           </button>
-          <span className="text-xs text-white/60">
-            Restricted or weak evidence will trigger refusal with reason.
+          <span className="text-xs text-white/40">
+            Answers are sourced from your ingested evidence only.
           </span>
         </div>
       </section>
@@ -117,8 +128,10 @@ export function AskPanel({ workspaceId, userId }: { workspaceId: string; userId:
             <p className="whitespace-pre-wrap text-sm leading-relaxed text-white/85">{result.answer}</p>
           ) : (
             <p className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm text-amber-200">
-              AI returned an empty response. Verify DEEPSEEK_API_KEY is set in your Render environment
-              and the model is <code className="font-mono">deepseek-chat</code>.
+              AI returned an empty response. Verify your LLM API key is set in your Render
+              environment and the model name is correct (e.g.{" "}
+              <code className="font-mono">deepseek-chat</code> or{" "}
+              <code className="font-mono">claude-opus-4-6</code>).
             </p>
           )}
 

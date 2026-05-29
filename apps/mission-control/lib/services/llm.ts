@@ -15,7 +15,7 @@ const ANTHROPIC_VERSION = "2023-06-01";
 const LLM_PROVIDER = (process.env.NEXUS_LLM_PROVIDER ?? "anthropic").trim().toLowerCase();
 const DEFAULT_MODEL =
   process.env.NEXUS_LLM_MODEL ??
-  (LLM_PROVIDER === "deepseek" ? "deepseek-v4-pro" : "claude-opus-4-6");
+  (LLM_PROVIDER === "deepseek" ? "deepseek-chat" : "claude-opus-4-6");
 const DEEPSEEK_BASE_URL = (
   process.env.DEEPSEEK_BASE_URL?.trim().replace(/\/+$/, "") ||
   "https://api.deepseek.com"
@@ -96,7 +96,7 @@ async function callOpenAICompatible(
   }
 
   const baseUrl = provider === "deepseek" ? DEEPSEEK_BASE_URL : OPENAI_COMPAT_BASE_URL;
-  const model = opts.model ?? DEFAULT_MODEL ?? (provider === "deepseek" ? "deepseek-v4-pro" : "");
+  const model = opts.model ?? DEFAULT_MODEL ?? (provider === "deepseek" ? "deepseek-chat" : "");
   const requestMessages = [
     ...(opts.systemPrompt ? [{ role: "system", content: opts.systemPrompt }] : []),
     ...messages.map((m) => ({ role: m.role, content: m.content }))

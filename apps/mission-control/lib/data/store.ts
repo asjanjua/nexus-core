@@ -8,6 +8,7 @@ import {
   type RecommendationStatus,
   type Role,
   type Sensitivity,
+  type WorkspaceProfile,
   type WorkspaceSettings
 } from "@/lib/contracts";
 import type { ConnectorRecord } from "@/lib/data/repository";
@@ -152,6 +153,9 @@ const workspaceSettingsStore: Map<string, WorkspaceSettings> = new Map([
 
 const connectorStore: ConnectorRecord[] = [];
 
+// Workspace profile in-memory store
+const workspaceProfileStore: Map<string, WorkspaceProfile> = new Map();
+
 function pushAudit(event: Omit<AuditEvent, "id" | "timestamp">): AuditEvent {
   const record = {
     id: `audit-${auditEvents.length + 1}`,
@@ -176,6 +180,10 @@ export const store = {
   },
   getRecommendations(workspaceId: string): Recommendation[] {
     return recommendations.filter((item) => item.workspaceId === workspaceId);
+  },
+  addRecommendation(rec: Recommendation): Recommendation {
+    recommendations.push(rec);
+    return rec;
   },
   updateRecommendationStatus(id: string, status: RecommendationStatus, actor = "system"): Recommendation | undefined {
     const rec = recommendations.find((item) => item.id === id);
@@ -344,5 +352,19 @@ export const store = {
       (c) => c.workspaceId === workspaceId && c.type === type
     );
     if (c) c.status = "revoked";
+  },
+
+  // -------------------------------------------------------------------------
+  // Workspace profile (in-memory fallback)
+  // -------------------------------------------------------------------------
+
+  getWorkspaceProfile(workspaceId: string): WorkspaceProfile | null {
+    return workspaceProfileStore.get(workspaceId) ?? null;
+  },
+
+  saveWorkspaceProfile(profile: WorkspaceProfile): WorkspaceProfile {
+    const record = { ...profile, updatedAt: new Date().toISOString() };
+    workspaceProfileStore.set(profile.workspaceId, record);
+    return record;
   }
 };

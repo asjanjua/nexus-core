@@ -190,6 +190,25 @@ export const auditEvents = pgTable("audit_events", {
 });
 
 /**
+ * Workspace profile — one row per workspace, storing company context used to
+ * personalise LLM prompts in dashboards, ask, and recommendations.
+ */
+export const workspaceProfiles = pgTable("workspace_profiles", {
+  workspaceId: text("workspace_id").primaryKey(),
+  companyName: varchar("company_name", { length: 200 }),
+  sector: varchar("sector", { length: 64 }),
+  subsector: varchar("subsector", { length: 64 }),
+  businessModel: varchar("business_model", { length: 120 }),
+  companyStage: varchar("company_stage", { length: 32 }),
+  employeeBand: varchar("employee_band", { length: 32 }),
+  region: varchar("region", { length: 120 }),
+  primaryGoals: jsonb("primary_goals").$type<string[]>().default([]).notNull(),
+  riskProfile: varchar("risk_profile", { length: 32 }),
+  priorityRoles: jsonb("priority_roles").$type<string[]>().default([]).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+});
+
+/**
  * Connector installs — one row per (workspace, connector type) pair.
  * Credentials are stored AES-256-GCM encrypted; the plaintext never persists.
  * config holds non-secret settings (selected channels, folder IDs, etc.).

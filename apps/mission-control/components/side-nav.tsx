@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const navSections = [
   {
@@ -39,6 +42,13 @@ const navSections = [
 ];
 
 export function SideNav() {
+  const pathname = usePathname();
+
+  function isActive(href: string) {
+    if (href === "/") return pathname === "/";
+    return pathname === href || pathname.startsWith(href + "/");
+  }
+
   return (
     <aside className="w-full max-w-xs shrink-0 border-r border-white/10 bg-black/20 p-4">
       <p className="mb-4 text-xs font-semibold uppercase tracking-widest text-white/30">NexusAI</p>
@@ -51,7 +61,12 @@ export function SideNav() {
                 <Link
                   key={item.href}
                   href={item.href}
-                  className="block rounded-md px-3 py-2 text-sm text-white/70 transition hover:bg-white/10 hover:text-white"
+                  className={[
+                    "block rounded-md px-3 py-2 text-sm transition",
+                    isActive(item.href)
+                      ? "bg-white/10 text-white font-medium"
+                      : "text-white/60 hover:bg-white/10 hover:text-white"
+                  ].join(" ")}
                 >
                   {item.label}
                 </Link>

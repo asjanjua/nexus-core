@@ -3,8 +3,8 @@ import { auth } from "@clerk/nextjs/server";
 import { repository } from "@/lib/data/repository";
 
 export default async function SourcesPage() {
-  const { orgId } = await auth();
-  const workspaceId = orgId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
+  const { orgId, userId } = await auth();
+  const workspaceId = orgId ?? userId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
   const rows = await repository.getEvidenceForWorkspace(workspaceId);
   const byStatus = rows.reduce<Record<string, number>>((acc, row) => {
     acc[row.ingestionStatus] = (acc[row.ingestionStatus] ?? 0) + 1;

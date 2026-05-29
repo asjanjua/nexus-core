@@ -9,6 +9,7 @@
 import type { DashboardCard, EvidenceRecord, Role } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
 import { ask } from "@/lib/services/llm";
+import { buildCompanyContext } from "@/lib/domain/sector-library";
 
 // ---------------------------------------------------------------------------
 // Role prompt configuration
@@ -164,9 +165,11 @@ async function generateCard(
   evidenceBlock: string,
   evidenceRefs: string[],
   avgConfidence: number,
-  minFreshness: number
+  minFreshness: number,
+  companyContext = ""
 ): Promise<DashboardCard> {
-  const userPrompt = `Evidence:\n\n${evidenceBlock}\n\nTask: ${cardConfig.focus}`;
+  const contextPrefix = companyContext ? `${companyContext}\n\n` : "";
+  const userPrompt = `${contextPrefix}Evidence:\n\n${evidenceBlock}\n\nTask: ${cardConfig.focus}`;
 
   let summary: string;
   try {
@@ -175,7 +178,7 @@ async function generateCard(
       temperature: 0.1
     });
   } catch {
-    summary = `Evidence count: ${evidenceRefs.length}. AI synthesis unavailable - set ANTHROPIC_API_KEY to enable.`;
+    summary = `Evidence count: ${evidenceRefs.length}. AI synthesis unavailable — verify DEEPSEEK_API_KEY (or ANTHROPIC_API_KEY) is set in your Render environment.`;
   }
 
   return {
@@ -197,7 +200,10 @@ export async function cardsForRole(
   role: Role,
   workspaceId = process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo"
 ): Promise<DashboardCard[]> {
-  const allEvidence = await repository.getEvidenceForWorkspace(workspaceId);
+  const [allEvidence, profile] = await Promise.all([
+    repository.getEvidenceForWorkspace(workspaceId),
+    repository.getWorkspaceProfile(workspaceId)
+  ]);
 
   const processedEvidence = allEvidence.filter(
     (r) => r.ingestionStatus === "processed" && r.sensitivity !== "restricted"
@@ -207,12 +213,13 @@ export async function cardsForRole(
   const evidenceRefs = processedEvidence.map((r) => r.id);
   const avgConfidence = computeAvgConfidence(processedEvidence);
   const minFreshness = computeMinFreshness(processedEvidence);
+  const companyContext = profile ? buildCompanyContext(profile) : "";
 
   const config = ROLE_CONFIG[role];
 
   const cards = await Promise.all(
     config.cards.map((cardConfig) =>
-      generateCard(cardConfig, role, evidenceBlock, evidenceRefs, avgConfidence, minFreshness)
+      generateCard(cardConfig, role, evidenceBlock, evidenceRefs, avgConfidence, minFreshness, companyContext)
     )
   );
 

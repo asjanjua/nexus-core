@@ -3,8 +3,8 @@ import { PageShell } from "@/components/page-shell";
 import { repository } from "@/lib/data/repository";
 
 export default async function ReviewPage() {
-  const { orgId } = await auth();
-  const workspaceId = orgId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
+  const { orgId, userId } = await auth();
+  const workspaceId = orgId ?? userId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
 
   const recs = (await repository.getRecommendations(workspaceId)).filter(
     (item) => item.status === "in_review"

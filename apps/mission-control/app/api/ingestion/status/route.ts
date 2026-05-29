@@ -7,6 +7,7 @@ import { ingestEvidence, MAX_UPLOAD_BYTES } from "@/lib/services/ingestion";
 import { extractTextFromBuffer } from "@/lib/services/extract";
 import { isOriginalStorageEnabled, storeOriginalFile } from "@/lib/services/object-storage";
 import { requireScope } from "@/lib/api-auth";
+import { generateRecommendations } from "@/lib/services/recommendations";
 
 export const runtime = "nodejs";
 
@@ -140,6 +141,12 @@ export async function POST(request: Request) {
         sourceUri: storedOriginalUri
       }
     });
+  }
+
+  // Fire-and-forget: generate recommendations when evidence reaches processed state.
+  // Do not await — this runs in the background and never blocks the upload response.
+  if (record.ingestionStatus === "processed") {
+    void generateRecommendations(workspaceId).catch(() => {});
   }
 
   return ok({

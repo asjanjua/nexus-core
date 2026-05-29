@@ -5,18 +5,22 @@ import { answerWithEvidence } from "@/lib/services/retrieval";
 import { requireScope } from "@/lib/api-auth";
 
 export async function POST(request: Request) {
-  const { error } = await requireScope(request, "read:evidence");
+  // Always derive workspaceId from the authenticated session so the query
+  // runs against the correct tenant — never trust the body's workspaceId.
+  const { ctx, error } = await requireScope(request, "read:evidence");
   if (error) return error;
 
   const body = await request.json().catch(() => null);
   const parsed = askRequestSchema.safeParse(body);
   if (!parsed.success) return fail("invalid_request", 400);
 
-  const { workspaceId, userId, query } = parsed.data;
+  const workspaceId = ctx.workspaceId;
+  const userId = ctx.userId;
+  const { query } = parsed.data;
+
   store.appendConversation(workspaceId, userId, "user", query);
   const response = await answerWithEvidence(query, workspaceId);
   store.appendConversation(workspaceId, userId, "assistant", response.answer);
 
   return ok(response);
 }
-

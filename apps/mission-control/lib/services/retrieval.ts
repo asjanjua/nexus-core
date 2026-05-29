@@ -22,6 +22,7 @@ import type { AskResponse, EvidenceRecord } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
 import { ask } from "@/lib/services/llm";
 import { generateEmbedding, isVectorSearchEnabled } from "@/lib/services/embeddings";
+import { buildCompanyContext } from "@/lib/domain/sector-library";
 
 // ---------------------------------------------------------------------------
 // Keyword ranking (pre-filter before LLM call)
@@ -128,7 +129,10 @@ export async function answerWithEvidence(
   query: string,
   workspaceId: string
 ): Promise<AskResponse> {
-  const results = await rankEvidence(query, workspaceId);
+  const [results, profile] = await Promise.all([
+    rankEvidence(query, workspaceId),
+    repository.getWorkspaceProfile(workspaceId)
+  ]);
 
   if (!results.length) {
     return {
@@ -160,7 +164,9 @@ export async function answerWithEvidence(
   }
 
   const context = buildEvidenceContext(results);
-  const userPrompt = `Evidence:\n\n${context}\n\nQuestion: ${query}`;
+  const companyContext = profile ? buildCompanyContext(profile) : "";
+  const contextPrefix = companyContext ? `${companyContext}\n\n` : "";
+  const userPrompt = `${contextPrefix}Evidence:\n\n${context}\n\nQuestion: ${query}`;
 
   try {
     const answer = await ask(userPrompt, ASK_SYSTEM_PROMPT, {

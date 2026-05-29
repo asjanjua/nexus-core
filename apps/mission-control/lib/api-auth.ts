@@ -41,8 +41,11 @@ export async function resolveAuth(request: Request): Promise<AuthContext | null>
   // --- Clerk session (browser / human user) ---
   const { userId, orgId } = await auth();
   if (userId) {
+    // If the user has an active Clerk org, use orgId as the workspace (multi-user tenant).
+    // Otherwise fall back to their personal userId so each user gets an isolated workspace
+    // instead of everyone sharing the DEFAULT_WORKSPACE demo bucket.
     return {
-      workspaceId: orgId ?? DEFAULT_WORKSPACE,
+      workspaceId: orgId ?? userId,
       userId,
       scopes: ["*"],
       authType: "session",

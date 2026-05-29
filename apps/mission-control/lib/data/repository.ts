@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { verifyPassword } from "@/lib/auth";
 import { store } from "@/lib/data/store";
-import type { AgentKey, AgentKeyCreated, AgentScope, EvidenceRecord, IngestionStatus, Recommendation, RecommendationStatus, Role, WorkspaceSettings } from "@/lib/contracts";
+import type { AgentKey, AgentKeyCreated, AgentScope, EvidenceRecord, IngestionStatus, Recommendation, RecommendationStatus, Role, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
 import { assertDbConfigured, isDbRequired } from "@/lib/data/db-policy";
 import { encryptCredentials, decryptCredentials } from "@/lib/crypto";
 import {
@@ -16,6 +16,7 @@ import {
   tenants,
   users,
   workspaces,
+  workspaceProfiles,
   workspaceSettings,
   type recommendationStatusEnum,
   type ingestionStatusEnum
@@ -120,6 +121,24 @@ function toRecommendation(row: typeof recommendations.$inferSelect): Recommendat
     affectedEntityIds: Array.isArray(row.affectedEntityIds) ? (row.affectedEntityIds as string[]) : [],
     evidenceRefs: Array.isArray(row.evidenceRefs) ? (row.evidenceRefs as string[]) : [],
     createdAt,
+    updatedAt
+  };
+}
+
+function toWorkspaceProfile(row: typeof workspaceProfiles.$inferSelect): WorkspaceProfile {
+  const updatedAt = typeof row.updatedAt === "string" ? row.updatedAt : row.updatedAt.toISOString();
+  return {
+    workspaceId: row.workspaceId,
+    companyName: row.companyName ?? null,
+    sector: row.sector ?? null,
+    subsector: row.subsector ?? null,
+    businessModel: row.businessModel ?? null,
+    companyStage: (row.companyStage as WorkspaceProfile["companyStage"]) ?? null,
+    employeeBand: (row.employeeBand as WorkspaceProfile["employeeBand"]) ?? null,
+    region: row.region ?? null,
+    primaryGoals: Array.isArray(row.primaryGoals) ? (row.primaryGoals as string[]) : [],
+    riskProfile: (row.riskProfile as WorkspaceProfile["riskProfile"]) ?? null,
+    priorityRoles: Array.isArray(row.priorityRoles) ? (row.priorityRoles as string[]) : [],
     updatedAt
   };
 }
@@ -230,6 +249,26 @@ export const repository = {
     });
     if (!inserted) return store.addEvidenceRecord(record);
     return record;
+  },
+
+  async addRecommendation(rec: Omit<Recommendation, "createdAt" | "updatedAt">): Promise<Recommendation> {
+    const now = new Date().toISOString();
+    const full: Recommendation = { ...rec, createdAt: now, updatedAt: now };
+    const inserted = await runDb(async (db) => {
+      await db.insert(recommendations).values({
+        id: rec.id,
+        workspaceId: rec.workspaceId,
+        title: rec.title,
+        owner: rec.owner,
+        status: rec.status as (typeof recommendationStatusEnum.enumValues)[number],
+        confidence: encodeStoredPercent(rec.confidence),
+        evidenceRefs: rec.evidenceRefs,
+        affectedEntityIds: rec.affectedEntityIds,
+      });
+      return true;
+    });
+    if (!inserted) return store.addRecommendation?.(full) ?? full;
+    return full;
   },
 
   async getRecommendations(workspaceId: string): Promise<Recommendation[]> {
@@ -835,5 +874,61 @@ export const repository = {
     );
     if (!rows) return [];
     return rows.map(toEvidenceRecord);
+  },
+
+  // ---------------------------------------------------------------------------
+  // Workspace profile
+  // ---------------------------------------------------------------------------
+
+  async getWorkspaceProfile(workspaceId: string): Promise<WorkspaceProfile | null> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(workspaceProfiles)
+        .where(eq(workspaceProfiles.workspaceId, workspaceId))
+        .limit(1)
+    );
+    if (!rows || rows.length === 0) return store.getWorkspaceProfile(workspaceId);
+    return toWorkspaceProfile(rows[0]);
+  },
+
+  async saveWorkspaceProfile(profile: WorkspaceProfile): Promise<WorkspaceProfile> {
+    const saved = await runDb((db) =>
+      db
+        .insert(workspaceProfiles)
+        .values({
+          workspaceId: profile.workspaceId,
+          companyName: profile.companyName ?? null,
+          sector: profile.sector ?? null,
+          subsector: profile.subsector ?? null,
+          businessModel: profile.businessModel ?? null,
+          companyStage: profile.companyStage ?? null,
+          employeeBand: profile.employeeBand ?? null,
+          region: profile.region ?? null,
+          primaryGoals: profile.primaryGoals ?? [],
+          riskProfile: profile.riskProfile ?? null,
+          priorityRoles: profile.priorityRoles ?? [],
+          updatedAt: new Date()
+        })
+        .onConflictDoUpdate({
+          target: workspaceProfiles.workspaceId,
+          set: {
+            companyName: profile.companyName ?? null,
+            sector: profile.sector ?? null,
+            subsector: profile.subsector ?? null,
+            businessModel: profile.businessModel ?? null,
+            companyStage: profile.companyStage ?? null,
+            employeeBand: profile.employeeBand ?? null,
+            region: profile.region ?? null,
+            primaryGoals: profile.primaryGoals ?? [],
+            riskProfile: profile.riskProfile ?? null,
+            priorityRoles: profile.priorityRoles ?? [],
+            updatedAt: new Date()
+          }
+        })
+        .returning()
+    );
+    if (saved && saved.length > 0) return toWorkspaceProfile(saved[0]);
+    return store.saveWorkspaceProfile(profile);
   }
 };

@@ -4,7 +4,7 @@ import { auth } from "@clerk/nextjs/server";
 
 export default async function AskPage() {
   const { orgId, userId } = await auth();
-  const workspaceId = orgId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
+  const workspaceId = orgId ?? userId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
 
   return (
     <PageShell

@@ -18,6 +18,7 @@ import { z } from "zod";
 import { fail, ok } from "@/lib/api";
 import { requireScope } from "@/lib/api-auth";
 import { repository } from "@/lib/data/repository";
+import { generateRecommendations } from "@/lib/services/recommendations";
 
 const bodySchema = z.object({
   decision: z.enum(["approved", "rejected"]),
@@ -51,6 +52,11 @@ export async function POST(
 
   const updated = await repository.updateEvidenceStatus(id, newStatus, actor);
   if (!updated) return fail("evidence_update_failed", 500);
+
+  // Fire-and-forget: approved evidence enters the synthesis queue — generate recommendations.
+  if (newStatus === "processed") {
+    void generateRecommendations(ctx.workspaceId).catch(() => {});
+  }
 
   return ok({
     id: updated.id,

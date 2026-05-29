@@ -4,13 +4,16 @@ import { repository } from "@/lib/data/repository";
 import { auth } from "@clerk/nextjs/server";
 
 export default async function RecommendationsPage() {
-  const { orgId } = await auth();
-  const workspaceId = orgId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
+  const { orgId, userId } = await auth();
+  const workspaceId = orgId ?? userId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
   const recs = await repository.getRecommendations(workspaceId);
 
   return (
-    <PageShell title="Recommendations" description="Create, review, approve/reject, and track canonical promotion gates.">
-      <RecommendationList initial={recs} />
+    <PageShell
+      title="Recommendations"
+      description="AI-generated recommendations from your evidence, ready for review and action."
+    >
+      <RecommendationList initial={recs} userId={userId ?? "operator"} />
     </PageShell>
   );
 }

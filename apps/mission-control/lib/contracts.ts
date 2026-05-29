@@ -143,6 +143,32 @@ export const agentKeyCreatedSchema = agentKeySchema.extend({
 export type AgentKeyCreated = z.infer<typeof agentKeyCreatedSchema>;
 
 // ---------------------------------------------------------------------------
+// Workspace profile (company context) contract
+// ---------------------------------------------------------------------------
+
+export const workspaceProfileSchema = z.object({
+  workspaceId: z.string(),
+  companyName: z.string().max(200).optional().nullable(),
+  sector: z.string().max(64).optional().nullable(),
+  subsector: z.string().max(64).optional().nullable(),
+  businessModel: z.string().max(120).optional().nullable(),
+  companyStage: z.enum(["pre_revenue", "early_stage", "growth", "scale_up", "enterprise", "public"]).optional().nullable(),
+  employeeBand: z.enum(["1_10", "11_50", "51_200", "201_1000", "1001_5000", "5000_plus"]).optional().nullable(),
+  region: z.string().max(120).optional().nullable(),
+  primaryGoals: z.array(z.string()).default([]),
+  riskProfile: z.enum(["conservative", "moderate", "growth_oriented", "aggressive"]).optional().nullable(),
+  priorityRoles: z.array(z.string()).default([]),
+  updatedAt: z.string()
+});
+export type WorkspaceProfile = z.infer<typeof workspaceProfileSchema>;
+
+export const workspaceProfileUpsertSchema = workspaceProfileSchema.omit({
+  workspaceId: true,
+  updatedAt: true
+});
+export type WorkspaceProfileUpsert = z.infer<typeof workspaceProfileUpsertSchema>;
+
+// ---------------------------------------------------------------------------
 // Workspace settings contract
 // ---------------------------------------------------------------------------
 
