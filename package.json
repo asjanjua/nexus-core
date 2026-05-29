@@ -14,6 +14,10 @@
     "db:generate": "npm run db:generate -w @nexus/mission-control",
     "db:migrate": "npm run db:migrate -w @nexus/mission-control",
     "db:seed": "npm run db:seed -w @nexus/mission-control",
-    "db:check": "npm run db:check -w @nexus/mission-control"
+    "db:check": "npm run db:check -w @nexus/mission-control",
+    "lmstudio:capability": "node scripts/lmstudio/capability-lock.mjs",
+    "lmstudio:benchmark": "node scripts/lmstudio/baseline-benchmark.mjs",
+    "lmstudio:moe-probe": "bash scripts/lmstudio/moe-probe.sh",
+    "lmstudio:all": "npm run lmstudio:capability && npm run lmstudio:benchmark && npm run lmstudio:moe-probe"
   }
 }

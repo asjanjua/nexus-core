@@ -23,7 +23,7 @@ services:
       - key: DEEPSEEK_BASE_URL
         value: https://api.deepseek.com
       - key: NEXUS_LLM_MODEL
-        value: deepseek-v4-pro
+        value: deepseek-chat
       - key: NEXUS_VECTOR_SEARCH
         value: enabled
       - key: NEXUS_R2_ORIGINALS
