@@ -127,6 +127,22 @@ After deploy:
 curl https://your-render-service.onrender.com/api/health
 ```
 
+Expected top-level result:
+
+```json
+{
+  "data": {
+    "status": "ok",
+    "checks": {
+      "database": { "ok": true },
+      "vectorSearch": { "ok": true },
+      "originalsStorage": { "ok": true },
+      "llm": { "ok": true }
+    }
+  }
+}
+```
+
 Then test in browser:
 
 1. Sign up with Clerk.
@@ -143,3 +159,5 @@ Render's free web service can sleep when idle and wake on request. That is fine
 for a free rescue/pilot demo, but not for a production SLA. If a pilot client
 expects instant first-load response, move the Render service to a paid instance
 or return to a paid Vercel/Cloudflare production plan.
+
+For the full operational checklist, see `docs/PRODUCTION_HEALTH_CHECKLIST.md`.
