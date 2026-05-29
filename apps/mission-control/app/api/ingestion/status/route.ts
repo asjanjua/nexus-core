@@ -6,6 +6,7 @@ import { repository } from "@/lib/data/repository";
 import { ingestEvidence, MAX_UPLOAD_BYTES } from "@/lib/services/ingestion";
 import { extractTextFromBuffer } from "@/lib/services/extract";
 import { isOriginalStorageEnabled, storeOriginalFile } from "@/lib/services/object-storage";
+import { requireScope } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
@@ -24,8 +25,14 @@ function asOptionalString(value: FormDataEntryValue | null): string | undefined 
 }
 
 export async function GET(request: Request) {
+  const { ctx, error } = await requireScope(request, "read:evidence");
+  if (error) return error;
   const url = new URL(request.url);
-  const workspaceId = url.searchParams.get("workspaceId") ?? "workspace-demo";
+  const requestedWorkspaceId = url.searchParams.get("workspaceId");
+  const workspaceId =
+    ctx.authType === "session"
+      ? ctx.workspaceId
+      : requestedWorkspaceId ?? ctx.workspaceId;
   const rows = await repository.getEvidenceForWorkspace(workspaceId);
   const byStatus = rows.reduce<Record<string, number>>((acc, row) => {
     acc[row.ingestionStatus] = (acc[row.ingestionStatus] ?? 0) + 1;
@@ -50,6 +57,8 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const { ctx, error } = await requireScope(request, "write:ingest");
+  if (error) return error;
   const form = await request.formData();
   const file = form.get("file");
   if (!(file instanceof File)) return fail("file_required", 400);
@@ -65,6 +74,8 @@ export async function POST(request: Request) {
     sensitivity: asOptionalString(form.get("sensitivity"))
   });
   if (!parsed.success) return fail("invalid_metadata", 400);
+  const workspaceId = ctx.workspaceId;
+  const tenantId = ctx.workspaceId;
 
   const buf = Buffer.from(await file.arrayBuffer());
   const hash = `sha256:${crypto.createHash("sha256").update(buf).digest("hex")}`;
@@ -73,7 +84,7 @@ export async function POST(request: Request) {
   if (isOriginalStorageEnabled()) {
     try {
       const stored = await storeOriginalFile({
-        workspaceId: parsed.data.workspaceId,
+        workspaceId,
         fileName: file.name,
         contentType: file.type,
         hash,
@@ -82,7 +93,7 @@ export async function POST(request: Request) {
       storedOriginalUri = stored?.sourceUri ?? storedOriginalUri;
     } catch (error) {
       await repository.pushAudit({
-        workspaceId: parsed.data.workspaceId,
+        workspaceId,
         type: "ingestion_original_storage_failed",
         actor: "mission_control_upload",
         payload: {
@@ -96,8 +107,8 @@ export async function POST(request: Request) {
   const extracted = await extractTextFromBuffer(file.name, buf);
 
   const record = await ingestEvidence({
-    workspaceId: parsed.data.workspaceId,
-    tenantId: parsed.data.tenantId,
+    workspaceId,
+    tenantId,
     sourceType: parsed.data.sourceType,
     sourcePath: parsed.data.sourcePath ?? `/uploads/${file.name}`,
     sourceUri: storedOriginalUri,
