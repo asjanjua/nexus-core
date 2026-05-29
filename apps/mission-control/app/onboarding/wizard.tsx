@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { getAllSectors } from "@/lib/domain/sector-library";
+import { getAllSectors, getSector } from "@/lib/domain/sector-library";
 import type { DetectedProfile, SuggestedDocument } from "@/lib/services/company-detection";
 import { classifyFilename } from "@/lib/services/company-detection";
 
@@ -558,10 +558,12 @@ function Step3({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          companyName: profile.companyName || null,
           sector: profile.sector || null,
           subsector: profile.subsector || null,
           businessModel: profile.businessModel || null,
           companyStage: profile.companyStage || null,
+          employeeBand: profile.employeeBand || null,
           region: profile.region || null,
           primaryGoals: profile.primaryGoals,
           riskProfile: profile.riskProfile || null,
@@ -1283,24 +1285,41 @@ export function OnboardingWizard({ workspaceId, displayName, isAuthenticated }: 
 
   // Fallback profile for manual sector selection (no AI detection)
   function buildManualProfile(sector: string, subsector: string): DetectedProfile {
+    const sectorDef = getSector(sector);
+    const subsectorLabel = sectorDef?.subsectors.find((item) => item.key === subsector)?.label ?? subsector;
+    const documentTypeToExtension = (name: string): SuggestedDocument["type"] => {
+      const lower = name.toLowerCase();
+      if (/report|pack|submission|audit|deck|paper|review/.test(lower)) return "pdf";
+      if (/model|register|forecast|schedule|statement|performance/.test(lower)) return "xlsx";
+      if (/policy|notes|proposal|sow|manual|status/.test(lower)) return "docx";
+      return "pdf";
+    };
+
     return {
       companyName: null,
       sector,
-      sectorLabel: sector.replace(/_/g, " "),
-      subsector,
+      sectorLabel: sectorDef?.label ?? sector.replace(/_/g, " "),
+      subsector: subsectorLabel || "",
       businessModel: "b2b",
       companyStage: "growth",
       employeeBand: "51_200",
       region: "",
       primaryGoals: [],
-      riskProfile: "moderate",
-      priorityRoles: ["CEO", "COO", "CTO"],
-      suggestedDocuments: [],
-      suggestedKPIs: [],
-      suggestedRisks: [],
-      sensitivityDefault: "internal",
-      confidence: 0,
-      reasoning: "",
+      riskProfile: sector === "financial_services" || sector === "healthcare" ? "conservative" : "moderate",
+      priorityRoles: sectorDef?.defaultRoles.slice(0, 6) ?? ["CEO", "COO", "CTO"],
+      suggestedDocuments: (sectorDef?.documentTypes.slice(0, 5) ?? []).map((name, index) => ({
+        name,
+        type: documentTypeToExtension(name),
+        priority: index < 3 ? "high" : "medium",
+        description: `Useful starting evidence for ${sectorDef?.label ?? "this company type"}.`,
+      })),
+      suggestedKPIs: sectorDef?.commonKPIs.slice(0, 5) ?? [],
+      suggestedRisks: sectorDef?.commonRisks.slice(0, 3) ?? [],
+      sensitivityDefault: sectorDef?.sensitivityDefault ?? "internal",
+      confidence: sectorDef ? 0.65 : 0.35,
+      reasoning: sectorDef
+        ? `Manual sector selection: NexusAI will use ${sectorDef.label} defaults for roles, KPIs, risks, documents, and sensitivity.`
+        : "Manual profile with limited defaults.",
     };
   }
 
