@@ -299,7 +299,20 @@ function Step2({
   const [uploadedCount, setUploadedCount] = useState(0);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  function applyFiles(incoming: FileList | null) {
+    if (!incoming) return;
+    const selected = Array.from(incoming).slice(0, MAX_ONBOARDING_FILES);
+    setFiles(selected);
+    setUploadedCount(0);
+    if (incoming.length > MAX_ONBOARDING_FILES) {
+      setError(`Only the first ${MAX_ONBOARDING_FILES} files will be uploaded.`);
+    } else {
+      setError(null);
+    }
+  }
 
   async function handleUpload() {
     if (files.length === 0) return;
@@ -386,10 +399,17 @@ function Step2({
         </div>
 
         <div
-          onClick={() => fileRef.current?.click()}
+          onClick={() => !uploading && fileRef.current?.click()}
+          onDrop={(e) => { e.preventDefault(); setIsDragging(false); applyFiles(e.dataTransfer.files); }}
+          onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
+          onDragLeave={() => setIsDragging(false)}
           className={[
             "flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed px-6 py-8 transition",
-            files.length > 0
+            uploading
+              ? "cursor-default opacity-60 border-white/10"
+              : isDragging
+              ? "border-nexus-accent bg-nexus-accent/5"
+              : files.length > 0
               ? "border-nexus-accent/50 bg-nexus-accent/5"
               : "border-white/20 hover:border-white/40 hover:bg-white/5",
           ].join(" ")}
@@ -400,11 +420,7 @@ function Step2({
             multiple
             accept=".pdf,.docx,.pptx,.xlsx,.txt,.md"
             className="hidden"
-            onChange={(e) => {
-              const selected = Array.from(e.target.files ?? []).slice(0, MAX_ONBOARDING_FILES);
-              setFiles(selected);
-              setUploadedCount(0);
-            }}
+            onChange={(e) => applyFiles(e.target.files)}
           />
           {files.length > 0 ? (
             <div className="w-full space-y-2">
@@ -423,8 +439,8 @@ function Step2({
           ) : (
             <div className="text-center">
               <p className="text-2xl mb-2 text-white/30">⊕</p>
-              <p className="text-sm text-white/60">Click to select up to {MAX_ONBOARDING_FILES} files</p>
-              <p className="text-xs text-white/30 mt-1">or drag and drop</p>
+              <p className="text-sm text-white/60">Drop files here or click to browse</p>
+              <p className="text-xs text-white/30 mt-1">Up to {MAX_ONBOARDING_FILES} files — PDF · DOCX · XLSX · TXT · MD</p>
             </div>
           )}
         </div>
@@ -442,7 +458,11 @@ function Step2({
         >
           {uploading
             ? `Extracting ${uploadedCount}/${files.length}...`
-            : `Ingest ${files.length || ""} Document${files.length === 1 ? "" : "s"} →`}
+            : files.length === 0
+            ? "Select files to continue"
+            : files.length === 1
+            ? "Ingest Document →"
+            : `Ingest ${files.length} Documents →`}
         </button>
       </div>
 
@@ -455,7 +475,7 @@ function Step2({
           >
             <div className="absolute right-3 top-3">
               <span className="rounded-full border border-white/20 bg-white/5 px-2 py-0.5 text-xs text-white/40">
-                Task 22
+                Coming soon
               </span>
             </div>
             <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-white/40">
@@ -487,12 +507,30 @@ function Step3({
   const filename = result.sourcePath.split("/").pop() ?? result.sourcePath;
   const ext = filename.split(".").pop()?.toUpperCase() ?? "FILE";
 
+  const processedCount = results.filter((r) => r.ingestionStatus === "processed").length;
+  const pendingCount = results.filter((r) => r.ingestionStatus === "pending_approval").length;
+  const quarantinedCount = results.filter((r) => r.ingestionStatus === "quarantined").length;
+
+  // For single-file, use that file's status; for multi-file, use aggregate
   const statusBadge =
-    result.ingestionStatus === "processed"
+    results.length === 1
+      ? result.ingestionStatus === "processed"
+        ? "border-green-500/40 bg-green-500/10 text-green-300"
+        : result.ingestionStatus === "pending_approval"
+        ? "border-amber-400/40 bg-amber-400/10 text-amber-300"
+        : "border-white/20 bg-white/5 text-white/50"
+      : processedCount === results.length
       ? "border-green-500/40 bg-green-500/10 text-green-300"
-      : result.ingestionStatus === "pending_approval"
+      : pendingCount > 0 || quarantinedCount > 0
       ? "border-amber-400/40 bg-amber-400/10 text-amber-300"
       : "border-white/20 bg-white/5 text-white/50";
+
+  const statusLabel =
+    results.length === 1
+      ? result.ingestionStatus.replace(/_/g, " ")
+      : processedCount === results.length
+      ? "all processed"
+      : `${processedCount} processed${pendingCount ? `, ${pendingCount} pending` : ""}${quarantinedCount ? `, ${quarantinedCount} quarantined` : ""}`;
 
   return (
     <div className="space-y-6">
@@ -515,7 +553,7 @@ function Step3({
             <p className="text-xs text-white/40 font-mono mt-0.5 truncate">{result.id}</p>
           </div>
           <span className={`shrink-0 inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs ${statusBadge}`}>
-            {result.ingestionStatus.replace(/_/g, " ")}
+            {statusLabel}
           </span>
         </div>
 
@@ -560,7 +598,19 @@ function Step3({
         </div>
       )}
 
-      {averageConfidence >= 0.4 && (
+      {pendingCount > 0 && (
+        <div className="rounded-xl border border-amber-300/40 bg-amber-300/10 px-4 py-3 text-sm text-amber-100 space-y-1">
+          <p className="font-medium">Review required for {pendingCount} file{pendingCount !== 1 ? "s" : ""}</p>
+          <p className="text-amber-100/70">
+            These files have moderate extraction confidence and need sign-off before appearing in your dashboard.
+            Go to the{" "}
+            <a href="/approvals" className="underline hover:text-amber-50">Approvals queue</a>{" "}
+            after completing setup.
+          </p>
+        </div>
+      )}
+
+      {averageConfidence >= 0.4 && pendingCount === 0 && (
         <div className="rounded-xl border border-white/10 bg-black/20 p-4 text-sm text-white/60 space-y-1.5">
           <p className="font-medium text-white/80">What happens next:</p>
           <ul className="space-y-1 text-white/50">
@@ -573,7 +623,7 @@ function Step3({
       )}
 
       <button onClick={onNext} className="btn-primary">
-        Approve Evidence and Continue →
+        Continue to Dashboard →
       </button>
     </div>
   );
@@ -698,10 +748,11 @@ export function OnboardingWizard({ workspaceId, displayName, isAuthenticated }: 
       {step > 1 && step < 4 && (
         <div className="mt-4 flex justify-start">
           <button
+            disabled={step === 3}
             onClick={() => setStep((s) => (s - 1) as Step)}
-            className="text-xs text-white/30 hover:text-white/60 transition"
+            className="text-xs text-white/30 transition hover:text-white/60 disabled:cursor-not-allowed disabled:opacity-30"
           >
-            ← Back
+            {step === 3 ? "Evidence already uploaded" : "← Back"}
           </button>
         </div>
       )}

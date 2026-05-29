@@ -328,6 +328,21 @@ export default function ApprovalsPage() {
               onDecide={decide}
             />
           ))}
+          {pendingCount === 0 && (
+            <div className="rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-4 text-center">
+              <p className="text-sm font-medium text-green-200">All items reviewed.</p>
+              <p className="mt-1 text-xs text-green-100/60">
+                Refresh the queue to pull in any newly ingested evidence.
+              </p>
+              <button
+                type="button"
+                onClick={fetchPending}
+                className="btn-subtle mt-3 text-sm"
+              >
+                Refresh queue
+              </button>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -27,15 +27,15 @@ a {
 }
 
 .btn-primary {
-  @apply rounded-lg bg-nexus-accent px-3 py-2 text-sm font-medium text-black transition hover:opacity-90;
+  @apply rounded-lg bg-nexus-accent px-3 py-2 text-sm font-medium text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40;
 }
 
 .btn-subtle {
-  @apply rounded-lg border border-white/20 px-3 py-2 text-sm transition hover:bg-white/10;
+  @apply rounded-lg border border-white/20 px-3 py-2 text-sm transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40;
 }
 
 .btn-secondary {
-  @apply rounded-lg border border-white/20 px-3 py-1.5 text-sm transition hover:bg-white/10;
+  @apply rounded-lg border border-white/20 px-3 py-1.5 text-sm transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40;
 }
 
 .label {
