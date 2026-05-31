@@ -28,8 +28,9 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 **Phase 7D / V1.1 Tier 1: In progress.** (v0.13.2) — U1 readiness assessment shipped; U2 agent passport foundation built with server-side dashboard evidence enforcement; U2 Settings UI/output gate plus U3/U4 remain open.
 **V1.1 Upgrade Plan: Reassessed.** (target v0.14.0 → v0.15.0) — Phase 7D governance blockers remain first; Phase 8A now starts the universal Decision & Action Twin before workflow scoring.
 **Production DB: Migrated.** Migrations 0009–0013 applied to Neon production.
-**Baseline pushed commit before v0.13.3 roadmap realignment:** `ae71d4e` — `feat: add agent passport foundation`.
-**Latest local verification:** `npx tsc --noEmit`, `npm run test` (13 files / 51 tests), and `npm run build` all passed after U2 passport foundation work.
+**Baseline pushed commit before v0.13.4 dependency cleanup:** `54cc40e` — `docs: realign nexus workflow twin roadmap`.
+**Latest local verification:** `npm audit --json` passed with 0 vulnerabilities; `npx tsc --noEmit`,
+`npm run test` (13 files / 51 tests), and `npm run build` all passed after dependency cleanup.
 
 **The product is feature-complete for a first paid pilot demo.**
 **Immediate next: Phase 7D V1.1 Tier 1 — finish U2 Agent Governance UI/output gates, then U3 per-agent logs/rollback and U4 learning-signal capture. In parallel, plan Phase 8A around the cross-industry Decision & Action Twin.**
@@ -41,6 +42,10 @@ What is built locally for v0.13.2:
   evidence reaches the LLM prompt; deny events are written to audit.
 - Admin API endpoints for listing/seeding/versioning/suspending agent passports.
 - Passport policy and contract tests added.
+
+What is built locally for v0.13.4:
+- Dependabot alert #5 fixed: vulnerable `next/node_modules/postcss@8.4.31` removed.
+- `npm audit --json` reports 0 vulnerabilities.
 
 What is built at v0.13.1:
 - Public `/readiness` AI-Native Readiness Assessment with seven-dimension scoring, no login required.

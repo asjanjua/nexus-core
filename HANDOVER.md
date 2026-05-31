@@ -6,16 +6,35 @@
 
 ## Session Info
 
-- **Last updated:** 2026-05-31 (v0.13.3 — workflow twin realignment)
+- **Last updated:** 2026-05-31 (v0.13.4 — dependency security cleanup)
 - **Last model:** Codex
-- **Session number:** #15
-- **Current version:** 0.13.3 — Phase 9D complete; Phase 7D U1 shipped, U2 passport foundation built, and Phase 8A/8B/8C workflow twin sequence realigned.
-- **Baseline pushed commit before this handover update:** `ae71d4e` — `feat: add agent passport foundation`
-- **Remote status:** v0.13.3 roadmap changes should be committed and pushed after verification.
+- **Session number:** #16
+- **Current version:** 0.13.4 — Phase 9D complete; Phase 7D U1 shipped, U2 passport foundation built, workflow twin sequence realigned, and Dependabot alert #5 fixed locally.
+- **Baseline pushed commit before this handover update:** `54cc40e` — `docs: realign nexus workflow twin roadmap`
+- **Remote status:** v0.13.4 dependency security cleanup should be committed and pushed after verification.
 
 ---
 
 ## What Was Completed This Session
+
+### v0.13.4 — Dependency Security Cleanup
+
+This session cleared the open moderate Dependabot alert reported by GitHub on push.
+
+**Issue fixed:**
+- Dependabot alert #5: PostCSS XSS via unescaped `</style>` in CSS stringify output.
+- Vulnerable package path was `next/node_modules/postcss@8.4.31`.
+
+**Fix applied:**
+- Kept the patched monorepo-level PostCSS override.
+- Removed duplicate workspace-level overrides from `apps/mission-control/package.json`.
+- Regenerated `package-lock.json` from a clean reinstall so Next resolves through the patched root `postcss@8.5.15` and no vulnerable nested PostCSS copy remains.
+
+**Verification:**
+- `npm audit --json` passed with 0 vulnerabilities.
+- `npx tsc --noEmit` passed.
+- `npm run test` passed: 13 test files, 51 tests.
+- `npm run build` passed.
 
 ### v0.13.3 — Nexus Reassessment and Workflow Twin Realignment
 

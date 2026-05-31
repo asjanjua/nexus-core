@@ -9,7 +9,7 @@
   "overrides": {
     "esbuild": "^0.25.12",
     "postcss": "^8.5.15",
-    "next@15.5.18": {
+    "next": {
       "postcss": "^8.5.15"
     }
   },

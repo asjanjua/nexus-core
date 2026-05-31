@@ -2,6 +2,24 @@
 
 ---
 
+## 0.13.4 — Dependency Security Cleanup (2026-05-31)
+
+This release clears the open GitHub Dependabot alert for PostCSS.
+
+**Security**
+- Fixed Dependabot alert #5: PostCSS XSS via unescaped `</style>` in CSS stringify output.
+- Corrected the npm override so Next.js resolves to the patched root `postcss@8.5.15`.
+- Removed the duplicate workspace-level override and regenerated `package-lock.json` from a clean install.
+- Confirmed the vulnerable nested `next/node_modules/postcss@8.4.31` copy is gone.
+
+**Verification**
+- `npm audit --json` reports 0 vulnerabilities.
+- `npx tsc --noEmit` passed.
+- `npm run test` passed: 13 test files, 51 tests.
+- `npm run build` passed.
+
+---
+
 ## 0.13.3 — Nexus Reassessment and Workflow Twin Realignment (2026-05-31)
 
 This is a planning and roadmap realignment release. It does not ship new runtime product code.
