@@ -53,6 +53,12 @@ export const workspaceStatusEnum = pgEnum("workspace_status", ["trial", "pilot",
 export const ingestionStatusEnum = pgEnum("ingestion_status", ["queued", "triaged", "pending_approval", "quarantined", "processed", "failed"]);
 export const recommendationStatusEnum = pgEnum("recommendation_status", ["draft", "in_review", "approved", "rejected", "promoted"]);
 export const decisionStatusEnum = pgEnum("decision_status", ["open", "decided", "superseded"]);
+export const agentControlStatusEnum = pgEnum("agent_control_status", ["draft", "active", "suspended"]);
+export const actionRightEnum = pgEnum("action_right", ["retrieve", "summarize", "draft", "recommend", "prepare_for_approval"]);
+export const riskRatingEnum = pgEnum("agent_risk_rating", ["low", "medium", "high", "regulated"]);
+export const approvalLevelEnum = pgEnum("agent_approval_level", ["owner", "partner", "client", "board"]);
+export const reviewCadenceEnum = pgEnum("agent_review_cadence", ["per_output", "weekly", "monthly", "event"]);
+export const agentLogLevelEnum = pgEnum("agent_log_level", ["actions", "actions_sources", "full"]);
 
 export const tenants = pgTable("tenants", {
   id: text("id").primaryKey(),
@@ -198,6 +204,35 @@ export const auditEvents = pgTable("audit_events", {
   actor: varchar("actor", { length: 120 }).notNull(),
   payload: jsonb("payload").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+});
+
+export const agentControlProfiles = pgTable("agent_control_profiles", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull(),
+  agentKey: varchar("agent_key", { length: 120 }).notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  purpose: text("purpose").notNull(),
+  version: integer("version").notNull().default(1),
+  status: agentControlStatusEnum("status").notNull().default("draft"),
+  allowedScopes: jsonb("allowed_scopes").$type<string[]>().default([]).notNull(),
+  forbiddenScopes: jsonb("forbidden_scopes").$type<string[]>().default([]).notNull(),
+  maxSensitivity: sensitivityEnum("max_sensitivity").notNull().default("internal"),
+  crossEntityAccess: boolean("cross_entity_access").notNull().default(false),
+  allowedTools: jsonb("allowed_tools").$type<string[]>().default([]).notNull(),
+  forbiddenTools: jsonb("forbidden_tools").$type<string[]>().default([]).notNull(),
+  policyControlledApis: jsonb("policy_controlled_apis").$type<Record<string, unknown>>().default({}).notNull(),
+  actionRight: actionRightEnum("action_right").notNull().default("recommend"),
+  hardStops: jsonb("hard_stops").$type<string[]>().default([]).notNull(),
+  escalationTriggers: jsonb("escalation_triggers").$type<string[]>().default([]).notNull(),
+  approvalLevel: approvalLevelEnum("approval_level").notNull().default("owner"),
+  riskRating: riskRatingEnum("risk_rating").notNull().default("medium"),
+  reviewCadence: reviewCadenceEnum("review_cadence").notNull().default("per_output"),
+  watcherAgents: jsonb("watcher_agents").$type<string[]>().default([]).notNull(),
+  logLevel: agentLogLevelEnum("log_level").notNull().default("full"),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedBy: text("updated_by"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 });
 
 /**

@@ -57,6 +57,7 @@ const isAgentApiRoute = createRouteMatcher([
   "/api/approvals(.*)",
   "/api/auth/me(.*)",
   "/api/agent-keys(.*)",
+  "/api/agent-control-profiles(.*)",
   "/api/settings(.*)",
   "/api/connectors(.*)",  // includes install, callback, and list/revoke
   "/api/workspace(.*)",

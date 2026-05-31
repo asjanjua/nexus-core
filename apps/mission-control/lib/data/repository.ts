@@ -7,7 +7,10 @@ import type { AgentKey, AgentKeyCreated, AgentScope, EvidenceRecord, IngestionSt
 import { assertDbConfigured, isDbRequired } from "@/lib/data/db-policy";
 import { normalizeDatabaseUrl } from "@/lib/data/postgres-url";
 import { encryptCredentials, decryptCredentials } from "@/lib/crypto";
+import { buildDefaultAgentControlProfile, buildDefaultAgentControlProfiles } from "@/lib/agents/default-passports";
+import type { AgentControlProfile, AgentControlProfileInput } from "@/lib/contracts";
 import {
+  agentControlProfiles,
   agentKeys,
   auditEvents,
   connectors,
@@ -167,6 +170,41 @@ function toWorkspaceProfile(row: typeof workspaceProfiles.$inferSelect): Workspa
     roleStates: row.roleStates && typeof row.roleStates === "object"
       ? (row.roleStates as WorkspaceProfile["roleStates"])
       : {},
+    updatedAt
+  };
+}
+
+function toAgentControlProfile(row: typeof agentControlProfiles.$inferSelect): AgentControlProfile {
+  const createdAt = row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt);
+  const updatedAt = row.updatedAt instanceof Date ? row.updatedAt.toISOString() : String(row.updatedAt);
+  return {
+    id: row.id,
+    workspaceId: row.workspaceId,
+    agentKey: row.agentKey,
+    name: row.name,
+    purpose: row.purpose,
+    version: row.version,
+    status: row.status,
+    allowedScopes: Array.isArray(row.allowedScopes) ? row.allowedScopes : [],
+    forbiddenScopes: Array.isArray(row.forbiddenScopes) ? row.forbiddenScopes : [],
+    maxSensitivity: row.maxSensitivity,
+    crossEntityAccess: row.crossEntityAccess,
+    allowedTools: Array.isArray(row.allowedTools) ? row.allowedTools : [],
+    forbiddenTools: Array.isArray(row.forbiddenTools) ? row.forbiddenTools : [],
+    policyControlledApis: row.policyControlledApis && typeof row.policyControlledApis === "object"
+      ? row.policyControlledApis as Record<string, unknown>
+      : {},
+    actionRight: row.actionRight,
+    hardStops: Array.isArray(row.hardStops) ? row.hardStops : [],
+    escalationTriggers: Array.isArray(row.escalationTriggers) ? row.escalationTriggers : [],
+    approvalLevel: row.approvalLevel,
+    riskRating: row.riskRating,
+    reviewCadence: row.reviewCadence,
+    watcherAgents: Array.isArray(row.watcherAgents) ? row.watcherAgents : [],
+    logLevel: row.logLevel,
+    createdBy: row.createdBy,
+    createdAt,
+    updatedBy: row.updatedBy,
     updatedAt
   };
 }
@@ -472,6 +510,212 @@ export const repository = {
       return true;
     });
     if (!wrote) store.pushAudit(event);
+  },
+
+  // -------------------------------------------------------------------------
+  // Agent Control Profiles (passports)
+  // -------------------------------------------------------------------------
+
+  async listAgentControlProfiles(workspaceId: string): Promise<AgentControlProfile[]> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(agentControlProfiles)
+        .where(eq(agentControlProfiles.workspaceId, workspaceId))
+        .orderBy(desc(agentControlProfiles.agentKey), desc(agentControlProfiles.version))
+    );
+    if (!rows) return store.listAgentControlProfiles(workspaceId);
+    return rows.map(toAgentControlProfile);
+  },
+
+  async getAgentControlProfileHistory(workspaceId: string, agentKey: string): Promise<AgentControlProfile[]> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(agentControlProfiles)
+        .where(sql`${agentControlProfiles.workspaceId} = ${workspaceId} AND ${agentControlProfiles.agentKey} = ${agentKey}`)
+        .orderBy(desc(agentControlProfiles.version))
+    );
+    if (!rows) return store.getAgentControlProfileHistory(workspaceId, agentKey);
+    return rows.map(toAgentControlProfile);
+  },
+
+  async getActiveAgentControlProfile(workspaceId: string, agentKey: string): Promise<AgentControlProfile | null> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(agentControlProfiles)
+        .where(
+          sql`${agentControlProfiles.workspaceId} = ${workspaceId}
+            AND ${agentControlProfiles.agentKey} = ${agentKey}
+            AND ${agentControlProfiles.status} = 'active'`
+        )
+        .orderBy(desc(agentControlProfiles.version))
+        .limit(1)
+    );
+    if (rows && rows.length) return toAgentControlProfile(rows[0]);
+
+    const memoryProfile = store.getActiveAgentControlProfile(workspaceId, agentKey);
+    if (memoryProfile) return memoryProfile;
+
+    // Runtime safety: known agents get a generated default profile even before
+    // migration/seed has run, so policy enforcement is never prompt-only.
+    return buildDefaultAgentControlProfile(workspaceId, agentKey, "default_seed");
+  },
+
+  async createAgentControlProfileVersion(input: AgentControlProfileInput): Promise<AgentControlProfile> {
+    const history = await repository.getAgentControlProfileHistory(input.workspaceId, input.agentKey);
+    const previous = history[0];
+    const version = previous ? previous.version + 1 : 1;
+    const now = new Date().toISOString();
+    const record: AgentControlProfile = {
+      id: `acp-${input.workspaceId}-${input.agentKey}-v${version}-${Date.now().toString(36)}`,
+      workspaceId: input.workspaceId,
+      agentKey: input.agentKey,
+      name: input.name,
+      purpose: input.purpose,
+      version,
+      status: input.status ?? "active",
+      allowedScopes: input.allowedScopes,
+      forbiddenScopes: input.forbiddenScopes ?? [],
+      maxSensitivity: input.maxSensitivity,
+      crossEntityAccess: input.crossEntityAccess ?? false,
+      allowedTools: input.allowedTools ?? [],
+      forbiddenTools: input.forbiddenTools ?? [],
+      policyControlledApis: input.policyControlledApis ?? {},
+      actionRight: input.actionRight,
+      hardStops: input.hardStops ?? [],
+      escalationTriggers: input.escalationTriggers ?? [],
+      approvalLevel: input.approvalLevel,
+      riskRating: input.riskRating,
+      reviewCadence: input.reviewCadence,
+      watcherAgents: input.watcherAgents ?? [],
+      logLevel: input.logLevel,
+      createdBy: input.createdBy,
+      createdAt: now,
+      updatedBy: input.updatedBy ?? input.createdBy,
+      updatedAt: now
+    };
+
+    const wrote = await runDb(async (db) => {
+      await db.insert(agentControlProfiles).values({
+        id: record.id,
+        workspaceId: record.workspaceId,
+        agentKey: record.agentKey,
+        name: record.name,
+        purpose: record.purpose,
+        version: record.version,
+        status: record.status,
+        allowedScopes: record.allowedScopes,
+        forbiddenScopes: record.forbiddenScopes,
+        maxSensitivity: record.maxSensitivity,
+        crossEntityAccess: record.crossEntityAccess,
+        allowedTools: record.allowedTools,
+        forbiddenTools: record.forbiddenTools,
+        policyControlledApis: record.policyControlledApis,
+        actionRight: record.actionRight,
+        hardStops: record.hardStops,
+        escalationTriggers: record.escalationTriggers,
+        approvalLevel: record.approvalLevel,
+        riskRating: record.riskRating,
+        reviewCadence: record.reviewCadence,
+        watcherAgents: record.watcherAgents,
+        logLevel: record.logLevel,
+        createdBy: record.createdBy,
+        updatedBy: record.updatedBy,
+        updatedAt: new Date()
+      });
+      await db.insert(auditEvents).values({
+        id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        workspaceId: record.workspaceId,
+        type: "agent_control_profile_version_created",
+        actor: record.createdBy,
+        payload: { agentKey: record.agentKey, version: record.version, status: record.status }
+      });
+      return true;
+    });
+
+    if (!wrote) return store.addAgentControlProfile(record);
+    return record;
+  },
+
+  async seedDefaultAgentControlProfiles(workspaceId: string, actor = "system"): Promise<AgentControlProfile[]> {
+    const existing = await repository.listAgentControlProfiles(workspaceId);
+    if (existing.length > 0) return existing;
+
+    const defaults = buildDefaultAgentControlProfiles(workspaceId, actor);
+    const wrote = await runDb(async (db) => {
+      for (const profile of defaults) {
+        await db
+          .insert(agentControlProfiles)
+          .values({
+            id: profile.id,
+            workspaceId: profile.workspaceId,
+            agentKey: profile.agentKey,
+            name: profile.name,
+            purpose: profile.purpose,
+            version: profile.version,
+            status: profile.status,
+            allowedScopes: profile.allowedScopes,
+            forbiddenScopes: profile.forbiddenScopes,
+            maxSensitivity: profile.maxSensitivity,
+            crossEntityAccess: profile.crossEntityAccess,
+            allowedTools: profile.allowedTools,
+            forbiddenTools: profile.forbiddenTools,
+            policyControlledApis: profile.policyControlledApis,
+            actionRight: profile.actionRight,
+            hardStops: profile.hardStops,
+            escalationTriggers: profile.escalationTriggers,
+            approvalLevel: profile.approvalLevel,
+            riskRating: profile.riskRating,
+            reviewCadence: profile.reviewCadence,
+            watcherAgents: profile.watcherAgents,
+            logLevel: profile.logLevel,
+            createdBy: profile.createdBy,
+            updatedBy: profile.updatedBy,
+            updatedAt: new Date(profile.updatedAt)
+          })
+          .onConflictDoNothing();
+      }
+      await db.insert(auditEvents).values({
+        id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        workspaceId,
+        type: "agent_control_profiles_seeded",
+        actor,
+        payload: { count: defaults.length }
+      });
+      return true;
+    });
+
+    if (!wrote) {
+      for (const profile of defaults) store.addAgentControlProfile(profile);
+    }
+    return defaults;
+  },
+
+  async suspendAgentControlProfile(workspaceId: string, agentKey: string, actor = "system"): Promise<boolean> {
+    const updated = await runDb(async (db) => {
+      const rows = await db
+        .update(agentControlProfiles)
+        .set({ status: "suspended", updatedBy: actor, updatedAt: new Date() })
+        .where(
+          sql`${agentControlProfiles.workspaceId} = ${workspaceId}
+            AND ${agentControlProfiles.agentKey} = ${agentKey}
+            AND ${agentControlProfiles.status} = 'active'`
+        )
+        .returning();
+      if (!rows.length) return false;
+      await db.insert(auditEvents).values({
+        id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        workspaceId,
+        type: "agent_control_profile_suspended",
+        actor,
+        payload: { agentKey, versions: rows.map((row) => row.version) }
+      });
+      return true;
+    });
+    if (updated === null) return Boolean(store.suspendAgentControlProfile(workspaceId, agentKey, actor));
+    return updated;
   },
 
   getConversation(workspaceId: string, userId: string) {

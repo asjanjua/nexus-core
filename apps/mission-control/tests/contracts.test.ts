@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { evidenceRecordSchema, ingestionStatusSchema, recommendationStatusSchema } from "@/lib/contracts";
+import {
+  actionRightSchema,
+  agentControlProfileSchema,
+  evidenceRecordSchema,
+  ingestionStatusSchema,
+  recommendationStatusSchema
+} from "@/lib/contracts";
 
 const baseEvidence = {
   id: "ev-test",
@@ -59,5 +65,39 @@ describe("contracts", () => {
   it("guards recommendation enum values", () => {
     expect(recommendationStatusSchema.safeParse("approved").success).toBe(true);
     expect(recommendationStatusSchema.safeParse("invalid_status").success).toBe(false);
+  });
+
+  it("validates the agent control profile passport contract", () => {
+    const parsed = agentControlProfileSchema.safeParse({
+      id: "acp-test",
+      workspaceId: "workspace-a",
+      agentKey: "risk_agent",
+      name: "Risk Agent",
+      purpose: "Surface governed risks from approved evidence.",
+      version: 1,
+      status: "active",
+      allowedScopes: ["risk", "audit"],
+      forbiddenScopes: ["finance"],
+      maxSensitivity: "confidential",
+      crossEntityAccess: false,
+      allowedTools: ["search evidence"],
+      forbiddenTools: ["send_email"],
+      policyControlledApis: {},
+      actionRight: "prepare_for_approval",
+      hardStops: ["send_email"],
+      escalationTriggers: ["regulatory_commitment"],
+      approvalLevel: "partner",
+      riskRating: "regulated",
+      reviewCadence: "per_output",
+      watcherAgents: ["ai_governance_agent"],
+      logLevel: "full",
+      createdBy: "operator",
+      createdAt: new Date().toISOString(),
+      updatedBy: "operator",
+      updatedAt: new Date().toISOString()
+    });
+
+    expect(parsed.success).toBe(true);
+    expect(actionRightSchema.safeParse("send_email").success).toBe(false);
   });
 });

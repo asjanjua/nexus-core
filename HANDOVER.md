@@ -6,16 +6,62 @@
 
 ## Session Info
 
-- **Last updated:** 2026-05-31 (v0.13.1 — Readiness on-ramp + governance docs pushed)
+- **Last updated:** 2026-05-31 (v0.13.2 — U2 agent passport foundation built locally)
 - **Last model:** Codex
-- **Session number:** #13
-- **Current version:** 0.13.1 — Phase 9D complete; Phase 7D started with U1 shipped.
+- **Session number:** #14
+- **Current version:** 0.13.2 — Phase 9D complete; Phase 7D U1 shipped and U2 passport foundation built.
 - **Latest pushed commit:** `ba078f1` — `feat: ship v1 pilot hardening and readiness on-ramp`
-- **Remote status:** `main` pushed to GitHub; Render should build from `ba078f1` if blueprint auto-sync is active.
+- **Remote status:** `main` pushed to GitHub at `ba078f1`; v0.13.2 changes are local until the next commit/push.
 
 ---
 
 ## What Was Completed This Session
+
+### v0.13.2 — U2 Agent Passport Foundation
+
+This session started the engineering-blocker pass for Phase 7D U2. The goal was not to finish every U2 item; it was to move the passport model from planning docs into enforceable code with tests.
+
+**Key additions:**
+
+1. **Agent Control Profile contracts**
+   - Added passport status, action-right, risk, approval, cadence, log-level, and policy-controlled API schemas to `apps/mission-control/lib/contracts.ts`.
+   - Added `AgentControlProfile` and `AgentControlProfileInput` exports.
+   - Encoded the V1 action ladder: `retrieve → summarize → draft → recommend → prepare_for_approval`.
+
+2. **Database and repository layer**
+   - Added migration `0014_agent_control_profiles.sql`.
+   - Added `agent_control_profiles` schema in Drizzle.
+   - Added DB + in-memory repository methods for listing profiles, reading profile history, reading the active profile, creating a new version, seeding defaults, and suspending an agent.
+
+3. **Default passport seeding**
+   - Added default passport builders from the current `AGENT_LIBRARY`.
+   - Regulated/high-risk agents get stricter defaults (`riskRating=regulated/high`, `reviewCadence=per_output`, higher approval level).
+   - Default hard stops include external posting, source-system writeback, legal/financial commitments, HR actions, payments, filings, and regulator contact.
+
+4. **Server-side enforcement**
+   - Added `canReadEvidence()`, `filterEvidenceByPassport()`, and `canUseTool()`.
+   - Dashboard generation now filters evidence through the active/default agent passport before evidence reaches LLM prompt context.
+   - Dashboard deny decisions write audit events with agent key, evidence id, sensitivity, and reason.
+
+5. **Admin API**
+   - `GET /api/agent-control-profiles`
+   - `GET /api/agent-control-profiles?agentKey=...`
+   - `POST /api/agent-control-profiles?seed=1`
+   - `POST /api/agent-control-profiles`
+   - `POST /api/agent-control-profiles/[agentKey]/suspend`
+
+**Verification:**
+- `npx tsc --noEmit` passed.
+- `npm run test` passed: 13 test files, 51 tests.
+- `npm run build` passed.
+
+**Still open in U2:**
+- Agent Governance Settings UI.
+- Three named demo passports from the spec: Regulatory Response Agent, Legal Redline Agent, Proposal Partner Agent.
+- Ask/vector/keyword retrieval passport filtering.
+- Tool runtime audit events for denied calls.
+- Output gate and deterministic escalation routing.
+- U3 per-agent logs/rollback and U4 learning signals.
 
 ### v0.13.1 — Readiness On-Ramp, Governance Docs, and Deploy Push
 

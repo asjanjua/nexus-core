@@ -2,6 +2,52 @@
 
 ---
 
+## 0.13.2 — U2 Agent Passport Foundation (2026-05-31)
+
+This release starts the engineering implementation of U2 Agent Control Profiles. It does not complete the full U2 surface yet: Settings UI, output gates, Ask/vector passport filtering, and full tool-runtime audit wiring remain open.
+
+**Agent passport contracts**
+- Added Agent Control Profile enums and Zod contracts for status, action rights, risk rating, approval level, review cadence, log level, policy-controlled APIs, and full passport input/output shapes.
+- Defined the V1 action-right ladder: `retrieve → summarize → draft → recommend → prepare_for_approval`.
+- Added default hard stops and escalation triggers in code so high-risk actions remain outside prompt-only control.
+
+**Persistence and APIs**
+- Added migration `0014_agent_control_profiles.sql`.
+- Added `agent_control_profiles` schema with versioned rows, unique `(workspace_id, agent_key, version)`, and `(workspace_id, agent_key, status)` index.
+- Added repository and in-memory fallback methods to list, fetch history, fetch active profile, create a new version, seed defaults, and suspend an agent.
+- Added admin API endpoints:
+  - `GET /api/agent-control-profiles`
+  - `GET /api/agent-control-profiles?agentKey=...`
+  - `POST /api/agent-control-profiles?seed=1`
+  - `POST /api/agent-control-profiles`
+  - `POST /api/agent-control-profiles/[agentKey]/suspend`
+
+**Server-side enforcement**
+- Added default passport builder for all current specialist agents in `agent-library.ts`.
+- Added `canReadEvidence()`, `filterEvidenceByPassport()`, and `canUseTool()` as server-side policy helpers.
+- Dashboard generation now loads the active/default passport for each agent and filters evidence before any source text reaches LLM prompt context.
+- Dashboard evidence-deny events now write to audit with agent key, evidence id, sensitivity, and deny reason.
+
+**Tests**
+- Added contract coverage for Agent Control Profiles.
+- Added passport policy tests for sensitivity ceiling, forbidden scopes, missing sensitivity defaulting to restricted, hard-stop tool actions, action-right ceilings, and filtering denied evidence before model context.
+
+**Verification**
+- `npx tsc --noEmit` passed.
+- `npm run test` passed: 13 test files, 51 tests.
+- `npm run build` passed.
+
+**Still open**
+- Agent Governance Settings UI.
+- Explicit demo passports for Regulatory Response Agent, Legal Redline Agent, and Proposal Partner Agent.
+- Ask/vector/keyword retrieval passport filtering.
+- Tool runtime audit events for denied calls.
+- Output gate and deterministic escalation routing.
+- U3 searchable per-agent log and rollback.
+- U4 learning-signal capture.
+
+---
+
 ## 0.13.1 — Readiness On-Ramp and Governance Documentation (2026-05-31)
 
 This release starts Phase 7D / V1.1 governance hardening while preserving an honest boundary: U1 is shipped, while U2/U3/U4 remain the next implementation work.

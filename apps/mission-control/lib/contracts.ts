@@ -107,6 +107,88 @@ export const agentBriefSchema = dashboardCardSchema.extend({
 });
 export type AgentBrief = z.infer<typeof agentBriefSchema>;
 
+// ---------------------------------------------------------------------------
+// Agent Control Profile (passport) contracts
+// ---------------------------------------------------------------------------
+
+export const agentControlStatusSchema = z.enum(["draft", "active", "suspended"]);
+export type AgentControlStatus = z.infer<typeof agentControlStatusSchema>;
+
+export const actionRightSchema = z.enum([
+  "retrieve",
+  "summarize",
+  "draft",
+  "recommend",
+  "prepare_for_approval"
+]);
+export type ActionRight = z.infer<typeof actionRightSchema>;
+
+export const approvalLevelSchema = z.enum(["owner", "partner", "client", "board"]);
+export type ApprovalLevel = z.infer<typeof approvalLevelSchema>;
+
+export const riskRatingSchema = z.enum(["low", "medium", "high", "regulated"]);
+export type RiskRating = z.infer<typeof riskRatingSchema>;
+
+export const reviewCadenceSchema = z.enum(["per_output", "weekly", "monthly", "event"]);
+export type ReviewCadence = z.infer<typeof reviewCadenceSchema>;
+
+export const agentLogLevelSchema = z.enum(["actions", "actions_sources", "full"]);
+export type AgentLogLevel = z.infer<typeof agentLogLevelSchema>;
+
+export const policyControlledApiSchema = z.record(z.unknown());
+export type PolicyControlledApi = z.infer<typeof policyControlledApiSchema>;
+
+export const agentControlProfileSchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  agentKey: z.string().min(1).max(120),
+  name: z.string().min(1).max(200),
+  purpose: z.string().min(1).max(2000),
+  version: z.number().int().positive(),
+  status: agentControlStatusSchema,
+  allowedScopes: z.array(z.string()).default([]),
+  forbiddenScopes: z.array(z.string()).default([]),
+  maxSensitivity: sensitivitySchema,
+  crossEntityAccess: z.boolean().default(false),
+  allowedTools: z.array(z.string()).default([]),
+  forbiddenTools: z.array(z.string()).default([]),
+  policyControlledApis: policyControlledApiSchema.default({}),
+  actionRight: actionRightSchema,
+  hardStops: z.array(z.string()).default([]),
+  escalationTriggers: z.array(z.string()).default([]),
+  approvalLevel: approvalLevelSchema,
+  riskRating: riskRatingSchema,
+  reviewCadence: reviewCadenceSchema,
+  watcherAgents: z.array(z.string()).default([]),
+  logLevel: agentLogLevelSchema,
+  createdBy: z.string(),
+  createdAt: z.string(),
+  updatedBy: z.string().optional().nullable(),
+  updatedAt: z.string()
+});
+export type AgentControlProfile = z.infer<typeof agentControlProfileSchema>;
+
+export const agentControlProfileInputSchema = agentControlProfileSchema
+  .omit({
+    id: true,
+    version: true,
+    createdAt: true,
+    updatedAt: true
+  })
+  .partial({
+    status: true,
+    forbiddenScopes: true,
+    crossEntityAccess: true,
+    allowedTools: true,
+    forbiddenTools: true,
+    policyControlledApis: true,
+    hardStops: true,
+    escalationTriggers: true,
+    watcherAgents: true,
+    updatedBy: true
+  });
+export type AgentControlProfileInput = z.infer<typeof agentControlProfileInputSchema>;
+
 export const recommendationSchema = z.object({
   id: z.string(),
   tenantId: z.string(),

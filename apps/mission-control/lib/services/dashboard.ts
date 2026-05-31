@@ -11,6 +11,7 @@ import { repository } from "@/lib/data/repository";
 import { ask } from "@/lib/services/llm";
 import { briefLanguageInstruction, buildCompanyContext } from "@/lib/domain/sector-library";
 import { agentBriefIdsForRoleContext, agentForId, AGENT_ROOMS, roomForRole, type NexusAgent } from "@/lib/agents/agent-library";
+import { filterEvidenceByPassport } from "@/lib/agents/passport-policy";
 
 // ---------------------------------------------------------------------------
 // Agent prompt configuration
@@ -138,10 +139,6 @@ export async function cardsForRole(
       (!options.department || r.department === options.department)
   );
 
-  const evidenceBlock = buildEvidenceBlock(processedEvidence);
-  const evidenceRefs = processedEvidence.map((r) => r.id);
-  const avgConfidence = computeAvgConfidence(processedEvidence);
-  const minFreshness = computeMinFreshness(processedEvidence);
   const companyContext = profile ? buildCompanyContext(profile) : "";
   const languageInstruction = profile
     ? briefLanguageInstruction(profile.briefLanguageMode, profile.companyArchetype)
@@ -152,9 +149,37 @@ export async function cardsForRole(
     .filter((agent) => !options.agentId || agent.id === options.agentId);
 
   const cards = await Promise.all(
-    agents.map((agent) =>
-      generateCard(agent, role, evidenceBlock, evidenceRefs, avgConfidence, minFreshness, companyContext, languageInstruction, workspaceId)
-    )
+    agents.map(async (agent) => {
+      const passport = await repository.getActiveAgentControlProfile(workspaceId, agent.id);
+      const governedEvidence = passport
+        ? filterEvidenceByPassport(processedEvidence, passport)
+        : { allowed: processedEvidence, denied: [] };
+
+      if (passport && governedEvidence.denied.length) {
+        void repository.pushAudit({
+          workspaceId,
+          type: "agent_evidence_denied",
+          actor: agent.id,
+          payload: {
+            agentKey: agent.id,
+            denied: governedEvidence.denied.map(({ record, reason }) => ({
+              evidenceId: record.id,
+              sensitivity: record.sensitivity,
+              sourceType: record.sourceType,
+              department: record.department ?? null,
+              reason
+            }))
+          }
+        });
+      }
+
+      const evidenceBlock = buildEvidenceBlock(governedEvidence.allowed);
+      const evidenceRefs = governedEvidence.allowed.map((r) => r.id);
+      const avgConfidence = computeAvgConfidence(governedEvidence.allowed);
+      const minFreshness = computeMinFreshness(governedEvidence.allowed);
+
+      return generateCard(agent, role, evidenceBlock, evidenceRefs, avgConfidence, minFreshness, companyContext, languageInstruction, workspaceId);
+    })
   );
 
   return cards;

@@ -1,5 +1,6 @@
 import {
   type AgentKey,
+  type AgentControlProfile,
   type AgentScope,
   type Decision,
   type EvidenceRecord,
@@ -131,6 +132,7 @@ const conversations: ConversationStore = {};
 // Agent keys in-memory store (keyed by workspaceId)
 type StoredAgentKey = AgentKey & { keyHash: string };
 const agentKeyStore: StoredAgentKey[] = [];
+const agentControlProfileStore: AgentControlProfile[] = [];
 
 // Workspace settings in-memory store
 const workspaceSettingsStore: Map<string, WorkspaceSettings> = new Map([
@@ -216,6 +218,47 @@ export const store = {
       .filter((e) => e.workspaceId === workspaceId)
       .slice(-limit)
       .reverse();
+  },
+  listAgentControlProfiles(workspaceId: string): AgentControlProfile[] {
+    return agentControlProfileStore
+      .filter((profile) => profile.workspaceId === workspaceId)
+      .sort((a, b) => b.version - a.version);
+  },
+  getAgentControlProfileHistory(workspaceId: string, agentKey: string): AgentControlProfile[] {
+    return agentControlProfileStore
+      .filter((profile) => profile.workspaceId === workspaceId && profile.agentKey === agentKey)
+      .sort((a, b) => b.version - a.version);
+  },
+  getActiveAgentControlProfile(workspaceId: string, agentKey: string): AgentControlProfile | null {
+    return (
+      agentControlProfileStore
+        .filter((profile) => profile.workspaceId === workspaceId && profile.agentKey === agentKey && profile.status === "active")
+        .sort((a, b) => b.version - a.version)[0] ?? null
+    );
+  },
+  addAgentControlProfile(profile: AgentControlProfile): AgentControlProfile {
+    agentControlProfileStore.push(profile);
+    pushAudit({
+      workspaceId: profile.workspaceId,
+      type: "agent_control_profile_created",
+      actor: profile.createdBy,
+      payload: { agentKey: profile.agentKey, version: profile.version, status: profile.status }
+    });
+    return profile;
+  },
+  suspendAgentControlProfile(workspaceId: string, agentKey: string, actor = "system"): AgentControlProfile | null {
+    const active = store.getActiveAgentControlProfile(workspaceId, agentKey);
+    if (!active) return null;
+    active.status = "suspended";
+    active.updatedBy = actor;
+    active.updatedAt = nowIso();
+    pushAudit({
+      workspaceId,
+      type: "agent_control_profile_suspended",
+      actor,
+      payload: { agentKey, version: active.version }
+    });
+    return active;
   },
   addEvidenceRecord(record: EvidenceRecord): EvidenceRecord {
     evidence.push(record);
