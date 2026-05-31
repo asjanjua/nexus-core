@@ -10,6 +10,9 @@
 - **Target version:** v0.14.0
 - **Builds on:** v0.13.0 (Phases 1 to 9D complete, production DB migrated)
 - **Companion to:** TASKS.md, NexusAI_V1_Pilot_Plan.docx, Nexus_Product_Manual.docx
+- **Reassessment note:** See `docs/NEXUS_WORKFLOW_TWIN_REALIGNMENT.md` for the 2026-05-31
+  decision that the first workflow twin should be the universal Decision & Action Twin, followed
+  by Workflow Twin Scorer and Ops Review Twin.
 
 ---
 
@@ -190,5 +193,27 @@ and isolated.
 Immediate next step: confirm this Tier 1 set, then move to building U1 in full,
 the seven scoring dimensions and the result-to-pilot routing, written for
 regulated and consulting buyers rather than copied from the ExO scorecard.
+
+## 8. Reassessment Addendum — Workflow Twin Sequence
+
+After the initial V1.1 plan, NexusAI was reassessed against the broader product goal: it should
+not look like a narrow consulting, legal, or regulatory tool too early. Governance remains the
+Tier 1 engineering blocker, but the workflow-twin path now starts with a universal company
+workflow before specialized templates.
+
+Updated fast-follow sequence:
+
+1. **Decision & Action Twin** — turns approved evidence into decisions, owners, risks, blockers,
+   action items, recommendations, confidence, freshness, and evidence references.
+2. **Workflow Twin Scorer** — helps each client choose their first Parallel Workflow Pilot.
+3. **Ops Review Twin** — creates the repeatable weekly operating cadence around blockers, KPIs,
+   overdue owners, process gaps, and department follow-ups.
+
+Proposal/SOW, Regulatory Response, Agreement Review, Due Diligence, Board Memo, and PMO Tracking
+remain important workflow templates, but they should follow the universal Decision & Action Twin.
+
+Client-facing language should use practical operating terms: Strategic Mandate, Operating
+Doctrine, Policy Guardrails, Human Approval Layer, Parallel Workflow Pilot, and Decision Workflow
+Engine. Avoid broad 100x, workforce-replacement, and fully autonomous-company claims.
 
 *End of document — NexusAI V1.1 Upgrade Plan (ExO-Informed)*

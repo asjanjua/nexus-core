@@ -26,13 +26,13 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 **Phase 8: Complete.** (v0.12.0) — export artifacts, demo tools, pilot kit.
 **Phase 9D: Complete.** (v0.13.0) — product brief, SOW templates, demo scripts, ROI calculator.
 **Phase 7D / V1.1 Tier 1: In progress.** (v0.13.2) — U1 readiness assessment shipped; U2 agent passport foundation built with server-side dashboard evidence enforcement; U2 Settings UI/output gate plus U3/U4 remain open.
-**V1.1 Upgrade Plan: Sequenced.** (target v0.14.0) — Phase 7D Tier 1 before first pilot, Phase 8A fast-follow, U9 in Phase 12.
+**V1.1 Upgrade Plan: Reassessed.** (target v0.14.0 → v0.15.0) — Phase 7D governance blockers remain first; Phase 8A now starts the universal Decision & Action Twin before workflow scoring.
 **Production DB: Migrated.** Migrations 0009–0013 applied to Neon production.
-**Latest pushed commit:** `ba078f1` — `feat: ship v1 pilot hardening and readiness on-ramp`.
+**Baseline pushed commit before v0.13.3 roadmap realignment:** `ae71d4e` — `feat: add agent passport foundation`.
 **Latest local verification:** `npx tsc --noEmit`, `npm run test` (13 files / 51 tests), and `npm run build` all passed after U2 passport foundation work.
 
 **The product is feature-complete for a first paid pilot demo.**
-**Immediate next: Phase 7D V1.1 Tier 1 — finish U2 Agent Governance UI/output gates, then U3 per-agent logs/rollback and U4 learning-signal capture — before first signed regulated pilot.**
+**Immediate next: Phase 7D V1.1 Tier 1 — finish U2 Agent Governance UI/output gates, then U3 per-agent logs/rollback and U4 learning-signal capture. In parallel, plan Phase 8A around the cross-industry Decision & Action Twin.**
 
 What is built locally for v0.13.2:
 - Agent Control Profile/passport contract, enums, migration 0014, DB table, in-memory fallback,
@@ -62,8 +62,9 @@ What is built at v0.12.0 (in addition to v0.11.0):
 V1.1 sequencing added from `docs/V1_1_UPGRADE_PLAN.md`:
 - Tier 1 before first pilot (v0.14.0): U1 readiness assessment, U2 agent control profile/passport,
   U3 searchable per-agent log + rollback, U4 learning-signal capture
-- Tier 2 fast-follow (v0.15.0): U5 workflow twin scorer, U6 backcasting onboarding, U7 shadow-mode
-  ROI, U8 trusted eval harness
+- Tier 2 fast-follow (v0.15.0): Phase 8A Decision & Action Twin first, then Phase 8B workflow
+  twin scorer/client selection, then Phase 8C Ops Review Twin, plus backcasting, shadow-mode ROI,
+  and trusted evals when real usage data exists
 - Tier 3 later with company memory: U9 learning loop and improvement reporting
 
 What was built before (v0.10.3 + v0.11.0):
@@ -105,16 +106,20 @@ The phases are ordered by what unblocks revenue, not by complexity:
 3. **Phase 8** — Paid pilot packaging. Weekly brief export, risk radar, demo reset.
    This is what converts demos into signed pilots. Should be built alongside Phase 7A.
 4. **Phase 7B** — Agent Rooms UI reframe. Changes how the product is perceived and sold.
-5. **Phase 8A** — V1.1 fast-follow proof tools. Workflow twin scoring, backcasting, measured ROI,
-   and evals once a pilot is running.
-6. **Phase 9B** — Mobile and voice. WhatsApp briefings are a market differentiator in GCC/Pakistan.
-7. **Phase 9** — Team members. Required once pilots have more than one user per workspace.
-8. **Phase 10** — Core connectors. Each connector removes a manual upload step from the workflow.
-9. **Phase 10B** — Infrastructure connectors. Banking, payments, POS, regulatory portals.
+5. **Phase 8A** — Universal workflow twin foundation. Decision & Action Twin turns approved
+   evidence into decisions, owners, risks, blockers, action items, and recommendations.
+6. **Phase 8B** — Workflow twin scorer and client selection. Lets each client pick their first
+   Parallel Workflow Pilot without over-niching Nexus into one industry.
+7. **Phase 8C** — Ops Review Twin. Weekly operating cadence for blockers, KPIs, overdue owners,
+   process gaps, and department follow-ups.
+8. **Phase 9B** — Mobile and voice. WhatsApp briefings are a market differentiator in GCC/Pakistan.
+9. **Phase 9** — Team members. Required once pilots have more than one user per workspace.
+10. **Phase 10** — Core connectors. Each connector removes a manual upload step from the workflow.
+11. **Phase 10B** — Infrastructure connectors. Banking, payments, POS, regulatory portals.
    Priority for GCC/Pakistan pilots — these clients have operational data in these systems.
-10. **Phase 11** — Social and market signals. Digital-native and D2C companies.
-11. **Phase 12** — Company memory. The long-term compounding value of the product, including U9.
-12. **Phases 13–15** — Local edge, contextual agents, Obsidian experience. Enterprise moat.
+12. **Phase 11** — Social and market signals. Digital-native and D2C companies.
+13. **Phase 12** — Company memory. The long-term compounding value of the product, including U9.
+14. **Phases 13–15** — Local edge, contextual agents, Obsidian experience. Enterprise moat.
 
 ---
 
@@ -127,6 +132,14 @@ Build from **essential** to **aspirational**:
 3. Expand role coverage and channel delivery (WhatsApp, voice).
 4. Add enterprise connectors, team collaboration, and company memory.
 5. Build the local edge, contextual agents, and graph experience as the enterprise moat.
+
+Positioning rule from the 2026-05-31 reassessment:
+- Nexus is a governed intelligence operating layer for high-stakes professional workflows.
+- Client-facing language should use Strategic Mandate, Operating Doctrine, Policy Guardrails,
+  Human Approval Layer, Parallel Workflow Pilot, and Decision Workflow Engine.
+- Avoid broad ExO rhetoric in client-facing copy: no "100x" claims, no workforce-replacement
+  positioning, no "fully autonomous company" claims, and no promise that agents act without
+  human approval.
 
 ---
 
@@ -1056,7 +1069,51 @@ Build from **essential** to **aspirational**:
 
 ---
 
-## Phase 8A — V1.1 Fast-Follow Pilot Proof Tools (v0.15.0)
+## Phase 8A — Universal Workflow Twin Foundation (v0.15.0)
+
+> Reassessment decision: do not make the first workflow twin Proposal/SOW, Regulatory Response,
+> or Agreement Review. Those are valuable later templates, but they risk making Nexus look
+> industry-specific too early. The first universal workflow twin is the Decision & Action Twin.
+
+### Decision & Action Twin
+- [ ] Add `action_items` as a first-class product object because Nexus currently has decisions
+  and recommendations but no owner/action tracker. Minimum fields: workspaceId, title, owner,
+  department, dueDate, status, evidenceRefs, sourceType, confidence, freshness, createdBy,
+  reviewedBy, reviewedAt, and timestamps.
+- [ ] Add workflow twin primitives: `workflow_twins` and `workflow_twin_runs`.
+  Initial `type` values: `decision_action`, `workflow_scorer`, and `ops_review`.
+- [ ] Build `GET /api/workflow-twins`, `POST /api/workflow-twins`,
+  `POST /api/workflow-twins/:id/run`, `GET /api/action-items`, and
+  `POST /api/action-items/:id/review`.
+- [ ] Build `/workflows` page with Decision & Action Twin as the first card. Show inputs,
+  outputs, governance boundary, last run, confidence, and review status.
+- [ ] Build an Action Items panel or page showing owner, due date, status, source refs,
+  confidence, and approval state.
+- [ ] Decision & Action Twin inputs: approved evidence, meeting notes, Slack/Teams messages,
+  uploaded docs, dashboard signals, and existing decisions/recommendations.
+- [ ] Decision & Action Twin outputs: decisions, action items, owners, risks, blockers,
+  recommendations, evidence refs, freshness, and confidence.
+- [ ] Enforce Agent Control Profiles before evidence enters the Decision & Action Twin prompt
+  or retrieval path. Passport-denied evidence must never enter model context.
+- [ ] Human approval remains required before an action item becomes canonical or externally
+  shareable. No autonomous sending, filing, payment, contract change, HR action, legal
+  commitment, or source-system writeback.
+- [ ] Acceptance test: given approved evidence, the twin produces decisions, action items,
+  risks, blockers, and recommendations with evidence refs.
+- [ ] Acceptance test: the twin refuses or routes to review when evidence is missing,
+  restricted, stale, or passport-denied.
+- [ ] Acceptance test: no action item becomes canonical without human approval.
+- [ ] Acceptance test: output works across at least three company profiles: professional
+  services, SaaS/digital-native, and physical/operations-heavy business.
+
+### Later workflow templates, not the universal first twin
+- [ ] Add Proposal/SOW Twin template after Decision & Action Twin is working.
+- [ ] Add Regulatory Response Twin template after output gates and escalation routing are working.
+- [ ] Add Agreement Review Twin template after legal-risk triggers and review routing are working.
+
+---
+
+## Phase 8B — Workflow Twin Scorer and Client Selection (v0.15.0)
 
 > Drawn from the V1.1 Upgrade Plan Tier 2. These strengthen pilot scoping, onboarding, proof,
 > and quality measurement, but they do not block signing the first pilot. Build during or
@@ -1076,6 +1133,16 @@ Build from **essential** to **aspirational**:
   first candidate with a clear reason.
 - [ ] AI responsibility note: AI can suggest scoring rationale, but the sponsor confirms the
   workflow selected for pilot scope.
+
+### Client workflow selection flow
+- [ ] Add a workflow-candidate library that includes universal candidates first:
+  Decision & Action Twin, Ops Review Twin, Customer/Revenue Review Twin, Risk Review Twin,
+  and Knowledge/Memory Review Twin.
+- [ ] Keep industry-specific candidates as optional templates: Proposal/SOW, Regulatory Response,
+  Agreement Review, Due Diligence, Board Memo Preparation, and PMO Tracking.
+- [ ] Use the company profile to suggest relevant candidates, but let the sponsor override.
+- [ ] Acceptance test: a client can score at least five workflows and receives one recommended
+  first Parallel Workflow Pilot with a clear reason.
 
 ### U6 — Backcasting Onboarding Step
 - [ ] Add an optional backcasting step to onboarding after company profile and role selection:
@@ -1115,6 +1182,27 @@ Build from **essential** to **aspirational**:
   accumulate.
 - [ ] AI responsibility note: eval scores are used to improve workflows and prompts, not to
   surveil individual employees.
+
+---
+
+## Phase 8C — Ops Review Twin (v0.15.x)
+
+> The repeatable company-wide cadence layer. This is broader than consulting/regulatory work:
+> every company has blockers, owners, priorities, KPIs, overdue work, and weekly follow-ups.
+
+- [ ] Add Ops Review Twin type and default configuration.
+- [ ] Inputs: processed evidence, action items, recommendations, decisions, source status,
+  department metadata, and optional Slack/Teams thread summaries.
+- [ ] Outputs: weekly execution summary, top blockers, overdue owners, process gaps, KPI signals,
+  department follow-ups, risks, and suggested next actions.
+- [ ] Add `/workflows/ops-review` or route through the generic `/workflows` detail page.
+- [ ] Add weekly run history with evidence refs, confidence, freshness, and reviewer status.
+- [ ] Route high-risk output through the same U2 output gate before it can appear in exports
+  or outbound summaries.
+- [ ] Acceptance test: an Ops Review Twin run produces different views for at least Operations,
+  Finance, People, Commercial, and Technology evidence without leaking restricted content.
+- [ ] Acceptance test: overdue owners and blockers are evidence-backed or clearly marked
+  as inferred/needs review.
 
 ---
 

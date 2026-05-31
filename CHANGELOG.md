@@ -2,6 +2,29 @@
 
 ---
 
+## 0.13.3 — Nexus Reassessment and Workflow Twin Realignment (2026-05-31)
+
+This is a planning and roadmap realignment release. It does not ship new runtime product code.
+
+**Product frame**
+- Reframed NexusAI as a governed intelligence operating layer for high-stakes professional workflows.
+- Locked the language shift away from generic autonomous-company / ExO rhetoric.
+- Added a client-facing vocabulary preference: Strategic Mandate, Operating Doctrine, Policy Guardrails, Human Approval Layer, Parallel Workflow Pilot, and Decision Workflow Engine.
+- Explicitly rejected broad "100x", workforce-replacement, and fully autonomous-company claims in client-facing copy.
+
+**Roadmap sequence**
+- Kept Phase 7D as the near-term engineering blocker track: finish U2 Agent Control Profiles, then U3 per-agent logs/rollback, then U4 learning-signal capture.
+- Reworked Phase 8A so the first workflow twin is the broad, cross-industry Decision & Action Twin.
+- Moved workflow scoring/client selection into Phase 8B.
+- Added Phase 8C for the Ops Review Twin as the repeatable weekly operating cadence layer.
+- Kept Proposal/SOW, Regulatory Response, and Agreement Review as later workflow templates, not the first universal product surface.
+
+**Docs and tasks**
+- Added `docs/NEXUS_WORKFLOW_TWIN_REALIGNMENT.md`.
+- Updated `TASKS.md` with Phase 8A/8B/8C task structure and acceptance checks.
+
+---
+
 ## 0.13.2 — U2 Agent Passport Foundation (2026-05-31)
 
 This release starts the engineering implementation of U2 Agent Control Profiles. It does not complete the full U2 surface yet: Settings UI, output gates, Ask/vector passport filtering, and full tool-runtime audit wiring remain open.

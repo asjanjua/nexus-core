@@ -6,16 +6,42 @@
 
 ## Session Info
 
-- **Last updated:** 2026-05-31 (v0.13.2 — U2 agent passport foundation built locally)
+- **Last updated:** 2026-05-31 (v0.13.3 — workflow twin realignment)
 - **Last model:** Codex
-- **Session number:** #14
-- **Current version:** 0.13.2 — Phase 9D complete; Phase 7D U1 shipped and U2 passport foundation built.
-- **Latest pushed commit:** `ba078f1` — `feat: ship v1 pilot hardening and readiness on-ramp`
-- **Remote status:** `main` pushed to GitHub at `ba078f1`; v0.13.2 changes are local until the next commit/push.
+- **Session number:** #15
+- **Current version:** 0.13.3 — Phase 9D complete; Phase 7D U1 shipped, U2 passport foundation built, and Phase 8A/8B/8C workflow twin sequence realigned.
+- **Baseline pushed commit before this handover update:** `ae71d4e` — `feat: add agent passport foundation`
+- **Remote status:** v0.13.3 roadmap changes should be committed and pushed after verification.
 
 ---
 
 ## What Was Completed This Session
+
+### v0.13.3 — Nexus Reassessment and Workflow Twin Realignment
+
+This session converted the strategic reassessment into repo-tracked roadmap decisions. No runtime code was changed.
+
+**Decision locked:**
+- NexusAI is a governed intelligence operating layer for high-stakes professional workflows, not a generic autonomous-company platform.
+- Keep Phase 7D governance blockers first: U2 Agent Control Profiles, U3 per-agent logs/rollback, U4 learning-signal capture.
+- Start workflow twins broadly with a Decision & Action Twin before specialized templates.
+- Build Workflow Twin Scorer second so clients can pick their first Parallel Workflow Pilot.
+- Build Ops Review Twin third as the repeatable weekly execution cadence.
+- Keep Proposal/SOW, Regulatory Response, and Agreement Review as later workflow templates.
+
+**Files updated:**
+- `TASKS.md` — Phase 8A/8B/8C restructured and acceptance checks added.
+- `CHANGELOG.md` — v0.13.3 planning release entry added.
+- `docs/NEXUS_WORKFLOW_TWIN_REALIGNMENT.md` — product framing, build sequence, governance boundary, and positioning language.
+
+**Important language rule:**
+Use Strategic Mandate, Operating Doctrine, Policy Guardrails, Human Approval Layer, Parallel Workflow Pilot, and Decision Workflow Engine. Avoid broad "100x", workforce-replacement, and fully autonomous-company claims in client-facing copy.
+
+**Next engineering work:**
+1. Finish U2 Agent Governance Settings UI, Ask/vector passport filtering, output gates, and tool-denial audit events.
+2. Build U3 `agent_outputs` and rollback-ready output history.
+3. Build U4 learning-signal capture.
+4. Start Phase 8A Decision & Action Twin primitives after the governance path is safe enough.
 
 ### v0.13.2 — U2 Agent Passport Foundation
 
