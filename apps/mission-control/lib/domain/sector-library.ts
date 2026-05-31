@@ -8,6 +8,8 @@
  *   - Suggest relevant C-suite roles and KPIs
  */
 
+import type { BriefLanguageMode, CompanyArchetype } from "@/lib/contracts";
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -36,6 +38,81 @@ export type SectorDefinition = {
   recommendedDashboards: string[];
   commonRecommendations: string[];
   sensitivityDefault: "internal" | "confidential";
+};
+
+export type ArchetypeEvidenceExpectation = {
+  archetype: CompanyArchetype;
+  label: string;
+  evidenceTypes: string[];
+  briefLanguageMode: BriefLanguageMode;
+};
+
+export const ARCHETYPE_EVIDENCE_EXPECTATIONS: Record<CompanyArchetype, ArchetypeEvidenceExpectation> = {
+  corporate: {
+    archetype: "corporate",
+    label: "Corporate / governed company",
+    evidenceTypes: [
+      "Board packs",
+      "Risk registers",
+      "Regulatory filings",
+      "Financial statements",
+      "Audit findings",
+      "Executive committee minutes"
+    ],
+    briefLanguageMode: "formal"
+  },
+  startup_scaleup: {
+    archetype: "startup_scaleup",
+    label: "Startup / scale-up",
+    evidenceTypes: [
+      "Product roadmap",
+      "Investor updates",
+      "Burn and runway model",
+      "OKR tracking",
+      "Hiring plan",
+      "Customer feedback"
+    ],
+    briefLanguageMode: "formal"
+  },
+  sme_physical: {
+    archetype: "sme_physical",
+    label: "Owner-operated physical business",
+    evidenceTypes: [
+      "POS reports",
+      "Weekly cash summary",
+      "Google Reviews / Business Profile exports",
+      "Staff rota",
+      "Supplier invoices",
+      "WhatsApp Business broadcast analytics"
+    ],
+    briefLanguageMode: "plain"
+  },
+  digital_native: {
+    archetype: "digital_native",
+    label: "Digital-native / internet-first company",
+    evidenceTypes: [
+      "Meta Ads exports",
+      "Google Ads reports",
+      "TikTok Business analytics",
+      "Social analytics",
+      "Email CRM reports",
+      "Creator / influencer performance data"
+    ],
+    briefLanguageMode: "formal"
+  },
+  professional_practice: {
+    archetype: "professional_practice",
+    label: "Professional practice",
+    evidenceTypes: [
+      "Engagement tracker",
+      "WIP schedule",
+      "Utilisation report",
+      "Client pipeline",
+      "Retainer report",
+      "Client meeting notes"
+    ],
+    briefLanguageMode: "formal"
+  }
 };
 
 // ---------------------------------------------------------------------------
@@ -443,6 +520,38 @@ export function getSector(key: string): SectorDefinition | undefined {
   return SECTOR_LIBRARY[key as SectorKey];
 }
 
+export function getArchetypeEvidenceExpectation(
+  archetype?: string | null
+): ArchetypeEvidenceExpectation | undefined {
+  return archetype ? ARCHETYPE_EVIDENCE_EXPECTATIONS[archetype as CompanyArchetype] : undefined;
+}
+
+export function briefLanguageModeForArchetype(
+  archetype?: string | null
+): BriefLanguageMode {
+  return archetype === "sme_physical" ? "plain" : "formal";
+}
+
+export function briefLanguageInstruction(
+  mode: string | null | undefined,
+  archetype?: string | null
+): string {
+  if (mode === "plain" || archetype === "sme_physical") {
+    return [
+      "Plain brief mode: write like a practical owner update, not a board paper.",
+      "Use 2-3 short sentences maximum and one clear action.",
+      "Avoid these terms: EBITDA, covenant compliance, IRR, capex, WACC, board pack, regulatory filing, capital adequacy, net present value.",
+      "Use plain replacements: weekly profit, loan repayment terms, return on your investment, equipment spend, cost of borrowing, weekly business summary."
+    ].join(" ");
+  }
+
+  if (archetype === "startup_scaleup" || archetype === "digital_native") {
+    return "Startup/digital brief mode: use founder/operator language such as burn, runway, ARR, activation, CAC, retention, PLG, channel efficiency, and product velocity where evidence supports it. Avoid heavyweight corporate finance language unless the evidence uses it.";
+  }
+
+  return "Formal brief mode: use concise executive language with evidence refs, confidence, owner implications, and approval boundaries.";
+}
+
 /**
  * Builds a compact natural-language company context string to inject into
  * LLM prompts. Includes sector label, subsector, business model, stage,
@@ -461,6 +570,8 @@ export function buildCompanyContext(profile: {
   primaryGoals?: string[] | null;
   riskProfile?: string | null;
   priorityRoles?: string[] | null;
+  companyArchetype?: string | null;
+  briefLanguageMode?: string | null;
 }): string {
   const sector = profile.sector ? getSector(profile.sector) : undefined;
 
@@ -478,6 +589,21 @@ export function buildCompanyContext(profile: {
       `Sector: ${sector.label}${subsectorLabel ? ` (${subsectorLabel})` : ""}`
     );
   }
+
+  if (profile.companyArchetype) {
+    parts.push(`Archetype: ${profile.companyArchetype.replace(/_/g, " ")}`);
+  }
+
+  if (profile.briefLanguageMode) {
+    parts.push(`Brief language: ${profile.briefLanguageMode}`);
+  }
+
+  const archetypeExpectation = getArchetypeEvidenceExpectation(profile.companyArchetype);
+  if (archetypeExpectation) {
+    parts.push(`Expected evidence for this archetype: ${archetypeExpectation.evidenceTypes.slice(0, 6).join(", ")}`);
+  }
+
+  parts.push(briefLanguageInstruction(profile.briefLanguageMode, profile.companyArchetype));
 
   if (profile.businessModel) {
     parts.push(`Business model: ${profile.businessModel}`);

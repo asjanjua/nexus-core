@@ -1,132 +1,466 @@
 # HANDOVER.md — NexusAI Live Session State
 
-> This file is the memory of the NexusAI relay team. Update it at the end of meaningful work.
+> This file is the memory of the NexusAI relay team. Update it at the end of every meaningful work session.
 
 ---
 
 ## Session Info
 
-- **Last updated:** 2026-05-29 20:04
-- **Last model:** codex
-- **Session number:** #2
-- **Commit hash:** 8bb9fe1
+- **Last updated:** 2026-05-31 (Phase 9D — Go-to-Market Execution)
+- **Last model:** claude-sonnet-4-6 (Cowork)
+- **Session number:** #12
+- **Current version:** 0.13.0 — Phase 9D complete. Production DB migrated.
 
 ---
 
 ## What Was Completed This Session
 
-Added Nexus-specific relay team memory files from ai-relay-team with a safer no-commit default.
+### Phase 9D — Go-to-Market Execution (v0.13.0) + Production DB Migration
+
+Two major workstreams completed in this session.
+
+**Production database:** Migrations 0012 (workspace status, trial mode, llm_usage) and 0013 (demo_mode flag) applied successfully to the Neon production database. All prior migrations (0001–0011) were already applied and skipped.
+
+**Phase 9D — GTM materials (6 deliverables):**
+
+1. `/product-brief` — Public web page (no auth required). Full one-page product brief: problem, solution, how it works, sector fit, agent rooms, pricing tiers ($3k–$8k/month pilot), competitor comparison table, 3-step pilot start. Print → PDF via browser. Added to public routes in middleware.
+
+2. `NexusAI_SOW_Fintech.docx` — Pilot SOW for regulated financial services. Full 12-section SOW with cover page, scope, deliverables table, client responsibilities, timeline, commercial terms, AI responsibility section, governance, and signature blocks.
+
+3. `NexusAI_SOW_ProfessionalServices.docx` — Same structure, professional services variant (Meridian Advisory Group context, consulting-specific documents and roles).
+
+4. `NexusAI_SOW_DigitalNative.docx` — Same structure, digital-native/SaaS variant (Vanta Systems context).
+
+5. `NexusAI_DemoScripts_CompetitorComparison.docx` — Three 15-minute demo scripts: (a) Fintech CEO — risk room, regulatory findings, weekly brief export; (b) Consulting Managing Partner — BD pipeline, delivery intelligence, people signals; (c) D2C/SaaS Founder — MRR, customer health, engineering signals. Plus competitor comparison (NexusAI vs ChatGPT Enterprise vs Glean vs BI tools) with objection handling for 5 common objections.
+
+6. `NexusAI_PilotROI_ReviewTemplates.xlsx` — Three-sheet workbook: (a) ROI Calculator — editable inputs (hours saved per role, exec cost/hr), auto-calculates value recovered, pilot cost, net value, ROI multiple, payback period. Zero formula errors. (b) Pilot Review Template — Day 30/60/90 review with usage metrics, scorecard status, qualitative feedback, renewal discussion. (c) Kickoff Agenda — 60-minute structured kickoff agenda with time, topic, and actions/owner columns.
+
+**Verification:** TypeScript clean. All documents and spreadsheets validated.
 
 ---
 
-## Files Changed / Current Dirty Context
+### Previous Session — Phase 8 — Paid Pilot Packaging (v0.12.0)
 
-```text
-A  CUTOVER.md
- M apps/mission-control/app/api/ask/route.ts
- M apps/mission-control/app/api/dashboard/[role]/route.ts
- M apps/mission-control/app/api/evidence/[id]/review/route.ts
- M apps/mission-control/app/api/ingestion/status/route.ts
- M apps/mission-control/app/ask/page.tsx
- M apps/mission-control/app/dashboard/cbo/page.tsx
- M apps/mission-control/app/dashboard/ceo/page.tsx
- M apps/mission-control/app/dashboard/coo/page.tsx
- M apps/mission-control/app/dashboard/cto/page.tsx
- M apps/mission-control/app/decisions/page.tsx
-MM apps/mission-control/app/ingestion/page.tsx
- M apps/mission-control/app/layout.tsx
- M apps/mission-control/app/onboarding/page.tsx
- M apps/mission-control/app/onboarding/wizard.tsx
- M apps/mission-control/app/recommendations/page.tsx
- M apps/mission-control/app/review/page.tsx
- M apps/mission-control/app/sources/page.tsx
- M apps/mission-control/components/ask-panel.tsx
- M apps/mission-control/components/dashboard-panel.tsx
- M apps/mission-control/components/recommendation-list.tsx
- M apps/mission-control/components/side-nav.tsx
- M apps/mission-control/db/schema.ts
-M  apps/mission-control/lib/api-auth.ts
- M apps/mission-control/lib/contracts.ts
- M apps/mission-control/lib/data/repository.ts
- M apps/mission-control/lib/data/store.ts
- M apps/mission-control/lib/services/dashboard.ts
- M apps/mission-control/lib/services/llm.ts
- M apps/mission-control/lib/services/retrieval.ts
-MM apps/mission-control/tsconfig.tsbuildinfo
-A  docs/lmstudio/LM_STUDIO_MOE_OPTIMIZATION.md
-A  docs/lmstudio/README.md
-A  docs/lmstudio/results/baseline-benchmark.json
-A  docs/lmstudio/results/baseline-benchmark.md
-A  docs/lmstudio/results/capability-lock.json
-A  docs/lmstudio/results/capability-lock.md
-A  docs/lmstudio/results/crash-analysis-2026-05-19.md
-A  docs/lmstudio/results/moe-probe.txt
-M  package.json
-M  render.yaml
-A  scripts/lmstudio/baseline-benchmark.mjs
-A  scripts/lmstudio/capability-lock.mjs
-A  scripts/lmstudio/moe-probe.sh
-A  test-data/ingestion/Q2-2026-board-pack.pdf
-A  test-data/ingestion/digital-banking-strategy-2026.docx
-A  test-data/ingestion/gcc-payments-market-intelligence.pdf
-A  test-data/ingestion/operational-kpis-may-2026.md
-A  test-data/ingestion/regulatory-compliance-update.txt
-A  test-data/ingestion/risk-register-Q2-2026.xlsx
-?? AGENTS.md
-?? CLAUDE.md
-?? HANDOVER.md
-?? TASKS.md
-?? UIUX_AUDIT.md
-?? apps/mission-control/app/api/workspace/profile/
-?? apps/mission-control/app/dashboard/[role]/
-?? apps/mission-control/components/dashboard-skeleton.tsx
-?? apps/mission-control/db/migrations/0008_workspace_profile.sql
-?? apps/mission-control/lib/domain/
-?? apps/mission-control/lib/services/company-detection.ts
-?? apps/mission-control/lib/services/recommendations.ts
-?? deploy-company-context.sh
-?? deploy-ingestion-fix.sh
-?? deploy-recommendations-fix.sh
-?? deploy-uiux-wave1.sh
-?? relay.py
+The goal was to deliver everything needed to convert a demo into a signed pilot and serve
+a sponsor within 24 hours of kickoff. No infrastructure dependencies — all code.
+
+**Six concrete changes shipped:**
+
+1. **Export API routes** — `GET /api/export/weekly-brief`, `/risk-radar`, `/reco-register`,
+   `/one-pager`. Risk radar and reco register support `?format=csv` with named file download.
+
+2. **Print-ready export pages** — `/export` hub, `/export/weekly-brief` (AI brief + risk table
+   + recommendations summary, print → PDF), `/export/one-pager` (single-page board summary).
+   Exports section added to side nav.
+
+3. **Demo mode flag** — `demo_mode` column in `workspace_settings` + migration 0013. DEMO badge
+   in layout top bar. Ingestion blocked (403) in demo mode. `PATCH /api/settings/workspace`
+   accepts `demoMode`. Settings → Demo Tools tab with toggle.
+
+4. **Demo workspace reset** — `lib/demo/sector-packs.ts` with 3 sector packs (financial
+   services, professional services, technology SaaS), each 5 realistic documents. `POST
+   /api/workspace/demo-reset?sector=<sector>` clears data, updates profile, seeds evidence
+   at auto-process confidence, fires recommendation generation.
+
+5. **Pilot sponsor kit** — `/pilot-kit` print page: Sponsor Onboarding Checklist (5-step
+   business readiness guide) + Pilot Success Scorecard (7 outcomes, Day 30/60/90 columns,
+   sign-off blocks). Linked from side nav.
+
+6. **Pilot billing triggers doc** — `docs/PILOT_BILLING_TRIGGERS.md`: trial/pilot/active/
+   suspended/cancelled definitions, trigger conditions, manual override SQL, pricing tiers
+   ($3k–$8k/month pilot), Stripe automation specification for Phase 7C.
+
+**Verification:**
+- `npx tsc --noEmit` clean (no application code errors)
+
+---
+
+### Previous Session — Phase 7C — Production Operations (v0.11.0)
+
+The goal was to complete all pre-pilot production hardening tasks. No user-facing features —
+only the foundation that makes the product safe to charge money for.
+
+**Seven concrete changes shipped:**
+
+1. `middleware.ts` — Full `Content-Security-Policy` header added (strict-dynamic in production,
+   unsafe-inline in dev). CORS policy implemented: production domain only, never wildcard.
+   In-process sliding-window rate limiting added for auth (10/min), ingestion (20/min),
+   ask (30/min), and dashboard (60/min) routes per IP. 429 response with `Retry-After`.
+
+2. `db/schema.ts` + `db/migrations/0012_workspace_status.sql` — `workspace_status` enum
+   (trial | pilot | active | suspended | cancelled) added to workspaces table.
+   `trial_ends_at`, `suspended_at`, `stripe_customer_id`, `stripe_subscription_id` columns added.
+   New `llm_usage` table for per-workspace token cost tracking.
+
+3. `lib/data/repository.ts` — `getWorkspaceStatus()` returns current status + trial expiry.
+   `recordLLMUsage()` writes token cost records to `llm_usage` (fire-and-forget, non-blocking).
+   `WorkspaceStatus`, `WorkspaceStatusRecord`, and `LLMUsageInput` types exported.
+
+4. `lib/services/llm.ts` — `route` field added to `LLMOptions`. `persistUsage()` helper fires
+   after every successful LLM call to write cost records to DB. `estimateCostMicro()` computes
+   approximate cost per model family (Opus, Sonnet, Haiku, DeepSeek). Non-blocking — never
+   delays the LLM response.
+
+5. `components/trial-banner.tsx` — Client component. Shows days remaining in trial.
+   Dismissable per session. Upgrades to a plain "trial ended" message when expiry passes.
+   `components/feedback-button.tsx` — Floating button on all dashboard pages. Opens a modal
+   (subject + message). POSTs to `/api/feedback`, writes to audit log.
+
+6. `app/api/feedback/route.ts` — POST endpoint (scope: read:dashboard). Validates input,
+   writes to audit log via `repository.pushAudit()`. Logs support email intent when
+   `NEXUS_SUPPORT_EMAIL` is set (email sending requires transactional service wiring).
+
+7. `docs/DR_RUNBOOK.md` — Full disaster recovery runbook covering DB loss, R2 unavailable,
+   Clerk failure, LLM provider down, full outage, and migration rollback SQL.
+   `docs/SECURITY_REVIEW.md` — Pre-pilot security checklist with REQUIRED vs RECOMMENDED items,
+   sign-off table, and deferred Phase 2 items.
+
+**Verification:**
+- `npx tsc --noEmit` passed (clean)
+
+---
+
+### Previous Session — Phase 7 Completion — Brief Language, Agent Rooms, and Archetype Controls (v0.10.3)
+
+The goal was to close Phase 7A/7B for the V1 pilot scope and make the role/archetype system
+feel complete in the product.
+
+**Six concrete changes shipped:**
+
+1. `lib/domain/sector-library.ts` — Added archetype evidence expectations and formal/plain
+   brief-language instructions. `buildCompanyContext()` now includes expected evidence and
+   language rules for downstream LLM prompts.
+
+2. `lib/services/dashboard.ts` — Agent prompts now receive brief-language rules directly.
+   SME/owner-operated briefs are constrained to short, plain-language owner updates.
+
+3. `components/dashboard-panel.tsx` and `app/dashboard/[role]/page.tsx` — Dashboard pages now
+   support agent-level filtering with `?agent=...`, use room labels for new roles, and adapt
+   SME physical page titles to Owner/Ops/Accounts-style briefs.
+
+4. `components/side-nav.tsx` — Agent Room navigation now includes Finance, Risk, and People rooms.
+
+5. `app/settings/page.tsx` — Company Profile settings now expose company archetype, brief
+   language, location count, archetype version, evidence expectations, and role-state badges.
+
+6. `docs/SECTOR_GAPS.md` — Added the unsupported-sector gap list and the V1 handling rule:
+   archetype-first role suggestion when sector fit is weak.
+
+**Verification:**
+- `npx tsc --noEmit` passed
+- `npm run test` passed: 12 files, 44 tests
+
+### Previous Session (v0.10.2) — Phase 7A Agent Briefs and Digital Evidence Classification
+
+The goal was to make the expanded role system feel meaningfully specialist, especially for
+digital-native, social-led, regulated, operational, and local-business companies.
+
+**Four concrete changes shipped:**
+
+1. `lib/agents/agent-library.ts` — Added specialist agents for finance, cash/runway, margin,
+   regulatory obligations, audit findings, performance marketing, brand/community, creator
+   performance, product, customer success, people, clinical risk, supply chain, project control,
+   legal exposure, and local business.
+
+2. `ROLE_AGENT_BRIEFS` now maps the expanded roles to sharper agent sets. CFO, CRO, CCO, CMO,
+   Growth, Performance Marketing, Brand/Community, CPO, CHRO, Customer Success, Chief of Staff,
+   Managing Partner, Chief Medical, Supply Chain, Project Director, Practice Lead, General
+   Counsel, and Franchise Manager no longer reuse generic CEO/COO/CBO sets.
+
+3. `classifyFilename()` now recognizes paid ads, organic social, WhatsApp Business, Google
+   Business Profile/local-business, creator/influencer, and email/CRM exports. It returns
+   `sourceType`, extraction hints, and evidence warnings in addition to department/sensitivity.
+
+4. `POST /api/ingestion/status` now preserves classifier-selected `sourceType` when the caller
+   does not provide one, and includes extraction hints/warnings in audit payloads and upload
+   responses.
+
+**Verification:**
+- `npx tsc --noEmit` passed
+- `npm run test` passed: 11 files, 38 tests
+- `npm run build` passed: 44 routes
+
+### Previous Session (v0.10.1) — Phase 7A Wizard Role Selection
+
+The goal was to turn the Phase 7A role engine into an actual onboarding experience.
+Step 4 now acts like a guided org-design decision point instead of a static dashboard picker.
+
+**Four concrete changes shipped:**
+
+1. `app/onboarding/wizard.tsx` — Step 4 now receives the full `DetectedProfile`, runs
+   `suggestRolesForProfile()`, and renders role cards with adaptive labels, reasons,
+   relevance scores, badges, and evidence-scope descriptions.
+
+2. CEO/Owner/Managing Partner is always first, locked, and selected. Staged roles render in a
+   separate section with activation conditions and can be activated early.
+
+3. Dual-hat handling is now available for early-stage and small-company roles. If a user marks
+   a role as covered by another person, the workspace profile persists that role as
+   `state: "dual_hat"` with `dualHatOf: "ceo"`.
+
+4. Ambiguous-company fallback questions now appear when `requiresRoleConfirmation` is true. The
+   answers apply deterministic signals for finance, risk/compliance, customers, people, technology,
+   and performance marketing before proceeding.
+
+**Verification:**
+- `npx tsc --noEmit` passed
+- `npm run test` passed: 10 files, 33 tests
+- `npm run build` passed: 44 routes
+
+### Previous Session (v0.10.0) — Phase 7A Foundation: Roles and Archetypes
+
+The goal was to start the full role-system expansion by adding the domain layer first, before
+changing the wizard UI. This makes the next UI pass much safer because role relevance is now
+deterministic, testable, and no longer delegated to the LLM.
+
+**Six concrete changes shipped:**
+
+1. `lib/contracts.ts`, `db/schema.ts`, `db/migrations/0011_role_archetype.sql`,
+   `lib/data/repository.ts`, and `app/api/workspace/profile/route.ts` — Workspace profiles now
+   support `companyArchetype`, `archetypeVersion`, `briefLanguageMode`, `locationCount`, and
+   `roleStates`.
+
+2. `lib/domain/role-registry.ts` — New role registry covering universal, regulatory, growth,
+   technology/product, people, sector-specific, and future-stage roles. Roles include
+   archetype-aware labels, relevance signals, thresholds, evidence scopes, staged conditions,
+   and mapped specialist-agent IDs.
+
+3. `lib/services/role-suggestion.ts` — New deterministic role suggestion engine. It scores roles
+   by archetype, sector, stage, size, regulatory trigger, business model signal, and free-text
+   keywords. CEO is always first and locked.
+
+4. `lib/services/company-detection.ts` — LLM profile detection now asks for `companyArchetype`;
+   role suggestions are generated by the deterministic engine. Output now includes
+   `suggestedRoleReasons`, `stagedRoles`, `roleStates`, and `requiresRoleConfirmation`.
+
+5. `lib/domain/sector-library.ts` and `lib/agents/agent-library.ts` — Company context now includes
+   archetype and brief-language mode; expanded role keys now map to existing specialist agents.
+   Finance, risk, and people rooms have first-class paths: `/dashboard/cfo`, `/dashboard/cro`,
+   `/dashboard/chro`.
+
+6. `tests/role-suggestion.test.ts` — New coverage for owner labeling, regulated financial services
+   risk/compliance suggestions, and digital-native performance marketing suggestions.
+
+**Verification:**
+- `npx tsc --noEmit` passed
+- `npm run test` passed: 10 files, 33 tests
+- `npm run build` passed: 44 routes
+
+### Previous Session (v0.9.1) — Phase 7A Technical Prep
+
+The immediate goal was to clear the hard blockers before building the full role registry,
+business archetypes, and role relevance engine.
+
+**Three concrete changes shipped:**
+
+1. `lib/contracts.ts` — `roleSchema` widened from a closed `z.enum(["ceo","coo","cbo","cto"])`
+   to a safe open string role key. `KNOWN_ROLES` preserves the current built-in role set while
+   allowing future roles such as `cfo`, `cro`, `cmo`, `owner`, `managing_partner`, and
+   `vp_performance_mktg`.
+
+2. Role/dashboard runtime — `lib/agents/agent-library.ts`, `lib/services/dashboard.ts`,
+   `app/api/dashboard/[role]/route.ts`, `app/dashboard/[role]/page.tsx`, `lib/data/store.ts`,
+   and `lib/data/repository.ts` now accept custom/future role keys. Unknown roles receive fallback
+   specialist-agent briefs and generic room metadata instead of failing compile-time or 404ing.
+
+3. Connector provenance — `connectorInstanceId` was added to evidence contracts, ingestion input,
+   repository mapping, API response/audit payloads, DB schema, and migration
+   `0010_connector_instance.sql`. Manual uploads remain null by default; Phase 10+ connectors can
+   populate the field to trace which connector instance created each evidence record.
+
+**Verification:**
+- `npx tsc --noEmit` passed
+- `npm run test` passed: 9 files, 30 tests
+- `npm run build` passed: 44 routes
+
+### Previous Session (v0.9.0) — AI Onboarding Strategist
+
+The core design principle driving this session: NexusAI should act like a senior business analyst during onboarding, not a form wizard. Every AI touch-point should reduce friction and demonstrate the system understands the business before a single document is uploaded.
+
+**Five concrete changes shipped:**
+
+1. `lib/services/company-detection.ts` — New `mapFocusToDashboard(intent, companyContext)` function. LLM maps user's stated priority ("blocking growth, top risks") to recommended dashboards + 3 suggested first questions + a one-sentence focus summary. Exports `FocusMapping` type.
+
+2. `app/api/workspace/first-focus/route.ts` — New API route (POST, admin scope). Takes user intent, fetches workspace profile, builds company context, calls `mapFocusToDashboard`. Returns `FocusMapping` or 422 when LLM unavailable.
+
+3. `app/api/ingestion/status/route.ts` — Sector-aware file classification now applies everywhere, not just in the onboarding wizard. On every file upload, the route fetches the workspace profile and passes the sector to `classifyFilename`. Caller-supplied values still win. Regulated sectors (financial_services, healthcare) get confidential defaults automatically.
+
+4. `app/onboarding/wizard.tsx` — Three changes:
+   - Step 3 (Profile): Added "Governance and Policy Defaults" panel. Shows auto-approved (75%+), pending (35–75%), quarantine (<35%) thresholds and sensitivity default. Regulated-sector callout explains elevated defaults for financial_services and healthcare.
+   - Step 5 (Upload): `classifyFilename` now receives `profile.sector` instead of `""` so department/sensitivity suggestions are sector-aware from the first file pick.
+   - Step 7 (Go Live): Transformed from static role cards into an AI focus intent step. User types priority, AI highlights dashboards with "Start here" badges and shows first suggested question. Clicking a recommended card passes the question as `?q=` URL param to pre-populate the Ask panel.
+
+5. `deploy-company-context.sh` — Updated with new files and commit message.
+
+### Previous Session (v0.8.0) — AI Company Detection
+
+- `detectCompanyProfile(description)` — Full LLM company type inference
+- `POST /api/workspace/detect-profile` — API route
+- 7-step onboarding wizard rewrite (Workspace, Discover, Profile, Roles, Upload, Preview, Go Live)
+- Step 2: free-text AI tab + Browse-by-sector tab with "Can't find your industry?" fallback
+- Step 3: Profile confirmation with editable fields, suggested documents, KPIs, risks
+- Step 4: Role selection pre-seeded from AI profile; Add Role feature for custom roles
+- Step 5: Suggested document pack shown; drag-drop multi-file; AI file classification
+
+### Previous Session (v0.7.0) — Company Context Infrastructure
+
+- 8-sector taxonomy in `lib/domain/sector-library.ts`
+- `workspaceProfiles` DB table + migration 0008
+- `GET|POST /api/workspace/profile`
+- `buildCompanyContext()` injected into dashboard, ask, and recommendation prompts
+
+---
+
+## Current Architecture State
+
+### Core Data Flow
+
+```
+User uploads document
+  → POST /api/ingestion/status
+  → fetch workspace profile (sector)
+  → classifyFilename(filename, sector)  [auto-department + sensitivity]
+  → extractTextFromBuffer()            [PDF/DOCX/XLSX/PPTX/text]
+  → ingestEvidence()                   [confidence routing: processed/pending/quarantined]
+  → if processed: generateRecommendations() [fire-and-forget]
+  → generateEmbedding()                [pgvector, if enabled]
+```
+
+```
+User asks a question (Ask panel)
+  → POST /api/ask
+  → rankEvidence(): vector search → keyword fallback
+  → fetch workspace profile
+  → buildCompanyContext(profile)       [<300-token sector/stage/goals prefix]
+  → ask(userPrompt, systemPrompt)      [Claude LLM synthesis]
+  → return answer + evidenceRefs + confidence
+```
+
+```
+Dashboard card render
+  → GET /api/dashboard/:role
+  → cardsForRole(role, workspaceId)
+  → fetch profile + evidence in parallel
+  → buildCompanyContext(profile)
+  → generateCard() per card with company context prefix
+```
+
+### File Map (key files only)
+
+| File | Purpose |
+|---|---|
+| `lib/domain/sector-library.ts` | 8-sector taxonomy, `buildCompanyContext()` |
+| `lib/services/company-detection.ts` | `detectCompanyProfile()`, `classifyFilename()`, `mapFocusToDashboard()` |
+| `lib/services/retrieval.ts` | Two-tier vector/keyword retrieval + LLM synthesis |
+| `lib/services/dashboard.ts` | Role-card generation with company context |
+| `lib/services/recommendations.ts` | Evidence-to-recommendation LLM pipeline |
+| `lib/services/ingestion.ts` | Confidence routing, freshness, quarantine logic |
+| `lib/data/repository.ts` | Postgres + in-memory fallback for all entities |
+| `lib/api-auth.ts` | `requireScope()` — Clerk session + Bearer API key auth |
+| `app/onboarding/wizard.tsx` | 7-step AI-assisted onboarding wizard |
+| `app/api/workspace/detect-profile/route.ts` | AI company detection API |
+| `app/api/workspace/first-focus/route.ts` | AI focus mapping API |
+| `app/api/ingestion/status/route.ts` | File upload + sector-aware classification |
+| `db/schema.ts` | Drizzle schema: tenants, workspaces, evidence, recommendations, decisions, approvals, audit, workspaceProfiles |
+
+### Environment Variables Required
+
+```
+ANTHROPIC_API_KEY          Claude LLM provider
+OPENAI_API_KEY             Embeddings (text-embedding-3-small)
+NEXUS_VECTOR_SEARCH        "enabled" to activate pgvector path
+DATABASE_URL               Neon Postgres connection string
+NEXT_PUBLIC_CLERK_*        Clerk auth keys
+CLERK_SECRET_KEY           Clerk server key
+CLOUDFLARE_R2_*            R2 object storage (optional)
 ```
 
 ---
 
-## Immediate Next Task
+## Plan Status — Reviewed and Tightened 2026-05-30
 
-**Task:** Design and implement the AI-assisted Company Context onboarding step before uploads.
+TASKS.md has 24 phases covering the full product roadmap. Phases 1–7B are complete.
 
-**Assigned to:** claude
+| Phase | Status |
+|---|---|
+| Phases 1–6 | Complete |
+| Pre-7A Technical Prep | Complete (v0.9.1) |
+| Phase 7A — Role System + Archetypes | Complete (v0.10.0–0.10.2) |
+| Phase 7B — Agent Rooms UI | Complete (v0.10.3) |
+| Phase 7C — Production Operations | Complete (v0.11.0) — partial; external services still needed |
+| Phase 8 — Paid Pilot Packaging | **Build now** |
+| Phase 2 open items (4 tasks) | Before regulated-sector scale |
+| Phase 9 — Team Members | When first pilot needs >1 user |
+| Phase 9B — Mobile and Voice | After Phase 8 — market differentiator for GCC/Pakistan |
+| Phase 9C — Data Residency + Compliance | Before GCC regulated-sector clients |
+| Phase 9D — Go-to-Market Execution | Alongside Phase 8 |
+| Phase 10 — Enterprise SaaS Connectors | Each removes a manual upload step |
+| Phase 10B — Infrastructure Connectors | GCC/Pakistan banking, POS, regulatory portals |
+| Phase 11 — Social/Market Signals | Digital-native companies |
+| Phase 11B — Language Support | Arabic and Urdu for GCC/Pakistan scale |
+| Phase 12–15 | Long-term enterprise moat |
+
+## What Needs to Come Next
+
+**The product is fully commercially ready. Remaining blockers before the first pilot contract are operational, not code.**
+
+Pre-pilot sign-off checklist (see `docs/SECURITY_REVIEW.md`):
+- [ ] Wire Sentry for error tracking (30 min — add SDK and DSN to Render env vars)
+- [ ] Set up `support@nexusai.io` or Freshdesk (1 hour — email forwarding)
+- [ ] Run `npm audit --audit-level=high` and resolve any critical findings
+- [ ] Verify security headers via securityheaders.com after next deploy
+- [ ] Run tenant isolation test (2 Clerk orgs, verify no cross-workspace data access)
+- [ ] Stripe wiring (Phase 7C billing — not blocking for first pilot if manual invoicing)
+
+What is ready to take to a first client today:
+- `/product-brief` — public URL, share after first call
+- 3x pilot SOW Word docs — fintech, professional services, digital-native
+- Demo scripts for all 3 archetypes (Fintech CEO, Consulting Partner, D2C Founder)
+- ROI calculator + 30/60/90 review template + kickoff agenda (one Excel file)
+- Pilot sponsor onboarding checklist + success scorecard (`/pilot-kit`)
+- Export Hub: weekly brief PDF, risk radar CSV, recommendation register CSV, one-pager PDF
+
+**Next code phase: Phase 9 — Team Members.** Build only when a pilot client asks "can my COO also see this?"
+**Phase 9B — WhatsApp brief delivery** is the highest-value differentiator for GCC/Pakistan. Build after or alongside Phase 9.
 
 ---
 
-## Notes and Warnings
+## Notes for Next Model
 
-Do not commit unrelated existing staged/untracked work. Start by reading AGENTS.md, HANDOVER.md, TASKS.md and checking git status.
+- TypeScript is clean. Run `npx tsc --noEmit 2>&1 | grep -v ".next/"` to verify before shipping.
+- Deploy script is `bash deploy-company-context.sh` from the `nexus-core` root.
+- All API routes use `requireScope(request, scope)` from `lib/api-auth.ts`. Do not bypass it.
+- `buildCompanyContext(profile)` returns an empty string if the profile is null — all LLM callers handle this gracefully.
+- The in-memory store in `lib/data/store.ts` is the fallback when the DB is unavailable. Always write to both.
+- Do not add new npm packages without checking `package.json` first. The dependency footprint is intentionally lean.
+- Read `AGENTS.md` before editing any AI service file — it defines the trust model and approval boundaries.
 
 ---
 
 ## Continuation Prompt
 
 ```text
-You are picking up NexusAI mid-build.
+You are picking up NexusAI Mission Control mid-build.
 
-Read these files before editing:
-
+Before doing anything else, read:
 1. CLAUDE.md
-2. HANDOVER.md
+2. HANDOVER.md  (you are reading this)
 3. TASKS.md
+4. AGENTS.md
 
-Last model (codex) completed:
-Added Nexus-specific relay team memory files from ai-relay-team with a safer no-commit default.
+Current version: 0.13.0
+Last session completed: Phase 9D — GTM execution (product brief web page, 3 pilot SOW Word docs,
+demo scripts for 3 archetypes + competitor comparison, ROI calculator + pilot review templates +
+kickoff agenda Excel). Production DB migrated (migrations 0012 + 0013 applied successfully).
 
-Your task:
-Design and implement the AI-assisted Company Context onboarding step before uploads.
+The product is commercially ready. GTM materials are in ~/Documents/Playground/.
+TypeScript is clean.
 
-Notes:
-Do not commit unrelated existing staged/untracked work. Start by reading AGENTS.md, HANDOVER.md, TASKS.md and checking git status.
+Immediate next: operational setup before first pilot signs:
+- Sentry (30 min), support@nexusai.io (1 hour), npm audit, securityheaders.com verify, tenant isolation test.
+- Stripe wiring optional for first pilot if using manual invoicing.
 
-Start by confirming current state, checking git status, and then proceed.
+Next code phase: Phase 9 (Team Members) — only build when a pilot client needs multi-user access.
 
+Start by confirming git status, then read the files above, then proceed.
 ```

@@ -66,13 +66,16 @@ function keywordScore(query: string, text: string): number {
  * The two-tier approach means semantic retrieval is always additive:
  * turning NEXUS_VECTOR_SEARCH off reverts silently to keyword mode.
  */
-async function rankEvidence(query: string, workspaceId: string): Promise<EvidenceRecord[]> {
+async function rankEvidence(query: string, workspaceId: string, department?: string): Promise<EvidenceRecord[]> {
   // --- Tier 1: Vector search -------------------------------------------------
   if (isVectorSearchEnabled()) {
     const queryVec = await generateEmbedding(query);
     if (queryVec) {
       const vectorResults = await repository.searchEvidenceByVector(workspaceId, queryVec, 6);
-      if (vectorResults.length > 0) return vectorResults;
+      const filtered = department
+        ? vectorResults.filter((item) => item.department === department)
+        : vectorResults;
+      if (filtered.length > 0) return filtered;
       // No results from vector path (empty workspace or all embeddings NULL) —
       // fall through to keyword ranking rather than returning empty.
     }
@@ -84,7 +87,8 @@ async function rankEvidence(query: string, workspaceId: string): Promise<Evidenc
     .filter(
       (item) =>
         item.ingestionStatus === "processed" &&
-        item.sensitivity !== "restricted"
+        item.sensitivity !== "restricted" &&
+        (!department || item.department === department)
     )
     .map((item) => {
       const ks = keywordScore(query, item.text);
@@ -127,17 +131,20 @@ function buildEvidenceContext(records: EvidenceRecord[]): string {
 
 export async function answerWithEvidence(
   query: string,
-  workspaceId: string
+  workspaceId: string,
+  options: { department?: string } = {}
 ): Promise<AskResponse> {
   const [results, profile] = await Promise.all([
-    rankEvidence(query, workspaceId),
+    rankEvidence(query, workspaceId, options.department),
     repository.getWorkspaceProfile(workspaceId)
   ]);
 
   if (!results.length) {
     return {
       answer:
-        "No relevant evidence found in this workspace for that query. Upload source documents and ensure they pass ingestion before asking.",
+        options.department
+          ? `No relevant evidence found for ${options.department}. Upload source documents for that department and ensure they pass ingestion before asking.`
+          : "No relevant evidence found in this workspace for that query. Upload source documents and ensure they pass ingestion before asking.",
       confidence: 0.1,
       freshnessHours: 9999,
       refused: true,
@@ -171,7 +178,8 @@ export async function answerWithEvidence(
   try {
     const answer = await ask(userPrompt, ASK_SYSTEM_PROMPT, {
       maxTokens: 512,
-      temperature: 0.15
+      temperature: 0.15,
+      workspaceId
     });
 
     return {

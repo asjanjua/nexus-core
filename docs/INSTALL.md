@@ -1,78 +1,68 @@
-# Install Nexus (One Command)
+# Install NexusAI Mission Control
 
-Nexus installs as an overlay around OpenClaw.
-If OpenClaw is missing, bootstrap will install it automatically.
+## Quick Start
 
-## Quick Install
-From anywhere:
+Clone the repository and install dependencies:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/asjanjua/nexus-core/main/scripts/install.sh | bash
+git clone https://github.com/asjanjua/nexus-core.git
+cd nexus-core/apps/mission-control
+npm install
 ```
 
-From repo root:
+Copy the environment template and fill in your keys:
 
 ```bash
-bash scripts/nexus-bootstrap.sh
+cp .env.example .env.local
 ```
 
-Then verify:
+Required environment variables:
+
+```
+ANTHROPIC_API_KEY          Claude LLM provider
+OPENAI_API_KEY             Embeddings (text-embedding-3-small)
+DATABASE_URL               Neon Postgres connection string
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+CLERK_SECRET_KEY
+NEXUS_VECTOR_SEARCH        Set to "enabled" to activate pgvector
+```
+
+Run migrations then start:
 
 ```bash
-$HOME/.nexus/scripts/nexus-doctor.sh
+npm run db:migrate
+npm run dev
 ```
 
-Optional PATH helper:
+Verify at: `http://localhost:3000/api/health`
+
+## Production Deploy
+
+NexusAI is deployed on Vercel with Neon Postgres and Cloudflare R2.
 
 ```bash
-export PATH="$HOME/.nexus/bin:$PATH"
-nexus doctor
-nexus doctor --json
-nexus init
-nexus init /path/to/workspace
-nexus status
-nexus setup
-nexus help
+# From nexus-core root
+bash deploy-company-context.sh
 ```
 
-## What The Bootstrap Does
-1. Checks if `openclaw` exists.
-2. Installs OpenClaw with `npm install -g openclaw` if missing.
-3. Creates Nexus home at `~/.nexus`.
-4. Writes config: `~/.nexus/config/nexus.env`.
-5. Installs helper scripts under `~/.nexus/scripts`.
-6. Installs helper command at `~/.nexus/bin/nexus`.
+After deploy, confirm:
 
-## Available Commands
-- `nexus doctor`
-- `nexus doctor --json`
-- `nexus init`
-- `nexus init /path/to/workspace`
-- `nexus status`
-- `nexus setup`
-- `nexus help`
+```bash
+curl https://your-domain/api/health
+```
 
 ## Requirements
-- macOS or Linux shell
-- `bash`
-- `curl` (for hosted installer path)
-- `git`
-- `npm` (only needed when OpenClaw is not already installed)
 
-## Safer Variant (No Pipe-To-Shell)
-If your policy avoids direct pipe execution:
-
-```bash
-curl -fsSL https://raw.githubusercontent.com/asjanjua/nexus-core/main/scripts/install.sh -o /tmp/nexus-install.sh
-bash /tmp/nexus-install.sh
-```
+- Node.js 20+
+- PostgreSQL 15+ with pgvector extension (Neon recommended)
+- Clerk account for authentication
+- Anthropic API key for LLM synthesis
+- OpenAI API key for embeddings (optional but recommended)
 
 ## Troubleshooting
-- If `openclaw` is installed but not found, restart your shell and re-run bootstrap.
-- If npm global installs are blocked, install OpenClaw manually, then rerun bootstrap.
-- If `nexus doctor` fails, run:
 
-```bash
-echo "$PATH"
-command -v openclaw
-```
+- `db:migrate` fails: check `DATABASE_URL` is set and the DB is reachable.
+- `api/health` returns unhealthy: check that at least one of `ANTHROPIC_API_KEY`
+  or `NEXUS_LLM_PROVIDER` is configured.
+- Evidence not processing: verify `NEXUS_VECTOR_SEARCH` is `enabled` and
+  migration 0007 has run (adds the pgvector HNSW index).

@@ -3,8 +3,12 @@
 import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { getAllSectors, getSector } from "@/lib/domain/sector-library";
-import type { DetectedProfile, SuggestedDocument } from "@/lib/services/company-detection";
-import { classifyFilename } from "@/lib/services/company-detection";
+import { labelForRole, ROLE_REGISTRY } from "@/lib/domain/role-registry";
+import { roleStatesFromSuggestions, suggestRolesForProfile, type SuggestedRole } from "@/lib/services/role-suggestion";
+import type { DetectedProfile, FocusMapping } from "@/lib/services/company-detection";
+import type { SuggestedDocument } from "@/lib/services/company-classification";
+import type { WorkspaceRoleState } from "@/lib/contracts";
+import { classifyFilename } from "@/lib/services/company-classification";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -30,6 +34,12 @@ type WizardRole = {
   icon: string;
   color: string;
   badge: string;
+  reason?: string;
+  state?: "active" | "staged" | "available" | "dual_hat";
+  locked?: boolean;
+  dualHatCandidate?: boolean;
+  stagedCondition?: string;
+  relevanceScore?: number;
   isCustom?: boolean;
 };
 
@@ -81,6 +91,76 @@ const ALL_ROLES: WizardRole[] = [
     badge: "Technology",
   },
 ];
+
+const ROLE_ICON: Record<string, string> = {
+  ceo: "◈",
+  cfo: "$",
+  coo: "◉",
+  cro: "!",
+  cco: "§",
+  cbo: "◑",
+  growth_officer: "↗",
+  vp_performance_mktg: "%",
+  brand_community: "◆",
+  cmo: "◇",
+  cto: "◐",
+  cpo: "▣",
+  chro: "◎",
+  managing_partner: "◈",
+  chief_medical: "+",
+  vp_supply_chain: "⇄",
+  project_director: "▦",
+  practice_lead: "◌",
+  vp_customer_success: "♥",
+  chief_of_staff: "※",
+  general_counsel: "¶",
+  franchise_manager: "⌂",
+};
+
+const ROLE_COLOR: Record<string, string> = {
+  ceo: "border-purple-400/30 hover:border-purple-400/60",
+  cfo: "border-emerald-400/30 hover:border-emerald-400/60",
+  coo: "border-blue-400/30 hover:border-blue-400/60",
+  cro: "border-red-400/30 hover:border-red-400/60",
+  cco: "border-amber-400/30 hover:border-amber-400/60",
+  cbo: "border-nexus-accent/30 hover:border-nexus-accent/60",
+  cto: "border-orange-400/30 hover:border-orange-400/60",
+  chro: "border-pink-400/30 hover:border-pink-400/60",
+};
+
+function roleBadge(roleKey: string): string {
+  if (["cro", "cco", "general_counsel"].includes(roleKey)) return "Governance";
+  if (["growth_officer", "vp_performance_mktg", "brand_community", "cmo"].includes(roleKey)) return "Growth";
+  if (["cto", "cpo"].includes(roleKey)) return "Technology";
+  if (["cfo"].includes(roleKey)) return "Finance";
+  if (["coo", "vp_supply_chain", "project_director", "franchise_manager"].includes(roleKey)) return "Operations";
+  if (["chro"].includes(roleKey)) return "People";
+  return "Leadership";
+}
+
+function roleDescription(roleKey: string): string {
+  const scope = ROLE_REGISTRY[roleKey]?.evidenceScope;
+  return scope?.length
+    ? `Monitors ${scope.slice(0, 4).join(", ")} evidence.`
+    : "Custom intelligence view based on governed evidence.";
+}
+
+function toWizardRole(role: SuggestedRole): WizardRole {
+  return {
+    key: role.roleKey,
+    label: role.label,
+    description: roleDescription(role.roleKey),
+    icon: ROLE_ICON[role.roleKey] ?? "◇",
+    color: ROLE_COLOR[role.roleKey] ?? "border-white/20 hover:border-white/40",
+    badge: roleBadge(role.roleKey),
+    reason: role.reason,
+    state: role.state,
+    locked: role.locked,
+    dualHatCandidate: role.dualHatCandidate,
+    stagedCondition: role.stagedCondition,
+    relevanceScore: role.relevanceScore,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // Step indicator
@@ -325,7 +405,17 @@ function Step2({
       });
       const payload = await res.json();
       if (!res.ok || !payload.ok) throw new Error(payload.error ?? "detection_failed");
-      onDetected(payload.data as DetectedProfile);
+      const detected = payload.data as DetectedProfile;
+      if (detected.confidence < 0.5) {
+        setSelectedSector(detected.sector ?? "");
+        setSelectedSubsector(detected.subsector ?? "");
+        setTab("browse");
+        setDetectError(
+          "AI was not confident enough to apply this profile automatically. Please confirm the closest sector manually."
+        );
+        return;
+      }
+      onDetected(detected);
     } catch (err) {
       setDetectError(
         err instanceof Error && err.message.includes("LLM unavailable")
@@ -568,6 +658,11 @@ function Step3({
           primaryGoals: profile.primaryGoals,
           riskProfile: profile.riskProfile || null,
           priorityRoles: profile.priorityRoles,
+          companyArchetype: profile.companyArchetype,
+          archetypeVersion: profile.companyArchetype ? `manual-confirmed:${new Date().toISOString()}` : null,
+          briefLanguageMode: profile.companyArchetype === "sme_physical" ? "plain" : "formal",
+          locationCount: 1,
+          roleStates: profile.roleStates ?? {},
         }),
       });
       const payload = await res.json();
@@ -692,6 +787,58 @@ function Step3({
         </div>
       </div>
 
+      {/* Governance & policy defaults */}
+      <div className="rounded-xl border border-white/10 bg-white/5 p-4 space-y-3">
+        <SectionLabel text="Governance &amp; policy defaults NexusAI will apply" />
+        <div className="grid grid-cols-2 gap-2">
+          {[
+            {
+              label: "Auto-approved",
+              value: "Evidence above 75% confidence",
+              color: "text-green-400",
+              dot: "bg-green-400",
+            },
+            {
+              label: "Pending review",
+              value: "35–75% confidence",
+              color: "text-amber-400",
+              dot: "bg-amber-400",
+            },
+            {
+              label: "Quarantined",
+              value: "Below 35% confidence",
+              color: "text-red-400",
+              dot: "bg-red-400",
+            },
+            {
+              label: "Sensitivity default",
+              value: profile.sensitivityDefault === "confidential"
+                ? "Confidential (regulated sector)"
+                : "Internal",
+              color: profile.sensitivityDefault === "confidential"
+                ? "text-amber-300"
+                : "text-blue-300",
+              dot: profile.sensitivityDefault === "confidential"
+                ? "bg-amber-400"
+                : "bg-blue-400",
+            },
+          ].map(({ label, value, color, dot }) => (
+            <div key={label} className="flex items-start gap-2 rounded-lg border border-white/10 bg-black/10 px-3 py-2">
+              <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
+              <div>
+                <p className="text-xs text-white/40">{label}</p>
+                <p className={`text-xs font-medium ${color}`}>{value}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+        {(profile.sector === "financial_services" || profile.sector === "healthcare") && (
+          <p className="text-xs text-amber-300/70 bg-amber-400/5 border border-amber-400/20 rounded-lg px-3 py-2">
+            Regulated sector detected: board, finance, legal, and compliance documents will be classified as Confidential by default.
+          </p>
+        )}
+      </div>
+
       {error && <p className="rounded-lg border border-red-300/40 bg-red-300/10 px-3 py-2 text-sm text-red-300">{error}</p>}
 
       <div className="flex gap-3 items-center">
@@ -712,45 +859,84 @@ function Step3({
 // ---------------------------------------------------------------------------
 
 function Step4({
-  suggestedRoles,
+  profile,
+  workspaceId,
+  onProfileUpdated,
   onNext,
   onBack,
 }: {
-  suggestedRoles: string[];
+  profile: DetectedProfile;
+  workspaceId: string;
+  onProfileUpdated: (profile: DetectedProfile) => void;
   onNext: (roles: WizardRole[]) => void;
   onBack: () => void;
 }) {
-  // Pre-select roles that match AI suggestions
-  const initialSelected = new Set(
-    ALL_ROLES
-      .filter((r) => suggestedRoles.some((sr) => sr.toLowerCase().includes(r.key) || r.key.includes(sr.toLowerCase())))
-      .map((r) => r.key)
-  );
-  // Always include CEO
+  const profileSuggestions = suggestRolesForProfile({
+    sector: profile.sector,
+    companyArchetype: profile.companyArchetype,
+    businessModel: profile.businessModel,
+    companyStage: profile.companyStage,
+    employeeBand: profile.employeeBand,
+    region: profile.region,
+    primaryGoals: profile.primaryGoals,
+    riskProfile: profile.riskProfile,
+    description: profile.reasoning,
+  });
+  const suggestionRoles = profileSuggestions.map(toWizardRole);
+  const activeRoles = suggestionRoles.filter((role) => role.state === "active");
+  const stagedRoles = suggestionRoles.filter((role) => role.state === "staged");
+
+  const initialSelected = new Set(activeRoles.map((role) => role.key));
   initialSelected.add("ceo");
 
+  const initialDualHat = new Set(
+    Object.entries(profile.roleStates ?? {})
+      .filter(([, state]) => state?.state === "dual_hat" || Boolean(state?.dualHatOf))
+      .map(([key]) => key)
+  );
+
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(initialSelected);
+  const [dualHatKeys, setDualHatKeys] = useState<Set<string>>(initialDualHat);
+  const [activatedStagedKeys, setActivatedStagedKeys] = useState<Set<string>>(new Set());
   const [customRoles, setCustomRoles] = useState<WizardRole[]>([]);
   const [showAddRole, setShowAddRole] = useState(false);
   const [newRoleLabel, setNewRoleLabel] = useState("");
   const [newRoleDesc, setNewRoleDesc] = useState("");
+  const [fallbackMoney, setFallbackMoney] = useState("");
+  const [fallbackWorries, setFallbackWorries] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function toggleRole(key: string) {
+  function toggleRole(role: WizardRole) {
+    if (role.locked) return;
     setSelectedKeys((prev) => {
       const next = new Set(prev);
-      if (next.has(key)) {
-        if (next.size === 1) return prev; // keep at least one
-        next.delete(key);
+      if (next.has(role.key)) {
+        next.delete(role.key);
       } else {
-        next.add(key);
+        next.add(role.key);
       }
       return next;
     });
   }
 
+  function toggleDualHat(key: string) {
+    setDualHatKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  function activateStaged(role: WizardRole) {
+    setActivatedStagedKeys((prev) => new Set([...prev, role.key]));
+    setSelectedKeys((prev) => new Set([...prev, role.key]));
+  }
+
   function addCustomRole() {
     if (!newRoleLabel.trim()) return;
-    const key = `custom-${newRoleLabel.toLowerCase().replace(/\s+/g, "-")}`;
+    const key = `custom-${newRoleLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
     const role: WizardRole = {
       key,
       label: newRoleLabel.trim(),
@@ -767,61 +953,195 @@ function Step4({
     setShowAddRole(false);
   }
 
-  const allRoles = [...ALL_ROLES, ...customRoles];
-  const selectedRoles = allRoles.filter((r) => selectedKeys.has(r.key));
+  function applyFallbackSignal() {
+    const text = `${fallbackMoney} ${fallbackWorries}`.toLowerCase();
+    const extraKeys = new Set<string>();
+    if (/cash|payroll|finance|budget|margin|profit|accounts/.test(text)) extraKeys.add("cfo");
+    if (/customer|complaint|sales|pipeline|renewal|churn/.test(text)) extraKeys.add("cbo");
+    if (/compliance|regulator|regulated|audit|risk/.test(text)) {
+      extraKeys.add("cro");
+      extraKeys.add("cco");
+    }
+    if (/team|staff|people|hiring|culture/.test(text)) extraKeys.add("chro");
+    if (/technology|platform|app|data|security|ai/.test(text)) extraKeys.add("cto");
+    if (/ad|marketing|social|meta|google|tiktok|creator/.test(text)) extraKeys.add("vp_performance_mktg");
+    setSelectedKeys((prev) => new Set([...prev, ...extraKeys]));
+  }
+
+  const allRoles = [...activeRoles, ...stagedRoles.filter((role) => activatedStagedKeys.has(role.key)), ...customRoles]
+    .filter((role, index, roles) => roles.findIndex((item) => item.key === role.key) === index);
+  const selectedRoles = allRoles
+    .filter((role) => selectedKeys.has(role.key))
+    .map((role) => ({
+      ...role,
+      state: dualHatKeys.has(role.key) ? "dual_hat" as const : "active" as const,
+    }));
+
+  async function persistAndContinue() {
+    setSaving(true);
+    setError(null);
+    const roleStates: Record<string, WorkspaceRoleState> = {
+      ...roleStatesFromSuggestions(profileSuggestions),
+      ...Object.fromEntries(
+        selectedRoles.map((role) => [
+          role.key,
+          {
+            state: role.state ?? "active",
+            activatedAt: role.state === "dual_hat" ? null : new Date().toISOString(),
+            stagedCondition: role.stagedCondition ?? null,
+            dualHatOf: role.state === "dual_hat" ? "ceo" : null,
+          } satisfies WorkspaceRoleState,
+        ])
+      ),
+      ...Object.fromEntries(
+        stagedRoles
+          .filter((role) => !activatedStagedKeys.has(role.key))
+          .map((role) => [
+            role.key,
+            {
+              state: "staged",
+              activatedAt: null,
+              stagedCondition: role.stagedCondition ?? null,
+              dualHatOf: null,
+            } satisfies WorkspaceRoleState,
+          ])
+      ),
+    };
+    const updatedProfile = {
+      ...profile,
+      priorityRoles: selectedRoles.map((role) => role.key),
+      roleStates,
+    };
+    try {
+      const res = await fetch("/api/workspace/profile", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          companyName: updatedProfile.companyName || null,
+          sector: updatedProfile.sector || null,
+          subsector: updatedProfile.subsector || null,
+          businessModel: updatedProfile.businessModel || null,
+          companyStage: updatedProfile.companyStage || null,
+          employeeBand: updatedProfile.employeeBand || null,
+          region: updatedProfile.region || null,
+          primaryGoals: updatedProfile.primaryGoals,
+          riskProfile: updatedProfile.riskProfile || null,
+          priorityRoles: updatedProfile.priorityRoles,
+          companyArchetype: updatedProfile.companyArchetype,
+          archetypeVersion: updatedProfile.archetypeVersion ?? `roles-confirmed:${new Date().toISOString()}`,
+          briefLanguageMode: updatedProfile.companyArchetype === "sme_physical" ? "plain" : "formal",
+          locationCount: updatedProfile.locationCount ?? 1,
+          roleStates,
+        }),
+      });
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok || !payload.ok) throw new Error(payload.error ?? "save_roles_failed");
+      onProfileUpdated(updatedProfile);
+      onNext(selectedRoles);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "unknown_error");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function RoleCard({ role, staged = false }: { role: WizardRole; staged?: boolean }) {
+    const isOn = selectedKeys.has(role.key);
+    const isDualHat = dualHatKeys.has(role.key);
+    return (
+      <div
+        className={[
+          "rounded-xl border p-4 text-left transition-all relative",
+          isOn
+            ? `${role.color} bg-white/5`
+            : staged
+              ? "border-white/10 bg-black/10"
+              : "border-white/10 bg-black/10 opacity-70",
+        ].join(" ")}
+      >
+        <button type="button" onClick={() => staged ? activateStaged(role) : toggleRole(role)} className="w-full text-left">
+          <div className="flex items-start gap-3 mb-2">
+            <span className={`text-xl ${isOn ? "text-white/70" : "text-white/25"}`}>{role.icon}</span>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <p className={`text-sm font-medium ${isOn ? "text-white" : "text-white/55"}`}>{role.label}</p>
+                <span className="rounded-full border border-white/15 px-1.5 py-0.5 text-xs text-white/30">{role.badge}</span>
+                {role.locked && <span className="rounded-full border border-nexus-accent/40 bg-nexus-accent/10 px-1.5 py-0.5 text-xs text-nexus-accent">Locked</span>}
+                {isDualHat && <span className="rounded-full border border-blue-300/40 bg-blue-300/10 px-1.5 py-0.5 text-xs text-blue-200">Covered by CEO</span>}
+                {staged && <span className="rounded-full border border-white/15 bg-white/5 px-1.5 py-0.5 text-xs text-white/40">Staged</span>}
+              </div>
+              {typeof role.relevanceScore === "number" && (
+                <p className="mt-1 text-xs text-white/30">{Math.round(role.relevanceScore * 100)}% relevance</p>
+              )}
+            </div>
+            <div className={[
+              "shrink-0 h-5 w-5 rounded-full border flex items-center justify-center transition-all",
+              isOn ? "border-nexus-accent bg-nexus-accent/20" : "border-white/20 bg-transparent",
+            ].join(" ")}>
+              {isOn && <span className="text-nexus-accent text-xs">✓</span>}
+            </div>
+          </div>
+          <p className={`text-xs leading-relaxed ${isOn ? "text-white/60" : "text-white/35"}`}>
+            {role.reason ?? role.description}
+          </p>
+          {staged && role.stagedCondition && (
+            <p className="mt-2 text-xs text-amber-200/60">Activation: {role.stagedCondition}</p>
+          )}
+        </button>
+        {role.dualHatCandidate && isOn && !role.locked && (
+          <button
+            type="button"
+            onClick={() => toggleDualHat(role.key)}
+            className="mt-3 rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-xs text-white/50 transition hover:border-white/25 hover:text-white/75"
+          >
+            {isDualHat ? "Create separate dashboard instead" : "Covered by another person / dual-hat"}
+          </button>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-2xl font-semibold text-white">Which dashboards do you need?</h2>
+        <h2 className="text-2xl font-semibold text-white">Who should NexusAI support first?</h2>
         <p className="mt-2 text-white/60">
-          NexusAI surfaces different intelligence for each role. Pre-selected based on your company profile.
-          Toggle off roles you don&apos;t need.
+          We translated your company profile into role-aware agent rooms. Keep the live roles,
+          mark small-company dual-hats, and stage future roles for later.
         </p>
       </div>
 
+      {profile.requiresRoleConfirmation && (
+        <div className="rounded-xl border border-amber-300/30 bg-amber-300/10 p-4 space-y-3">
+          <div>
+            <p className="text-sm font-medium text-amber-100">Help NexusAI tune these roles</p>
+            <p className="mt-1 text-xs text-amber-100/60">
+              Your company type is a little unusual or low-confidence. Answer these and we&apos;ll adjust the recommended roles.
+            </p>
+          </div>
+          <select className="input" value={fallbackMoney} onChange={(e) => setFallbackMoney(e.target.value)}>
+            <option value="">How does the company primarily make money?</option>
+            <option value="sell product directly to customers">We sell a product directly to customers</option>
+            <option value="services to businesses project retainer">We provide services to businesses</option>
+            <option value="services to consumers physical location">We provide services to consumers</option>
+            <option value="platform marketplace buyers sellers">We run a platform or marketplace</option>
+            <option value="regulated financial services compliance risk">We are regulated financial services</option>
+            <option value="physical business location staff cash">We are a physical/location-based business</option>
+          </select>
+          <textarea
+            className="input min-h-[76px]"
+            value={fallbackWorries}
+            onChange={(e) => setFallbackWorries(e.target.value)}
+            placeholder="Who makes the most important decisions, and what do they worry about most?"
+          />
+          <button type="button" onClick={applyFallbackSignal} className="btn-subtle text-sm">
+            Update recommended roles
+          </button>
+        </div>
+      )}
+
       <div className="grid grid-cols-2 gap-3">
-        {allRoles.map((role) => {
-          const isOn = selectedKeys.has(role.key);
-          const isAISuggested = suggestedRoles.some((sr) => sr.toLowerCase().includes(role.key.split("-")[0]) || role.key.includes(sr.toLowerCase().replace(/\//g, "").replace(/\s+/g, "")));
-          return (
-            <button
-              key={role.key}
-              type="button"
-              onClick={() => toggleRole(role.key)}
-              className={[
-                "rounded-xl border p-4 text-left transition-all relative",
-                isOn
-                  ? `${role.color} bg-white/5`
-                  : "border-white/10 bg-black/10 opacity-50",
-              ].join(" ")}
-            >
-              {isAISuggested && isOn && (
-                <span className="absolute top-2 right-2 rounded-full border border-nexus-accent/40 bg-nexus-accent/10 px-1.5 py-0.5 text-xs text-nexus-accent/80">
-                  AI
-                </span>
-              )}
-              <div className="flex items-start gap-3 mb-2">
-                <span className={`text-xl ${isOn ? "text-white/70" : "text-white/20"}`}>{role.icon}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <p className={`text-sm font-medium ${isOn ? "text-white" : "text-white/40"}`}>{role.label}</p>
-                    <span className="rounded-full border border-white/15 px-1.5 py-0.5 text-xs text-white/30">{role.badge}</span>
-                  </div>
-                </div>
-                <div className={[
-                  "shrink-0 h-5 w-5 rounded-full border flex items-center justify-center transition-all",
-                  isOn ? "border-nexus-accent bg-nexus-accent/20" : "border-white/20 bg-transparent",
-                ].join(" ")}>
-                  {isOn && <span className="text-nexus-accent text-xs">✓</span>}
-                </div>
-              </div>
-              <p className={`text-xs leading-relaxed ${isOn ? "text-white/50" : "text-white/25"}`}>
-                {role.description}
-              </p>
-            </button>
-          );
-        })}
+        {activeRoles.map((role) => <RoleCard key={role.key} role={role} />)}
 
         {/* Add Role card */}
         {!showAddRole && (
@@ -840,6 +1160,18 @@ function Step4({
           </button>
         )}
       </div>
+
+      {stagedRoles.length > 0 && (
+        <div className="space-y-3">
+          <div>
+            <p className="text-sm font-medium text-white/80">Roles to stage for later</p>
+            <p className="mt-1 text-xs text-white/40">These are likely to matter as the company grows. You can activate one now.</p>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            {stagedRoles.map((role) => <RoleCard key={role.key} role={role} staged />)}
+          </div>
+        </div>
+      )}
 
       {/* Add Role form */}
       {showAddRole && (
@@ -878,14 +1210,17 @@ function Step4({
         </div>
       )}
 
+      {error && <p className="rounded-lg border border-red-300/40 bg-red-300/10 px-3 py-2 text-sm text-red-300">{error}</p>}
+
       <p className="text-xs text-white/30">
         {selectedRoles.length} role{selectedRoles.length !== 1 ? "s" : ""} selected.
+        {dualHatKeys.size > 0 ? ` ${dualHatKeys.size} marked as covered by another role.` : ""}
         You can add or change roles any time from Settings.
       </p>
 
       <div className="flex gap-3">
-        <button onClick={() => onNext(selectedRoles)} className="btn-primary">
-          Continue →
+        <button onClick={persistAndContinue} disabled={saving} className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed">
+          {saving ? "Saving roles..." : "Continue →"}
         </button>
         <button onClick={onBack} className="btn-subtle text-sm text-white/50">← Back</button>
       </div>
@@ -900,12 +1235,14 @@ function Step4({
 function Step5({
   suggestedDocuments,
   sensitivityDefault,
+  sector,
   workspaceId,
   onNext,
   onBack,
 }: {
   suggestedDocuments: SuggestedDocument[];
   sensitivityDefault: "internal" | "confidential";
+  sector: string;
   workspaceId: string;
   onNext: (results: IngestionResult[]) => void;
   onBack: () => void;
@@ -921,7 +1258,7 @@ function Step5({
     if (!incoming) return;
     const selected = Array.from(incoming).slice(0, MAX_ONBOARDING_FILES);
     const withMeta: FileWithMeta[] = selected.map((f) => {
-      const cls = classifyFilename(f.name, "");
+      const cls = classifyFilename(f.name, sector);
       return {
         file: f,
         department: cls.department,
@@ -1212,23 +1549,54 @@ function Step6({ results, onNext }: { results: IngestionResult[]; onNext: () => 
 }
 
 // ---------------------------------------------------------------------------
-// Step 7 — Go live: role selection
+// Step 7 — Go live: AI focus intent + role selection
 // ---------------------------------------------------------------------------
+
+const ROLE_FOCUS_EXAMPLES = [
+  "What's blocking our growth and what risks need my attention?",
+  "How is operational delivery performing right now?",
+  "What's in the commercial pipeline and where are the gaps?",
+];
 
 function Step7({ selectedRoles }: { selectedRoles: WizardRole[] }) {
   const router = useRouter();
   const [navigating, setNavigating] = useState<string | null>(null);
+  const [focusIntent, setFocusIntent] = useState("");
+  const [mapping, setMapping] = useState<FocusMapping | null>(null);
+  const [mappingLoading, setMappingLoading] = useState(false);
+  const [mappingError, setMappingError] = useState<string | null>(null);
 
-  function go(roleKey: string) {
+  function go(roleKey: string, question?: string) {
     setNavigating(roleKey);
-    // Custom roles fall back to CEO dashboard since they don't have a dedicated page yet
-    const path = ["ceo", "coo", "cbo", "cto"].includes(roleKey)
-      ? `/dashboard/${roleKey}`
-      : `/dashboard/ceo`;
-    router.push(path);
+    const validKeys = ["ceo", "coo", "cbo", "cto"];
+    const path = validKeys.includes(roleKey) ? `/dashboard/${roleKey}` : `/dashboard/ceo`;
+    // Pass first suggested question as query param so Ask panel can pre-populate
+    const url = question ? `${path}?q=${encodeURIComponent(question)}` : path;
+    router.push(url);
+  }
+
+  async function handleMapFocus() {
+    if (!focusIntent.trim() || focusIntent.trim().length < 5) return;
+    setMappingLoading(true);
+    setMappingError(null);
+    try {
+      const res = await fetch("/api/workspace/first-focus", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intent: focusIntent }),
+      });
+      const payload = await res.json();
+      if (!res.ok || !payload.ok) throw new Error(payload.error ?? "mapping_failed");
+      setMapping(payload.data as FocusMapping);
+    } catch {
+      setMappingError("AI mapping unavailable. Use the role cards below to get started.");
+    } finally {
+      setMappingLoading(false);
+    }
   }
 
   const displayRoles = selectedRoles.length > 0 ? selectedRoles : ALL_ROLES;
+  const recommendedKeys = new Set(mapping?.recommendedDashboards ?? []);
 
   return (
     <div className="space-y-6">
@@ -1238,32 +1606,112 @@ function Step7({ selectedRoles }: { selectedRoles: WizardRole[] }) {
         </div>
         <h2 className="text-2xl font-semibold text-white">Your intelligence is ready</h2>
         <p className="mt-2 text-white/60 max-w-md mx-auto">
-          NexusAI is configured with your company context. Select your first dashboard view.
-          Each role surfaces a different lens tuned to your decision-making context.
+          Tell NexusAI what you want to focus on first — or go straight to a role dashboard.
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
-        {displayRoles.map((role) => (
+      {/* AI focus intent input */}
+      <div className="rounded-xl border border-nexus-accent/20 bg-nexus-accent/5 p-4 space-y-3">
+        <p className="text-sm font-medium text-white/80">What do you want NexusAI to help with first?</p>
+        <textarea
+          className="min-h-16 w-full rounded-lg border border-white/20 bg-black/20 p-3 text-sm text-white/80 placeholder-white/30 focus:border-nexus-accent focus:outline-none resize-none"
+          placeholder="e.g. What's blocking growth and what risks need my attention?"
+          value={focusIntent}
+          onChange={(e) => { setFocusIntent(e.target.value); setMapping(null); }}
+          rows={2}
+        />
+        <div className="flex flex-wrap gap-2">
+          {ROLE_FOCUS_EXAMPLES.map((ex) => (
+            <button
+              key={ex}
+              type="button"
+              onClick={() => { setFocusIntent(ex); setMapping(null); }}
+              className="rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs text-white/40 hover:border-nexus-accent/40 hover:text-white/70 transition"
+            >
+              {ex.length > 55 ? ex.slice(0, 55) + "…" : ex}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-3">
           <button
-            key={role.key}
-            onClick={() => go(role.key)}
-            disabled={!!navigating}
-            className={[
-              "rounded-xl border p-5 text-left transition-all",
-              role.color,
-              navigating === role.key ? "opacity-60 cursor-wait" : navigating ? "opacity-40" : "cursor-pointer",
-            ].join(" ")}
+            onClick={handleMapFocus}
+            disabled={mappingLoading || focusIntent.trim().length < 5}
+            className="btn-primary text-sm disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            <div className="flex items-start justify-between mb-3">
-              <span className="text-2xl text-white/60">{role.icon}</span>
-              <span className="rounded-full border border-white/20 bg-white/5 px-2 py-0.5 text-xs text-white/40">{role.badge}</span>
-            </div>
-            <p className="font-semibold text-white text-sm mb-1">{role.label}</p>
-            <p className="text-xs text-white/50 leading-relaxed">{role.description}</p>
-            {navigating === role.key && <p className="mt-2 text-xs text-nexus-accent">Opening dashboard...</p>}
+            {mappingLoading ? (
+              <span className="flex items-center gap-2">
+                <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-black border-t-transparent" />
+                Mapping your focus...
+              </span>
+            ) : (
+              "Map my focus with AI →"
+            )}
           </button>
-        ))}
+          {mappingError && <p className="text-xs text-amber-300/70">{mappingError}</p>}
+        </div>
+
+        {/* AI focus result */}
+        {mapping && (
+          <div className="rounded-lg border border-nexus-accent/30 bg-nexus-accent/10 p-3 space-y-2">
+            <p className="text-xs text-nexus-accent font-medium">AI Focus Summary</p>
+            <p className="text-sm text-white/70">{mapping.focusSummary}</p>
+            <div className="space-y-1.5 pt-1">
+              <p className="text-xs text-white/40">Suggested first questions for your Ask panel:</p>
+              {mapping.suggestedQuestions.map((q, i) => (
+                <p key={i} className="text-xs text-white/60 flex items-start gap-2">
+                  <span className="text-nexus-accent shrink-0 mt-0.5">→</span>
+                  {q}
+                </p>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Role cards */}
+      <div className="grid grid-cols-2 gap-4">
+        {displayRoles.map((role) => {
+          const isRecommended = recommendedKeys.has(role.key);
+          // First suggested question for this dashboard (if AI mapped it here)
+          const firstQuestion = isRecommended && mapping
+            ? mapping.suggestedQuestions[0]
+            : undefined;
+
+          return (
+            <button
+              key={role.key}
+              onClick={() => go(role.key, firstQuestion)}
+              disabled={!!navigating}
+              className={[
+                "rounded-xl border p-5 text-left transition-all relative",
+                isRecommended
+                  ? `${role.color} ring-1 ring-nexus-accent/30`
+                  : role.color,
+                navigating === role.key ? "opacity-60 cursor-wait" : navigating ? "opacity-40" : "cursor-pointer",
+              ].join(" ")}
+            >
+              {isRecommended && (
+                <span className="absolute top-2 right-2 rounded-full border border-nexus-accent/40 bg-nexus-accent/15 px-2 py-0.5 text-xs text-nexus-accent">
+                  Start here
+                </span>
+              )}
+              <div className="flex items-start justify-between mb-3">
+                <span className="text-2xl text-white/60">{role.icon}</span>
+                {!isRecommended && (
+                  <span className="rounded-full border border-white/20 bg-white/5 px-2 py-0.5 text-xs text-white/40">{role.badge}</span>
+                )}
+              </div>
+              <p className="font-semibold text-white text-sm mb-1">{role.label}</p>
+              <p className="text-xs text-white/50 leading-relaxed">{role.description}</p>
+              {isRecommended && firstQuestion && (
+                <p className="mt-2 text-xs text-nexus-accent/70 italic line-clamp-1">
+                  First: &quot;{firstQuestion}&quot;
+                </p>
+              )}
+              {navigating === role.key && <p className="mt-2 text-xs text-nexus-accent">Opening dashboard...</p>}
+            </button>
+          );
+        })}
       </div>
 
       <p className="text-center text-xs text-white/30">
@@ -1301,12 +1749,24 @@ export function OnboardingWizard({ workspaceId, displayName, isAuthenticated }: 
       sectorLabel: sectorDef?.label ?? sector.replace(/_/g, " "),
       subsector: subsectorLabel || "",
       businessModel: "b2b",
+      companyArchetype:
+        sector === "professional_services"
+          ? "professional_practice"
+          : sector === "retail_commerce" || sector === "technology_saas"
+            ? "digital_native"
+            : sector === "financial_services" || sector === "healthcare"
+              ? "corporate"
+              : "startup_scaleup",
       companyStage: "growth",
       employeeBand: "51_200",
       region: "",
       primaryGoals: [],
       riskProfile: sector === "financial_services" || sector === "healthcare" ? "conservative" : "moderate",
       priorityRoles: sectorDef?.defaultRoles.slice(0, 6) ?? ["CEO", "COO", "CTO"],
+      suggestedRoleReasons: {},
+      stagedRoles: [],
+      roleStates: {},
+      requiresRoleConfirmation: !sectorDef,
       suggestedDocuments: (sectorDef?.documentTypes.slice(0, 5) ?? []).map((name, index) => ({
         name,
         type: documentTypeToExtension(name),
@@ -1364,7 +1824,9 @@ export function OnboardingWizard({ workspaceId, displayName, isAuthenticated }: 
 
         {step === 4 && (
           <Step4
-            suggestedRoles={profile.priorityRoles}
+            profile={profile}
+            workspaceId={workspaceId}
+            onProfileUpdated={(p) => setDetectedProfile(p)}
             onNext={(roles) => { setSelectedRoles(roles); setStep(5); }}
             onBack={() => setStep(3)}
           />
@@ -1374,6 +1836,7 @@ export function OnboardingWizard({ workspaceId, displayName, isAuthenticated }: 
           <Step5
             suggestedDocuments={profile.suggestedDocuments}
             sensitivityDefault={profile.sensitivityDefault}
+            sector={profile.sector}
             workspaceId={workspaceId}
             onNext={(results) => { setIngestionResults(results); setStep(6); }}
             onBack={() => setStep(4)}

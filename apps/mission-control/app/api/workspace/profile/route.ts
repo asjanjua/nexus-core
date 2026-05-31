@@ -39,6 +39,9 @@ export async function POST(request: Request) {
     workspaceId: ctx.workspaceId,
     primaryGoals: parsed.data.primaryGoals ?? [],
     priorityRoles: parsed.data.priorityRoles ?? [],
+    briefLanguageMode: parsed.data.briefLanguageMode ?? "formal",
+    locationCount: parsed.data.locationCount ?? 1,
+    roleStates: parsed.data.roleStates ?? {},
     updatedAt: new Date().toISOString()
   });
 

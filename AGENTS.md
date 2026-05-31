@@ -57,6 +57,16 @@ npm run db:migrate
 - All intelligence outputs should be evidence-backed, workspace-scoped, and sensitivity-aware.
 - Browser-test important UI changes against the live or local app when feasible.
 
+## Agent Trust and Approval Boundaries
+
+- Specialist agents are monitors and drafters. They may classify evidence, summarize, compare, draft briefs, draft recommendations, and prepare work packets.
+- They must not autonomously change budgets, approve payments, send external messages, post to social media, update source systems, make HR decisions, sign contracts, or create legal/financial commitments.
+- Performance Marketing agents may surface ROAS decay, creative fatigue, learning-phase issues, audience overlap, and budget pacing risks. Humans decide budget reallocations or campaign changes.
+- Brand and Community agents may read social, creator, and engagement data. Brand risk signals route to approval before any external response or public-facing draft is used.
+- WhatsApp Business evidence is confidential by default because it can contain customer contact data. Do not include raw contact data in shared summaries or exports.
+- SME / owner-operated business agents use plain-language briefs. Avoid board-pack, IRR, WACC, covenant, or capital-adequacy language unless the evidence itself requires it.
+- Regulated, legal, people, clinical, security, and compliance agents use `approval_required` for high-impact outputs and must keep restricted data out of Slack, email, and export summaries.
+
 ## File Map
 
 - `apps/mission-control/app` — routes, layouts, pages, API handlers
@@ -80,4 +90,3 @@ python3 relay.py \
 ```
 
 By default, `relay.py` updates `HANDOVER.md` without committing. Use `--commit` only when you intentionally want the relay to stage and commit selected files.
-

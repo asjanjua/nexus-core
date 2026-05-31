@@ -2,6 +2,17 @@ import { auth } from "@clerk/nextjs/server";
 import { PageShell } from "@/components/page-shell";
 import { repository } from "@/lib/data/repository";
 
+function eventTone(type: string): string {
+  if (type.includes("deleted") || type.includes("failed")) return "border-red-400/30 bg-red-400/10 text-red-200";
+  if (type.includes("approved") || type.includes("processed") || type.includes("stored")) return "border-green-400/30 bg-green-400/10 text-green-200";
+  if (type.includes("status") || type.includes("review")) return "border-amber-400/30 bg-amber-400/10 text-amber-200";
+  return "border-white/10 bg-white/5 text-white/70";
+}
+
+function humanEvent(type: string): string {
+  return type.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase());
+}
+
 export default async function ReviewPage() {
   const { orgId, userId } = await auth();
   const workspaceId = orgId ?? userId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
@@ -15,7 +26,7 @@ export default async function ReviewPage() {
   const audit = (await repository.getAuditEvents(workspaceId)).slice(0, 20);
 
   return (
-    <PageShell title="Review Queue" description="Human-in-the-loop checkpoints before promotion or outbound delivery.">
+    <PageShell title="Review Queue" description="Evidence and recommendations waiting for review before they enter executive outputs.">
       <section className="panel">
         <p className="panel-title">In-Review Recommendations</p>
         <ul className="mt-3 space-y-2 text-sm">
@@ -66,11 +77,22 @@ export default async function ReviewPage() {
 
       <section className="panel">
         <p className="panel-title">Audit Trail (Latest 20)</p>
-        <ul className="mt-3 space-y-2 text-xs text-white/70">
+        <ul className="mt-3 space-y-3 text-xs text-white/70">
           {audit.length ? (
             audit.map((event) => (
-              <li key={event.id}>
-                {event.timestamp} · {event.type} · {event.actor}
+              <li key={event.id} className="rounded-lg border border-white/10 bg-black/20 p-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <span className={`rounded-full border px-2 py-0.5 ${eventTone(event.type)}`}>
+                    {humanEvent(event.type)}
+                  </span>
+                  <span className="text-white/35">{new Date(event.timestamp).toLocaleString()}</span>
+                </div>
+                <p className="mt-2 text-white/50">Actor: {event.actor}</p>
+                {Object.keys(event.payload ?? {}).length > 0 && (
+                  <pre className="mt-2 max-h-28 overflow-auto rounded bg-black/30 p-2 text-[11px] text-white/45">
+                    {JSON.stringify(event.payload, null, 2)}
+                  </pre>
+                )}
               </li>
             ))
           ) : (

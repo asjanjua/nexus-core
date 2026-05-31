@@ -5,12 +5,14 @@ import { verifyPassword } from "@/lib/auth";
 import { store } from "@/lib/data/store";
 import type { AgentKey, AgentKeyCreated, AgentScope, EvidenceRecord, IngestionStatus, Recommendation, RecommendationStatus, Role, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
 import { assertDbConfigured, isDbRequired } from "@/lib/data/db-policy";
+import { normalizeDatabaseUrl } from "@/lib/data/postgres-url";
 import { encryptCredentials, decryptCredentials } from "@/lib/crypto";
 import {
   agentKeys,
   auditEvents,
   connectors,
   evidenceRecords,
+  llmUsage,
   recommendations,
   roles,
   tenants,
@@ -21,6 +23,23 @@ import {
   type recommendationStatusEnum,
   type ingestionStatusEnum
 } from "@/db/schema";
+
+export type WorkspaceStatus = "trial" | "pilot" | "active" | "suspended" | "cancelled";
+
+export type WorkspaceStatusRecord = {
+  status: WorkspaceStatus;
+  trialEndsAt: string | null;
+  suspendedAt: string | null;
+};
+
+export type LLMUsageInput = {
+  workspaceId: string;
+  model: string;
+  route: string;
+  inputTokens: number;
+  outputTokens: number;
+  costUsdMicro?: number;
+};
 
 type AuditInput = {
   workspaceId: string;
@@ -76,7 +95,7 @@ function getDb(): DbShape | null {
     dbInstance = null;
     return null;
   }
-  dbPool = new Pool({ connectionString: url });
+  dbPool = new Pool({ connectionString: normalizeDatabaseUrl(url) });
   dbInstance = drizzle(dbPool);
   return dbInstance;
 }
@@ -90,6 +109,8 @@ function toEvidenceRecord(row: typeof evidenceRecords.$inferSelect): EvidenceRec
     tenantId: row.tenantId,
     workspaceId: row.workspaceId,
     sourceType: row.sourceType,
+    department: row.department ?? undefined,
+    connectorInstanceId: row.connectorInstanceId ?? undefined,
     sourcePath: row.sourcePath,
     sourceUri: row.sourceUri ?? undefined,
     sourceTimestamp,
@@ -139,6 +160,13 @@ function toWorkspaceProfile(row: typeof workspaceProfiles.$inferSelect): Workspa
     primaryGoals: Array.isArray(row.primaryGoals) ? (row.primaryGoals as string[]) : [],
     riskProfile: (row.riskProfile as WorkspaceProfile["riskProfile"]) ?? null,
     priorityRoles: Array.isArray(row.priorityRoles) ? (row.priorityRoles as string[]) : [],
+    companyArchetype: (row.companyArchetype as WorkspaceProfile["companyArchetype"]) ?? null,
+    archetypeVersion: row.archetypeVersion ?? null,
+    briefLanguageMode: (row.briefLanguageMode as WorkspaceProfile["briefLanguageMode"]) ?? "formal",
+    locationCount: row.locationCount ?? 1,
+    roleStates: row.roleStates && typeof row.roleStates === "object"
+      ? (row.roleStates as WorkspaceProfile["roleStates"])
+      : {},
     updatedAt
   };
 }
@@ -235,6 +263,8 @@ export const repository = {
         tenantId: record.tenantId,
         workspaceId: record.workspaceId,
         sourceType: record.sourceType,
+        department: record.department,
+        connectorInstanceId: record.connectorInstanceId ?? null,
         sourcePath: record.sourcePath,
         sourceUri: record.sourceUri ?? null,
         sourceTimestamp: new Date(record.sourceTimestamp),
@@ -308,8 +338,8 @@ export const repository = {
     return updated;
   },
 
-  async getRoleSummary(role: Role): Promise<{
-    role: Role;
+  async getRoleSummary(role: string): Promise<{
+    role: string;
     topFocus: string;
     evidenceCount: number;
     recommendationCount: number;
@@ -337,7 +367,11 @@ export const repository = {
           ? "Strategic risk and decision velocity"
           : role === "coo"
             ? "Execution bottlenecks and operational throughput"
-            : "Growth opportunities and partner pipeline";
+            : role === "cto"
+              ? "Technology health, data governance, and security posture"
+              : role === "cbo"
+                ? "Growth opportunities and partner pipeline"
+                : "Specialist evidence brief and next-best action";
       return {
         role,
         topFocus: top,
@@ -379,6 +413,32 @@ export const repository = {
     if (updated !== null) return updated ?? undefined;
     // In-memory fallback
     return store.updateEvidenceStatus(id, status);
+  },
+
+  async deleteEvidenceRecord(id: string, actor = "system"): Promise<EvidenceRecord | undefined> {
+    const deleted = await runDb(async (db) => {
+      const rows = await db
+        .delete(evidenceRecords)
+        .where(eq(evidenceRecords.id, id))
+        .returning();
+      if (!rows.length) return undefined;
+      const record = toEvidenceRecord(rows[0]);
+      await db.insert(auditEvents).values({
+        id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        workspaceId: record.workspaceId,
+        type: "evidence_deleted",
+        actor,
+        payload: {
+          evidenceId: id,
+          sourcePath: record.sourcePath,
+          department: record.department ?? null,
+          ingestionStatus: record.ingestionStatus
+        }
+      });
+      return record;
+    });
+    if (deleted !== null) return deleted ?? undefined;
+    return store.deleteEvidenceRecord(id, actor);
   },
 
   async getAuditEvents(workspaceId: string, limit = 20): Promise<Array<{
@@ -580,6 +640,7 @@ export const repository = {
         defaultSensitivity: r.defaultSensitivity,
         slackEnabled: r.slackEnabled,
         teamsEnabled: r.teamsEnabled,
+        demoMode: r.demoMode ?? false,
         updatedAt: r.updatedAt.toISOString()
       };
     }
@@ -606,6 +667,7 @@ export const repository = {
           defaultSensitivity: next.defaultSensitivity,
           slackEnabled: next.slackEnabled,
           teamsEnabled: next.teamsEnabled,
+          demoMode: next.demoMode ?? false,
           updatedAt: new Date()
         })
         .onConflictDoUpdate({
@@ -619,6 +681,7 @@ export const repository = {
             defaultSensitivity: next.defaultSensitivity,
             slackEnabled: next.slackEnabled,
             teamsEnabled: next.teamsEnabled,
+            demoMode: next.demoMode ?? false,
             updatedAt: new Date()
           }
         });
@@ -674,6 +737,7 @@ export const repository = {
           defaultSensitivity: "internal",
           slackEnabled: false,
           teamsEnabled: false,
+          demoMode: false,
           updatedAt: now
         })
         .onConflictDoNothing();
@@ -693,6 +757,7 @@ export const repository = {
         defaultSensitivity: "internal",
         slackEnabled: false,
         teamsEnabled: false,
+        demoMode: false,
         updatedAt: now.toISOString()
       });
     }
@@ -718,6 +783,61 @@ export const repository = {
     // In-memory fallback: consider the demo workspace always provisioned so dev
     // mode doesn't redirect everyone to onboarding on every page load.
     return workspaceId === (process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo");
+  },
+
+  /**
+   * Returns the subscription status for a workspace.
+   * Falls back to "active" when DB is unavailable so the UI never incorrectly
+   * blocks access in dev/offline mode.
+   */
+  async getWorkspaceStatus(workspaceId: string): Promise<WorkspaceStatusRecord> {
+    const rows = await runDb((db) =>
+      db
+        .select({
+          status: workspaces.status,
+          trialEndsAt: workspaces.trialEndsAt,
+          suspendedAt: workspaces.suspendedAt,
+        })
+        .from(workspaces)
+        .where(eq(workspaces.id, workspaceId))
+        .limit(1)
+    );
+    if (!rows || rows.length === 0) {
+      return { status: "active", trialEndsAt: null, suspendedAt: null };
+    }
+    const row = rows[0];
+    return {
+      status: (row.status ?? "active") as WorkspaceStatus,
+      trialEndsAt: row.trialEndsAt ? row.trialEndsAt.toISOString() : null,
+      suspendedAt: row.suspendedAt ? row.suspendedAt.toISOString() : null,
+    };
+  },
+
+  /**
+   * Writes a single LLM call record to llm_usage for cost monitoring.
+   * Fire-and-forget — callers should not await this or let it block the LLM response.
+   */
+  async recordLLMUsage(input: LLMUsageInput): Promise<void> {
+    const { workspaceId, model, route, inputTokens, outputTokens, costUsdMicro = 0 } = input;
+    const now = new Date();
+    const day = now.toISOString().slice(0, 10);
+    const id = `llm_${workspaceId}_${now.getTime()}_${Math.random().toString(36).slice(2, 7)}`;
+
+    await runDb((db) =>
+      db.insert(llmUsage).values({
+        id,
+        workspaceId,
+        recordedAt: now,
+        day,
+        model,
+        route,
+        inputTokens,
+        outputTokens,
+        costUsdMicro,
+      })
+    ).catch(() => {
+      // Non-fatal — cost tracking should never break the product
+    });
   },
 
   // -------------------------------------------------------------------------
@@ -908,6 +1028,11 @@ export const repository = {
           primaryGoals: profile.primaryGoals ?? [],
           riskProfile: profile.riskProfile ?? null,
           priorityRoles: profile.priorityRoles ?? [],
+          companyArchetype: profile.companyArchetype ?? null,
+          archetypeVersion: profile.archetypeVersion ?? null,
+          briefLanguageMode: profile.briefLanguageMode ?? "formal",
+          locationCount: profile.locationCount ?? 1,
+          roleStates: profile.roleStates ?? {},
           updatedAt: new Date()
         })
         .onConflictDoUpdate({
@@ -923,6 +1048,11 @@ export const repository = {
             primaryGoals: profile.primaryGoals ?? [],
             riskProfile: profile.riskProfile ?? null,
             priorityRoles: profile.priorityRoles ?? [],
+            companyArchetype: profile.companyArchetype ?? null,
+            archetypeVersion: profile.archetypeVersion ?? null,
+            briefLanguageMode: profile.briefLanguageMode ?? "formal",
+            locationCount: profile.locationCount ?? 1,
+            roleStates: profile.roleStates ?? {},
             updatedAt: new Date()
           }
         })

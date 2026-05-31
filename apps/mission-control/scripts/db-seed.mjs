@@ -1,10 +1,11 @@
 import { Pool } from "pg";
 import crypto from "node:crypto";
+import { normalizeDatabaseUrl } from "./db-url.mjs";
 
 function requireDbUrl() {
   const dbUrl = process.env.DATABASE_URL;
   if (!dbUrl) throw new Error("DATABASE_URL is required for db:seed");
-  return dbUrl;
+  return normalizeDatabaseUrl(dbUrl);
 }
 
 function hashPassword(password, salt) {

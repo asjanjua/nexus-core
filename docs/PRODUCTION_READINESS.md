@@ -9,7 +9,7 @@ It is **not yet production-ready** for broad multi-tenant enterprise scale.
 - Evidence-first output philosophy (provenance and confidence)
 - Role-based executive output templates
 - Governance stance (human approval required for high-impact actions)
-- Additive architecture with existing OpenClaw + Vault + specialist-agent stack
+- Additive architecture — sits on top of existing systems, does not replace them
 
 ## What Is Not Yet Ready
 - Full multi-tenant control plane

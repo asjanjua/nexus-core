@@ -32,6 +32,13 @@ NexusAI consolidates that context into role-aware outputs with provenance, confi
 - Confidence-gated ingestion
 - Role-specific executive lenses
 - Clear separation between source systems and decision-support layer
+- AI-native readiness on-ramp before pilot scope
+- Govern and Assure layer: human approval, evidence provenance, sensitivity labels, agent control profiles, audit logs, and rollback-ready output history
+
+## Governance Position
+NexusAI is built for decision support before automation. Agents retrieve, summarize, draft, and recommend from approved evidence, while high-impact actions remain approval-gated. V1 does not allow autonomous source-system writeback, external posting, payments, filings, HR actions, legal commitments, or financial commitments.
+
+The V1.1 governance hardening path adds Agent Control Profiles ("passports"), searchable per-agent logs, rollback-ready agent outputs, and learning-signal capture from accept/edit/reject decisions.
 
 ## What It Is Not (V1)
 - Not an ERP/CRM/HRIS replacement
@@ -51,4 +58,4 @@ NexusAI consolidates that context into role-aware outputs with provenance, confi
 - Paid pilot with defined scope and success criteria
 - Weekly governance review
 - Final executive pack + production hardening roadmap
-
+- Optional readiness assessment and workflow scorer before pilot kickoff

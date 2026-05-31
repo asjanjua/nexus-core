@@ -9,6 +9,8 @@ type IngestionInput = {
   workspaceId: string;
   tenantId: string;
   sourceType: string;
+  department?: string;
+  connectorInstanceId?: string;
   sourcePath: string;
   sourceUri?: string;
   sourceTimestamp: string;
@@ -84,6 +86,8 @@ export async function ingestEvidence(input: IngestionInput): Promise<EvidenceRec
     tenantId: input.tenantId,
     workspaceId: input.workspaceId,
     sourceType: input.sourceType,
+    department: input.department,
+    connectorInstanceId: input.connectorInstanceId,
     sourcePath: input.sourcePath,
     sourceUri: input.sourceUri,
     sourceTimestamp: input.sourceTimestamp,

@@ -4,7 +4,12 @@
  * OpenAI-compatible providers can be selected with NEXUS_LLM_PROVIDER.
  *
  * Falls back gracefully when the key is absent (dev / offline mode).
+ *
+ * Every successful call fires a non-blocking write to llm_usage via
+ * repository.recordLLMUsage(). This drives the cost monitoring dashboard.
  */
+
+import { repository } from "@/lib/data/repository";
 
 const ANTHROPIC_BASE_URL = (
   process.env.ANTHROPIC_BASE_URL?.trim().replace(/\/+$/, "") ||
@@ -25,6 +30,41 @@ const OPENAI_COMPAT_BASE_URL = (
   DEEPSEEK_BASE_URL
 );
 const MAX_TOKENS = 1024;
+const REQUEST_WINDOW_MS = 60_000;
+const MAX_REQUESTS_PER_WINDOW = Math.max(
+  1,
+  Number(process.env.NEXUS_LLM_MAX_REQUESTS_PER_MINUTE ?? 30)
+);
+const DAILY_TOKEN_BUDGET = Math.max(
+  1_000,
+  Number(process.env.NEXUS_LLM_DAILY_TOKEN_BUDGET ?? 250_000)
+);
+const MAX_PROMPT_CHARS = Math.max(
+  2_000,
+  Number(process.env.NEXUS_LLM_MAX_PROMPT_CHARS ?? 80_000)
+);
+
+type UsageState = {
+  requestWindowStart: number;
+  requestCount: number;
+  day: string;
+  tokenCount: number;
+};
+
+// Per-workspace usage tracking. Key "_global_" is used when no workspaceId is provided.
+const workspaceUsage = new Map<string, UsageState>();
+
+function getUsageState(workspaceId: string): UsageState {
+  if (!workspaceUsage.has(workspaceId)) {
+    workspaceUsage.set(workspaceId, {
+      requestWindowStart: Date.now(),
+      requestCount: 0,
+      day: new Date().toISOString().slice(0, 10),
+      tokenCount: 0,
+    });
+  }
+  return workspaceUsage.get(workspaceId)!;
+}
 
 export type LLMMessage = { role: "user" | "assistant"; content: string };
 
@@ -33,6 +73,10 @@ export type LLMOptions = {
   maxTokens?: number;
   temperature?: number;
   systemPrompt?: string;
+  /** Workspace ID used for per-workspace rate-limiting. Falls back to "_global_" when absent. */
+  workspaceId?: string;
+  /** API route or call-site label for cost attribution (e.g. "dashboard", "ask", "ingestion"). */
+  route?: string;
 };
 
 export type LLMResponse = {
@@ -53,6 +97,98 @@ function apiKey(): string | null {
   }
 
   return process.env.ANTHROPIC_API_KEY ?? null;
+}
+
+function estimateTokens(messages: LLMMessage[], systemPrompt?: string): number {
+  const text = `${systemPrompt ?? ""}\n${messages.map((message) => message.content).join("\n")}`;
+  return Math.ceil(text.length / 4);
+}
+
+function enforceLlmGuardrails(messages: LLMMessage[], opts: LLMOptions): void {
+  const workspaceId = opts.workspaceId ?? "_global_";
+  const state = getUsageState(workspaceId);
+
+  const now = Date.now();
+  const today = new Date().toISOString().slice(0, 10);
+  if (state.day !== today) {
+    state.day = today;
+    state.tokenCount = 0;
+  }
+  if (now - state.requestWindowStart > REQUEST_WINDOW_MS) {
+    state.requestWindowStart = now;
+    state.requestCount = 0;
+  }
+
+  const promptChars = `${opts.systemPrompt ?? ""}\n${messages.map((message) => message.content).join("\n")}`.length;
+  if (promptChars > MAX_PROMPT_CHARS) {
+    throw new Error(`llm_prompt_too_large: ${promptChars} chars exceeds ${MAX_PROMPT_CHARS}`);
+  }
+
+  const estimatedTokens = estimateTokens(messages, opts.systemPrompt) + (opts.maxTokens ?? MAX_TOKENS);
+  if (state.requestCount >= MAX_REQUESTS_PER_WINDOW) {
+    throw new Error(`llm_rate_limited: workspace ${workspaceId} reached ${MAX_REQUESTS_PER_WINDOW} requests/minute`);
+  }
+  if (state.tokenCount + estimatedTokens > DAILY_TOKEN_BUDGET) {
+    throw new Error(`llm_budget_exceeded: workspace ${workspaceId} reached daily token budget ${DAILY_TOKEN_BUDGET}`);
+  }
+
+  state.requestCount += 1;
+  state.tokenCount += estimatedTokens;
+}
+
+function reconcileUsage(estimatedMaxTokens: number, actualInput: number, actualOutput: number, workspaceId: string): void {
+  const state = getUsageState(workspaceId);
+  const actual = actualInput + actualOutput;
+  if (actual > 0) {
+    state.tokenCount += actual - estimatedMaxTokens;
+    if (state.tokenCount < 0) state.tokenCount = 0;
+  }
+}
+
+/**
+ * Estimate cost in micro-USD (millionths of a dollar).
+ * Prices are approximate and updated manually. For Anthropic claude-opus-4-6:
+ *   Input:  $15/M tokens = 15 micro-USD per token
+ *   Output: $75/M tokens = 75 micro-USD per token
+ * For DeepSeek-chat the rates are ~10x cheaper. We use a conservative flat rate
+ * when the model is unknown to avoid under-counting.
+ */
+function estimateCostMicro(model: string, inputTokens: number, outputTokens: number): number {
+  const m = model.toLowerCase();
+  if (m.includes("opus")) {
+    return Math.round(inputTokens * 15 + outputTokens * 75);
+  }
+  if (m.includes("sonnet")) {
+    return Math.round(inputTokens * 3 + outputTokens * 15);
+  }
+  if (m.includes("haiku")) {
+    return Math.round(inputTokens * 0.25 + outputTokens * 1.25);
+  }
+  if (m.includes("deepseek")) {
+    return Math.round(inputTokens * 0.14 + outputTokens * 0.28);
+  }
+  // Unknown model — use a mid-range conservative estimate
+  return Math.round(inputTokens * 3 + outputTokens * 15);
+}
+
+function persistUsage(
+  model: string,
+  inputTokens: number,
+  outputTokens: number,
+  workspaceId: string,
+  route: string
+): void {
+  if (inputTokens === 0 && outputTokens === 0) return;
+  const costUsdMicro = estimateCostMicro(model, inputTokens, outputTokens);
+  // Fire-and-forget — never let cost tracking block the LLM response
+  repository.recordLLMUsage({
+    workspaceId,
+    model,
+    route: route || "unknown",
+    inputTokens,
+    outputTokens,
+    costUsdMicro,
+  }).catch(() => undefined);
 }
 
 function buildHeaders(key: string): Record<string, string> {
@@ -102,12 +238,16 @@ async function callOpenAICompatible(
     ...messages.map((m) => ({ role: m.role, content: m.content }))
   ];
 
+  const maxTokens = opts.maxTokens ?? MAX_TOKENS;
+  const estimatedMaxTokens = estimateTokens(messages, opts.systemPrompt) + maxTokens;
+  enforceLlmGuardrails(messages, opts);
+
   const res = await fetch(`${baseUrl}/chat/completions`, {
     method: "POST",
     headers: buildOpenAICompatibleHeaders(key),
     body: JSON.stringify({
       model,
-      max_tokens: opts.maxTokens ?? MAX_TOKENS,
+      max_tokens: maxTokens,
       temperature: opts.temperature ?? 0.2,
       messages: requestMessages
     })
@@ -124,11 +264,17 @@ async function callOpenAICompatible(
     usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
 
+  const inputTok = json.usage?.prompt_tokens ?? 0;
+  const outputTok = json.usage?.completion_tokens ?? 0;
+  const resolvedModel = json.model ?? model;
+  reconcileUsage(estimatedMaxTokens, inputTok, outputTok, opts.workspaceId ?? "_global_");
+  persistUsage(resolvedModel, inputTok, outputTok, opts.workspaceId ?? "_global_", opts.route ?? "unknown");
+
   return {
     text: (json.choices?.[0]?.message?.content ?? "").trim(),
-    model: json.model ?? model,
-    inputTokens: json.usage?.prompt_tokens ?? 0,
-    outputTokens: json.usage?.completion_tokens ?? 0,
+    model: resolvedModel,
+    inputTokens: inputTok,
+    outputTokens: outputTok,
     fromFallback: false
   };
 }
@@ -158,9 +304,13 @@ export async function callLLM(
     };
   }
 
+  const maxTokens = opts.maxTokens ?? MAX_TOKENS;
+  const estimatedMaxTokens = estimateTokens(messages, opts.systemPrompt) + maxTokens;
+  enforceLlmGuardrails(messages, opts);
+
   const body = {
     model: opts.model ?? DEFAULT_MODEL,
-    max_tokens: opts.maxTokens ?? MAX_TOKENS,
+    max_tokens: maxTokens,
     temperature: opts.temperature ?? 0.2,
     ...(opts.systemPrompt ? { system: opts.systemPrompt } : {}),
     messages: messages.map((m) => ({ role: m.role, content: m.content }))
@@ -188,6 +338,9 @@ export async function callLLM(
     .map((b) => b.text)
     .join("\n")
     .trim();
+
+  reconcileUsage(estimatedMaxTokens, json.usage.input_tokens, json.usage.output_tokens, opts.workspaceId ?? "_global_");
+  persistUsage(json.model, json.usage.input_tokens, json.usage.output_tokens, opts.workspaceId ?? "_global_", opts.route ?? "unknown");
 
   return {
     text,

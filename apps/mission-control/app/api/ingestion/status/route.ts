@@ -8,6 +8,7 @@ import { extractTextFromBuffer } from "@/lib/services/extract";
 import { isOriginalStorageEnabled, storeOriginalFile } from "@/lib/services/object-storage";
 import { requireScope } from "@/lib/api-auth";
 import { generateRecommendations } from "@/lib/services/recommendations";
+import { classifyFilename } from "@/lib/services/company-classification";
 
 export const runtime = "nodejs";
 
@@ -15,6 +16,7 @@ const formSchema = z.object({
   workspaceId: z.string().default("workspace-demo"),
   tenantId: z.string().default("tenant-demo"),
   sourceType: z.string().default("upload"),
+  connectorInstanceId: z.string().optional(),
   sourcePath: z.string().optional(),
   sourceUri: z.string().optional(),
   sourceTimestamp: z.string().optional(),
@@ -60,6 +62,13 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const { ctx, error } = await requireScope(request, "write:ingest");
   if (error) return error;
+
+  // Demo mode: block real ingestion to prevent accidental data entry during sales demos
+  const wsSettings = await repository.getWorkspaceSettings(ctx.workspaceId);
+  if (wsSettings?.demoMode) {
+    return fail("demo_mode_active: ingestion is disabled in demo workspaces. Disable demo mode in Settings to upload real documents.", 403);
+  }
+
   const form = await request.formData();
   const file = form.get("file");
   if (!(file instanceof File)) return fail("file_required", 400);
@@ -69,6 +78,7 @@ export async function POST(request: Request) {
     workspaceId: asOptionalString(form.get("workspaceId")),
     tenantId: asOptionalString(form.get("tenantId")),
     sourceType: asOptionalString(form.get("sourceType")),
+    connectorInstanceId: asOptionalString(form.get("connectorInstanceId")),
     sourcePath: asOptionalString(form.get("sourcePath")),
     sourceUri: asOptionalString(form.get("sourceUri")),
     sourceTimestamp: asOptionalString(form.get("sourceTimestamp")),
@@ -77,6 +87,18 @@ export async function POST(request: Request) {
   if (!parsed.success) return fail("invalid_metadata", 400);
   const workspaceId = ctx.workspaceId;
   const tenantId = ctx.workspaceId;
+
+  // Auto-classify department and elevate sensitivity using workspace sector if not supplied by caller
+  const rawDepartment = asOptionalString(form.get("department"));
+  const rawSourceType = asOptionalString(form.get("sourceType"));
+  const profile = await repository.getWorkspaceProfile(workspaceId).catch(() => null);
+  const fileCls = classifyFilename(file.name, profile?.sector ?? "");
+  const department = rawDepartment ?? fileCls.department;
+  const sourceType = rawSourceType ?? fileCls.sourceType ?? parsed.data.sourceType;
+  // Respect caller-supplied sensitivity but fall back to sector-aware default
+  const callerSensitivity = asOptionalString(form.get("sensitivity"));
+  const effectiveSensitivity = (callerSensitivity ?? fileCls.sensitivity) as
+    | "public" | "internal" | "confidential" | "restricted";
 
   const buf = Buffer.from(await file.arrayBuffer());
   const hash = `sha256:${crypto.createHash("sha256").update(buf).digest("hex")}`;
@@ -110,12 +132,14 @@ export async function POST(request: Request) {
   const record = await ingestEvidence({
     workspaceId,
     tenantId,
-    sourceType: parsed.data.sourceType,
+    sourceType,
+    department,
+    connectorInstanceId: parsed.data.connectorInstanceId,
     sourcePath: parsed.data.sourcePath ?? `/uploads/${file.name}`,
     sourceUri: storedOriginalUri,
     sourceTimestamp: parsed.data.sourceTimestamp ?? new Date().toISOString(),
     hash,
-    sensitivity: parsed.data.sensitivity,
+    sensitivity: effectiveSensitivity,
     extractionConfidence: extracted.extractionConfidence,
     text: extracted.text
   });
@@ -127,7 +151,11 @@ export async function POST(request: Request) {
     payload: {
       evidenceId: record.id,
       extractionMethod: extracted.method,
-      extractedCharCount: extracted.charCount
+      extractedCharCount: extracted.charCount,
+      connectorInstanceId: record.connectorInstanceId ?? null,
+      sourceType,
+      extractionHints: fileCls.extractionHints ?? [],
+      evidenceWarnings: fileCls.evidenceWarnings ?? []
     }
   });
 
@@ -153,6 +181,11 @@ export async function POST(request: Request) {
     id: record.id,
     sourcePath: record.sourcePath,
     sourceUri: record.sourceUri ?? null,
+    connectorInstanceId: record.connectorInstanceId ?? null,
+    department: record.department ?? null,
+    sourceType: record.sourceType,
+    extractionHints: fileCls.extractionHints ?? [],
+    evidenceWarnings: fileCls.evidenceWarnings ?? [],
     ingestionStatus: record.ingestionStatus,
     extractionConfidence: record.extractionConfidence
   });

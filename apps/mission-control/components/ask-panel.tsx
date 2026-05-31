@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 type AskResult = {
   answer: string;
@@ -30,7 +30,7 @@ function HistoryItem({ role, text }: { role: "user" | "assistant"; text: string 
       {isLong && (
         <button
           type="button"
-          onClick={() => setExpanded((value) => !value)}
+          onClick={() => setExpanded((v) => !v)}
           className="text-xs text-nexus-accent hover:underline"
         >
           {expanded ? "Show less" : "Show more"}
@@ -40,14 +40,33 @@ function HistoryItem({ role, text }: { role: "user" | "assistant"; text: string 
   );
 }
 
-export function AskPanel({ workspaceId, userId }: { workspaceId: string; userId: string }) {
-  const [query, setQuery] = useState("What are the top risks right now?");
+export function AskPanel({
+  workspaceId,
+  userId,
+  departments = [],
+  initialQuery = "",
+}: {
+  workspaceId: string;
+  userId: string;
+  departments?: string[];
+  initialQuery?: string;
+}) {
+  const [query, setQuery] = useState(initialQuery || "What are the top risks right now?");
+  const [department, setDepartment] = useState("");
   const [result, setResult] = useState<AskResult | null>(null);
   const [history, setHistory] = useState<Array<{ role: "user" | "assistant"; text: string }>>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Auto-fire when a first question comes in via ?q= URL param
+  useEffect(() => {
+    if (initialQuery && initialQuery.trim().length > 4) {
+      setQuery(initialQuery);
+    }
+  }, [initialQuery]);
+
   async function onAsk() {
+    if (!query.trim()) return;
     setLoading(true);
     setError(null);
     try {
@@ -57,8 +76,9 @@ export function AskPanel({ workspaceId, userId }: { workspaceId: string; userId:
         body: JSON.stringify({
           workspaceId,
           userId,
-          query
-        })
+          query,
+          department: department || undefined,
+        }),
       });
       const payload = await res.json();
       if (!res.ok || !payload.ok) throw new Error(payload.error ?? "ask_failed");
@@ -67,7 +87,7 @@ export function AskPanel({ workspaceId, userId }: { workspaceId: string; userId:
       setHistory((prev) => [
         ...prev,
         { role: "user", text: query },
-        { role: "assistant", text: data.answer }
+        { role: "assistant", text: data.answer },
       ]);
     } catch (err) {
       setError(err instanceof Error ? err.message : "unknown_error");
@@ -81,9 +101,11 @@ export function AskPanel({ workspaceId, userId }: { workspaceId: string; userId:
       <section className="panel">
         <label className="mb-2 block text-sm text-white/80">Ask a workspace-scoped question</label>
         <textarea
-          className="min-h-24 w-full rounded-lg border border-white/20 bg-black/20 p-3 text-sm outline-none"
+          className="min-h-24 w-full rounded-lg border border-white/20 bg-black/20 p-3 text-sm outline-none focus:border-nexus-accent/50"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter" && e.metaKey) onAsk(); }}
+          placeholder="Ask anything about your business..."
         />
         <div className="mt-2 flex flex-wrap gap-2">
           {SUGGESTIONS.map((suggestion) => (
@@ -97,7 +119,56 @@ export function AskPanel({ workspaceId, userId }: { workspaceId: string; userId:
             </button>
           ))}
         </div>
-        <div className="mt-3 flex items-center gap-2">
+
+        {/* Department filter — chips when available, text input fallback */}
+        {departments.length > 0 ? (
+          <div className="mt-3 space-y-1.5">
+            <p className="text-xs uppercase tracking-wide text-white/40">Filter by department</p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => setDepartment("")}
+                className={[
+                  "rounded-full border px-3 py-1 text-xs transition",
+                  !department
+                    ? "border-nexus-accent/60 bg-nexus-accent/15 text-nexus-accent"
+                    : "border-white/20 text-white/40 hover:border-white/40",
+                ].join(" ")}
+              >
+                All
+              </button>
+              {departments.map((dept) => (
+                <button
+                  key={dept}
+                  type="button"
+                  onClick={() => setDepartment(dept === department ? "" : dept)}
+                  className={[
+                    "rounded-full border px-3 py-1 text-xs transition",
+                    dept === department
+                      ? "border-nexus-accent/60 bg-nexus-accent/15 text-nexus-accent"
+                      : "border-white/20 text-white/40 hover:border-white/40",
+                  ].join(" ")}
+                >
+                  {dept}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <div className="mt-3">
+            <label className="mb-1 block text-xs uppercase tracking-wide text-white/40">
+              Department filter
+            </label>
+            <input
+              className="input max-w-sm"
+              value={department}
+              onChange={(e) => setDepartment(e.target.value)}
+              placeholder="Optional — e.g. Finance or Risk & Compliance"
+            />
+          </div>
+        )}
+
+        <div className="mt-3 flex items-center gap-3">
           <button
             className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={onAsk}
@@ -113,7 +184,8 @@ export function AskPanel({ workspaceId, userId }: { workspaceId: string; userId:
             )}
           </button>
           <span className="text-xs text-white/40">
-            Answers are sourced from your ingested evidence only.
+            Sourced from your ingested evidence only.
+            {department && <span className="ml-1 text-nexus-accent/70">Filtered: {department}</span>}
           </span>
         </div>
       </section>
@@ -128,10 +200,7 @@ export function AskPanel({ workspaceId, userId }: { workspaceId: string; userId:
             <p className="whitespace-pre-wrap text-sm leading-relaxed text-white/85">{result.answer}</p>
           ) : (
             <p className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm text-amber-200">
-              AI returned an empty response. Verify your LLM API key is set in your Render
-              environment and the model name is correct (e.g.{" "}
-              <code className="font-mono">deepseek-chat</code> or{" "}
-              <code className="font-mono">claude-opus-4-6</code>).
+              AI returned an empty response. Verify your LLM API key is set and the model name is correct.
             </p>
           )}
 
@@ -155,9 +224,7 @@ export function AskPanel({ workspaceId, userId }: { workspaceId: string; userId:
               </summary>
               <ul className="mt-2 space-y-1">
                 {result.evidenceRefs.map((ref) => (
-                  <li key={ref} className="truncate font-mono text-xs text-white/30">
-                    {ref}
-                  </li>
+                  <li key={ref} className="truncate font-mono text-xs text-white/30">{ref}</li>
                 ))}
               </ul>
             </details>

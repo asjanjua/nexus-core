@@ -89,7 +89,7 @@ export async function generateRecommendations(workspaceId: string): Promise<void
 
     let raw: string;
     try {
-      raw = await ask(userPrompt, RECO_SYSTEM_PROMPT, { maxTokens: 600, temperature: 0.2 });
+      raw = await ask(userPrompt, RECO_SYSTEM_PROMPT, { maxTokens: 600, temperature: 0.2, workspaceId });
     } catch {
       return; // LLM unavailable — fail silently
     }

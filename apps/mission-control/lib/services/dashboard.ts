@@ -1,132 +1,31 @@
 /**
- * Role-aware dashboard card generation.
+ * Specialist-agent brief generation.
  *
- * Each role gets a focused prompt that instructs Claude to synthesize
- * role-specific insights from the same evidence base.
+ * Each room gets a set of named specialist agents that synthesize
+ * evidence-backed briefs from the same governed evidence base.
  * Falls back to statistical summary when LLM is unavailable.
  */
 
 import type { DashboardCard, EvidenceRecord, Role } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
 import { ask } from "@/lib/services/llm";
-import { buildCompanyContext } from "@/lib/domain/sector-library";
+import { briefLanguageInstruction, buildCompanyContext } from "@/lib/domain/sector-library";
+import { agentBriefIdsForRoleContext, agentForId, AGENT_ROOMS, roomForRole, type NexusAgent } from "@/lib/agents/agent-library";
 
 // ---------------------------------------------------------------------------
-// Role prompt configuration
+// Agent prompt configuration
 // ---------------------------------------------------------------------------
-
-type RoleConfig = {
-  label: string;
-  cards: Array<{
-    id: string;
-    title: string;
-    focus: string;
-  }>;
-};
-
-const ROLE_CONFIG: Record<Role, RoleConfig> = {
-  ceo: {
-    label: "CEO",
-    cards: [
-      {
-        id: "strategic-priorities",
-        title: "Strategic Priorities",
-        focus:
-          "Identify the top 2-3 strategic priorities or decisions that need CEO attention based on this evidence. Be specific about what is at risk or pending."
-      },
-      {
-        id: "top-risks",
-        title: "Top Risks",
-        focus:
-          "Identify the most significant risks to the business visible in this evidence. Include what is driving each risk and its likely impact."
-      },
-      {
-        id: "cross-functional-blockers",
-        title: "Cross-Functional Blockers",
-        focus:
-          "What cross-functional issues or bottlenecks are visible in this evidence that require executive coordination or decision?"
-      }
-    ]
-  },
-  coo: {
-    label: "COO",
-    cards: [
-      {
-        id: "execution-status",
-        title: "Execution Status",
-        focus:
-          "Summarize the operational execution status across the business. What is on track, what is delayed, and what is failing based on this evidence?"
-      },
-      {
-        id: "process-issues",
-        title: "Process Issues and Owner Map",
-        focus:
-          "What process breakdowns, handoff failures, or operational issues are visible? Identify responsible functions or owners where possible."
-      },
-      {
-        id: "overdue-items",
-        title: "Overdue and At-Risk Items",
-        focus:
-          "What items appear overdue, stalled, or at risk of missing targets? Be specific about what is overdue and by how long if evident."
-      }
-    ]
-  },
-  cbo: {
-    label: "CBO/Strategy",
-    cards: [
-      {
-        id: "growth-opportunities",
-        title: "Growth Opportunities",
-        focus:
-          "What growth opportunities, partnership signals, or market themes are visible in this evidence? Include any pipeline or proposal status."
-      },
-      {
-        id: "partner-pipeline",
-        title: "Partner and BD Pipeline",
-        focus:
-          "Summarize the business development and partner pipeline status visible in the evidence. What is progressing, what is stalled?"
-      },
-      {
-        id: "strategy-alignment",
-        title: "Strategic Alignment",
-        focus:
-          "Are there any gaps between stated strategy and current execution visible in the evidence? What needs strategic course correction?"
-      }
-    ]
-  },
-  cto: {
-    label: "CTO/CDO",
-    cards: [
-      {
-        id: "tech-health",
-        title: "Technology Health",
-        focus:
-          "What is the current technology health status? Identify any system reliability issues, tech debt risks, or infrastructure concerns visible in this evidence."
-      },
-      {
-        id: "data-quality",
-        title: "Data Quality and Governance",
-        focus:
-          "What does the evidence indicate about data quality, data pipeline health, and governance posture? Identify any data issues affecting executive outputs."
-      },
-      {
-        id: "security-ai-posture",
-        title: "Security and AI Pipeline Status",
-        focus:
-          "What security risks, compliance gaps, or AI model performance issues are visible? Include anything that could affect data handling or regulatory exposure."
-      }
-    ]
-  }
-};
 
 const DASHBOARD_SYSTEM_PROMPT = `You are an executive intelligence analyst for NexusAI Mission Control.
-Your role is to synthesize evidence into concise, actionable dashboard cards for senior executives.
+Your role is to operate as a specialist business agent and synthesize evidence into concise, actionable Agent Briefs.
 
 Rules:
 - Write 2-4 sentences maximum per card.
 - Be specific. Reference facts from the evidence directly. Do not invent information.
 - Use executive language: clear, direct, no jargon.
+- If the company context says "Plain brief mode", use 2-3 short plain-English sentences and one clear action. Do not use corporate finance jargon.
 - If evidence is insufficient for a card topic, say: "Insufficient evidence - [what is missing]."
+- Stay inside the agent mandate and approval policy.
 - Do not add generic advice or best practices not grounded in the evidence.`;
 
 // ---------------------------------------------------------------------------
@@ -160,31 +59,57 @@ function computeMinFreshness(records: EvidenceRecord[]): number {
 // ---------------------------------------------------------------------------
 
 async function generateCard(
-  cardConfig: RoleConfig["cards"][number],
+  agent: NexusAgent,
   role: Role,
   evidenceBlock: string,
   evidenceRefs: string[],
   avgConfidence: number,
   minFreshness: number,
-  companyContext = ""
+  companyContext = "",
+  languageInstruction = "",
+  workspaceId = "_global_"
 ): Promise<DashboardCard> {
+  const room = AGENT_ROOMS.find((item) => item.id === agent.room) ?? roomForRole(role);
   const contextPrefix = companyContext ? `${companyContext}\n\n` : "";
-  const userPrompt = `${contextPrefix}Evidence:\n\n${evidenceBlock}\n\nTask: ${cardConfig.focus}`;
+  const userPrompt = `${contextPrefix}Agent: ${agent.name}
+Room: ${room.label}
+Mandate: ${agent.mandate}
+Output type: ${agent.outputType}
+Approval policy: ${agent.approvalPolicy}
+Evidence scope hints: ${agent.evidenceScope.join(", ")}
+Language rule: ${languageInstruction || "Use concise executive language appropriate to the company context."}
+
+Evidence:
+
+${evidenceBlock}
+
+Task: Produce this agent's brief using only the evidence above. Include what changed, why it matters, and the most useful next action if the evidence supports one.`;
 
   let summary: string;
   try {
     summary = await ask(userPrompt, DASHBOARD_SYSTEM_PROMPT, {
       maxTokens: 256,
-      temperature: 0.1
+      temperature: 0.1,
+      workspaceId
     });
   } catch {
     summary = `Evidence count: ${evidenceRefs.length}. AI synthesis unavailable — verify DEEPSEEK_API_KEY (or ANTHROPIC_API_KEY) is set in your Render environment.`;
   }
 
   return {
-    id: `${role}-${cardConfig.id}`,
+    id: `${role}-${agent.id}`,
     role,
-    title: cardConfig.title,
+    agentId: agent.id,
+    agentName: agent.name,
+    agentRoom: agent.room,
+    agentRoomLabel: room.label,
+    mandate: agent.mandate,
+    outputType: agent.outputType,
+    approvalPolicy: agent.approvalPolicy,
+    skillHints: agent.skillHints,
+    suggestedNextAction: agent.suggestedNextAction,
+    lastRunAt: new Date().toISOString(),
+    title: `${agent.name} Brief`,
     summary,
     confidence: avgConfidence,
     freshnessHours: minFreshness,
@@ -198,7 +123,8 @@ async function generateCard(
 
 export async function cardsForRole(
   role: Role,
-  workspaceId = process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo"
+  workspaceId = process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo",
+  options: { department?: string; agentId?: string } = {}
 ): Promise<DashboardCard[]> {
   const [allEvidence, profile] = await Promise.all([
     repository.getEvidenceForWorkspace(workspaceId),
@@ -206,7 +132,10 @@ export async function cardsForRole(
   ]);
 
   const processedEvidence = allEvidence.filter(
-    (r) => r.ingestionStatus === "processed" && r.sensitivity !== "restricted"
+    (r) =>
+      r.ingestionStatus === "processed" &&
+      r.sensitivity !== "restricted" &&
+      (!options.department || r.department === options.department)
   );
 
   const evidenceBlock = buildEvidenceBlock(processedEvidence);
@@ -214,12 +143,17 @@ export async function cardsForRole(
   const avgConfidence = computeAvgConfidence(processedEvidence);
   const minFreshness = computeMinFreshness(processedEvidence);
   const companyContext = profile ? buildCompanyContext(profile) : "";
+  const languageInstruction = profile
+    ? briefLanguageInstruction(profile.briefLanguageMode, profile.companyArchetype)
+    : "";
 
-  const config = ROLE_CONFIG[role];
+  const agents = agentBriefIdsForRoleContext(role, profile?.companyArchetype)
+    .map(agentForId)
+    .filter((agent) => !options.agentId || agent.id === options.agentId);
 
   const cards = await Promise.all(
-    config.cards.map((cardConfig) =>
-      generateCard(cardConfig, role, evidenceBlock, evidenceRefs, avgConfidence, minFreshness, companyContext)
+    agents.map((agent) =>
+      generateCard(agent, role, evidenceBlock, evidenceRefs, avgConfidence, minFreshness, companyContext, languageInstruction, workspaceId)
     )
   );
 

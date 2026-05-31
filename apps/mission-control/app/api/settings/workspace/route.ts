@@ -19,7 +19,8 @@ const patchSchema = z.object({
   quarantineThreshold: z.number().min(0).max(1).optional(),
   defaultSensitivity: sensitivitySchema.optional(),
   slackEnabled: z.boolean().optional(),
-  teamsEnabled: z.boolean().optional()
+  teamsEnabled: z.boolean().optional(),
+  demoMode: z.boolean().optional()
 });
 
 export async function GET(request: Request) {

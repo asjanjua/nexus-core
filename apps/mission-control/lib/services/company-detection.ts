@@ -15,17 +15,13 @@
 
 import { ask } from "@/lib/services/llm";
 import { getSector } from "@/lib/domain/sector-library";
+import { companyArchetypeSchema, type CompanyArchetype, type WorkspaceRoleState } from "@/lib/contracts";
+import { roleStatesFromSuggestions, suggestRolesForProfile } from "@/lib/services/role-suggestion";
+import { getDefaultDocuments, type SuggestedDocument } from "@/lib/services/company-classification";
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
-
-export type SuggestedDocument = {
-  name: string;
-  type: "pdf" | "docx" | "xlsx" | "txt" | "md" | "pptx";
-  priority: "high" | "medium";
-  description: string;
-};
 
 export type DetectedProfile = {
   companyName: string | null;
@@ -33,12 +29,19 @@ export type DetectedProfile = {
   sectorLabel: string;
   subsector: string;
   businessModel: string;
+  companyArchetype: CompanyArchetype;
+  archetypeVersion?: string | null;
   companyStage: string;
   employeeBand: string;
   region: string;
   primaryGoals: string[];
   riskProfile: string;
   priorityRoles: string[];
+  suggestedRoleReasons: Record<string, string>;
+  stagedRoles: Array<{ roleKey: string; label: string; activationCondition: string }>;
+  roleStates: Record<string, WorkspaceRoleState>;
+  locationCount?: number;
+  requiresRoleConfirmation: boolean;
   suggestedDocuments: SuggestedDocument[];
   suggestedKPIs: string[];
   suggestedRisks: string[];
@@ -61,12 +64,12 @@ Required format:
   "sector": "financial_services | professional_services | technology_saas | manufacturing | retail_commerce | healthcare | real_estate_construction | education_training",
   "subsector": "brief label describing the company's niche (e.g. 'Digital Banking / Neobank', 'B2B SaaS', 'Merchant Acquiring')",
   "businessModel": "b2b | b2c | b2b2c | marketplace | services | government",
+  "companyArchetype": "corporate | startup_scaleup | sme_physical | digital_native | professional_practice",
   "companyStage": "pre_revenue | early_stage | growth | scale_up | enterprise | public",
   "employeeBand": "1_10 | 11_50 | 51_200 | 201_1000 | 1001_5000 | 5000_plus",
   "region": "plain language region (e.g. 'GCC', 'Pakistan', 'Southeast Asia', 'North America', 'Europe')",
   "primaryGoals": ["array of up to 4 keys from: revenue_growth, cost_reduction, regulatory_compliance, market_expansion, digital_transformation, risk_management, talent_retention, product_launch"],
   "riskProfile": "conservative | moderate | growth_oriented | aggressive",
-  "priorityRoles": ["array of relevant C-suite titles, e.g. CEO, CFO, COO, CTO, CRO, CMO, CPO, CBO, Risk/Compliance"],
   "suggestedDocuments": [
     {
       "name": "Document name (specific, not generic)",
@@ -84,8 +87,8 @@ Required format:
 
 Rules:
 - sector must be exactly one of the 8 keys listed.
+- companyArchetype must be one of the 5 keys listed. Use sme_physical for owner-operated shops, restaurants, clinics, branches, and other physical-location businesses. Use digital_native for internet-first, ads/social-driven, SaaS, D2C, marketplace, creator, or PLG companies. Use professional_practice for partnership-led advisory, law, accounting, consulting, and agencies. Use startup_scaleup for founder-led companies where stage matters more than formal titles. Use corporate for formal C-suite, regulated, mature, or board-governed companies.
 - Suggest exactly 5 documents tailored to this company type and stage. Be specific (e.g. 'Board pack Q2 2026' not 'Board pack').
-- priorityRoles: include 4-6 most relevant roles. Include 'Risk/Compliance' for regulated industries.
 - sensitivityDefault: use 'confidential' for financial services, healthcare, and legal/regulated sectors. Use 'internal' for others.
 - confidence: 0.8+ for clear descriptions, 0.5-0.8 for ambiguous, 0.3-0.5 for very thin descriptions.
 - riskProfile: 'conservative' for regulated industries, 'moderate' for established companies, 'growth_oriented' for scale-ups, 'aggressive' for early-stage startups.
@@ -128,6 +131,16 @@ export async function detectCompanyProfile(description: string): Promise<Detecte
   // Validate sector key
   const sector = typeof parsed.sector === "string" ? parsed.sector : "";
   const sectorDef = getSector(sector);
+  const archetypeParsed = companyArchetypeSchema.safeParse(parsed.companyArchetype);
+  const companyArchetype = archetypeParsed.success
+    ? archetypeParsed.data
+    : sectorDef?.key === "professional_services"
+      ? "professional_practice"
+      : sectorDef?.key === "retail_commerce"
+        ? "digital_native"
+        : sectorDef?.key === "financial_services" || sectorDef?.key === "healthcare"
+          ? "corporate"
+          : "startup_scaleup";
 
   const toStrArray = (v: unknown): string[] =>
     Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
@@ -147,18 +160,44 @@ export async function detectCompanyProfile(description: string): Promise<Detecte
       }));
   };
 
-  return {
-    companyName: typeof parsed.companyName === "string" && parsed.companyName ? parsed.companyName : null,
+  const confidence = typeof parsed.confidence === "number" ? Math.min(1, Math.max(0, parsed.confidence)) : 0.7;
+  const roleSuggestions = suggestRolesForProfile({
     sector: sectorDef?.key ?? "technology_saas",
-    sectorLabel: sectorDef?.label ?? String(parsed.sector ?? ""),
-    subsector: typeof parsed.subsector === "string" ? parsed.subsector : "",
+    companyArchetype,
     businessModel: typeof parsed.businessModel === "string" ? parsed.businessModel : "b2b",
     companyStage: typeof parsed.companyStage === "string" ? parsed.companyStage : "growth",
     employeeBand: typeof parsed.employeeBand === "string" ? parsed.employeeBand : "51_200",
     region: typeof parsed.region === "string" ? parsed.region : "",
     primaryGoals: toStrArray(parsed.primaryGoals),
     riskProfile: typeof parsed.riskProfile === "string" ? parsed.riskProfile : "moderate",
-    priorityRoles: toStrArray(parsed.priorityRoles).length > 0 ? toStrArray(parsed.priorityRoles) : ["CEO", "CFO", "COO", "CTO"],
+    description
+  });
+  const activeRoles = roleSuggestions.filter((role) => role.state === "active");
+  const stagedRoles = roleSuggestions
+    .filter((role) => role.state === "staged")
+    .map((role) => ({
+      roleKey: role.roleKey,
+      label: role.label,
+      activationCondition: role.stagedCondition ?? "Activates as the company grows."
+    }));
+
+  return {
+    companyName: typeof parsed.companyName === "string" && parsed.companyName ? parsed.companyName : null,
+    sector: sectorDef?.key ?? "technology_saas",
+    sectorLabel: sectorDef?.label ?? String(parsed.sector ?? ""),
+    subsector: typeof parsed.subsector === "string" ? parsed.subsector : "",
+    businessModel: typeof parsed.businessModel === "string" ? parsed.businessModel : "b2b",
+    companyArchetype,
+    companyStage: typeof parsed.companyStage === "string" ? parsed.companyStage : "growth",
+    employeeBand: typeof parsed.employeeBand === "string" ? parsed.employeeBand : "51_200",
+    region: typeof parsed.region === "string" ? parsed.region : "",
+    primaryGoals: toStrArray(parsed.primaryGoals),
+    riskProfile: typeof parsed.riskProfile === "string" ? parsed.riskProfile : "moderate",
+    priorityRoles: activeRoles.map((role) => role.roleKey),
+    suggestedRoleReasons: Object.fromEntries(roleSuggestions.map((role) => [role.roleKey, role.reason])),
+    stagedRoles,
+    roleStates: roleStatesFromSuggestions(roleSuggestions),
+    requiresRoleConfirmation: confidence < 0.5 || !archetypeParsed.success,
     suggestedDocuments: toDocArray(parsed.suggestedDocuments).length > 0
       ? toDocArray(parsed.suggestedDocuments)
       : getDefaultDocuments(sectorDef?.key ?? ""),
@@ -169,135 +208,86 @@ export async function detectCompanyProfile(description: string): Promise<Detecte
       ? toStrArray(parsed.suggestedRisks)
       : sectorDef?.commonRisks.slice(0, 3) ?? [],
     sensitivityDefault: parsed.sensitivityDefault === "confidential" ? "confidential" : "internal",
-    confidence: typeof parsed.confidence === "number" ? Math.min(1, Math.max(0, parsed.confidence)) : 0.7,
+    confidence,
     reasoning: typeof parsed.reasoning === "string" ? parsed.reasoning : ""
   };
 }
 
 // ---------------------------------------------------------------------------
-// Filename-based file classifier (fast, no LLM needed)
+// Focus mapping — maps user's stated priority to dashboards + first questions
 // ---------------------------------------------------------------------------
 
-export type FileClassification = {
-  department: string;
-  sensitivity: "public" | "internal" | "confidential" | "restricted";
+export type FocusMapping = {
+  recommendedDashboards: string[]; // keys from: ceo, coo, cbo, cto
+  suggestedQuestions: string[];    // 3–5 specific first questions for the Ask panel
+  focusSummary: string;            // one sentence description of what Nexus will monitor
 };
 
-export function classifyFilename(filename: string, sector = ""): FileClassification {
-  const lower = filename.toLowerCase();
+const FOCUS_SYSTEM_PROMPT = `You are the NexusAI onboarding strategist. A user has described what they want executive intelligence help with.
+Your job is to map their intent to the right role dashboards and suggest specific first questions they can ask Nexus.
 
-  // Department detection by keyword patterns
-  let department = "General";
-  if (/board|steering|exec|c-suite|ceo|coo|cfo|townhall/i.test(lower)) {
-    department = "Executive / Strategy";
-  } else if (/risk|compliance|regulatory|audit|legal|aml|kyc|policy|procedure|control/i.test(lower)) {
-    department = "Risk & Compliance";
-  } else if (/financ|budget|p&l|revenue|cost|cashflow|forecast|invoice|expense|margin/i.test(lower)) {
-    department = "Finance";
-  } else if (/sales|pipeline|crm|deal|commercial|bd|partnership|proposal|quote|prospect/i.test(lower)) {
-    department = "Commercial / Sales";
-  } else if (/tech|engineer|system|infra|security|devops|architect|cloud|incident|postmortem|sla/i.test(lower)) {
-    department = "Technology";
-  } else if (/ops|operation|kpi|perform|delivery|logistics|process|workflow|sop/i.test(lower)) {
-    department = "Operations";
-  } else if (/market|brand|campaign|seo|content|social|launch|pr/i.test(lower)) {
-    department = "Marketing";
-  } else if (/hr|talent|people|hiring|org|culture|payroll|headcount|attrition/i.test(lower)) {
-    department = "HR / People";
-  } else if (/strategy|roadmap|plan|vision|okr|goal/i.test(lower)) {
-    department = "Strategy";
-  } else if (/product|feature|sprint|backlog|user|ux|design/i.test(lower)) {
-    department = "Product";
-  }
+Respond ONLY with valid JSON. No markdown, no extra text.
 
-  // Sensitivity detection
-  let sensitivity: FileClassification["sensitivity"] = "internal";
-
-  // Highly sensitive patterns
-  if (/board|legal|salary|payroll|personal|pii|gdpr|restricted|confidential/i.test(lower)) {
-    sensitivity = "confidential";
-  }
-  if (/password|credential|secret|token|api.?key/i.test(lower)) {
-    sensitivity = "restricted";
-  }
-
-  // Sector-based elevation
-  if (
-    (sector === "financial_services" || sector === "healthcare") &&
-    sensitivity === "internal"
-  ) {
-    // Elevate regulated-sector defaults to confidential for anything non-public
-    if (!/public|press|release|marketing|blog/i.test(lower)) {
-      sensitivity = "confidential";
-    }
-  }
-
-  return { department, sensitivity };
+Format:
+{
+  "recommendedDashboards": ["ceo"],
+  "suggestedQuestions": [
+    "What is blocking revenue growth this quarter?",
+    "Which operational risks need immediate CEO attention?",
+    "What is the status of our top strategic initiative?"
+  ],
+  "focusSummary": "Monitoring growth blockers, strategic risks, and cross-functional bottlenecks for the CEO lens."
 }
 
-// ---------------------------------------------------------------------------
-// Default document starter packs per sector
-// ---------------------------------------------------------------------------
+Dashboard keys available: ceo (strategy, risks, open decisions), coo (operations, delivery, execution), cbo (commercial, BD pipeline, growth), cto (technology, data quality, security, infrastructure).
+Rules:
+- Recommend 1-3 dashboards most relevant to the stated focus.
+- Suggest exactly 3 questions that are specific, actionable, and answerable from business documents.
+- focusSummary must be one clear sentence.
+- Questions should reflect both the user's stated intent AND the company's sector/stage if provided.`;
 
-function getDefaultDocuments(sector: string): SuggestedDocument[] {
-  const packs: Record<string, SuggestedDocument[]> = {
-    financial_services: [
-      { name: "Latest Board Pack", type: "pdf", priority: "high", description: "Strategic context and board-level risk signals" },
-      { name: "Risk Register", type: "xlsx", priority: "high", description: "Current risk inventory and mitigation status" },
-      { name: "Regulatory Compliance Report", type: "pdf", priority: "high", description: "Regulatory obligations, gaps, and pending actions" },
-      { name: "Financial Performance Report", type: "xlsx", priority: "high", description: "P&L, KPIs, and variance to plan" },
-      { name: "AML/KYC Policy Manual", type: "docx", priority: "medium", description: "Compliance procedures and control framework" }
-    ],
-    professional_services: [
-      { name: "Business Development Pipeline", type: "xlsx", priority: "high", description: "Proposal pipeline, win rates, and revenue forecast" },
-      { name: "Client Engagement Status Report", type: "docx", priority: "high", description: "Active projects, delivery status, and issues" },
-      { name: "Monthly P&L by Practice Area", type: "xlsx", priority: "high", description: "Revenue, margin, and utilisation by team" },
-      { name: "Resource Utilisation Report", type: "xlsx", priority: "medium", description: "Billable vs non-billable hours and capacity" },
-      { name: "Partner / Client Meeting Notes", type: "docx", priority: "medium", description: "Key decisions and relationship signals" }
-    ],
-    technology_saas: [
-      { name: "Product Roadmap", type: "pdf", priority: "high", description: "Feature priorities, timelines, and strategic bets" },
-      { name: "Monthly MRR / ARR Report", type: "xlsx", priority: "high", description: "Revenue growth, churn, and expansion metrics" },
-      { name: "Engineering Sprint Report", type: "docx", priority: "medium", description: "Velocity, blockers, and technical debt signals" },
-      { name: "Security Audit Report", type: "pdf", priority: "high", description: "Vulnerabilities, risks, and remediation plan" },
-      { name: "Customer NPS / Feedback Analysis", type: "xlsx", priority: "medium", description: "User satisfaction trends and churn signals" }
-    ],
-    manufacturing: [
-      { name: "Production KPI Report", type: "xlsx", priority: "high", description: "OEE, defect rates, and capacity utilisation" },
-      { name: "Supply Chain Risk Register", type: "xlsx", priority: "high", description: "Supplier risk, lead times, and buffer stock" },
-      { name: "Quality Audit Report", type: "pdf", priority: "high", description: "Non-conformances, corrective actions, and compliance" },
-      { name: "Maintenance and Incident Log", type: "xlsx", priority: "medium", description: "Equipment failures and downtime trends" },
-      { name: "Financial Performance Report", type: "xlsx", priority: "high", description: "COGS, margin, and variance to plan" }
-    ],
-    retail_commerce: [
-      { name: "Weekly Trading Report", type: "xlsx", priority: "high", description: "Sales, conversion, and category performance" },
-      { name: "Inventory Aging Report", type: "xlsx", priority: "high", description: "Stock levels, slow-movers, and write-off risk" },
-      { name: "Customer Feedback / NPS Survey", type: "xlsx", priority: "medium", description: "Satisfaction trends and churn signals" },
-      { name: "Supplier Scorecard", type: "xlsx", priority: "medium", description: "Delivery performance and compliance" },
-      { name: "Campaign Performance Report", type: "pdf", priority: "medium", description: "Marketing ROI and channel attribution" }
-    ],
-    healthcare: [
-      { name: "Clinical Audit Report", type: "pdf", priority: "high", description: "Patient outcomes, safety incidents, and quality metrics" },
-      { name: "Regulatory Compliance Status", type: "docx", priority: "high", description: "Accreditation gaps and regulatory obligations" },
-      { name: "Financial and Billing Report", type: "xlsx", priority: "high", description: "Revenue cycle, reimbursement, and cost per episode" },
-      { name: "Patient Satisfaction Report", type: "pdf", priority: "medium", description: "CSAT, NPS, and complaint analysis" },
-      { name: "Incident and Risk Register", type: "xlsx", priority: "high", description: "Patient safety events and mitigation actions" }
-    ],
-    real_estate_construction: [
-      { name: "Project Status Report", type: "docx", priority: "high", description: "Delivery milestones, cost variance, and blockers" },
-      { name: "QS Cost Report", type: "xlsx", priority: "high", description: "Budget, committed costs, and forecast at completion" },
-      { name: "Occupancy and Leasing Report", type: "xlsx", priority: "high", description: "Occupancy rates, lease renewals, and pipeline" },
-      { name: "Board Investment Paper", type: "pdf", priority: "high", description: "Strategic rationale, returns, and risk for key decisions" },
-      { name: "Environmental / ESG Report", type: "pdf", priority: "medium", description: "Sustainability compliance and ESG obligations" }
-    ],
-    education_training: [
-      { name: "Student Enrolment Report", type: "xlsx", priority: "high", description: "Enrolment trends, growth, and forecast" },
-      { name: "Accreditation Status Report", type: "docx", priority: "high", description: "Compliance status and upcoming requirements" },
-      { name: "Financial Performance Report", type: "xlsx", priority: "high", description: "Revenue, cost per student, and budget variance" },
-      { name: "Student Feedback / NPS", type: "xlsx", priority: "medium", description: "Satisfaction trends and at-risk cohort signals" },
-      { name: "Faculty / Staff Report", type: "docx", priority: "medium", description: "Headcount, attrition, and development needs" }
-    ]
+export async function mapFocusToDashboard(
+  intent: string,
+  companyContext: string
+): Promise<FocusMapping | null> {
+  if (!intent?.trim() || intent.trim().length < 5) return null;
+
+  const userPrompt = companyContext
+    ? `${companyContext}\n\nUser focus: "${intent.trim()}"\n\nMap this to dashboards and suggest first questions.`
+    : `User focus: "${intent.trim()}"\n\nMap this to dashboards and suggest first questions.`;
+
+  let raw: string;
+  try {
+    raw = await ask(userPrompt, FOCUS_SYSTEM_PROMPT, { maxTokens: 400, temperature: 0.15 });
+  } catch {
+    return null;
+  }
+
+  if (!raw || raw.includes("[LLM unavailable")) return null;
+
+  const cleaned = raw.replace(/```json\s*/gi, "").replace(/```\s*/g, "").trim();
+
+  let parsed: Record<string, unknown>;
+  try {
+    parsed = JSON.parse(cleaned);
+  } catch {
+    return null;
+  }
+
+  const toStrArray = (v: unknown): string[] =>
+    Array.isArray(v) ? v.filter((x): x is string => typeof x === "string") : [];
+
+  const dashboards = toStrArray(parsed.recommendedDashboards)
+    .filter((d) => ["ceo", "coo", "cbo", "cto"].includes(d))
+    .slice(0, 3);
+
+  const questions = toStrArray(parsed.suggestedQuestions).slice(0, 5);
+
+  if (!dashboards.length || !questions.length) return null;
+
+  return {
+    recommendedDashboards: dashboards,
+    suggestedQuestions: questions,
+    focusSummary: typeof parsed.focusSummary === "string" ? parsed.focusSummary : ""
   };
-
-  return packs[sector] ?? packs.technology_saas;
 }

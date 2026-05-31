@@ -1,6 +1,7 @@
 import {
   boolean,
   customType,
+  date,
   integer,
   jsonb,
   pgEnum,
@@ -48,6 +49,7 @@ const pgVector = customType<{
 const vector = (name: string) => pgVector(name, { dimensions: 1536 });
 
 export const sensitivityEnum = pgEnum("sensitivity", ["public", "internal", "confidential", "restricted"]);
+export const workspaceStatusEnum = pgEnum("workspace_status", ["trial", "pilot", "active", "suspended", "cancelled"]);
 export const ingestionStatusEnum = pgEnum("ingestion_status", ["queued", "triaged", "pending_approval", "quarantined", "processed", "failed"]);
 export const recommendationStatusEnum = pgEnum("recommendation_status", ["draft", "in_review", "approved", "rejected", "promoted"]);
 export const decisionStatusEnum = pgEnum("decision_status", ["open", "decided", "superseded"]);
@@ -62,6 +64,11 @@ export const workspaces = pgTable("workspaces", {
   id: text("id").primaryKey(),
   tenantId: text("tenant_id").notNull(),
   name: varchar("name", { length: 200 }).notNull(),
+  status: workspaceStatusEnum("status").notNull().default("trial"),
+  trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
+  suspendedAt: timestamp("suspended_at", { withTimezone: true }),
+  stripeCustomerId: text("stripe_customer_id"),
+  stripeSubscriptionId: text("stripe_subscription_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
 });
 
@@ -97,6 +104,8 @@ export const evidenceRecords = pgTable("evidence_records", {
   workspaceId: text("workspace_id").notNull(),
   sourceId: text("source_id"),
   sourceType: varchar("source_type", { length: 64 }).notNull(),
+  department: varchar("department", { length: 120 }),
+  connectorInstanceId: text("connector_instance_id"),
   sourcePath: text("source_path").notNull(),
   sourceUri: text("source_uri"),
   sourceTimestamp: timestamp("source_timestamp", { withTimezone: true }).notNull(),
@@ -157,6 +166,8 @@ export const workspaceSettings = pgTable("workspace_settings", {
   defaultSensitivity: sensitivityEnum("default_sensitivity").notNull().default("internal"),
   slackEnabled: boolean("slack_enabled").notNull().default(false),
   teamsEnabled: boolean("teams_enabled").notNull().default(false),
+  /** Demo mode: disables real ingestion and shows a "Demo" badge. Used during sales demos. */
+  demoMode: boolean("demo_mode").notNull().default(false),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 });
 
@@ -205,6 +216,11 @@ export const workspaceProfiles = pgTable("workspace_profiles", {
   primaryGoals: jsonb("primary_goals").$type<string[]>().default([]).notNull(),
   riskProfile: varchar("risk_profile", { length: 32 }),
   priorityRoles: jsonb("priority_roles").$type<string[]>().default([]).notNull(),
+  companyArchetype: varchar("company_archetype", { length: 64 }),
+  archetypeVersion: text("archetype_version"),
+  briefLanguageMode: varchar("brief_language_mode", { length: 16 }).notNull().default("formal"),
+  locationCount: integer("location_count").notNull().default(1),
+  roleStates: jsonb("role_states").$type<Record<string, unknown>>().default({}).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 });
 
@@ -224,4 +240,21 @@ export const connectors = pgTable("connectors", {
   syncError: text("sync_error"),
   encryptedCredentials: text("encrypted_credentials"),  // AES-256-GCM encrypted JSON blob
   config: jsonb("config").$type<Record<string, unknown>>().default({}).notNull()
+});
+
+/**
+ * LLM usage tracking — one row per LLM call, for cost monitoring and per-workspace budget alerts.
+ * cost_usd_micro stores cost in millionths of a USD to avoid floating-point storage.
+ * e.g. $0.001 = 1000 micro-USD
+ */
+export const llmUsage = pgTable("llm_usage", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull(),
+  recordedAt: timestamp("recorded_at", { withTimezone: true }).defaultNow().notNull(),
+  day: date("day").notNull(),
+  model: text("model").notNull(),
+  route: text("route").notNull(),
+  inputTokens: integer("input_tokens").notNull().default(0),
+  outputTokens: integer("output_tokens").notNull().default(0),
+  costUsdMicro: integer("cost_usd_micro").notNull().default(0),
 });

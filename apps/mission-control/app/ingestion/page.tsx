@@ -3,11 +3,23 @@ import { PageShell } from "@/components/page-shell";
 import { auth } from "@clerk/nextjs/server";
 import { repository } from "@/lib/data/repository";
 
-export default async function IngestionPage() {
+export default async function IngestionPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ department?: string }>;
+}) {
+  const filters = await searchParams;
   const { orgId, userId } = await auth();
   const workspaceId = orgId ?? userId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
   const rows = await repository.getEvidenceForWorkspace(workspaceId);
-  const quarantined = rows.filter((item) => item.ingestionStatus === "quarantined");
+  const departments = Array.from(
+    new Set(rows.map((row) => row.department).filter((item): item is string => Boolean(item)))
+  ).sort();
+  const quarantined = rows.filter(
+    (item) =>
+      item.ingestionStatus === "quarantined" &&
+      (!filters.department || item.department === filters.department)
+  );
 
   return (
     <PageShell
@@ -16,6 +28,21 @@ export default async function IngestionPage() {
     >
       <IngestionUpload workspaceId={workspaceId} />
       <section className="panel">
+        {departments.length > 0 && (
+          <div className="mb-4 flex flex-wrap gap-2 text-sm">
+            <span className="text-white/45">Department:</span>
+            <a href="/ingestion" className={`badge ${!filters.department ? "badge-green" : "badge-muted"}`}>All</a>
+            {departments.map((department) => (
+              <a
+                key={department}
+                href={`/ingestion?department=${encodeURIComponent(department)}`}
+                className={`badge ${filters.department === department ? "badge-green" : "badge-muted"}`}
+              >
+                {department}
+              </a>
+            ))}
+          </div>
+        )}
         <p className="panel-title">
           Quarantine Queue
           {quarantined.length > 0 && (

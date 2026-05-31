@@ -6,6 +6,7 @@ const baseEvidence = {
   tenantId: "tenant-a",
   workspaceId: "workspace-a",
   sourceType: "document",
+  connectorInstanceId: "conn-slack-demo",
   sourcePath: "/tmp/a.pdf",
   sourceTimestamp: new Date().toISOString(),
   ingestedAt: new Date().toISOString(),
@@ -60,4 +61,3 @@ describe("contracts", () => {
     expect(recommendationStatusSchema.safeParse("invalid_status").success).toBe(false);
   });
 });
-

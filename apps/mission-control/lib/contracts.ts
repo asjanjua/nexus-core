@@ -1,7 +1,31 @@
 import { z } from "zod";
 
-export const roleSchema = z.enum(["ceo", "coo", "cbo", "cto"]);
+export const KNOWN_ROLES = new Set(["ceo", "coo", "cbo", "cto"]);
+export const roleSchema = z.string().min(1).max(64).regex(/^[a-z0-9_:-]+$/);
 export type Role = z.infer<typeof roleSchema>;
+
+export const companyArchetypeSchema = z.enum([
+  "corporate",
+  "startup_scaleup",
+  "sme_physical",
+  "digital_native",
+  "professional_practice"
+]);
+export type CompanyArchetype = z.infer<typeof companyArchetypeSchema>;
+
+export const briefLanguageModeSchema = z.enum(["formal", "plain"]);
+export type BriefLanguageMode = z.infer<typeof briefLanguageModeSchema>;
+
+export const roleStateSchema = z.enum(["active", "staged", "available", "dual_hat"]);
+export type RoleStateStatus = z.infer<typeof roleStateSchema>;
+
+export const workspaceRoleStateSchema = z.object({
+  state: roleStateSchema,
+  activatedAt: z.string().nullable().optional(),
+  stagedCondition: z.string().nullable().optional(),
+  dualHatOf: z.string().nullable().optional()
+});
+export type WorkspaceRoleState = z.infer<typeof workspaceRoleStateSchema>;
 
 export const sensitivitySchema = z.enum(["public", "internal", "confidential", "restricted"]);
 export type Sensitivity = z.infer<typeof sensitivitySchema>;
@@ -33,6 +57,8 @@ export const evidenceRecordSchema = z.object({
   tenantId: z.string(),
   workspaceId: z.string(),
   sourceType: z.string(),
+  department: z.string().optional(),
+  connectorInstanceId: z.string().optional(),
   sourcePath: z.string(),
   sourceUri: z.string().optional(),
   sourceTimestamp: z.string(),
@@ -48,7 +74,17 @@ export type EvidenceRecord = z.infer<typeof evidenceRecordSchema>;
 
 export const dashboardCardSchema = z.object({
   id: z.string(),
-  role: roleSchema,
+  role: z.string(),
+  agentId: z.string().optional(),
+  agentName: z.string().optional(),
+  agentRoom: z.string().optional(),
+  agentRoomLabel: z.string().optional(),
+  mandate: z.string().optional(),
+  outputType: z.enum(["brief", "risk", "decision", "recommendation", "status"]).optional(),
+  approvalPolicy: z.enum(["read_only", "draft_only", "approval_required"]).optional(),
+  skillHints: z.array(z.string()).optional(),
+  suggestedNextAction: z.string().optional(),
+  lastRunAt: z.string().optional(),
   title: z.string(),
   summary: z.string(),
   confidence: z.number().min(0).max(1),
@@ -56,6 +92,20 @@ export const dashboardCardSchema = z.object({
   evidenceRefs: z.array(z.string())
 });
 export type DashboardCard = z.infer<typeof dashboardCardSchema>;
+
+export const agentBriefSchema = dashboardCardSchema.extend({
+  agentId: z.string(),
+  agentName: z.string(),
+  agentRoom: z.string(),
+  agentRoomLabel: z.string(),
+  mandate: z.string(),
+  outputType: z.enum(["brief", "risk", "decision", "recommendation", "status"]),
+  approvalPolicy: z.enum(["read_only", "draft_only", "approval_required"]),
+  skillHints: z.array(z.string()),
+  suggestedNextAction: z.string(),
+  lastRunAt: z.string()
+});
+export type AgentBrief = z.infer<typeof agentBriefSchema>;
 
 export const recommendationSchema = z.object({
   id: z.string(),
@@ -88,7 +138,8 @@ export type Decision = z.infer<typeof decisionSchema>;
 export const askRequestSchema = z.object({
   workspaceId: z.string(),
   userId: z.string(),
-  query: z.string().min(3)
+  query: z.string().min(3),
+  department: z.string().optional()
 });
 
 export const askResponseSchema = z.object({
@@ -158,6 +209,11 @@ export const workspaceProfileSchema = z.object({
   primaryGoals: z.array(z.string()).default([]),
   riskProfile: z.enum(["conservative", "moderate", "growth_oriented", "aggressive"]).optional().nullable(),
   priorityRoles: z.array(z.string()).default([]),
+  companyArchetype: companyArchetypeSchema.optional().nullable(),
+  archetypeVersion: z.string().optional().nullable(),
+  briefLanguageMode: briefLanguageModeSchema.default("formal"),
+  locationCount: z.number().int().positive().default(1),
+  roleStates: z.record(workspaceRoleStateSchema).default({}),
   updatedAt: z.string()
 });
 export type WorkspaceProfile = z.infer<typeof workspaceProfileSchema>;
@@ -182,6 +238,7 @@ export const workspaceSettingsSchema = z.object({
   defaultSensitivity: sensitivitySchema.default("internal"),
   slackEnabled: z.boolean().default(false),
   teamsEnabled: z.boolean().default(false),
+  demoMode: z.boolean().default(false),
   updatedAt: z.string()
 });
 export type WorkspaceSettings = z.infer<typeof workspaceSettingsSchema>;

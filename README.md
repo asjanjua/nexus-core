@@ -1,12 +1,12 @@
 # Nexus Core
 
-[![MIT License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![License: PolyForm Noncommercial](https://img.shields.io/badge/license-PolyForm%20Noncommercial-blue.svg)](LICENSE)
 [![GitHub stars](https://img.shields.io/github/stars/asjanjua/nexus-core?style=social)](https://github.com/asjanjua/nexus-core)
 [![Open issues](https://img.shields.io/github/issues/asjanjua/nexus-core)](https://github.com/asjanjua/nexus-core/issues)
 
-Nexus Core is an open-source executive intelligence command layer that turns documents and communications into evidence-backed briefs, dashboards, decisions, and recommendations.
+Nexus Core is a source-available executive intelligence command layer that turns documents and communications into evidence-backed specialist-agent briefs, decisions, and recommendations.
 
-If you want a faster way to understand what matters across your company, Nexus is built for you.
+If you want a faster way to understand what matters across your company, Nexus gives you a team of evidence-backed AI analysts, each focused on a business function, with human approval built in.
 
 ![Nexus preview](demo/preview.svg)
 
@@ -35,7 +35,7 @@ nexus doctor
 - Ingests enterprise content from document and comms sources.
 - Extracts structured signals (risks, opportunities, tasks, decisions, KPIs).
 - Maps findings to a lightweight enterprise ontology.
-- Produces role-aware outputs for leadership (CEO, COO, CBO/Strategy).
+- Produces specialist-agent briefs across strategy, risk, execution, growth, technology, data, security, and AI governance.
 - Preserves provenance so each insight links back to source evidence.
 
 ## V1 Product Scope
@@ -53,16 +53,15 @@ Not included in V1:
 - Multi-tenant SaaS control plane
 
 ## System Shape
-Nexus Core builds on:
-- OpenClaw orchestration for routing and channel access
-- AI_Global_Vault for durable knowledge and synthesis
-- ConsultingAI specialist agents for domain execution
+NexusAI Mission Control is a standalone intelligence layer. It sits on top of
+existing SaaS, ERP, and communications systems without replacing them.
 
-Nexus adds:
-- pilot contracts
-- ontology mappings
-- executive report artifacts
-- governance and approval controls
+Core components:
+- Evidence ingestion and confidence routing
+- Specialist agent briefs by role and room
+- Human review queue with audit trail
+- Agent Control Profiles (governance passports)
+- Connector layer for documents, comms, and operational data
 
 ## Repository Layout
 - `apps/mission-control/` Next.js Mission Control app (dashboard-first UI + API routes)
@@ -135,6 +134,8 @@ nexus help
 Full guide: [docs/INSTALL.md](docs/INSTALL.md)
 Infrastructure decision memo: [docs/INFRA_DECISION_MEMO.md](docs/INFRA_DECISION_MEMO.md)
 Model routing policy: [docs/MODEL_ROUTING.md](docs/MODEL_ROUTING.md)
+AI operating model: [docs/AI_OPERATING_MODEL.md](docs/AI_OPERATING_MODEL.md)
+Agent rooms: [docs/AGENT_ROOMS.md](docs/AGENT_ROOMS.md)
 
 Release notes: [CHANGELOG.md](CHANGELOG.md)
 
@@ -171,4 +172,6 @@ Want to help improve Nexus?
 - prefer focused pull requests over large rewrites
 
 ## License
-This project is open-source under the `MIT License` and is free for everyone to use, modify, and share.
+This project is source-available under the `PolyForm Noncommercial License 1.0.0`.
+
+Noncommercial use is permitted under [LICENSE](LICENSE). Commercial use, hosted deployments, managed services, paid pilots, and enterprise use require a separate commercial license. See [LICENSE.md](LICENSE.md) for the short licensing notice.

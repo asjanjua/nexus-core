@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Pool } from "pg";
+import { normalizeDatabaseUrl } from "./db-url.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -12,7 +13,7 @@ function requireDbUrl() {
   if (!dbUrl) {
     throw new Error("DATABASE_URL is required for db:migrate");
   }
-  return dbUrl;
+  return normalizeDatabaseUrl(dbUrl);
 }
 
 async function ensureMigrationsTable(pool) {

@@ -146,6 +146,7 @@ const workspaceSettingsStore: Map<string, WorkspaceSettings> = new Map([
       defaultSensitivity: "internal",
       slackEnabled: false,
       teamsEnabled: false,
+      demoMode: false,
       updatedAt: new Date().toISOString()
     }
   ]
@@ -238,10 +239,27 @@ export const store = {
     });
     return rec;
   },
-  byRoleSummary(role: Role) {
+  deleteEvidenceRecord(id: string, actor = "system"): EvidenceRecord | undefined {
+    const index = evidence.findIndex((item) => item.id === id);
+    if (index === -1) return undefined;
+    const [removed] = evidence.splice(index, 1);
+    pushAudit({
+      workspaceId: removed.workspaceId,
+      type: "evidence_deleted",
+      actor,
+      payload: {
+        evidenceId: id,
+        sourcePath: removed.sourcePath,
+        department: removed.department ?? null,
+        ingestionStatus: removed.ingestionStatus
+      }
+    });
+    return removed;
+  },
+  byRoleSummary(role: string) {
     const relevantEvidence = evidence.filter((item) => item.ingestionStatus === "processed");
     const recs = recommendations.filter((item) => item.status !== "rejected");
-    const topMap: Record<Role, string> = {
+    const topMap: Record<string, string> = {
       ceo: "Strategic risk and decision velocity",
       coo: "Execution bottlenecks and operational throughput",
       cbo: "Growth opportunities and partner pipeline",
@@ -249,7 +267,7 @@ export const store = {
     };
     return {
       role,
-      topFocus: topMap[role],
+      topFocus: topMap[role] ?? "Specialist evidence brief and next-best action",
       evidenceCount: relevantEvidence.length,
       recommendationCount: recs.length,
       quarantinedCount: evidence.filter((item) => item.ingestionStatus === "quarantined").length
@@ -322,6 +340,7 @@ export const store = {
         defaultSensitivity: "internal",
         slackEnabled: false,
         teamsEnabled: false,
+        demoMode: false,
         updatedAt: new Date().toISOString()
       }
     );

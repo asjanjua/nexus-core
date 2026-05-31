@@ -7,6 +7,12 @@
 
 import { useState, useEffect } from "react";
 import { PageShell } from "@/components/page-shell";
+import {
+  briefLanguageModeForArchetype,
+  getAllSectors,
+  getArchetypeEvidenceExpectation,
+  getSector
+} from "@/lib/domain/sector-library";
 
 // ---------------------------------------------------------------------------
 // Types (mirrored from contracts for client-side use)
@@ -38,16 +44,68 @@ type AgentKey = {
 
 type NewKeyResult = AgentKey & { secret: string };
 
+type WorkspaceProfile = {
+  companyName?: string | null;
+  sector?: string | null;
+  subsector?: string | null;
+  businessModel?: string | null;
+  companyStage?: string | null;
+  employeeBand?: string | null;
+  region?: string | null;
+  primaryGoals: string[];
+  riskProfile?: string | null;
+  priorityRoles: string[];
+  companyArchetype?: string | null;
+  archetypeVersion?: string | null;
+  briefLanguageMode?: "formal" | "plain";
+  locationCount?: number;
+  roleStates?: Record<string, unknown>;
+  updatedAt?: string;
+};
+
 const TABS = [
   { id: "workspace", label: "Workspace" },
+  { id: "profile", label: "Company Profile" },
   { id: "llm", label: "LLM Provider" },
   { id: "sources", label: "Sources" },
   { id: "policies", label: "Policies" },
   { id: "apikeys", label: "API Keys" },
-  { id: "roles", label: "Roles" }
+  { id: "roles", label: "Roles" },
+  { id: "audit", label: "Audit Log" },
+  { id: "demo", label: "Demo Tools" },
 ] as const;
 
 type TabId = (typeof TABS)[number]["id"];
+
+const BUSINESS_MODEL_OPTIONS = [
+  "b2b",
+  "b2c",
+  "b2b2c",
+  "marketplace",
+  "services",
+  "government",
+];
+
+const STAGE_OPTIONS = ["pre_revenue", "early_stage", "growth", "scale_up", "enterprise", "public"];
+const EMPLOYEE_OPTIONS = ["1_10", "11_50", "51_200", "201_1000", "1001_5000", "5000_plus"];
+const RISK_OPTIONS = ["conservative", "moderate", "growth_oriented", "aggressive"];
+const ARCHETYPE_OPTIONS = [
+  { value: "corporate", label: "Corporate / governed company" },
+  { value: "startup_scaleup", label: "Startup / scale-up" },
+  { value: "sme_physical", label: "Owner-operated physical business" },
+  { value: "digital_native", label: "Digital-native / internet-first company" },
+  { value: "professional_practice", label: "Professional practice" },
+] as const;
+const GOAL_OPTIONS = [
+  "revenue_growth",
+  "cost_reduction",
+  "regulatory_compliance",
+  "market_expansion",
+  "digital_transformation",
+  "risk_management",
+  "talent_retention",
+  "product_launch",
+];
 
 const SCOPE_OPTIONS = [
   { value: "read:dashboard", label: "Read dashboards" },
@@ -120,6 +178,324 @@ function WorkspaceTab({ workspaceId }: { workspaceId: string }) {
       <button className="btn-primary" onClick={save} disabled={saving}>
         {saving ? "Saving..." : saved ? "Saved" : "Save Changes"}
       </button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Company profile tab
+// ---------------------------------------------------------------------------
+
+function ProfileTab() {
+  const sectors = getAllSectors();
+  const [profile, setProfile] = useState<WorkspaceProfile | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    fetch("/api/workspace/profile")
+      .then((r) => r.json())
+      .then((j) => {
+        const data = j.ok && j.data ? j.data : {};
+        setProfile({
+          companyName: data.companyName ?? "",
+          sector: data.sector ?? sectors[0]?.key ?? "technology_saas",
+          subsector: data.subsector ?? "",
+          businessModel: data.businessModel ?? "b2b",
+          companyStage: data.companyStage ?? "growth",
+          employeeBand: data.employeeBand ?? "51_200",
+          region: data.region ?? "",
+          primaryGoals: Array.isArray(data.primaryGoals) ? data.primaryGoals : [],
+          riskProfile: data.riskProfile ?? "moderate",
+          priorityRoles: Array.isArray(data.priorityRoles) ? data.priorityRoles : [],
+          companyArchetype: data.companyArchetype ?? null,
+          archetypeVersion: data.archetypeVersion ?? null,
+          briefLanguageMode: data.briefLanguageMode ?? "formal",
+          locationCount: data.locationCount ?? 1,
+          roleStates: data.roleStates ?? {},
+          updatedAt: data.updatedAt,
+        });
+      });
+  }, []);
+
+  if (!profile) return <p className="text-white/50 text-sm">Loading...</p>;
+
+  const sector = getSector(profile.sector ?? "");
+  const subsectors = sector?.subsectors ?? [];
+  const uploadPack = (sector?.documentTypes ?? []).slice(0, 5);
+  const defaultRoles = sector?.defaultRoles ?? ["CEO", "COO", "CTO"];
+  const archetypeExpectation = getArchetypeEvidenceExpectation(profile.companyArchetype);
+
+  function update(next: Partial<WorkspaceProfile>) {
+    setProfile((current) => current ? { ...current, ...next } : current);
+  }
+
+  function toggleGoal(goal: string) {
+    const current = new Set(profile!.primaryGoals);
+    if (current.has(goal)) current.delete(goal);
+    else current.add(goal);
+    update({ primaryGoals: Array.from(current) });
+  }
+
+  function setRoles(value: string) {
+    update({
+      priorityRoles: value
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean),
+    });
+  }
+
+  async function save() {
+    if (!profile) return;
+    setSaving(true);
+    const body = {
+      companyName: profile.companyName || null,
+      sector: profile.sector || null,
+      subsector: profile.subsector || null,
+      businessModel: profile.businessModel || null,
+      companyStage: profile.companyStage || null,
+      employeeBand: profile.employeeBand || null,
+      region: profile.region || null,
+      primaryGoals: profile.primaryGoals,
+      riskProfile: profile.riskProfile || null,
+      priorityRoles: profile.priorityRoles.length ? profile.priorityRoles : defaultRoles,
+      companyArchetype: profile.companyArchetype ?? null,
+      archetypeVersion: profile.archetypeVersion ?? null,
+      briefLanguageMode: profile.briefLanguageMode ?? "formal",
+      locationCount: profile.locationCount ?? 1,
+      roleStates: profile.roleStates ?? {},
+    };
+    const res = await fetch("/api/workspace/profile", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const json = await res.json().catch(() => ({}));
+    if (res.ok && json.ok) {
+      setProfile(json.data);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    }
+    setSaving(false);
+  }
+
+  return (
+    <div className="grid gap-6 lg:grid-cols-[1fr_0.85fr]">
+      <div className="space-y-5 max-w-2xl">
+        <div className="panel text-sm text-white/70">
+          This profile shapes dashboard language, Ask answers, upload recommendations,
+          sensitivity defaults, and role suggestions. AI may suggest it, but humans confirm it here.
+        </div>
+        <div>
+          <label className="label">Company Name</label>
+          <input
+            className="input"
+            value={profile.companyName ?? ""}
+            onChange={(e) => update({ companyName: e.target.value })}
+            placeholder="e.g. Leap Associates"
+          />
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="label">Sector</label>
+            <select
+              className="input"
+              value={profile.sector ?? ""}
+              onChange={(e) => {
+                const nextSector = getSector(e.target.value);
+                update({
+                  sector: e.target.value,
+                  subsector: "",
+                  priorityRoles: nextSector?.defaultRoles.slice(0, 6) ?? profile.priorityRoles,
+                });
+              }}
+            >
+              {sectors.map((item) => (
+                <option key={item.key} value={item.key}>{item.label}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className="label">Subsector</label>
+            <select
+              className="input"
+              value={profile.subsector ?? ""}
+              onChange={(e) => update({ subsector: e.target.value })}
+            >
+              <option value="">Select a focus area</option>
+              {subsectors.map((item) => (
+                <option key={item.key} value={item.key}>{item.label}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="label">Business Model</label>
+            <select className="input" value={profile.businessModel ?? "b2b"} onChange={(e) => update({ businessModel: e.target.value })}>
+              {BUSINESS_MODEL_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">Company Stage</label>
+            <select className="input" value={profile.companyStage ?? "growth"} onChange={(e) => update({ companyStage: e.target.value })}>
+              {STAGE_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+          </div>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="label">Employee Band</label>
+            <select className="input" value={profile.employeeBand ?? "51_200"} onChange={(e) => update({ employeeBand: e.target.value })}>
+              {EMPLOYEE_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+          </div>
+          <div>
+            <label className="label">Region</label>
+            <input className="input" value={profile.region ?? ""} onChange={(e) => update({ region: e.target.value })} placeholder="GCC, Pakistan, UK..." />
+          </div>
+        </div>
+        <div>
+          <label className="label">Company Archetype</label>
+          <select
+            className="input"
+            value={profile.companyArchetype ?? ""}
+            onChange={(e) => {
+              const companyArchetype = e.target.value || null;
+              update({
+                companyArchetype,
+                briefLanguageMode: briefLanguageModeForArchetype(companyArchetype),
+                archetypeVersion: `manual-confirmed:${new Date().toISOString()}`,
+              });
+            }}
+          >
+            <option value="">Not set</option>
+            {ARCHETYPE_OPTIONS.map((item) => (
+              <option key={item.value} value={item.value}>{item.label}</option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-white/40">
+            Profile last updated: {profile.archetypeVersion ? profile.archetypeVersion.replace("manual-confirmed:", "") : "not confirmed"}
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="label">Brief Language</label>
+            <select
+              className="input"
+              value={profile.briefLanguageMode ?? "formal"}
+              onChange={(e) => update({ briefLanguageMode: e.target.value as WorkspaceProfile["briefLanguageMode"] })}
+            >
+              <option value="formal">Formal executive</option>
+              <option value="plain">Plain owner update</option>
+            </select>
+          </div>
+          <div>
+            <label className="label">Location Count</label>
+            <input
+              type="number"
+              min={1}
+              className="input"
+              value={profile.locationCount ?? 1}
+              onChange={(e) => update({ locationCount: Math.max(1, Number(e.target.value) || 1) })}
+            />
+          </div>
+        </div>
+        <div>
+          <label className="label">Risk Posture</label>
+          <select className="input" value={profile.riskProfile ?? "moderate"} onChange={(e) => update({ riskProfile: e.target.value })}>
+            {RISK_OPTIONS.map((item) => <option key={item} value={item}>{item}</option>)}
+          </select>
+        </div>
+        <div>
+          <label className="label">Primary Goals</label>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {GOAL_OPTIONS.map((goal) => (
+              <button
+                key={goal}
+                type="button"
+                onClick={() => toggleGoal(goal)}
+                className={[
+                  "rounded-full border px-3 py-1 text-xs transition",
+                  profile.primaryGoals.includes(goal)
+                    ? "border-nexus-accent/60 bg-nexus-accent/15 text-nexus-accent"
+                    : "border-white/20 text-white/50 hover:border-white/40",
+                ].join(" ")}
+              >
+                {goal.replace(/_/g, " ")}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div>
+          <label className="label">Priority Roles</label>
+          <input
+            className="input"
+            value={(profile.priorityRoles.length ? profile.priorityRoles : defaultRoles).join(", ")}
+            onChange={(e) => setRoles(e.target.value)}
+          />
+        </div>
+        {profile.roleStates && Object.keys(profile.roleStates).length > 0 && (
+          <div className="panel">
+            <p className="panel-title">Role State</p>
+            <p className="mt-2 text-xs text-white/45">
+              Active, staged, and dual-hat roles are stored on the workspace profile. Promotion flows become part of the role activation panel in the pilot packaging phase.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              {Object.entries(profile.roleStates).map(([roleKey, state]) => {
+                const roleState = state && typeof state === "object" && "state" in state
+                  ? String((state as { state?: unknown }).state ?? "available")
+                  : "available";
+                return (
+                  <span key={roleKey} className="badge badge-muted">
+                    {roleKey.replace(/_/g, " ")}: {roleState.replace(/_/g, " ")}
+                  </span>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        <button className="btn-primary" onClick={save} disabled={saving}>
+          {saving ? "Saving..." : saved ? "Saved" : "Save Company Profile"}
+        </button>
+      </div>
+
+      <aside className="space-y-4">
+        <div className="panel">
+          <p className="panel-title">Archetype evidence expectations</p>
+          <p className="mt-2 text-xs text-white/45">
+            Used by onboarding, ingestion guidance, and agent brief language.
+          </p>
+          <ul className="mt-3 space-y-2">
+            {(archetypeExpectation?.evidenceTypes ?? uploadPack).slice(0, 6).map((item, index) => (
+              <li key={item} className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white/70">
+                <span className="text-white/35">0{index + 1}</span> {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="panel">
+          <p className="panel-title">Derived starter upload pack</p>
+          <p className="mt-2 text-xs text-white/45">
+            Derived from the stored sector profile, so it stays available after onboarding.
+          </p>
+          <ul className="mt-3 space-y-2">
+            {uploadPack.map((item, index) => (
+              <li key={item} className="rounded-lg border border-white/10 bg-black/20 px-3 py-2 text-sm text-white/70">
+                <span className="text-white/35">0{index + 1}</span> {item}
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="panel">
+          <p className="panel-title">AI responsibility</p>
+          <p className="mt-2 text-sm leading-6 text-white/60">
+            AI suggests sector, roles, documents, KPIs, risks, and first dashboards.
+            Humans confirm this profile before NexusAI uses it as workspace context.
+          </p>
+        </div>
+      </aside>
     </div>
   );
 }
@@ -563,6 +939,243 @@ function RolesTab() {
 }
 
 // ---------------------------------------------------------------------------
+// Audit Log tab
+// ---------------------------------------------------------------------------
+
+type AuditEvent = {
+  id: string;
+  type: string;
+  actor: string;
+  timestamp: string;
+  payload: Record<string, unknown>;
+};
+
+const AUDIT_TYPE_COLORS: Record<string, string> = {
+  ingestion_extraction_completed: "text-green-400",
+  ingestion_original_stored: "text-green-300",
+  evidence_deleted: "text-red-400",
+  recommendation_generated: "text-nexus-accent",
+  approval_granted: "text-green-400",
+  approval_rejected: "text-amber-400",
+  ingestion_original_storage_failed: "text-red-300",
+};
+
+function auditSummary(event: AuditEvent): string {
+  const p = event.payload;
+  switch (event.type) {
+    case "ingestion_extraction_completed":
+      return `Extracted ${p.extractedCharCount ?? "?"} chars · ${p.extractionMethod ?? "?"} · ID: ${String(p.evidenceId ?? "").slice(0, 12)}`;
+    case "evidence_deleted":
+      return `Removed "${p.sourcePath ?? p.evidenceId}" · dept: ${p.department ?? "—"} · was: ${p.ingestionStatus ?? "?"}`;
+    case "recommendation_generated":
+      return `${p.count ?? "?"} recommendation(s) generated`;
+    case "approval_granted":
+      return `Approved: ${String(p.recommendationId ?? "").slice(0, 12)} · actor: ${event.actor}`;
+    case "approval_rejected":
+      return `Rejected: ${String(p.recommendationId ?? "").slice(0, 12)} · reason: ${p.reason ?? "—"}`;
+    case "ingestion_original_stored":
+      return `Original stored at ${p.sourceUri ?? "—"}`;
+    case "ingestion_original_storage_failed":
+      return `Storage failed for ${p.fileName ?? "—"}: ${p.error ?? "unknown"}`;
+    default:
+      return Object.keys(p).length
+        ? Object.entries(p).slice(0, 2).map(([k, v]) => `${k}: ${String(v).slice(0, 40)}`).join(" · ")
+        : "—";
+  }
+}
+
+function AuditTab() {
+  const [events, setEvents] = useState<AuditEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [limit, setLimit] = useState(50);
+
+  useEffect(() => {
+    setLoading(true);
+    fetch(`/api/audit/events?limit=${limit}`)
+      .then((r) => r.json())
+      .then((j) => { if (j.ok) setEvents(j.data.events ?? []); })
+      .finally(() => setLoading(false));
+  }, [limit]);
+
+  return (
+    <div className="space-y-4 max-w-3xl">
+      <div className="panel text-sm text-white/70">
+        System audit trail for this workspace. Every ingestion, deletion, approval,
+        profile change, and authentication event is recorded here.
+        Evidence-level and recommendation-level events are always captured regardless of LLM availability.
+      </div>
+
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-white/60">Showing last {limit} events</p>
+        <div className="flex gap-2">
+          {[25, 50, 100].map((n) => (
+            <button
+              key={n}
+              onClick={() => setLimit(n)}
+              className={[
+                "rounded-full border px-3 py-1 text-xs transition",
+                limit === n
+                  ? "border-nexus-accent/60 bg-nexus-accent/15 text-nexus-accent"
+                  : "border-white/20 text-white/40 hover:border-white/40",
+              ].join(" ")}
+            >
+              {n}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {loading ? (
+        <p className="text-white/40 text-sm">Loading audit events...</p>
+      ) : events.length === 0 ? (
+        <div className="panel text-sm text-white/50">
+          No audit events yet. Events are recorded as documents are ingested, reviewed, approved, and deleted.
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          {events.map((event) => (
+            <div
+              key={event.id}
+              className="rounded-lg border border-white/10 bg-black/20 px-3 py-2.5 text-xs"
+            >
+              <div className="flex items-start justify-between gap-3 flex-wrap">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className={`font-medium ${AUDIT_TYPE_COLORS[event.type] ?? "text-white/60"}`}>
+                    {event.type.replace(/_/g, " ")}
+                  </span>
+                  <span className="text-white/30">·</span>
+                  <span className="text-white/40">{event.actor}</span>
+                </div>
+                <span className="text-white/30 shrink-0">
+                  {new Date(event.timestamp).toLocaleString()}
+                </span>
+              </div>
+              <p className="mt-1 text-white/40">{auditSummary(event)}</p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Demo Tools tab
+// ---------------------------------------------------------------------------
+
+const DEMO_SECTORS = [
+  { value: "financial_services", label: "Financial Services (Gulf Capital Partners)" },
+  { value: "professional_services", label: "Professional Services (Meridian Advisory Group)" },
+  { value: "technology_saas", label: "Technology / SaaS (Vanta Systems)" },
+];
+
+function DemoTab({ workspaceId }: { workspaceId: string }) {
+  const [demoMode, setDemoMode] = useState<boolean | null>(null);
+  const [sector, setSector] = useState("technology_saas");
+  const [resetting, setResetting] = useState(false);
+  const [togglingDemo, setTogglingDemo] = useState(false);
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetch("/api/settings/workspace")
+      .then(r => r.json())
+      .then(j => { if (j.ok) setDemoMode(j.data?.demoMode ?? false); })
+      .catch(() => setDemoMode(false));
+  }, [workspaceId]);
+
+  async function toggleDemoMode() {
+    if (demoMode === null) return;
+    setTogglingDemo(true);
+    setMessage(""); setError("");
+    try {
+      const res = await fetch("/api/settings/workspace", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ demoMode: !demoMode }),
+      });
+      const j = await res.json();
+      if (j.ok) { setDemoMode(!demoMode); setMessage(!demoMode ? "Demo mode enabled. Ingestion is now blocked." : "Demo mode disabled."); }
+      else setError(j.error ?? "Failed to update demo mode");
+    } catch { setError("Network error"); }
+    finally { setTogglingDemo(false); }
+  }
+
+  async function resetDemo() {
+    setResetting(true); setMessage(""); setError("");
+    try {
+      const res = await fetch(`/api/workspace/demo-reset?sector=${sector}`, { method: "POST" });
+      const j = await res.json();
+      if (j.ok) setMessage(j.data?.message ?? "Demo workspace reset.");
+      else setError(j.error ?? "Reset failed");
+    } catch { setError("Network error"); }
+    finally { setResetting(false); }
+  }
+
+  return (
+    <div className="max-w-xl space-y-6">
+      <div className="rounded-xl border border-purple-400/20 bg-purple-400/5 p-5">
+        <h3 className="mb-1 text-sm font-semibold text-white">Demo Mode</h3>
+        <p className="mb-4 text-xs text-white/50">
+          Enables the DEMO badge in the top bar and blocks real document ingestion.
+          Use before every sales demo to prevent accidental data entry.
+        </p>
+        <div className="flex items-center justify-between">
+          <span className={`text-sm font-medium ${demoMode ? "text-purple-300" : "text-white/40"}`}>
+            {demoMode === null ? "Loading..." : demoMode ? "Demo mode is ON" : "Demo mode is OFF"}
+          </span>
+          <button
+            onClick={toggleDemoMode}
+            disabled={togglingDemo || demoMode === null}
+            className={`rounded-lg px-4 py-2 text-xs font-medium transition-colors disabled:opacity-50 ${
+              demoMode ? "bg-white/10 text-white hover:bg-white/20" : "bg-purple-600 text-white hover:bg-purple-500"
+            }`}
+          >
+            {togglingDemo ? "Updating..." : demoMode ? "Disable Demo Mode" : "Enable Demo Mode"}
+          </button>
+        </div>
+      </div>
+
+      <div className={`rounded-xl border p-5 transition-opacity ${demoMode ? "border-white/10 opacity-100" : "border-white/5 opacity-40 pointer-events-none"}`}>
+        <h3 className="mb-1 text-sm font-semibold text-white">Reset Demo Workspace</h3>
+        <p className="mb-4 text-xs text-white/50">
+          Clears all evidence, recommendations, and decisions. Re-seeds with a realistic sector pack.
+          Run this before every new sales demo.
+        </p>
+        <div className="mb-3">
+          <label className="mb-1 block text-xs text-white/60">Sector Pack</label>
+          <select
+            value={sector}
+            onChange={e => setSector(e.target.value)}
+            className="w-full rounded-lg border border-white/10 bg-black/30 px-3 py-2 text-sm text-white"
+          >
+            {DEMO_SECTORS.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+          </select>
+        </div>
+        <button
+          onClick={resetDemo}
+          disabled={resetting || !demoMode}
+          className="w-full rounded-lg bg-red-600/80 px-4 py-2 text-sm font-medium text-white hover:bg-red-600 disabled:opacity-40"
+        >
+          {resetting ? "Resetting..." : "Reset Demo Workspace"}
+        </button>
+      </div>
+
+      {message && <p className="text-xs text-green-300">{message}</p>}
+      {error && <p className="text-xs text-red-300">{error}</p>}
+
+      <div className="rounded-xl border border-white/5 bg-white/3 p-4 text-xs text-white/40">
+        <p className="font-medium text-white/60">Export Pilot Artifacts</p>
+        <p className="mt-1">
+          Access the <a href="/export" className="underline hover:text-white/80">Export Hub</a> to
+          generate the weekly brief, one-pager, risk radar CSV, and recommendation register CSV.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main settings page
 // ---------------------------------------------------------------------------
 
@@ -608,11 +1221,14 @@ export default function SettingsPage() {
 
       <div>
         {activeTab === "workspace" && <WorkspaceTab workspaceId={workspaceId} />}
+        {activeTab === "profile" && <ProfileTab />}
         {activeTab === "llm" && <LLMTab workspaceId={workspaceId} />}
         {activeTab === "sources" && <SourcesTab />}
         {activeTab === "policies" && <PoliciesTab workspaceId={workspaceId} />}
         {activeTab === "apikeys" && <APIKeysTab workspaceId={workspaceId} />}
         {activeTab === "roles" && <RolesTab />}
+        {activeTab === "audit" && <AuditTab />}
+        {activeTab === "demo" && <DemoTab workspaceId={workspaceId} />}
       </div>
     </PageShell>
   );

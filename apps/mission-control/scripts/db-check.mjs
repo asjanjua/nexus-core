@@ -1,4 +1,5 @@
 import { Pool } from "pg";
+import { normalizeDatabaseUrl } from "./db-url.mjs";
 
 const dbUrl = process.env.DATABASE_URL;
 
@@ -7,7 +8,7 @@ if (!dbUrl) {
   process.exit(1);
 }
 
-const pool = new Pool({ connectionString: dbUrl });
+const pool = new Pool({ connectionString: normalizeDatabaseUrl(dbUrl) });
 
 try {
   const result = await pool.query("select now() as now, current_database() as db");

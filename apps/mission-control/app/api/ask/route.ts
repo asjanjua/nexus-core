@@ -16,10 +16,10 @@ export async function POST(request: Request) {
 
   const workspaceId = ctx.workspaceId;
   const userId = ctx.userId;
-  const { query } = parsed.data;
+  const { query, department } = parsed.data;
 
   store.appendConversation(workspaceId, userId, "user", query);
-  const response = await answerWithEvidence(query, workspaceId);
+  const response = await answerWithEvidence(query, workspaceId, { department });
   store.appendConversation(workspaceId, userId, "assistant", response.answer);
 
   return ok(response);

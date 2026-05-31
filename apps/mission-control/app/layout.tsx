@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { SideNav } from "@/components/side-nav";
+import { TrialBanner } from "@/components/trial-banner";
+import { FeedbackButton } from "@/components/feedback-button";
 import {
   ClerkProvider,
   UserButton,
@@ -64,7 +66,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     );
   }
 
-  const rows = await repository.getEvidenceForWorkspace(workspaceId);
+  const [rows, workspaceStatus, settings] = await Promise.all([
+    repository.getEvidenceForWorkspace(workspaceId),
+    repository.getWorkspaceStatus(workspaceId),
+    repository.getWorkspaceSettings(workspaceId),
+  ]);
   const staleFound = rows.some(
     (row) => row.ingestionStatus === "processed" && row.freshnessHours > 168
   );
@@ -73,9 +79,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     <html lang="en">
       <body>
         <ClerkProvider afterSignOutUrl="/sign-in">
-          <main className="flex min-h-screen">
+          <main className="flex min-h-screen flex-col md:flex-row">
             <SideNav />
-            <div className="w-full p-6">
+            <div className="w-full min-w-0 p-4 sm:p-6">
               {/* Top bar */}
               <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-xs text-white/70">
                 <div className="flex items-center gap-4">
@@ -109,6 +115,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     {workspaceId.length > 20 ? `${workspaceId.slice(0, 16)}…` : workspaceId}
                   </span>
                   <span className="text-white/30">mode: {process.env.NEXUS_ENV ?? "pilot"}</span>
+                  {settings?.demoMode && (
+                    <span className="rounded bg-purple-500/20 px-2 py-0.5 text-xs font-semibold text-purple-300">
+                      DEMO
+                    </span>
+                  )}
                 </div>
                 <SignedIn>
                   <UserButton
@@ -118,6 +129,19 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   />
                 </SignedIn>
               </div>
+
+              {workspaceStatus.status === "trial" && (
+                <TrialBanner trialEndsAt={workspaceStatus.trialEndsAt} />
+              )}
+
+              {workspaceStatus.status === "suspended" && (
+                <div className="mb-4 rounded-lg border border-red-400/40 bg-red-400/10 px-4 py-2 text-sm text-red-100">
+                  This workspace has been suspended. Evidence and settings are preserved.{" "}
+                  <a href="mailto:support@nexusai.io" className="underline hover:text-red-50">
+                    Contact support to reactivate.
+                  </a>
+                </div>
+              )}
 
               {staleFound && (
                 <div className="mb-4 rounded-lg border border-amber-300/40 bg-amber-300/10 px-4 py-2 text-sm text-amber-100">
@@ -131,6 +155,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               {children}
             </div>
           </main>
+          <FeedbackButton />
         </ClerkProvider>
       </body>
     </html>
