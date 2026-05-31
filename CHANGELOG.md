@@ -2,6 +2,48 @@
 
 ---
 
+## 0.13.1 — Readiness On-Ramp and Governance Documentation (2026-05-31)
+
+This release starts Phase 7D / V1.1 governance hardening while preserving an honest boundary: U1 is shipped, while U2/U3/U4 remain the next implementation work.
+
+**Commit**
+- Pushed `ba078f1` to `main`: `feat: ship v1 pilot hardening and readiness on-ramp`
+
+**Readiness on-ramp**
+- Added public `POST /api/readiness/submit` to capture AI-Native Readiness Assessment submissions as lead/audit events.
+- Marked `/readiness` and `/api/readiness/submit` as public routes in middleware.
+- Added rate limiting for readiness submissions.
+
+**Governance and pilot-proof documents**
+- Added `docs/AI_NATIVE_READINESS_ASSESSMENT.md`
+- Added `docs/WORKFLOW_TWIN_SCORER.md`
+- Added `docs/SHADOW_MODE_ROI_PLAYBOOK.md`
+- Added `docs/GOVERN_ASSURE_MESSAGING.md`
+- Added `docs/U2_AGENT_PASSPORT_SPEC.md`
+
+**Product positioning**
+- Updated `docs/ONE_PAGER.md` with Govern and Assure positioning: evidence provenance, sensitivity controls, human approval, agent passports, audit logs, and rollback-ready output history.
+- Updated `TASKS.md` so U1 is marked complete and U2/U3/U4 remain the next Phase 7D blockers.
+
+**Build hardening**
+- Split client-safe filename classification into `lib/services/company-classification.ts`.
+- Kept server-only LLM/company detection in `lib/services/company-detection.ts`.
+- Fixed the production build issue where the onboarding wizard was pulling `pg` and Node-only modules into the browser bundle.
+
+**Verification**
+- `npx tsc --noEmit` passed.
+- `npm run test` passed: 12 test files, 44 tests.
+- `npm run build` passed.
+- Secret scan found placeholders/test strings only, not real API keys.
+
+**Still open**
+- U2 Agent Control Profile/passport implementation.
+- U3 searchable per-agent logs and rollback.
+- U4 learning-signal capture.
+- Render build should be confirmed in the Render dashboard after GitHub receives `ba078f1`.
+
+---
+
 ## 0.13.0 — Phase 9D: Go-to-Market Execution + Production DB Migration (2026-05-31)
 
 This release delivers the full commercial toolkit and applies all pending migrations to production.

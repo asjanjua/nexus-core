@@ -16,7 +16,7 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 
 ---
 
-## Current Status (as of 2026-05-31) — v0.13.0
+## Current Status (as of 2026-05-31) — v0.13.1
 
 **Phases 1–6: Complete.**
 **Pre-7A Technical Prep: Complete.** (v0.9.1)
@@ -25,11 +25,22 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 **Phase 7C: Code complete.** (v0.11.0) — external services (Sentry, Stripe, uptime) still to wire.
 **Phase 8: Complete.** (v0.12.0) — export artifacts, demo tools, pilot kit.
 **Phase 9D: Complete.** (v0.13.0) — product brief, SOW templates, demo scripts, ROI calculator.
+**Phase 7D / V1.1 Tier 1: Started.** (v0.13.1) — U1 readiness assessment built and pushed; U2/U3/U4 remain open.
 **V1.1 Upgrade Plan: Sequenced.** (target v0.14.0) — Phase 7D Tier 1 before first pilot, Phase 8A fast-follow, U9 in Phase 12.
 **Production DB: Migrated.** Migrations 0009–0013 applied to Neon production.
+**Latest pushed commit:** `ba078f1` — `feat: ship v1 pilot hardening and readiness on-ramp`.
+**Verification before push:** `npx tsc --noEmit`, `npm run test` (12 files / 44 tests), and `npm run build` all passed.
 
 **The product is feature-complete for a first paid pilot demo.**
-**Immediate next: Phase 7D V1.1 Tier 1 — U1 readiness assessment, U2 agent passports, U3 per-agent logs/rollback, U4 learning-signal capture — before first signed pilot or regulated demo.**
+**Immediate next: Phase 7D V1.1 Tier 1 — U2 agent passports, U3 per-agent logs/rollback, U4 learning-signal capture — before first signed pilot or regulated demo.**
+
+What is built at v0.13.1:
+- Public `/readiness` AI-Native Readiness Assessment with seven-dimension scoring, no login required.
+- `POST /api/readiness/submit` lead/audit capture endpoint, public and rate-limited.
+- Supporting docs: readiness assessment, workflow twin scorer, shadow-mode ROI playbook,
+  Govern and Assure messaging, and U2 agent passport spec.
+- Client-safe company file classification split from server-only LLM detection to keep the
+  onboarding wizard out of the Node/Postgres bundle.
 
 What is built at v0.12.0 (in addition to v0.11.0):
 - Export API routes: weekly brief, risk radar (CSV), reco register (CSV), one-pager

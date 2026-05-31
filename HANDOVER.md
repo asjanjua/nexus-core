@@ -6,14 +6,59 @@
 
 ## Session Info
 
-- **Last updated:** 2026-05-31 (Phase 9D — Go-to-Market Execution)
-- **Last model:** claude-sonnet-4-6 (Cowork)
-- **Session number:** #12
-- **Current version:** 0.13.0 — Phase 9D complete. Production DB migrated.
+- **Last updated:** 2026-05-31 (v0.13.1 — Readiness on-ramp + governance docs pushed)
+- **Last model:** Codex
+- **Session number:** #13
+- **Current version:** 0.13.1 — Phase 9D complete; Phase 7D started with U1 shipped.
+- **Latest pushed commit:** `ba078f1` — `feat: ship v1 pilot hardening and readiness on-ramp`
+- **Remote status:** `main` pushed to GitHub; Render should build from `ba078f1` if blueprint auto-sync is active.
 
 ---
 
 ## What Was Completed This Session
+
+### v0.13.1 — Readiness On-Ramp, Governance Docs, and Deploy Push
+
+This session converted the ExO/Salim-inspired upgrade notes into repo-tracked NexusAI deliverables, fixed one production build issue, and pushed the current build bundle to GitHub.
+
+**Pushed commit:** `ba078f1 feat: ship v1 pilot hardening and readiness on-ramp`
+
+**Key additions:**
+
+1. **AI-Native Readiness on-ramp**
+   - Public `/readiness` page exists and remains no-login.
+   - Added `POST /api/readiness/submit` so assessment results can write a lead/audit event.
+   - Middleware now treats `/readiness` and `/api/readiness/submit` as public, with rate limiting.
+
+2. **Governance and proof documents**
+   - `docs/AI_NATIVE_READINESS_ASSESSMENT.md`
+   - `docs/WORKFLOW_TWIN_SCORER.md`
+   - `docs/SHADOW_MODE_ROI_PLAYBOOK.md`
+   - `docs/GOVERN_ASSURE_MESSAGING.md`
+   - `docs/U2_AGENT_PASSPORT_SPEC.md`
+
+3. **Product positioning**
+   - `docs/ONE_PAGER.md` now includes the Govern and Assure layer and V1.1 governance path.
+   - `TASKS.md` now marks U1 complete and keeps U2/U3/U4 open as the next engineering blockers.
+
+4. **Build fix before push**
+   - Split client-safe filename classification into `lib/services/company-classification.ts`.
+   - Kept server-only LLM/company detection in `company-detection.ts`.
+   - This fixed the production build failure where the browser onboarding bundle was pulling in `pg`/Node modules.
+
+**Verification before push:**
+- `npx tsc --noEmit` passed.
+- `npm run test` passed: 12 test files, 44 tests.
+- `npm run build` passed.
+- Secret scan found placeholders/test strings only, not the real API keys shared out-of-band.
+
+**Known next work:**
+- U2 Agent Control Profile/passports: contracts, DB migration, enforcement, Settings UI, tests.
+- U3 searchable per-agent logs and rollback-ready output history.
+- U4 learning-signal capture from approve/edit/reject decisions.
+- Check Render dashboard to confirm build from `ba078f1` completed successfully.
+
+---
 
 ### Phase 9D — Go-to-Market Execution (v0.13.0) + Production DB Migration
 
