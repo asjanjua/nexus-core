@@ -130,8 +130,84 @@ export function buildDefaultAgentControlProfiles(
   workspaceId: string,
   actor = "system"
 ): AgentControlProfile[] {
-  return Object.keys(AGENT_LIBRARY)
+  return [
+    ...Object.keys(AGENT_LIBRARY)
     .map((agentKey) => buildDefaultAgentControlProfile(workspaceId, agentKey, actor))
-    .filter((profile): profile is AgentControlProfile => Boolean(profile));
+    .filter((profile): profile is AgentControlProfile => Boolean(profile)),
+    ...buildDemoAgentControlProfiles(workspaceId, actor)
+  ];
 }
 
+export function buildDemoAgentControlProfiles(
+  workspaceId: string,
+  actor = "system"
+): AgentControlProfile[] {
+  const now = new Date().toISOString();
+  const base = {
+    workspaceId,
+    version: 1,
+    status: "active" as const,
+    crossEntityAccess: false,
+    forbiddenTools: DEFAULT_HARD_STOPS,
+    hardStops: DEFAULT_HARD_STOPS,
+    escalationTriggers: DEFAULT_ESCALATION_TRIGGERS,
+    watcherAgents: ["ai_governance_agent"],
+    logLevel: "full" as const,
+    createdBy: actor,
+    createdAt: now,
+    updatedBy: actor,
+    updatedAt: now
+  };
+
+  return [
+    {
+      ...base,
+      id: `acp-${workspaceId}-regulatory_response_agent-v1`,
+      agentKey: "regulatory_response_agent",
+      name: "Regulatory Response Agent",
+      purpose: "Draft evidence-backed responses to regulator questions while escalating commitments and legal interpretations for human review.",
+      allowedScopes: ["regulatory", "compliance", "policy", "risk", "audit", "board", "legal"],
+      forbiddenScopes: ["payroll", "personal", "family", "unrelated_client"],
+      maxSensitivity: "confidential",
+      allowedTools: ["search evidence", "summarize", "draft memo", "prepare approval packet"],
+      policyControlledApis: {},
+      actionRight: "prepare_for_approval",
+      approvalLevel: "partner",
+      riskRating: "regulated",
+      reviewCadence: "per_output"
+    },
+    {
+      ...base,
+      id: `acp-${workspaceId}-legal_redline_agent-v1`,
+      agentKey: "legal_redline_agent",
+      name: "Legal Redline Agent",
+      purpose: "Summarize clauses and draft redline notes without making legal commitments or modifying contracts automatically.",
+      allowedScopes: ["legal", "contract", "agreement", "commercial", "risk"],
+      forbiddenScopes: ["payroll", "personal", "family", "unrelated_client"],
+      maxSensitivity: "confidential",
+      allowedTools: ["read documents", "summarize", "draft memo", "compare documents"],
+      policyControlledApis: {},
+      actionRight: "draft",
+      approvalLevel: "partner",
+      riskRating: "high",
+      reviewCadence: "per_output"
+    },
+    {
+      ...base,
+      id: `acp-${workspaceId}-proposal_partner_agent-v1`,
+      agentKey: "proposal_partner_agent",
+      name: "Proposal Partner Agent",
+      purpose: "Draft proposal sections from approved source material and prepare recommendations for human commercial review.",
+      allowedScopes: ["proposal", "pipeline", "meeting", "strategy", "commercial", "customer"],
+      forbiddenScopes: ["restricted", "payroll", "personal", "unrelated_client"],
+      maxSensitivity: "internal",
+      allowedTools: ["search evidence", "summarize", "draft memo", "compare documents"],
+      policyControlledApis: {},
+      actionRight: "recommend",
+      approvalLevel: "owner",
+      riskRating: "medium",
+      reviewCadence: "weekly",
+      watcherAgents: []
+    }
+  ];
+}

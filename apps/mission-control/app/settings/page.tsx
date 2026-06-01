@@ -44,6 +44,35 @@ type AgentKey = {
 
 type NewKeyResult = AgentKey & { secret: string };
 
+type AgentControlProfile = {
+  id: string;
+  workspaceId: string;
+  agentKey: string;
+  name: string;
+  purpose: string;
+  version: number;
+  status: "draft" | "active" | "suspended";
+  allowedScopes: string[];
+  forbiddenScopes: string[];
+  maxSensitivity: "public" | "internal" | "confidential" | "restricted";
+  crossEntityAccess: boolean;
+  allowedTools: string[];
+  forbiddenTools: string[];
+  policyControlledApis: Record<string, unknown>;
+  actionRight: "retrieve" | "summarize" | "draft" | "recommend" | "prepare_for_approval";
+  hardStops: string[];
+  escalationTriggers: string[];
+  approvalLevel: "owner" | "partner" | "client" | "board";
+  riskRating: "low" | "medium" | "high" | "regulated";
+  reviewCadence: "per_output" | "weekly" | "monthly" | "event";
+  watcherAgents: string[];
+  logLevel: "actions" | "actions_sources" | "full";
+  createdBy: string;
+  createdAt: string;
+  updatedBy?: string | null;
+  updatedAt: string;
+};
+
 type WorkspaceProfile = {
   companyName?: string | null;
   sector?: string | null;
@@ -69,6 +98,7 @@ const TABS = [
   { id: "llm", label: "LLM Provider" },
   { id: "sources", label: "Sources" },
   { id: "policies", label: "Policies" },
+  { id: "agent-governance", label: "Agent Governance" },
   { id: "apikeys", label: "API Keys" },
   { id: "roles", label: "Roles" },
   { id: "audit", label: "Audit Log" },
@@ -886,6 +916,257 @@ Then use: Authorization: Bearer <access_token>`}</pre>
 }
 
 // ---------------------------------------------------------------------------
+// Agent Governance tab
+// ---------------------------------------------------------------------------
+
+function AgentGovernanceTab() {
+  const [profiles, setProfiles] = useState<AgentControlProfile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/agent-control-profiles");
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error ?? "load_failed");
+      setProfiles(json.data.profiles ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "unknown_error");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  const latestProfiles = Object.values(
+    profiles.reduce<Record<string, AgentControlProfile>>((acc, profile) => {
+      const current = acc[profile.agentKey];
+      if (!current || profile.version > current.version) acc[profile.agentKey] = profile;
+      return acc;
+    }, {})
+  ).sort((a, b) => a.name.localeCompare(b.name));
+
+  async function seedDefaults() {
+    setSavingKey("seed");
+    setError(null);
+    try {
+      const res = await fetch("/api/agent-control-profiles?seed=1", { method: "POST" });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error ?? "seed_failed");
+      setProfiles(json.data.profiles ?? []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "unknown_error");
+    } finally {
+      setSavingKey(null);
+    }
+  }
+
+  async function suspend(agentKey: string) {
+    setSavingKey(agentKey);
+    setError(null);
+    try {
+      const res = await fetch(`/api/agent-control-profiles/${encodeURIComponent(agentKey)}/suspend`, { method: "POST" });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error ?? "suspend_failed");
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "unknown_error");
+    } finally {
+      setSavingKey(null);
+    }
+  }
+
+  async function createVersion(profile: AgentControlProfile, patch: Partial<AgentControlProfile>) {
+    setSavingKey(profile.agentKey);
+    setError(null);
+    try {
+      const next = { ...profile, ...patch };
+      const res = await fetch("/api/agent-control-profiles", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          agentKey: next.agentKey,
+          name: next.name,
+          purpose: next.purpose,
+          status: next.status,
+          allowedScopes: next.allowedScopes,
+          forbiddenScopes: next.forbiddenScopes,
+          maxSensitivity: next.maxSensitivity,
+          crossEntityAccess: next.crossEntityAccess,
+          allowedTools: next.allowedTools,
+          forbiddenTools: next.forbiddenTools,
+          policyControlledApis: next.policyControlledApis,
+          actionRight: next.actionRight,
+          hardStops: next.hardStops,
+          escalationTriggers: next.escalationTriggers,
+          approvalLevel: next.approvalLevel,
+          riskRating: next.riskRating,
+          reviewCadence: next.reviewCadence,
+          watcherAgents: next.watcherAgents,
+          logLevel: next.logLevel,
+        })
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error ?? "save_failed");
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "unknown_error");
+    } finally {
+      setSavingKey(null);
+    }
+  }
+
+  function splitList(value: string) {
+    return value.split(",").map((item) => item.trim()).filter(Boolean);
+  }
+
+  return (
+    <div className="space-y-5 max-w-5xl">
+      <div className="panel text-sm text-white/70">
+        Agent passports answer four reviewer questions: what can this agent see, what can it do,
+        when does it escalate, and who is accountable. Every edit creates a new version.
+      </div>
+
+      {error && <div className="panel border-red-400/30 text-sm text-red-300">{error}</div>}
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-sm text-white/50">
+          Showing {latestProfiles.length} latest agent passport{latestProfiles.length === 1 ? "" : "s"}.
+        </p>
+        <button className="btn-secondary text-xs" onClick={seedDefaults} disabled={savingKey === "seed"}>
+          {savingKey === "seed" ? "Seeding..." : "Seed default passports"}
+        </button>
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-white/40">Loading agent governance...</p>
+      ) : latestProfiles.length === 0 ? (
+        <div className="panel text-sm text-white/50">
+          No agent passports found. Seed defaults to create least-privilege profiles for the agent library and regulated demo agents.
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {latestProfiles.map((profile) => (
+            <details key={`${profile.agentKey}-${profile.version}`} className="panel group" open={profile.riskRating === "regulated"}>
+              <summary className="flex cursor-pointer list-none items-start justify-between gap-4">
+                <div>
+                  <p className="text-sm font-semibold text-white">{profile.name}</p>
+                  <p className="mt-1 text-xs text-white/50">{profile.purpose}</p>
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    <span className="badge">v{profile.version}</span>
+                    <span className={`badge ${profile.status === "active" ? "badge-green" : "badge-muted"}`}>{profile.status}</span>
+                    <span className="badge">{profile.riskRating}</span>
+                    <span className="badge">max {profile.maxSensitivity}</span>
+                    <span className="badge">{profile.actionRight}</span>
+                    <span className="badge">approval {profile.approvalLevel}</span>
+                  </div>
+                </div>
+                <span className="text-xs text-white/35 group-open:rotate-180">⌄</span>
+              </summary>
+
+              <div className="mt-4 grid gap-4 lg:grid-cols-2">
+                <div className="space-y-3 text-xs">
+                  <div>
+                    <p className="font-medium text-white/70">Allowed scopes</p>
+                    <p className="mt-1 text-white/45">{profile.allowedScopes.join(", ") || "none"}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-white/70">Forbidden scopes</p>
+                    <p className="mt-1 text-white/45">{profile.forbiddenScopes.join(", ") || "none"}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-white/70">Escalation triggers</p>
+                    <p className="mt-1 text-white/45">{profile.escalationTriggers.join(", ") || "none"}</p>
+                  </div>
+                  <div>
+                    <p className="font-medium text-white/70">Hard stops</p>
+                    <p className="mt-1 text-white/45">{profile.hardStops.join(", ") || "none"}</p>
+                  </div>
+                  <p className="text-white/30">
+                    Updated {new Date(profile.updatedAt).toLocaleString()} by {profile.updatedBy ?? profile.createdBy}
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className="text-xs text-white/50">
+                      Max sensitivity
+                      <select
+                        className="input mt-1"
+                        defaultValue={profile.maxSensitivity}
+                        onChange={(e) => createVersion(profile, { maxSensitivity: e.target.value as AgentControlProfile["maxSensitivity"] })}
+                      >
+                        {["public", "internal", "confidential", "restricted"].map((value) => <option key={value} value={value}>{value}</option>)}
+                      </select>
+                    </label>
+                    <label className="text-xs text-white/50">
+                      Action right
+                      <select
+                        className="input mt-1"
+                        defaultValue={profile.actionRight}
+                        onChange={(e) => createVersion(profile, { actionRight: e.target.value as AgentControlProfile["actionRight"] })}
+                      >
+                        {["retrieve", "summarize", "draft", "recommend", "prepare_for_approval"].map((value) => <option key={value} value={value}>{value}</option>)}
+                      </select>
+                    </label>
+                  </div>
+                  <label className="text-xs text-white/50">
+                    Allowed scopes (comma-separated)
+                    <input
+                      className="input mt-1"
+                      defaultValue={profile.allowedScopes.join(", ")}
+                      onBlur={(e) => createVersion(profile, { allowedScopes: splitList(e.target.value) })}
+                    />
+                  </label>
+                  <label className="text-xs text-white/50">
+                    Forbidden scopes (comma-separated)
+                    <input
+                      className="input mt-1"
+                      defaultValue={profile.forbiddenScopes.join(", ")}
+                      onBlur={(e) => createVersion(profile, { forbiddenScopes: splitList(e.target.value) })}
+                    />
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {profile.status === "active" ? (
+                      <button
+                        className="btn-secondary text-xs text-red-300"
+                        onClick={() => suspend(profile.agentKey)}
+                        disabled={savingKey === profile.agentKey}
+                      >
+                        {savingKey === profile.agentKey ? "Saving..." : "Suspend agent"}
+                      </button>
+                    ) : (
+                      <button
+                        className="btn-secondary text-xs"
+                        onClick={() => createVersion(profile, { status: "active" })}
+                        disabled={savingKey === profile.agentKey}
+                      >
+                        {savingKey === profile.agentKey ? "Saving..." : "Resume as new version"}
+                      </button>
+                    )}
+                    <button
+                      className="btn-secondary text-xs"
+                      onClick={() => createVersion(profile, {})}
+                      disabled={savingKey === profile.agentKey}
+                    >
+                      Create new version
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </details>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Roles tab
 // ---------------------------------------------------------------------------
 
@@ -1225,6 +1506,7 @@ export default function SettingsPage() {
         {activeTab === "llm" && <LLMTab workspaceId={workspaceId} />}
         {activeTab === "sources" && <SourcesTab />}
         {activeTab === "policies" && <PoliciesTab workspaceId={workspaceId} />}
+        {activeTab === "agent-governance" && <AgentGovernanceTab />}
         {activeTab === "apikeys" && <APIKeysTab workspaceId={workspaceId} />}
         {activeTab === "roles" && <RolesTab />}
         {activeTab === "audit" && <AuditTab />}

@@ -2,6 +2,41 @@
 
 ---
 
+## 0.14.0 — U2 Agent Control Profiles Complete (2026-06-01)
+
+This release completes the Phase 7D U2 governance blocker for the current V1.1 product surfaces.
+
+**Agent Governance UI**
+- Added Settings → Agent Governance with profile list, reviewer-friendly passport details, default seeding, edit-as-new-version, suspend, and resume controls.
+- Added regulated-buyer demo passports for Regulatory Response Agent, Legal Redline Agent, and Proposal Partner Agent.
+
+**Retrieval enforcement**
+- Ask now accepts an `agentKey` governance lens and applies Agent Control Profile filters before vector and keyword ranking.
+- pgvector retrieval now receives a passport-allowed candidate ID set so forbidden evidence cannot enter vector ranking results.
+- Dashboard and Ask deny events are audited with agent key, evidence id, sensitivity, and reason.
+
+**Output and tool controls**
+- Added deterministic output gate for Ask and dashboard agent briefs.
+- Legal/regulatory/pricing/data-residency/data-protection/external-communication triggers route to human review.
+- Hard-stop outputs such as send email, submit filing, make payment, modify contract, contact regulator, external post, source-system writeback, HR action, legal commitment, or financial commitment are blocked and audited.
+- Hard-stop output blocks suspend a persisted offending Agent Control Profile as the first watcher/suspend pathway. Rich watcher agents and notification routing remain U3 work.
+- Added `guardToolInvocation()` so denied tool calls write `agent_tool_denied` audit events.
+
+**Tests**
+- Added coverage for Ask passport filtering, suspended agent refusal, regulatory escalation, hard-stop output blocking, denied tool-call audit events, and passport version retention.
+
+**Verification**
+- `npx tsc --noEmit` passed.
+- `npm run test` passed: 13 test files, 57 tests.
+- `npm run build` passed.
+
+**Still open**
+- U3 searchable per-agent log and rollback.
+- U4 learning-signal capture.
+- Classifier-assisted output gate enrichment after persistent agent output records exist.
+
+---
+
 ## 0.13.4 — Dependency Security Cleanup (2026-05-31)
 
 This release clears the open GitHub Dependabot alert for PostCSS.

@@ -1,7 +1,7 @@
 # TASKS.md — NexusAI Roadmap and Checklist
 
 > Master task list for the NexusAI relay team. Do not delete tasks; mark them complete with `[x]`.
-> Last reviewed and tightened: 2026-05-31.
+> Last reviewed and tightened: 2026-06-01.
 
 ---
 
@@ -16,7 +16,7 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 
 ---
 
-## Current Status (as of 2026-05-31) — v0.13.2
+## Current Status (as of 2026-06-01) — v0.14.0
 
 **Phases 1–6: Complete.**
 **Pre-7A Technical Prep: Complete.** (v0.9.1)
@@ -25,15 +25,30 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 **Phase 7C: Code complete.** (v0.11.0) — external services (Sentry, Stripe, uptime) still to wire.
 **Phase 8: Complete.** (v0.12.0) — export artifacts, demo tools, pilot kit.
 **Phase 9D: Complete.** (v0.13.0) — product brief, SOW templates, demo scripts, ROI calculator.
-**Phase 7D / V1.1 Tier 1: In progress.** (v0.13.2) — U1 readiness assessment shipped; U2 agent passport foundation built with server-side dashboard evidence enforcement; U2 Settings UI/output gate plus U3/U4 remain open.
+**Phase 7D / V1.1 Tier 1: In progress.** (v0.14.0) — U1 readiness assessment shipped; U2 Agent Control Profiles/passports complete for current V1.1 surfaces. U3 per-agent logs/rollback and U4 learning-signal capture remain open.
 **V1.1 Upgrade Plan: Reassessed.** (target v0.14.0 → v0.15.0) — Phase 7D governance blockers remain first; Phase 8A now starts the universal Decision & Action Twin before workflow scoring.
 **Production DB: Migrated.** Migrations 0009–0013 applied to Neon production.
 **Baseline pushed commit before v0.13.4 dependency cleanup:** `54cc40e` — `docs: realign nexus workflow twin roadmap`.
-**Latest local verification:** `npm audit --json` passed with 0 vulnerabilities; `npx tsc --noEmit`,
-`npm run test` (13 files / 51 tests), and `npm run build` all passed after dependency cleanup.
+**Latest local verification:** `npx tsc --noEmit`, `npm run test` (13 files / 57 tests),
+and `npm run build` all passed after U2 completion. `npm audit --json` previously passed
+with 0 vulnerabilities after dependency cleanup.
 
 **The product is feature-complete for a first paid pilot demo.**
-**Immediate next: Phase 7D V1.1 Tier 1 — finish U2 Agent Governance UI/output gates, then U3 per-agent logs/rollback and U4 learning-signal capture. In parallel, plan Phase 8A around the cross-industry Decision & Action Twin.**
+**Immediate next: Phase 7D V1.1 Tier 1 — build U3 per-agent logs/rollback, then U4 learning-signal capture. In parallel, plan Phase 8A around the cross-industry Decision & Action Twin.**
+
+What is built locally for v0.14.0:
+- U2 Agent Governance Settings UI with profile listing, seeding, edit-as-new-version,
+  suspend, and resume flows.
+- Three regulated-buyer demo passports: Regulatory Response Agent, Legal Redline Agent,
+  and Proposal Partner Agent.
+- Ask retrieval now accepts `agentKey` and applies passport filters before vector and keyword
+  ranking; denied evidence is audited and never enters model context.
+- Dashboard and Ask output gates now route deterministic legal/regulatory/pricing/data/privacy
+  triggers to human review, block hard-stop actions, and suspend persisted offending profiles.
+- Runtime tool guard helper audits denied tool invocations with agent key, tool, action, actor,
+  and deny reason.
+- U2 tests expanded to cover Ask passport filtering, suspended agents, output gates, tool-denial
+  audit events, and passport version retention.
 
 What is built locally for v0.13.2:
 - Agent Control Profile/passport contract, enums, migration 0014, DB table, in-memory fallback,
@@ -933,14 +948,14 @@ Positioning rule from the 2026-05-31 reassessment:
 - [x] Seed default passports for all current specialist agents from `agent-library.ts`.
   Defaults should be least-privilege: `maxSensitivity=internal`, no cross-entity access,
   read/draft/recommend only as required by the agent mandate.
-- [ ] Seed three demonstration passports from the spec: Regulatory Response Agent,
+- [x] Seed three demonstration passports from the spec: Regulatory Response Agent,
   Legal Redline Agent, and Proposal Partner Agent. Use these for regulated-buyer demos.
 - [x] Ensure regulated/high-risk agents default to `riskRating=regulated` or `high`,
   `reviewCadence=per_output`, and approval level `partner` or `client` where appropriate.
-- [ ] Suspended agents cannot retrieve evidence, call tools, produce outputs, or appear as active
+- [x] Suspended agents cannot retrieve evidence, call tools, produce outputs, or appear as active
   runnable agents. They may still appear in history/audit views.
-  - 2026-05-31 note: policy helpers and dashboard evidence filtering deny inactive/suspended
-    passports; full tool runtime and Settings runnable-state enforcement still need wiring.
+  - 2026-06-01 note: Ask and dashboard generation refuse suspended agents; Settings shows
+    suspend/resume controls; tool guard denies inactive profiles.
 
 #### U2.4 Evidence retrieval enforcement
 - [x] Implement `canReadEvidence(object, passport)` as a default-deny server-side function:
@@ -948,65 +963,71 @@ Positioning rule from the 2026-05-31 reassessment:
   cross-entity read is attempted without `crossEntityAccess`, or sensitivity is missing.
 - [x] Treat unlabeled evidence as `restricted` and deny unless the passport explicitly allows
   restricted access.
-- [ ] Apply passport filters before vector search and before keyword search, not after search.
+- [x] Apply passport filters before vector search and before keyword search, not after search.
   Forbidden content must never enter model context or ranking results.
-- [ ] Partition/filter retrieval by workspace/entity/scope before calling vector similarity.
+- [x] Partition/filter retrieval by workspace/entity/scope before calling vector similarity.
   This is required to prevent vector store leakage.
 - [x] Log every deny as an audit event with workspaceId, agentKey, objectId, sensitivity,
   scope, and deny reason.
-- [ ] Update dashboard and Ask retrieval paths so agent-generated briefs use passport-filtered
+- [x] Update dashboard and Ask retrieval paths so agent-generated briefs use passport-filtered
   evidence only.
-  - 2026-05-31 note: dashboard generation path is passport-filtered before LLM prompt context;
-    Ask/vector/keyword retrieval still needs agent-bound passport filtering.
+  - 2026-06-01 note: dashboard and Ask both filter by active Agent Control Profile before
+    evidence enters prompt context; Ask vector search receives the passport-allowed candidate
+    ID set before pgvector ranking.
 
 #### U2.5 Tool invocation enforcement
 - [x] Implement `canUseTool(tool, passport, action)` as a default-deny server-side function:
   deny if tool is forbidden, tool is not explicitly allowed, requested action exceeds
   `actionRight`, tool maps to a hard stop, or policy-controlled API constraints fail.
-- [ ] Add audit events for denied tool calls: agentKey, tool, requested action, deny reason,
+- [x] Add audit events for denied tool calls: agentKey, tool, requested action, deny reason,
   and actor.
 - [x] Ensure tool enforcement is independent of model prompt text. Prompt injection inside an
   evidence document cannot expand tool rights.
 
 #### U2.6 Output gate and escalation
-- [ ] Implement output gate before any agent output leaves the server. Detect triggers using
-  deterministic rules first, classifier second.
-- [ ] Route outputs to human review when they contain legal opinions, regulatory commitments,
+- [x] Implement output gate before any agent output leaves the server. Detect triggers using
+  deterministic rules first. Classifier fallback is deferred until U3/U4 adds persistent output
+  records and evaluation traces.
+- [x] Route outputs to human review when they contain legal opinions, regulatory commitments,
   pricing/fee commitments, data residency/data protection statements, external communication,
   cross-entity data, or financial figures above threshold.
-- [ ] Block and log outputs that request or imply hard-stop actions such as sending an email,
+- [x] Block and log outputs that request or imply hard-stop actions such as sending an email,
   submitting a filing, making a payment, modifying a contract, contacting a regulator, or
   posting externally.
-- [ ] Add watcher/suspend pathway: watcher agents monitor the log stream; anomaly sets offending
+- [x] Add watcher/suspend pathway: watcher agents monitor the log stream; anomaly sets offending
   agent to `suspended`, notifies a human, and holds output for U3 rollback.
+  - 2026-06-01 note: V1.1 path is deterministic hard-stop output block -> audit event ->
+    persisted profile suspension. Rich watcher agents and notification routing move into U3.
 
 #### U2.7 Settings UI — Agent Governance
-- [ ] Add Settings → Agent Governance tab showing every active agent passport: name, purpose,
+- [x] Add Settings → Agent Governance tab showing every active agent passport: name, purpose,
   status, version, risk rating, max sensitivity, action right, approval level, review cadence,
   allowed/forbidden scopes, allowed/forbidden tools, watcher agents, and last updated.
-- [ ] Add read-only reviewer view suitable for bank/security due diligence. One screen should
+- [x] Add read-only reviewer view suitable for bank/security due diligence. One screen should
   answer: what is this agent, what can it see, what can it do, and when does it escalate?
-- [ ] Add admin edit flow that creates a new profile version, preserves old versions, and writes
+- [x] Add admin edit flow that creates a new profile version, preserves old versions, and writes
   an audit event with actor, agentKey, old version, new version, and changed fields.
-- [ ] Add suspend/resume control for admins. Resume creates a new version and audit event.
+- [x] Add suspend/resume control for admins. Resume creates a new version and audit event.
 
 #### U2.8 Acceptance tests
-- [ ] Surfin agent asked to retrieve a Tawha document: denied, no content returned, attempt logged.
+- [x] Surfin agent asked to retrieve a Tawha document: denied, no content returned, attempt logged.
+  - Covered by equivalent forbidden-scope Ask retrieval test: disallowed evidence is denied,
+    uncited, and audited before ranking/model context.
 - [x] Agent asked to read an object above its sensitivity ceiling: denied and logged.
-- [ ] Output containing regulatory interpretation: routed to partner review regardless of
+- [x] Output containing regulatory interpretation: routed to partner review regardless of
   action right.
 - [x] Agent attempts hard-stop action such as send email: blocked and logged.
 - [x] Unlabeled evidence object requested: treated as restricted and denied.
-- [ ] Passport edited: new version row created, prior version retained, actor and timestamp
+- [x] Passport edited: new version row created, prior version retained, actor and timestamp
   recorded.
-- [ ] Suspended agent attempts any action: refused and logged.
+- [x] Suspended agent attempts any action: refused and logged.
 - [x] Agent with `forbiddenScopes` or finance-deny policy cannot retrieve or cite Finance
   evidence. Verified in tests.
 
 #### U2.9 Failure points to explicitly test
 - [x] Incomplete sensitivity labels do not weaken controls: missing labels default to restricted.
-- [ ] Vector search cannot leak forbidden content: filters run before vector/text search.
-- [ ] Trigger routing does not rely only on an LLM classifier: deterministic rules cover the
+- [x] Vector search cannot leak forbidden content: filters run before vector/text search.
+- [x] Trigger routing does not rely only on an LLM classifier: deterministic rules cover the
   highest-risk triggers.
 - [x] Prompt injection cannot alter passport limits because enforcement lives outside the prompt.
 

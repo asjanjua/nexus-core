@@ -221,7 +221,8 @@ export const askRequestSchema = z.object({
   workspaceId: z.string(),
   userId: z.string(),
   query: z.string().min(3),
-  department: z.string().optional()
+  department: z.string().optional(),
+  agentKey: z.string().min(1).max(120).optional()
 });
 
 export const askResponseSchema = z.object({
@@ -230,7 +231,10 @@ export const askResponseSchema = z.object({
   freshnessHours: z.number().int().nonnegative(),
   refused: z.boolean(),
   refusalReason: z.string().optional(),
-  evidenceRefs: z.array(z.string())
+  evidenceRefs: z.array(z.string()),
+  agentKey: z.string().optional(),
+  escalationRequired: z.boolean().optional(),
+  escalationReason: z.string().optional()
 });
 
 export const apiEnvelopeSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>

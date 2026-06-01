@@ -555,8 +555,20 @@ export const repository = {
     );
     if (rows && rows.length) return toAgentControlProfile(rows[0]);
 
+    const latestRows = await runDb((db) =>
+      db
+        .select()
+        .from(agentControlProfiles)
+        .where(sql`${agentControlProfiles.workspaceId} = ${workspaceId} AND ${agentControlProfiles.agentKey} = ${agentKey}`)
+        .orderBy(desc(agentControlProfiles.version))
+        .limit(1)
+    );
+    if (latestRows && latestRows.length) return toAgentControlProfile(latestRows[0]);
+
     const memoryProfile = store.getActiveAgentControlProfile(workspaceId, agentKey);
     if (memoryProfile) return memoryProfile;
+    const memoryHistory = store.getAgentControlProfileHistory(workspaceId, agentKey);
+    if (memoryHistory.length) return memoryHistory[0];
 
     // Runtime safety: known agents get a generated default profile even before
     // migration/seed has run, so policy enforcement is never prompt-only.
@@ -1219,8 +1231,13 @@ export const repository = {
   async searchEvidenceByVector(
     workspaceId: string,
     queryVector: number[],
-    limit = 6
+    limit = 6,
+    candidateIds?: string[]
   ): Promise<EvidenceRecord[]> {
+    if (candidateIds && candidateIds.length === 0) return [];
+    const candidateFilter = candidateIds
+      ? sql`AND ${evidenceRecords.id} IN (${sql.join(candidateIds.map((id) => sql`${id}`), sql`, `)})`
+      : sql``;
     const rows = await runDb((db) =>
       db
         .select()
@@ -1229,7 +1246,8 @@ export const repository = {
           sql`${evidenceRecords.workspaceId} = ${workspaceId}
             AND ${evidenceRecords.ingestionStatus} = 'processed'
             AND ${evidenceRecords.sensitivity} <> 'restricted'
-            AND ${evidenceRecords.embedding} IS NOT NULL`
+            AND ${evidenceRecords.embedding} IS NOT NULL
+            ${candidateFilter}`
         )
         .orderBy(
           sql`${evidenceRecords.embedding} <=> ${JSON.stringify(queryVector)}::vector`

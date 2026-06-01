@@ -23,6 +23,8 @@ import { repository } from "@/lib/data/repository";
 import { ask } from "@/lib/services/llm";
 import { generateEmbedding, isVectorSearchEnabled } from "@/lib/services/embeddings";
 import { buildCompanyContext } from "@/lib/domain/sector-library";
+import { filterEvidenceByPassport } from "@/lib/agents/passport-policy";
+import { evaluateOutputGate } from "@/lib/agents/output-gate";
 
 // ---------------------------------------------------------------------------
 // Keyword ranking (pre-filter before LLM call)
@@ -66,30 +68,64 @@ function keywordScore(query: string, text: string): number {
  * The two-tier approach means semantic retrieval is always additive:
  * turning NEXUS_VECTOR_SEARCH off reverts silently to keyword mode.
  */
-async function rankEvidence(query: string, workspaceId: string, department?: string): Promise<EvidenceRecord[]> {
+async function rankEvidence(
+  query: string,
+  workspaceId: string,
+  options: { department?: string; agentKey?: string } = {}
+): Promise<{ records: EvidenceRecord[]; deniedCount: number }> {
+  const all = await repository.getEvidenceForWorkspace(workspaceId);
+  const processed = all.filter(
+    (item) =>
+      item.ingestionStatus === "processed" &&
+      item.sensitivity !== "restricted" &&
+      (!options.department || item.department === options.department)
+  );
+
+  let candidates = processed;
+  let deniedCount = 0;
+  if (options.agentKey) {
+    const passport = await repository.getActiveAgentControlProfile(workspaceId, options.agentKey);
+    if (!passport) return { records: [], deniedCount: processed.length };
+    const governed = filterEvidenceByPassport(processed, passport);
+    candidates = governed.allowed;
+    deniedCount = governed.denied.length;
+    if (governed.denied.length) {
+      await Promise.all(
+        governed.denied.slice(0, 25).map(({ record, reason }) =>
+          repository.pushAudit({
+            workspaceId,
+            type: "ask_evidence_denied",
+            actor: options.agentKey ?? "ask",
+            payload: {
+              agentKey: options.agentKey,
+              evidenceId: record.id,
+              sensitivity: record.sensitivity,
+              sourceType: record.sourceType,
+              department: record.department,
+              reason
+            }
+          })
+        )
+      );
+    }
+  }
+
+  if (!candidates.length) return { records: [], deniedCount };
+
   // --- Tier 1: Vector search -------------------------------------------------
   if (isVectorSearchEnabled()) {
     const queryVec = await generateEmbedding(query);
     if (queryVec) {
-      const vectorResults = await repository.searchEvidenceByVector(workspaceId, queryVec, 6);
-      const filtered = department
-        ? vectorResults.filter((item) => item.department === department)
-        : vectorResults;
-      if (filtered.length > 0) return filtered;
+      const candidateIds = candidates.map((item) => item.id);
+      const vectorResults = await repository.searchEvidenceByVector(workspaceId, queryVec, 6, candidateIds);
+      if (vectorResults.length > 0) return { records: vectorResults, deniedCount };
       // No results from vector path (empty workspace or all embeddings NULL) —
       // fall through to keyword ranking rather than returning empty.
     }
   }
 
   // --- Tier 2: Keyword ranking -----------------------------------------------
-  const all = await repository.getEvidenceForWorkspace(workspaceId);
-  return all
-    .filter(
-      (item) =>
-        item.ingestionStatus === "processed" &&
-        item.sensitivity !== "restricted" &&
-        (!department || item.department === department)
-    )
+  const records = candidates
     .map((item) => {
       const ks = keywordScore(query, item.text);
       return { item, ks, score: ks + item.extractionConfidence * 0.25 };
@@ -100,6 +136,7 @@ async function rankEvidence(query: string, workspaceId: string, department?: str
     .sort((a, b) => b.score - a.score)
     .slice(0, 6)
     .map((r) => r.item);
+  return { records, deniedCount };
 }
 
 // ---------------------------------------------------------------------------
@@ -132,12 +169,50 @@ function buildEvidenceContext(records: EvidenceRecord[]): string {
 export async function answerWithEvidence(
   query: string,
   workspaceId: string,
-  options: { department?: string } = {}
+  options: { department?: string; agentKey?: string } = {}
 ): Promise<AskResponse> {
-  const [results, profile] = await Promise.all([
-    rankEvidence(query, workspaceId, options.department),
-    repository.getWorkspaceProfile(workspaceId)
+  const [ranked, profile, passport] = await Promise.all([
+    rankEvidence(query, workspaceId, options),
+    repository.getWorkspaceProfile(workspaceId),
+    options.agentKey ? repository.getActiveAgentControlProfile(workspaceId, options.agentKey) : Promise.resolve(null)
   ]);
+  const results = ranked.records;
+
+  if (options.agentKey && !passport) {
+    return {
+      answer: "This agent does not have an active Agent Control Profile. Ask cannot run until governance is configured.",
+      confidence: 0.1,
+      freshnessHours: 9999,
+      refused: true,
+      refusalReason: "agent_passport_missing",
+      evidenceRefs: [],
+      agentKey: options.agentKey
+    };
+  }
+
+  if (passport && passport.status !== "active") {
+    return {
+      answer: "This agent is suspended or inactive, so NexusAI refused to retrieve evidence or generate an answer.",
+      confidence: 0.1,
+      freshnessHours: 9999,
+      refused: true,
+      refusalReason: "agent_not_active",
+      evidenceRefs: [],
+      agentKey: options.agentKey
+    };
+  }
+
+  if (!results.length && ranked.deniedCount > 0) {
+    return {
+      answer: "Relevant evidence exists, but this agent is not allowed to access it under its Agent Control Profile.",
+      confidence: 0.1,
+      freshnessHours: 9999,
+      refused: true,
+      refusalReason: "passport_denied_evidence",
+      evidenceRefs: [],
+      agentKey: options.agentKey
+    };
+  }
 
   if (!results.length) {
     return {
@@ -149,7 +224,8 @@ export async function answerWithEvidence(
       freshnessHours: 9999,
       refused: true,
       refusalReason: "insufficient_evidence",
-      evidenceRefs: []
+      evidenceRefs: [],
+      agentKey: options.agentKey
     };
   }
 
@@ -166,7 +242,8 @@ export async function answerWithEvidence(
       freshnessHours: minFreshness,
       refused: true,
       refusalReason: "low_confidence_evidence",
-      evidenceRefs: results.map((r) => r.id)
+      evidenceRefs: results.map((r) => r.id),
+      agentKey: options.agentKey
     };
   }
 
@@ -182,12 +259,47 @@ export async function answerWithEvidence(
       workspaceId
     });
 
+    const gate = passport ? evaluateOutputGate(answer, passport, passport.actionRight) : { allowed: true as const, escalationRequired: false as const };
+    if (!gate.allowed) {
+      await repository.pushAudit({
+        workspaceId,
+        type: "ask_output_blocked",
+        actor: options.agentKey ?? "ask",
+        payload: { agentKey: options.agentKey, reason: gate.reason, query }
+      });
+      if (options.agentKey) {
+        await repository.suspendAgentControlProfile(workspaceId, options.agentKey, "output_gate");
+      }
+      return {
+        answer: "NexusAI blocked this answer because it appears to request or imply a hard-stop action that requires human handling.",
+        confidence: avgConfidence,
+        freshnessHours: minFreshness,
+        refused: true,
+        refusalReason: gate.reason,
+        evidenceRefs: results.map((r) => r.id),
+        agentKey: options.agentKey,
+        escalationRequired: true,
+        escalationReason: gate.reason
+      };
+    }
+    if (gate.escalationRequired) {
+      await repository.pushAudit({
+        workspaceId,
+        type: "ask_output_escalated",
+        actor: options.agentKey ?? "ask",
+        payload: { agentKey: options.agentKey, reason: gate.reason, query }
+      });
+    }
+
     return {
       answer,
       confidence: avgConfidence,
       freshnessHours: minFreshness,
       refused: false,
-      evidenceRefs: results.map((r) => r.id)
+      evidenceRefs: results.map((r) => r.id),
+      agentKey: options.agentKey,
+      escalationRequired: gate.escalationRequired,
+      escalationReason: gate.escalationRequired ? gate.reason : undefined
     };
   } catch {
     // LLM call failed - fallback to bullet summary so the app still works
@@ -197,7 +309,8 @@ export async function answerWithEvidence(
       confidence: avgConfidence,
       freshnessHours: minFreshness,
       refused: false,
-      evidenceRefs: results.map((r) => r.id)
+      evidenceRefs: results.map((r) => r.id),
+      agentKey: options.agentKey
     };
   }
 }

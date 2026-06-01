@@ -12,6 +12,8 @@ import { ask } from "@/lib/services/llm";
 import { briefLanguageInstruction, buildCompanyContext } from "@/lib/domain/sector-library";
 import { agentBriefIdsForRoleContext, agentForId, AGENT_ROOMS, roomForRole, type NexusAgent } from "@/lib/agents/agent-library";
 import { filterEvidenceByPassport } from "@/lib/agents/passport-policy";
+import { evaluateOutputGate } from "@/lib/agents/output-gate";
+import type { AgentControlProfile } from "@/lib/contracts";
 
 // ---------------------------------------------------------------------------
 // Agent prompt configuration
@@ -68,7 +70,8 @@ async function generateCard(
   minFreshness: number,
   companyContext = "",
   languageInstruction = "",
-  workspaceId = "_global_"
+  workspaceId = "_global_",
+  passport?: AgentControlProfile | null
 ): Promise<DashboardCard> {
   const room = AGENT_ROOMS.find((item) => item.id === agent.room) ?? roomForRole(role);
   const contextPrefix = companyContext ? `${companyContext}\n\n` : "";
@@ -95,6 +98,26 @@ Task: Produce this agent's brief using only the evidence above. Include what cha
     });
   } catch {
     summary = `Evidence count: ${evidenceRefs.length}. AI synthesis unavailable — verify DEEPSEEK_API_KEY (or ANTHROPIC_API_KEY) is set in your Render environment.`;
+  }
+
+  const gate = passport ? evaluateOutputGate(summary, passport, passport.actionRight) : { allowed: true as const, escalationRequired: false as const };
+  if (!gate.allowed) {
+    await repository.pushAudit({
+      workspaceId,
+      type: "dashboard_output_blocked",
+      actor: agent.id,
+      payload: { agentKey: agent.id, reason: gate.reason, role }
+    });
+    await repository.suspendAgentControlProfile(workspaceId, agent.id, "output_gate");
+    summary = "NexusAI blocked this agent brief because it appears to request or imply a hard-stop action that requires human handling.";
+  } else if (gate.escalationRequired) {
+    await repository.pushAudit({
+      workspaceId,
+      type: "dashboard_output_escalated",
+      actor: agent.id,
+      payload: { agentKey: agent.id, reason: gate.reason, role }
+    });
+    summary = `${summary}\n\nHuman review required: ${gate.reason}.`;
   }
 
   return {
@@ -151,6 +174,33 @@ export async function cardsForRole(
   const cards = await Promise.all(
     agents.map(async (agent) => {
       const passport = await repository.getActiveAgentControlProfile(workspaceId, agent.id);
+      if (passport && passport.status !== "active") {
+        await repository.pushAudit({
+          workspaceId,
+          type: "dashboard_agent_suspended",
+          actor: agent.id,
+          payload: { agentKey: agent.id, status: passport.status, role }
+        });
+        return {
+          id: `${role}-${agent.id}`,
+          role,
+          agentId: agent.id,
+          agentName: agent.name,
+          agentRoom: agent.room,
+          agentRoomLabel: (AGENT_ROOMS.find((item) => item.id === agent.room) ?? roomForRole(role)).label,
+          mandate: agent.mandate,
+          outputType: agent.outputType,
+          approvalPolicy: agent.approvalPolicy,
+          skillHints: agent.skillHints,
+          suggestedNextAction: agent.suggestedNextAction,
+          lastRunAt: new Date().toISOString(),
+          title: `${agent.name} Brief`,
+          summary: "This agent is suspended under its Agent Control Profile. No evidence was retrieved and no brief was generated.",
+          confidence: 0,
+          freshnessHours: 9999,
+          evidenceRefs: []
+        };
+      }
       const governedEvidence = passport
         ? filterEvidenceByPassport(processedEvidence, passport)
         : { allowed: processedEvidence, denied: [] };
@@ -178,7 +228,7 @@ export async function cardsForRole(
       const avgConfidence = computeAvgConfidence(governedEvidence.allowed);
       const minFreshness = computeMinFreshness(governedEvidence.allowed);
 
-      return generateCard(agent, role, evidenceBlock, evidenceRefs, avgConfidence, minFreshness, companyContext, languageInstruction, workspaceId);
+      return generateCard(agent, role, evidenceBlock, evidenceRefs, avgConfidence, minFreshness, companyContext, languageInstruction, workspaceId, passport);
     })
   );
 

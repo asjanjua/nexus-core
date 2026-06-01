@@ -9,7 +9,21 @@ type AskResult = {
   refused: boolean;
   refusalReason?: string;
   evidenceRefs: string[];
+  agentKey?: string;
+  escalationRequired?: boolean;
+  escalationReason?: string;
 };
+
+const AGENT_OPTIONS = [
+  { key: "", label: "General Ask" },
+  { key: "strategy_agent", label: "Strategy Agent" },
+  { key: "risk_agent", label: "Risk Agent" },
+  { key: "decision_agent", label: "Decision Agent" },
+  { key: "execution_agent", label: "Execution Agent" },
+  { key: "finance_signal_agent", label: "Finance Signal Agent" },
+  { key: "security_agent", label: "Security Agent" },
+  { key: "ai_governance_agent", label: "AI Governance Agent" },
+];
 
 const SUGGESTIONS = [
   "What are the top risks right now?",
@@ -53,6 +67,7 @@ export function AskPanel({
 }) {
   const [query, setQuery] = useState(initialQuery || "What are the top risks right now?");
   const [department, setDepartment] = useState("");
+  const [agentKey, setAgentKey] = useState("");
   const [result, setResult] = useState<AskResult | null>(null);
   const [history, setHistory] = useState<Array<{ role: "user" | "assistant"; text: string }>>([]);
   const [loading, setLoading] = useState(false);
@@ -78,6 +93,7 @@ export function AskPanel({
           userId,
           query,
           department: department || undefined,
+          agentKey: agentKey || undefined,
         }),
       });
       const payload = await res.json();
@@ -118,6 +134,27 @@ export function AskPanel({
               {suggestion}
             </button>
           ))}
+        </div>
+
+        {/* Department filter — chips when available, text input fallback */}
+        <div className="mt-3 max-w-sm">
+          <label className="mb-1 block text-xs uppercase tracking-wide text-white/40">
+            Agent governance lens
+          </label>
+          <select
+            className="input"
+            value={agentKey}
+            onChange={(e) => setAgentKey(e.target.value)}
+          >
+            {AGENT_OPTIONS.map((agent) => (
+              <option key={agent.key || "general"} value={agent.key}>
+                {agent.label}
+              </option>
+            ))}
+          </select>
+          <p className="mt-1 text-xs text-white/35">
+            Agent lenses enforce their passports before evidence enters retrieval or the LLM.
+          </p>
         </div>
 
         {/* Department filter — chips when available, text input fallback */}
@@ -211,10 +248,17 @@ export function AskPanel({
             {result.refused && (
               <span className="badge border-amber-300/60 text-amber-200">refused</span>
             )}
+            {result.agentKey && <span className="badge">agent {result.agentKey}</span>}
+            {result.escalationRequired && (
+              <span className="badge border-amber-300/60 text-amber-200">human review required</span>
+            )}
           </div>
 
           {result.refusalReason && (
             <p className="text-xs text-white/60">Reason: {result.refusalReason}</p>
+          )}
+          {result.escalationReason && !result.refusalReason && (
+            <p className="text-xs text-amber-200/80">Escalation: {result.escalationReason}</p>
           )}
 
           {result.evidenceRefs.length > 0 && (

@@ -6,16 +6,54 @@
 
 ## Session Info
 
-- **Last updated:** 2026-05-31 (v0.13.4 — dependency security cleanup)
+- **Last updated:** 2026-06-01 (v0.14.0 — U2 Agent Control Profiles complete)
 - **Last model:** Codex
-- **Session number:** #16
-- **Current version:** 0.13.4 — Phase 9D complete; Phase 7D U1 shipped, U2 passport foundation built, workflow twin sequence realigned, and Dependabot alert #5 fixed locally.
-- **Baseline pushed commit before this handover update:** `54cc40e` — `docs: realign nexus workflow twin roadmap`
-- **Remote status:** v0.13.4 dependency security cleanup should be committed and pushed after verification.
+- **Session number:** #17
+- **Current version:** 0.14.0 — Phase 7D U2 Agent Control Profiles complete for current V1.1 surfaces; U3 per-agent logs/rollback and U4 learning signals remain next.
+- **Baseline pushed commit before this handover update:** `1dcc54b` — `fix: clear postcss dependabot alert`
+- **Remote status:** v0.14.0 U2 completion is local until committed and pushed.
 
 ---
 
 ## What Was Completed This Session
+
+### v0.14.0 — U2 Agent Control Profiles Complete
+
+This session finished the U2 engineering blocker enough to move to U3/U4.
+
+**Shipped:**
+- Added Settings → Agent Governance tab with profile list, seed defaults, edit-as-new-version,
+  suspend, and resume flows.
+- Added the three demo passports from the U2 spec: Regulatory Response Agent, Legal Redline Agent,
+  and Proposal Partner Agent.
+- Extended Ask to accept `agentKey`, apply Agent Control Profile filters before vector and keyword
+  retrieval, and audit denied evidence.
+- Tightened pgvector retrieval so vector ranking receives a passport-allowed candidate ID set.
+- Added deterministic output gates for Ask and dashboard agent briefs. Legal/regulatory/pricing/
+  data/privacy triggers escalate to human review; hard-stop outputs are blocked and audited.
+- Added a first watcher/suspend path: hard-stop output blocks suspend a persisted offending
+  Agent Control Profile and hold the output by refusal. Rich watcher agents and notifications
+  are deferred into U3.
+- Added runtime `guardToolInvocation()` helper so denied tool calls write `agent_tool_denied`
+  audit events with agent key, tool, requested action, actor, and reason.
+
+**Tests added/expanded:**
+- Ask passport filtering before synthesis.
+- Suspended agent refusal.
+- Regulatory output escalation.
+- Hard-stop output blocking.
+- Tool-denial audit event.
+- Passport version retention.
+
+**Verification:**
+- `npx tsc --noEmit` passed.
+- `npm run test` passed: 13 test files, 57 tests.
+- `npm run build` passed.
+
+**Next engineering work:**
+1. U3 — searchable per-agent output log, output versioning, and rollback-ready history.
+2. U4 — learning-signal capture from approve/edit/reject decisions.
+3. Phase 8A — Decision & Action Twin, gated by U2 profiles before evidence enters prompt context.
 
 ### v0.13.4 — Dependency Security Cleanup
 
@@ -57,10 +95,9 @@ This session converted the strategic reassessment into repo-tracked roadmap deci
 Use Strategic Mandate, Operating Doctrine, Policy Guardrails, Human Approval Layer, Parallel Workflow Pilot, and Decision Workflow Engine. Avoid broad "100x", workforce-replacement, and fully autonomous-company claims in client-facing copy.
 
 **Next engineering work:**
-1. Finish U2 Agent Governance Settings UI, Ask/vector passport filtering, output gates, and tool-denial audit events.
-2. Build U3 `agent_outputs` and rollback-ready output history.
-3. Build U4 learning-signal capture.
-4. Start Phase 8A Decision & Action Twin primitives after the governance path is safe enough.
+1. Build U3 `agent_outputs` and rollback-ready output history.
+2. Build U4 learning-signal capture.
+3. Start Phase 8A Decision & Action Twin primitives after the governance path is safe enough.
 
 ### v0.13.2 — U2 Agent Passport Foundation
 
@@ -100,13 +137,9 @@ This session started the engineering-blocker pass for Phase 7D U2. The goal was 
 - `npm run test` passed: 13 test files, 51 tests.
 - `npm run build` passed.
 
-**Still open in U2:**
-- Agent Governance Settings UI.
-- Three named demo passports from the spec: Regulatory Response Agent, Legal Redline Agent, Proposal Partner Agent.
-- Ask/vector/keyword retrieval passport filtering.
-- Tool runtime audit events for denied calls.
-- Output gate and deterministic escalation routing.
-- U3 per-agent logs/rollback and U4 learning signals.
+**Status update from v0.14.0:**
+- U2 is now complete for current V1.1 surfaces.
+- U3 per-agent logs/rollback and U4 learning signals remain open.
 
 ### v0.13.1 — Readiness On-Ramp, Governance Docs, and Deploy Push
 
