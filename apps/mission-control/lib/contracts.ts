@@ -89,9 +89,39 @@ export const dashboardCardSchema = z.object({
   summary: z.string(),
   confidence: z.number().min(0).max(1),
   freshnessHours: z.number().int().nonnegative(),
-  evidenceRefs: z.array(z.string())
+  evidenceRefs: z.array(z.string()),
+  outputId: z.string().optional(),
+  outputVersion: z.number().int().positive().optional()
 });
 export type DashboardCard = z.infer<typeof dashboardCardSchema>;
+
+export const agentOutputSchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  agentId: z.string(),
+  agentVersion: z.number().int().positive(),
+  roleKey: z.string(),
+  content: z.string(),
+  inputSummary: z.string(),
+  evidenceRefs: z.array(z.string()),
+  confidence: z.number().min(0).max(1),
+  outputVersion: z.number().int().positive(),
+  isActive: z.boolean(),
+  replacedById: z.string().nullable().optional(),
+  createdAt: z.string()
+});
+export type AgentOutput = z.infer<typeof agentOutputSchema>;
+
+export const agentOutputInputSchema = agentOutputSchema.omit({
+  id: true,
+  outputVersion: true,
+  isActive: true,
+  replacedById: true,
+  createdAt: true
+}).extend({
+  processingMs: z.number().int().nonnegative().optional()
+});
+export type AgentOutputInput = z.infer<typeof agentOutputInputSchema>;
 
 export const agentBriefSchema = dashboardCardSchema.extend({
   agentId: z.string(),
@@ -204,18 +234,63 @@ export const recommendationSchema = z.object({
 });
 export type Recommendation = z.infer<typeof recommendationSchema>;
 
+export const decisionPrioritySchema = z.enum(["low", "medium", "high", "critical"]);
+export type DecisionPriority = z.infer<typeof decisionPrioritySchema>;
+
 export const decisionSchema = z.object({
-  id: z.string(),
-  tenantId: z.string(),
-  workspaceId: z.string(),
-  title: z.string(),
-  owner: z.string(),
-  rationale: z.string(),
-  status: decisionStatusSchema,
-  evidenceRefs: z.array(z.string()),
-  decidedAt: z.string().optional()
+  id:             z.string(),
+  workspaceId:    z.string(),
+  title:          z.string(),
+  owner:          z.string(),
+  rationale:      z.string(),
+  status:         decisionStatusSchema,
+  sourceOutputId: z.string().optional().nullable(),
+  deadline:       z.string().optional().nullable(),
+  priority:       decisionPrioritySchema.default("medium"),
+  evidenceRefs:   z.array(z.string()).default([]),
+  decidedAt:      z.string().optional().nullable(),
+  createdAt:      z.string(),
+  updatedAt:      z.string()
 });
 export type Decision = z.infer<typeof decisionSchema>;
+
+export const decisionInputSchema = z.object({
+  title:          z.string().min(1).max(500),
+  owner:          z.string().min(1).max(120),
+  rationale:      z.string().min(1),
+  status:         decisionStatusSchema.default("open"),
+  sourceOutputId: z.string().optional(),
+  deadline:       z.string().optional(),
+  priority:       decisionPrioritySchema.default("medium")
+});
+export type DecisionInput = z.infer<typeof decisionInputSchema>;
+
+export const actionStatusSchema = z.enum(["open", "done", "deferred", "cancelled"]);
+export type ActionStatus = z.infer<typeof actionStatusSchema>;
+
+export const actionSchema = z.object({
+  id:          z.string(),
+  workspaceId: z.string(),
+  decisionId:  z.string(),
+  actionText:  z.string(),
+  owner:       z.string(),
+  dueDate:     z.string().optional().nullable(),
+  isBlocker:   z.boolean().default(false),
+  status:      actionStatusSchema.default("open"),
+  completedAt: z.string().optional().nullable(),
+  createdAt:   z.string(),
+  updatedAt:   z.string()
+});
+export type Action = z.infer<typeof actionSchema>;
+
+export const actionInputSchema = z.object({
+  decisionId: z.string(),
+  actionText: z.string().min(1).max(1000),
+  owner:      z.string().min(1).max(120),
+  dueDate:    z.string().optional(),
+  isBlocker:  z.boolean().default(false)
+});
+export type ActionInput = z.infer<typeof actionInputSchema>;
 
 export const askRequestSchema = z.object({
   workspaceId: z.string(),
@@ -309,6 +384,53 @@ export const workspaceProfileUpsertSchema = workspaceProfileSchema.omit({
   updatedAt: true
 });
 export type WorkspaceProfileUpsert = z.infer<typeof workspaceProfileUpsertSchema>;
+
+// ---------------------------------------------------------------------------
+// Learning signal contracts (U4)
+// ---------------------------------------------------------------------------
+
+export const learningSignalTypeSchema = z.enum([
+  "approve",
+  "edit",
+  "reject",
+  "thumbs_up",
+  "thumbs_down"
+]);
+export type LearningSignalType = z.infer<typeof learningSignalTypeSchema>;
+
+export const learningSignalSchema = z.object({
+  id:            z.string(),
+  workspaceId:   z.string(),
+  agentId:       z.string(),
+  outputId:      z.string(),
+  signalType:    learningSignalTypeSchema,
+  editedContent: z.string().optional().nullable(),
+  actor:         z.string(),
+  createdAt:     z.string()
+});
+export type LearningSignal = z.infer<typeof learningSignalSchema>;
+
+export const learningSignalInputSchema = z.object({
+  agentId:       z.string(),
+  outputId:      z.string(),
+  signalType:    learningSignalTypeSchema,
+  editedContent: z.string().optional()
+});
+export type LearningSignalInput = z.infer<typeof learningSignalInputSchema>;
+
+export const learningSignalSummarySchema = z.object({
+  agentId:     z.string(),
+  totalSignals: z.number().int().nonnegative(),
+  approvals:   z.number().int().nonnegative(),
+  edits:       z.number().int().nonnegative(),
+  rejections:  z.number().int().nonnegative(),
+  thumbsUp:    z.number().int().nonnegative(),
+  thumbsDown:  z.number().int().nonnegative(),
+  approvalRate: z.number().min(0).max(1),
+  rejectionRate: z.number().min(0).max(1),
+  editRate:    z.number().min(0).max(1)
+});
+export type LearningSignalSummary = z.infer<typeof learningSignalSummarySchema>;
 
 // ---------------------------------------------------------------------------
 // Workspace settings contract

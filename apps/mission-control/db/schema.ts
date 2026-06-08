@@ -178,13 +178,34 @@ export const workspaceSettings = pgTable("workspace_settings", {
 });
 
 export const decisions = pgTable("decisions", {
-  id: text("id").primaryKey(),
+  id:             text("id").primaryKey(),
+  workspaceId:    text("workspace_id").notNull(),
+  title:          text("title").notNull(),
+  owner:          varchar("owner", { length: 120 }).notNull(),
+  rationale:      text("rationale").notNull(),
+  status:         decisionStatusEnum("status").notNull().default("open"),
+  sourceOutputId: text("source_output_id").references(() => agentOutputs.id, { onDelete: "set null" }),
+  deadline:       timestamp("deadline", { withTimezone: true }),
+  priority:       varchar("priority", { length: 16 }).notNull().default("medium"), // low | medium | high | critical
+  decidedAt:      timestamp("decided_at", { withTimezone: true }),
+  createdAt:      timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:      timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+});
+
+export const actionStatusEnum = pgEnum("action_status", ["open", "done", "deferred", "cancelled"]);
+
+export const actions = pgTable("actions", {
+  id:          text("id").primaryKey(),
   workspaceId: text("workspace_id").notNull(),
-  title: text("title").notNull(),
-  owner: varchar("owner", { length: 120 }).notNull(),
-  rationale: text("rationale").notNull(),
-  status: decisionStatusEnum("status").notNull(),
-  decidedAt: timestamp("decided_at", { withTimezone: true })
+  decisionId:  text("decision_id").notNull().references(() => decisions.id, { onDelete: "cascade" }),
+  actionText:  text("action_text").notNull(),
+  owner:       varchar("owner", { length: 120 }).notNull(),
+  dueDate:     timestamp("due_date", { withTimezone: true }),
+  isBlocker:   boolean("is_blocker").notNull().default(false),
+  status:      actionStatusEnum("status").notNull().default("open"),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  createdAt:   timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:   timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 });
 
 export const approvals = pgTable("approvals", {
@@ -203,6 +224,22 @@ export const auditEvents = pgTable("audit_events", {
   type: varchar("type", { length: 120 }).notNull(),
   actor: varchar("actor", { length: 120 }).notNull(),
   payload: jsonb("payload").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+});
+
+export const agentOutputs = pgTable("agent_outputs", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull(),
+  agentId: varchar("agent_id", { length: 120 }).notNull(),
+  agentVersion: integer("agent_version").notNull().default(1),
+  roleKey: varchar("role_key", { length: 64 }).notNull(),
+  content: text("content").notNull(),
+  inputSummary: text("input_summary").notNull(),
+  evidenceRefs: jsonb("evidence_refs").$type<string[]>().default([]).notNull(),
+  confidence: integer("confidence").notNull(),
+  outputVersion: integer("output_version").notNull().default(1),
+  isActive: boolean("is_active").notNull().default(true),
+  replacedById: text("replaced_by_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
 });
 
@@ -275,6 +312,22 @@ export const connectors = pgTable("connectors", {
   syncError: text("sync_error"),
   encryptedCredentials: text("encrypted_credentials"),  // AES-256-GCM encrypted JSON blob
   config: jsonb("config").$type<Record<string, unknown>>().default({}).notNull()
+});
+
+/**
+ * Learning signals — user feedback on agent outputs (approve / edit / reject / thumbs_up / thumbs_down).
+ * Every signal is linked to the specific agent_output it was raised against.
+ * Drives quality improvement reporting and trend analysis for regulated-sector pilots.
+ */
+export const learningSignals = pgTable("learning_signals", {
+  id:            text("id").primaryKey(),
+  workspaceId:   text("workspace_id").notNull(),
+  agentId:       varchar("agent_id", { length: 120 }).notNull(),
+  outputId:      text("output_id").notNull().references(() => agentOutputs.id, { onDelete: "cascade" }),
+  signalType:    varchar("signal_type", { length: 32 }).notNull(), // approve | edit | reject | thumbs_up | thumbs_down
+  editedContent: text("edited_content"),                           // only set for signal_type = 'edit'
+  actor:         varchar("actor", { length: 120 }).notNull(),
+  createdAt:     timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
 });
 
 /**

@@ -6,16 +6,39 @@
 
 ## Session Info
 
-- **Last updated:** 2026-06-01 (v0.14.0 — U2 Agent Control Profiles complete)
+- **Last updated:** 2026-06-01 (v0.14.1 — U3 per-agent outputs and rollback)
 - **Last model:** Codex
 - **Session number:** #17
-- **Current version:** 0.14.0 — Phase 7D U2 Agent Control Profiles complete for current V1.1 surfaces; U3 per-agent logs/rollback and U4 learning signals remain next.
-- **Baseline pushed commit before this handover update:** `1dcc54b` — `fix: clear postcss dependabot alert`
-- **Remote status:** v0.14.0 U2 completion is local until committed and pushed.
+- **Current version:** 0.14.1 — Phase 7D U2 Agent Control Profiles complete and U3 per-agent output history/rollback built locally; U4 learning signals remain next.
+- **Baseline pushed commit before this handover update:** `9a0c476` — `feat: complete u2 agent control profiles`
+- **Remote status:** v0.14.1 U3 completion is local until committed and pushed.
 
 ---
 
 ## What Was Completed This Session
+
+### v0.14.1 — U3 Per-Agent Output Log and Rollback
+
+This session built the U3 governance history layer.
+
+**Shipped:**
+- Added migration `0015_agent_outputs.sql` and Drizzle schema for `agent_outputs`.
+- Added AgentOutput contracts and repository/in-memory methods to save, list, and roll back outputs.
+- Dashboard agent brief generation now writes full output history: agent id, agent version, role key,
+  full content, first 200 chars of prompt, evidence refs, confidence, output version, active state,
+  replaced-by linkage, and processing time in the audit payload.
+- Added `GET /api/agent-outputs` with agent/date filtering.
+- Added `POST /api/agent-outputs/[id]/rollback` to restore a prior output version without deleting history.
+- Extended Settings → Agent Governance with a searchable Agent Output Log and rollback controls.
+
+**Verification so far:**
+- `npx tsc --noEmit` passed.
+- `npm run test` passed: 14 test files, 59 tests.
+- `npm run build` passed.
+
+**Next engineering work:**
+1. U4 — learning-signal capture from approve/edit/reject decisions.
+2. Then Phase 8A — Decision & Action Twin primitives, gated by U2 profiles and backed by U3 output history.
 
 ### v0.14.0 — U2 Agent Control Profiles Complete
 
@@ -137,9 +160,10 @@ This session started the engineering-blocker pass for Phase 7D U2. The goal was 
 - `npm run test` passed: 13 test files, 51 tests.
 - `npm run build` passed.
 
-**Status update from v0.14.0:**
+**Status update from v0.14.1:**
 - U2 is now complete for current V1.1 surfaces.
-- U3 per-agent logs/rollback and U4 learning signals remain open.
+- U3 per-agent logs/rollback is now complete.
+- U4 learning signals remain open.
 
 ### v0.13.1 — Readiness On-Ramp, Governance Docs, and Deploy Push
 

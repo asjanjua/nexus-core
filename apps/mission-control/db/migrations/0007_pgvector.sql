@@ -5,7 +5,7 @@
 --   a direct connection, not a pooled one).
 --
 -- What this does:
---   1. Enables the pgvector extension (pre-installed on Vercel Postgres / Neon).
+--   1. Enables the pgvector extension (available on Neon Postgres).
 --   2. Drops the JSONB embedding stub that was used as a placeholder in V1.
 --   3. Adds a real vector(1536) column for OpenAI text-embedding-3-small output.
 --   4. Builds an HNSW index for approximate cosine-similarity search.
@@ -16,7 +16,7 @@
 --      and audit_events (recommendations index was already in 0006).
 --
 -- After running:
---   Set NEXUS_VECTOR_SEARCH=enabled and OPENAI_API_KEY in Vercel env vars
+--   Set NEXUS_VECTOR_SEARCH=enabled and OPENAI_API_KEY in deployment env vars
 --   to activate the vector retrieval path. Without those vars the app
 --   stays on keyword search — the column simply sits NULL until populated.
 

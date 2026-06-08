@@ -1,10 +1,16 @@
 import {
+  type Action,
+  type ActionStatus,
   type AgentKey,
+  type AgentOutput,
+  type AgentOutputInput,
   type AgentControlProfile,
   type AgentScope,
   type Decision,
+  type DecisionStatus,
   type EvidenceRecord,
   type IngestionStatus,
+  type LearningSignal,
   type Recommendation,
   type RecommendationStatus,
   type Role,
@@ -115,19 +121,26 @@ const recommendations: Recommendation[] = [
 const decisions: Decision[] = [
   {
     id: "dec-001",
-    tenantId: "tenant-demo",
     workspaceId: "workspace-demo",
     title: "Partner replication remains deferred until post-pilot",
     owner: "manager_agent",
     rationale: "Pilot must prioritize evidence and governance reliability before replication complexity.",
     status: "decided",
+    sourceOutputId: null,
+    deadline: null,
+    priority: "medium",
     evidenceRefs: ["ev-001", "ev-002"],
-    decidedAt: "2026-04-30T13:30:00Z"
+    decidedAt: "2026-04-30T13:30:00Z",
+    createdAt: "2026-04-30T13:30:00Z",
+    updatedAt: "2026-04-30T13:30:00Z"
   }
 ];
 
+const actionStore: Action[] = [];
 const auditEvents: AuditEvent[] = [];
 const conversations: ConversationStore = {};
+const agentOutputs: AgentOutput[] = [];
+const learningSignalStore: LearningSignal[] = [];
 
 // Agent keys in-memory store (keyed by workspaceId)
 type StoredAgentKey = AgentKey & { keyHash: string };
@@ -174,6 +187,7 @@ export const store = {
   recommendations,
   decisions,
   auditEvents,
+  agentOutputs,
   conversations,
   getEvidenceById(id: string): EvidenceRecord | undefined {
     return evidence.find((item) => item.id === id);
@@ -204,6 +218,35 @@ export const store = {
   getDecisions(workspaceId: string): Decision[] {
     return decisions.filter((item) => item.workspaceId === workspaceId);
   },
+
+  saveDecision(decision: Decision): Decision {
+    const idx = decisions.findIndex((d) => d.id === decision.id);
+    if (idx >= 0) decisions[idx] = decision;
+    else decisions.push(decision);
+    return decision;
+  },
+
+  listActions(workspaceId: string, decisionId?: string, status?: ActionStatus): Action[] {
+    return actionStore
+      .filter((a) => a.workspaceId === workspaceId)
+      .filter((a) => !decisionId || a.decisionId === decisionId)
+      .filter((a) => !status || a.status === status)
+      .sort((a, b) => {
+        // blockers first, then by due date ascending, then newest
+        if (a.isBlocker !== b.isBlocker) return a.isBlocker ? -1 : 1;
+        if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+        if (a.dueDate) return -1;
+        if (b.dueDate) return 1;
+        return b.createdAt.localeCompare(a.createdAt);
+      });
+  },
+
+  saveAction(action: Action): Action {
+    const idx = actionStore.findIndex((a) => a.id === action.id);
+    if (idx >= 0) actionStore[idx] = action;
+    else actionStore.push(action);
+    return action;
+  },
   appendConversation(workspaceId: string, userId: string, role: "user" | "assistant", text: string): void {
     const key = `${workspaceId}:${userId}`;
     if (!conversations[key]) conversations[key] = [];
@@ -218,6 +261,98 @@ export const store = {
       .filter((e) => e.workspaceId === workspaceId)
       .slice(-limit)
       .reverse();
+  },
+  listAgentOutputs(input: {
+    workspaceId: string;
+    agentId?: string;
+    actionType?: string;
+    since?: string;
+    limit?: number;
+  }): AgentOutput[] {
+    const sinceTime = input.since ? new Date(input.since).getTime() : null;
+    return agentOutputs
+      .filter((output) => output.workspaceId === input.workspaceId)
+      .filter((output) => !input.agentId || output.agentId === input.agentId)
+      .filter((output) => !sinceTime || new Date(output.createdAt).getTime() >= sinceTime)
+      .filter((output) => !input.actionType || input.actionType === "agent_output_created")
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, input.limit ?? 50);
+  },
+  saveAgentOutput(input: AgentOutputInput): AgentOutput {
+    const { processingMs, ...recordInput } = input;
+    const prior = agentOutputs
+      .filter((output) =>
+        output.workspaceId === recordInput.workspaceId &&
+        output.agentId === recordInput.agentId &&
+        output.roleKey === recordInput.roleKey
+      )
+      .sort((a, b) => b.outputVersion - a.outputVersion)[0];
+    const version = prior ? prior.outputVersion + 1 : 1;
+    const record: AgentOutput = {
+      id: `out-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      ...recordInput,
+      outputVersion: version,
+      isActive: true,
+      replacedById: null,
+      createdAt: nowIso()
+    };
+    for (const output of agentOutputs) {
+      if (
+        output.workspaceId === recordInput.workspaceId &&
+        output.agentId === recordInput.agentId &&
+        output.roleKey === recordInput.roleKey &&
+        output.isActive
+      ) {
+        output.isActive = false;
+        output.replacedById = record.id;
+      }
+    }
+    agentOutputs.push(record);
+    pushAudit({
+      workspaceId: recordInput.workspaceId,
+      type: "agent_output_created",
+      actor: recordInput.agentId,
+      payload: {
+        agentId: recordInput.agentId,
+        agentVersion: recordInput.agentVersion,
+        roleKey: recordInput.roleKey,
+        outputId: record.id,
+        outputVersion: record.outputVersion,
+        inputSummary: recordInput.inputSummary,
+        evidenceIdsUsed: recordInput.evidenceRefs,
+        confidence: recordInput.confidence,
+        processingMs: processingMs ?? null
+      }
+    });
+    return record;
+  },
+  rollbackAgentOutput(workspaceId: string, outputId: string, actor = "system", reason = ""): AgentOutput | null {
+    const target = agentOutputs.find((output) => output.workspaceId === workspaceId && output.id === outputId);
+    if (!target) return null;
+    const active = agentOutputs.find((output) =>
+      output.workspaceId === workspaceId &&
+      output.agentId === target.agentId &&
+      output.roleKey === target.roleKey &&
+      output.isActive
+    );
+    if (active) {
+      active.isActive = false;
+      active.replacedById = target.id;
+    }
+    target.isActive = true;
+    target.replacedById = null;
+    pushAudit({
+      workspaceId,
+      type: "agent_output_rolled_back",
+      actor,
+      payload: {
+        agentId: target.agentId,
+        rolledBackFrom: active?.id ?? null,
+        rolledBackTo: target.id,
+        reason
+      }
+    });
+    return target;
   },
   listAgentControlProfiles(workspaceId: string): AgentControlProfile[] {
     return agentControlProfileStore
@@ -428,5 +563,34 @@ export const store = {
     const record = { ...profile, updatedAt: new Date().toISOString() };
     workspaceProfileStore.set(profile.workspaceId, record);
     return record;
+  },
+
+  // -------------------------------------------------------------------------
+  // Learning signals (U4 in-memory fallback)
+  // -------------------------------------------------------------------------
+
+  saveLearningSignal(signal: LearningSignal): LearningSignal {
+    learningSignalStore.push(signal);
+    return signal;
+  },
+
+  listLearningSignals(input: {
+    workspaceId: string;
+    agentId?: string;
+    outputId?: string;
+    signalType?: string;
+    since?: string;
+    limit?: number;
+  }): LearningSignal[] {
+    const sinceTime = input.since ? new Date(input.since).getTime() : null;
+    const limit = input.limit ?? 100;
+    return learningSignalStore
+      .filter((s) => s.workspaceId === input.workspaceId)
+      .filter((s) => !input.agentId    || s.agentId    === input.agentId)
+      .filter((s) => !input.outputId   || s.outputId   === input.outputId)
+      .filter((s) => !input.signalType || s.signalType === input.signalType)
+      .filter((s) => !sinceTime        || new Date(s.createdAt).getTime() >= sinceTime)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, limit);
   }
 };

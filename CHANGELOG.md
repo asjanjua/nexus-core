@@ -2,6 +2,157 @@
 
 ---
 
+## 0.16.0 — Phase 8A Decision & Action Twin (2026-06-01)
+
+This release pulls Phase 8A forward into the active build track, making NexusAI a daily-use tool
+by linking decisions and action items directly to agent briefs.
+
+**Schema — migration 0017**
+- Extended `decisions` table: added `source_output_id` (FK to agent_outputs), `deadline`, `priority`
+  (low/medium/high/critical), `created_at`, `updated_at`.
+- New `actions` table: `decision_id` (FK cascade), `action_text`, `owner`, `due_date`,
+  `is_blocker`, `status` (open/done/deferred/cancelled), `completed_at`.
+- Indexes on workspace_id, status, and decision_id for fast filtered queries.
+
+**Contracts**
+- Extended `decisionSchema` with `sourceOutputId`, `deadline`, `priority`, `createdAt`, `updatedAt`.
+- Added `decisionInputSchema`, `decisionPrioritySchema`.
+- Added `actionSchema`, `actionInputSchema`, `actionStatusSchema`.
+
+**Repository**
+- `listDecisions(workspaceId, status?)` — Postgres-first with in-memory fallback.
+- `createDecision(workspaceId, input, actor)` — creates decision, writes `decision_created` audit event.
+- `updateDecision(id, workspaceId, patch, actor)` — patches any field, auto-sets `decidedAt` on status change to decided.
+- `listActions(workspaceId, decisionId?, status?)` — sorted blockers-first, then by due date.
+- `createAction(workspaceId, input, actor)` — creates action, writes `action_created` audit event.
+- `updateAction(id, workspaceId, patch, actor)` — patches status/owner/dueDate/isBlocker, auto-sets `completedAt`.
+
+**Store (in-memory fallback)**
+- Added `saveDecision`, `listActions`, `saveAction` with blocker-first sort.
+
+**API routes**
+- `GET  /api/decisions` — list with optional status filter.
+- `POST /api/decisions` — create decision.
+- `PATCH /api/decisions/[id]` — update any field.
+- `GET  /api/actions` — list with optional decisionId and status filters.
+- `POST /api/actions` — create action under a decision.
+- `PATCH /api/actions/[id]` — mark done, change owner, set due date, toggle blocker.
+
+**Decisions page — full interactive rewrite**
+- Priority badge (critical/high/medium/low) with colour coding.
+- Status tabs (all / open / decided / superseded).
+- Summary strip: open decisions, decided, open actions, blockers (red if >0).
+- Mark Decided button per open decision.
+- Inline action list per decision: checkbox to complete, blocker badge, overdue date in red.
+- Add Action inline form: text, owner, due date, blocker toggle.
+- New Decision form: title, owner, priority, status, deadline, rationale.
+- All mutations via API — no page reload required.
+
+**Verification**
+- `npx tsc --noEmit` passed (excluding stale .next/ build artefacts).
+
+---
+
+## 0.15.1 — Demo Sector Pack Audit and Rewrite (2026-06-01)
+
+This release sharpens all 3 demo sector packs for sales readiness and adds pre-tuned Ask questions.
+
+**Sector pack rewrites**
+- All 3 packs rewritten to the CEO sales test: every evidence item now contains named metrics,
+  named risks, named deadlines, and named people where appropriate.
+- Financial Services (Gulf Capital Partners): CBUAE findings now include specific deadlines,
+  compliance consequences, and exact AML threshold gaps. Duration mismatch quantified at USD 18M
+  mark-to-market risk. USD 120M redemption event given specific expiry date and impact on fee run-rate.
+  Digital payments acquisition given board decision framing with AED 85M price.
+- Professional Services (Meridian Advisory Group): Bench cost quantified as AED 420K/month with
+  Q2 EBITDA impact of 5 points. At-risk pipeline broken into 3 named clients with reasons.
+  Saudi expansion given explicit Saudisation constraint and board decision deadline of 30 June.
+  Project at-risk revenue recognition amounts specified per engagement.
+- Technology SaaS (Vanta Systems): 5 Red accounts now have names, ARR amounts, renewal dates,
+  and specific recommended actions per account. SAP connector risk quantified at $620K renewal ACV.
+  Series C readiness milestones listed explicitly. Pakistan macro risk named and sized at $220K ACV.
+
+**Pre-tuned Ask questions**
+- Added `suggestedQuestions: string[]` field to `DemoPack` type — 3 CEO-level questions per pack,
+  pre-written to surface the sharpest risks and decisions in each sector's evidence set.
+- These replace reliance on LLM-generated questions at demo runtime (removing variability risk).
+- `POST /api/workspace/demo-reset` now returns `suggestedQuestions` and `demoSummary` in the response.
+- Settings → Demo tab now shows a post-reset panel: workspace name, one-line demo summary,
+  and numbered suggested questions ready to paste into the Ask panel.
+
+**Added `demoSummary` field** — one sentence per pack that frames what the demo shows,
+displayed in the Settings UI and usable in sales prep materials.
+
+**Verification**
+- `npx tsc --noEmit` passed.
+
+---
+
+## 0.15.0 — U4 Learning Signal Capture (2026-06-01)
+
+This release adds user feedback capture on agent outputs, completing the V1.1 Tier 1 governance loop.
+
+**Learning signals**
+- Added migration `0016_learning_signals.sql` — `learning_signals` table with workspace, agent, output FK, signal type, optional edited content, actor, and timestamp.
+- Added `learningSignals` Drizzle table to `db/schema.ts` with FK cascade on `agent_outputs.id`.
+- Added `learningSignalTypeSchema`, `learningSignalSchema`, `learningSignalInputSchema`, and `learningSignalSummarySchema` to `lib/contracts.ts`.
+- Added `saveLearnningSignal`, `listLearningSignals`, and `getLearningSignalSummary` to `lib/data/repository.ts`.
+- Added `saveLearningSignal` and `listLearningSignals` in-memory fallback to `lib/data/store.ts`.
+- Every signal write creates an `agent_learning_signal` audit event with agent ID, output ID, signal type, and edit flag.
+
+**API routes**
+- `POST /api/learning-signals` — submit approve / edit / reject / thumbs_up / thumbs_down against an agent output.
+- `GET  /api/learning-signals` — list signals for a workspace with agentId / outputId / signalType / date filters.
+- `GET  /api/learning-signals/summary` — per-agent quality metrics: approval rate, rejection rate, edit rate, total signals.
+
+**UI**
+- Agent Output Log now shows Approve / Edit / Reject / 👍 / 👎 buttons on each output card.
+- Edit signal prompts reviewer for a corrected brief before submitting.
+- Signal confirmation replaces buttons with a "Signal recorded: {type}" confirmation inline.
+
+**Tests**
+- Added `tests/learning-signals.test.ts` — 12 test cases covering: save/retrieve, agentId filter, signalType filter, editedContent, workspace isolation, since filter, sort order, limit, and all 5 signal types.
+
+**Verification**
+- `npx tsc --noEmit` passed.
+
+**Still open**
+- Classifier-assisted output gate enrichment using signal data.
+- U9 learning loop and improvement reporting (Tier 3).
+
+---
+
+## 0.14.1 — U3 Per-Agent Output Log and Rollback (2026-06-01)
+
+This release adds rollback-ready agent output history for dashboard-generated briefs.
+
+**Agent output history**
+- Added migration `0015_agent_outputs.sql`.
+- Added `agent_outputs` schema and contracts for full content, input summary, evidence refs, confidence, agent version, output version, active state, and replaced-by linkage.
+- Dashboard agent brief generation now writes an output row every time a brief is generated.
+- Agent output audit events include agent id, agent version, input summary, evidence IDs used, output id, output version, confidence, and processing time.
+
+**Rollback**
+- Added repository and in-memory rollback methods that restore a prior output version, deactivate the current one, preserve all history, and write an `agent_output_rolled_back` audit event.
+- Added `GET /api/agent-outputs` and `POST /api/agent-outputs/[id]/rollback`.
+
+**UI**
+- Extended Settings → Agent Governance with a searchable Agent Output Log.
+- Added filters for agent and date range, plus rollback controls for historical outputs.
+
+**Tests**
+- Added coverage for output version history, active output switching, rollback, and rollback audit visibility.
+
+**Verification**
+- `npx tsc --noEmit` passed.
+- `npm run test` passed: 14 test files, 59 tests.
+- `npm run build` passed.
+
+**Still open**
+- U4 learning-signal capture from approve/edit/reject decisions.
+
+---
+
 ## 0.14.0 — U2 Agent Control Profiles Complete (2026-06-01)
 
 This release completes the Phase 7D U2 governance blocker for the current V1.1 product surfaces.
@@ -639,7 +790,7 @@ The onboarding wizard now acts as a senior business analyst, not a form wizard. 
 
 ---
 
-## 0.4.0 — Clerk Auth, Tenant Isolation, and Vercel Deploy (2026-05-22)
+## 0.4.0 — Clerk Auth, Tenant Isolation, and Cloud Deploy (2026-05-22)
 
 **Clerk integration**
 - Replaced custom session auth with Clerk identity in all API routes
@@ -647,9 +798,9 @@ The onboarding wizard now acts as a senior business analyst, not a form wizard. 
 - `/sign-in` and `/sign-up` Clerk-hosted pages
 - Middleware protecting all `/dashboard`, `/ask`, `/ingestion`, and `/api` routes
 
-**Vercel deploy**
+**Cloud deploy**
 - Neon Postgres + pgvector provisioned
-- 8 Vercel env vars confirmed
+- 8 deployment env vars confirmed
 - Migrations 0006 (embeddings), 0007 (vector index), 0008 (workspace profiles) run against production
 
 **Slack OAuth**

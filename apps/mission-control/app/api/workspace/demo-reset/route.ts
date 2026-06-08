@@ -111,6 +111,8 @@ export async function POST(request: Request) {
     reset: true,
     sector,
     workspaceName: pack.workspaceName,
+    demoSummary: pack.demoSummary,
+    suggestedQuestions: pack.suggestedQuestions,
     evidenceSeeded: seededIds.length,
     message: `Demo workspace reset to ${pack.workspaceName} (${sector}). Dashboard cards will populate within a few seconds.`,
   });

@@ -3,18 +3,22 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { verifyPassword } from "@/lib/auth";
 import { store } from "@/lib/data/store";
-import type { AgentKey, AgentKeyCreated, AgentScope, EvidenceRecord, IngestionStatus, Recommendation, RecommendationStatus, Role, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
+import type { Action, ActionInput, ActionStatus, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, Decision, DecisionInput, DecisionStatus, EvidenceRecord, IngestionStatus, LearningSignal, LearningSignalInput, LearningSignalSummary, Recommendation, RecommendationStatus, Role, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
 import { assertDbConfigured, isDbRequired } from "@/lib/data/db-policy";
 import { normalizeDatabaseUrl } from "@/lib/data/postgres-url";
 import { encryptCredentials, decryptCredentials } from "@/lib/crypto";
 import { buildDefaultAgentControlProfile, buildDefaultAgentControlProfiles } from "@/lib/agents/default-passports";
 import type { AgentControlProfile, AgentControlProfileInput } from "@/lib/contracts";
 import {
+  actions,
   agentControlProfiles,
+  agentOutputs,
   agentKeys,
   auditEvents,
   connectors,
+  decisions,
   evidenceRecords,
+  learningSignals,
   llmUsage,
   recommendations,
   roles,
@@ -128,6 +132,24 @@ function toEvidenceRecord(row: typeof evidenceRecords.$inferSelect): EvidenceRec
       (Date.now() - new Date(sourceTimestamp).getTime()) / (1000 * 60 * 60)
     ),
     text: row.body
+  };
+}
+
+function toAgentOutput(row: typeof agentOutputs.$inferSelect): AgentOutput {
+  return {
+    id: row.id,
+    workspaceId: row.workspaceId,
+    agentId: row.agentId,
+    agentVersion: row.agentVersion,
+    roleKey: row.roleKey,
+    content: row.content,
+    inputSummary: row.inputSummary,
+    evidenceRefs: (row.evidenceRefs as string[]) ?? [],
+    confidence: decodeStoredPercent(row.confidence),
+    outputVersion: row.outputVersion,
+    isActive: row.isActive,
+    replacedById: row.replacedById ?? null,
+    createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt)
   };
 }
 
@@ -512,6 +534,152 @@ export const repository = {
     if (!wrote) store.pushAudit(event);
   },
 
+  async listAgentOutputs(input: {
+    workspaceId: string;
+    agentId?: string;
+    actionType?: string;
+    since?: string;
+    limit?: number;
+  }): Promise<AgentOutput[]> {
+    const limit = Math.min(100, Math.max(1, input.limit ?? 50));
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(agentOutputs)
+        .where(sql`${agentOutputs.workspaceId} = ${input.workspaceId}
+          ${input.agentId ? sql`AND ${agentOutputs.agentId} = ${input.agentId}` : sql``}
+          ${input.since ? sql`AND ${agentOutputs.createdAt} >= ${new Date(input.since)}` : sql``}`)
+        .orderBy(desc(agentOutputs.createdAt))
+        .limit(limit)
+    );
+    const outputs = rows ? rows.map(toAgentOutput) : store.listAgentOutputs(input);
+    if (!input.actionType || input.actionType === "agent_output_created") return outputs;
+    return [];
+  },
+
+  async saveAgentOutput(input: AgentOutputInput): Promise<AgentOutput> {
+    const { processingMs, ...recordInput } = input;
+    const id = `out-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const now = new Date();
+    const saved = await runDb(async (db) => {
+      const priorRows = await db
+        .select({ outputVersion: agentOutputs.outputVersion })
+        .from(agentOutputs)
+        .where(sql`${agentOutputs.workspaceId} = ${recordInput.workspaceId}
+          AND ${agentOutputs.agentId} = ${recordInput.agentId}
+          AND ${agentOutputs.roleKey} = ${recordInput.roleKey}`)
+        .orderBy(desc(agentOutputs.outputVersion))
+        .limit(1);
+      const outputVersion = (priorRows[0]?.outputVersion ?? 0) + 1;
+
+      await db
+        .update(agentOutputs)
+        .set({ isActive: false, replacedById: id })
+        .where(sql`${agentOutputs.workspaceId} = ${recordInput.workspaceId}
+          AND ${agentOutputs.agentId} = ${recordInput.agentId}
+          AND ${agentOutputs.roleKey} = ${recordInput.roleKey}
+          AND ${agentOutputs.isActive} = true`);
+
+      const [row] = await db
+        .insert(agentOutputs)
+        .values({
+          id,
+          workspaceId: recordInput.workspaceId,
+          agentId: recordInput.agentId,
+          agentVersion: recordInput.agentVersion,
+          roleKey: recordInput.roleKey,
+          content: recordInput.content,
+          inputSummary: recordInput.inputSummary,
+          evidenceRefs: recordInput.evidenceRefs,
+          confidence: encodeStoredPercent(recordInput.confidence),
+          outputVersion,
+          isActive: true,
+          replacedById: null,
+          createdAt: now
+        })
+        .returning();
+
+      await db.insert(auditEvents).values({
+        id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        workspaceId: recordInput.workspaceId,
+        type: "agent_output_created",
+        actor: recordInput.agentId,
+        payload: {
+          agentId: recordInput.agentId,
+          agentVersion: recordInput.agentVersion,
+          roleKey: recordInput.roleKey,
+          outputId: id,
+          outputVersion,
+          inputSummary: recordInput.inputSummary,
+          evidenceIdsUsed: recordInput.evidenceRefs,
+          confidence: recordInput.confidence,
+          processingMs: processingMs ?? null
+        }
+      });
+
+      return toAgentOutput(row);
+    });
+    if (saved) return saved;
+    return store.saveAgentOutput(input);
+  },
+
+  async rollbackAgentOutput(
+    workspaceId: string,
+    outputId: string,
+    actor = "system",
+    reason = ""
+  ): Promise<AgentOutput | null> {
+    const restored = await runDb(async (db) => {
+      const targetRows = await db
+        .select()
+        .from(agentOutputs)
+        .where(sql`${agentOutputs.workspaceId} = ${workspaceId} AND ${agentOutputs.id} = ${outputId}`)
+        .limit(1);
+      const target = targetRows[0];
+      if (!target) return null;
+
+      const activeRows = await db
+        .select()
+        .from(agentOutputs)
+        .where(sql`${agentOutputs.workspaceId} = ${workspaceId}
+          AND ${agentOutputs.agentId} = ${target.agentId}
+          AND ${agentOutputs.roleKey} = ${target.roleKey}
+          AND ${agentOutputs.isActive} = true`)
+        .limit(1);
+      const active = activeRows[0];
+
+      if (active) {
+        await db
+          .update(agentOutputs)
+          .set({ isActive: false, replacedById: target.id })
+          .where(eq(agentOutputs.id, active.id));
+      }
+
+      const [row] = await db
+        .update(agentOutputs)
+        .set({ isActive: true, replacedById: null })
+        .where(eq(agentOutputs.id, target.id))
+        .returning();
+
+      await db.insert(auditEvents).values({
+        id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        workspaceId,
+        type: "agent_output_rolled_back",
+        actor,
+        payload: {
+          agentId: target.agentId,
+          rolledBackFrom: active?.id ?? null,
+          rolledBackTo: target.id,
+          reason
+        }
+      });
+
+      return toAgentOutput(row);
+    });
+    if (restored !== null) return restored;
+    return store.rollbackAgentOutput(workspaceId, outputId, actor, reason);
+  },
+
   // -------------------------------------------------------------------------
   // Agent Control Profiles (passports)
   // -------------------------------------------------------------------------
@@ -742,6 +910,204 @@ export const repository = {
     return store.checkSlackSafety(text, refs);
   },
 
+  // -------------------------------------------------------------------------
+  // Decision & Action Twin (Phase 8A)
+  // -------------------------------------------------------------------------
+
+  async listDecisions(workspaceId: string, status?: DecisionStatus): Promise<Decision[]> {
+    const rows = await runDb((db) =>
+      db.select().from(decisions)
+        .where(sql`${decisions.workspaceId} = ${workspaceId}
+          ${status ? sql`AND ${decisions.status} = ${status}` : sql``}`)
+        .orderBy(desc(decisions.createdAt))
+    );
+    if (rows && rows.length > 0) {
+      return rows.map((r) => ({
+        id:             r.id,
+        workspaceId:    r.workspaceId,
+        title:          r.title,
+        owner:          r.owner,
+        rationale:      r.rationale,
+        status:         r.status as DecisionStatus,
+        sourceOutputId: r.sourceOutputId ?? null,
+        deadline:       r.deadline?.toISOString() ?? null,
+        priority:       (r.priority ?? "medium") as Decision["priority"],
+        evidenceRefs:   [],
+        decidedAt:      r.decidedAt?.toISOString() ?? null,
+        createdAt:      r.createdAt.toISOString(),
+        updatedAt:      r.updatedAt.toISOString()
+      }));
+    }
+    return store.getDecisions(workspaceId)
+      .filter((d) => !status || d.status === status);
+  },
+
+  async createDecision(workspaceId: string, input: DecisionInput, actor: string): Promise<Decision> {
+    const id = `dec-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const now = new Date();
+    const record = {
+      id,
+      workspaceId,
+      title:          input.title,
+      owner:          input.owner,
+      rationale:      input.rationale,
+      status:         (input.status ?? "open") as Decision["status"],
+      sourceOutputId: input.sourceOutputId ?? null,
+      deadline:       input.deadline ? new Date(input.deadline) : null,
+      priority:       input.priority ?? "medium",
+      decidedAt:      null,
+      createdAt:      now,
+      updatedAt:      now
+    };
+    await runDb((db) => db.insert(decisions).values(record)).catch(() => null);
+    await runDb((db) => db.insert(auditEvents).values({
+      id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      workspaceId,
+      type: "decision_created",
+      actor,
+      payload: { decisionId: id, title: input.title, owner: input.owner, priority: input.priority ?? "medium" },
+      createdAt: now
+    })).catch(() => null);
+    const result: Decision = {
+      id, workspaceId,
+      title:          input.title,
+      owner:          input.owner,
+      rationale:      input.rationale,
+      status:         (input.status ?? "open") as Decision["status"],
+      sourceOutputId: input.sourceOutputId ?? null,
+      deadline:       input.deadline ?? null,
+      priority:       input.priority ?? "medium",
+      evidenceRefs:   [],
+      decidedAt:      null,
+      createdAt:      now.toISOString(),
+      updatedAt:      now.toISOString()
+    };
+    store.saveDecision(result);
+    return result;
+  },
+
+  async updateDecision(id: string, workspaceId: string, patch: Partial<DecisionInput> & { status?: DecisionStatus }, actor: string): Promise<Decision | null> {
+    const now = new Date();
+    const set: Record<string, unknown> = { updatedAt: now };
+    if (patch.title     !== undefined) set.title     = patch.title;
+    if (patch.owner     !== undefined) set.owner     = patch.owner;
+    if (patch.rationale !== undefined) set.rationale = patch.rationale;
+    if (patch.priority  !== undefined) set.priority  = patch.priority;
+    if (patch.deadline  !== undefined) set.deadline  = patch.deadline ? new Date(patch.deadline) : null;
+    if (patch.status    !== undefined) {
+      set.status = patch.status;
+      if (patch.status === "decided") set.decidedAt = now;
+    }
+    await runDb((db) =>
+      db.update(decisions).set(set)
+        .where(sql`${decisions.id} = ${id} AND ${decisions.workspaceId} = ${workspaceId}`)
+    ).catch(() => null);
+    await runDb((db) => db.insert(auditEvents).values({
+      id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      workspaceId,
+      type: "decision_updated",
+      actor,
+      payload: { decisionId: id, patch },
+      createdAt: now
+    })).catch(() => null);
+    const updated = await repository.listDecisions(workspaceId);
+    return updated.find((d) => d.id === id) ?? null;
+  },
+
+  async listActions(workspaceId: string, decisionId?: string, status?: ActionStatus): Promise<Action[]> {
+    const rows = await runDb((db) =>
+      db.select().from(actions)
+        .where(sql`${actions.workspaceId} = ${workspaceId}
+          ${decisionId ? sql`AND ${actions.decisionId} = ${decisionId}` : sql``}
+          ${status ? sql`AND ${actions.status} = ${status}` : sql``}`)
+        .orderBy(actions.isBlocker, actions.dueDate, desc(actions.createdAt))
+    );
+    if (rows && rows.length > 0) {
+      return rows.map((r) => ({
+        id:          r.id,
+        workspaceId: r.workspaceId,
+        decisionId:  r.decisionId,
+        actionText:  r.actionText,
+        owner:       r.owner,
+        dueDate:     r.dueDate?.toISOString() ?? null,
+        isBlocker:   r.isBlocker,
+        status:      r.status as ActionStatus,
+        completedAt: r.completedAt?.toISOString() ?? null,
+        createdAt:   r.createdAt.toISOString(),
+        updatedAt:   r.updatedAt.toISOString()
+      }));
+    }
+    return store.listActions(workspaceId, decisionId, status);
+  },
+
+  async createAction(workspaceId: string, input: ActionInput, actor: string): Promise<Action> {
+    const id = `act-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const now = new Date();
+    const record = {
+      id,
+      workspaceId,
+      decisionId:  input.decisionId,
+      actionText:  input.actionText,
+      owner:       input.owner,
+      dueDate:     input.dueDate ? new Date(input.dueDate) : null,
+      isBlocker:   input.isBlocker ?? false,
+      status:      "open" as const,
+      completedAt: null,
+      createdAt:   now,
+      updatedAt:   now
+    };
+    await runDb((db) => db.insert(actions).values(record)).catch(() => null);
+    await runDb((db) => db.insert(auditEvents).values({
+      id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      workspaceId,
+      type: "action_created",
+      actor,
+      payload: { actionId: id, decisionId: input.decisionId, owner: input.owner, isBlocker: input.isBlocker ?? false },
+      createdAt: now
+    })).catch(() => null);
+    const result: Action = {
+      id, workspaceId,
+      decisionId:  input.decisionId,
+      actionText:  input.actionText,
+      owner:       input.owner,
+      dueDate:     input.dueDate ?? null,
+      isBlocker:   input.isBlocker ?? false,
+      status:      "open",
+      completedAt: null,
+      createdAt:   now.toISOString(),
+      updatedAt:   now.toISOString()
+    };
+    store.saveAction(result);
+    return result;
+  },
+
+  async updateAction(id: string, workspaceId: string, patch: { status?: ActionStatus; owner?: string; dueDate?: string | null; isBlocker?: boolean }, actor: string): Promise<Action | null> {
+    const now = new Date();
+    const set: Record<string, unknown> = { updatedAt: now };
+    if (patch.owner     !== undefined) set.owner     = patch.owner;
+    if (patch.isBlocker !== undefined) set.isBlocker = patch.isBlocker;
+    if (patch.dueDate   !== undefined) set.dueDate   = patch.dueDate ? new Date(patch.dueDate) : null;
+    if (patch.status    !== undefined) {
+      set.status = patch.status;
+      if (patch.status === "done") set.completedAt = now;
+    }
+    await runDb((db) =>
+      db.update(actions).set(set)
+        .where(sql`${actions.id} = ${id} AND ${actions.workspaceId} = ${workspaceId}`)
+    ).catch(() => null);
+    await runDb((db) => db.insert(auditEvents).values({
+      id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      workspaceId,
+      type: "action_updated",
+      actor,
+      payload: { actionId: id, patch },
+      createdAt: now
+    })).catch(() => null);
+    const all = await repository.listActions(workspaceId);
+    return all.find((a) => a.id === id) ?? null;
+  },
+
+  // keep legacy read-only accessor for backward compat
   getDecisions(workspaceId: string) {
     return store.getDecisions(workspaceId);
   },
@@ -1322,5 +1688,129 @@ export const repository = {
     );
     if (saved && saved.length > 0) return toWorkspaceProfile(saved[0]);
     return store.saveWorkspaceProfile(profile);
+  },
+
+  // ---------------------------------------------------------------------------
+  // Learning signals (U4)
+  // ---------------------------------------------------------------------------
+
+  async saveLearnningSignal(workspaceId: string, input: LearningSignalInput, actor: string): Promise<LearningSignal> {
+    const id = `lsig-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const now = new Date();
+    const record = {
+      id,
+      workspaceId,
+      agentId: input.agentId,
+      outputId: input.outputId,
+      signalType: input.signalType,
+      editedContent: input.editedContent ?? null,
+      actor,
+      createdAt: now
+    };
+
+    const db = await runDb((db) =>
+      db.insert(learningSignals).values(record).returning()
+    );
+
+    const row = db && db.length > 0 ? db[0] : null;
+
+    // Audit event
+    await runDb((db) =>
+      db.insert(auditEvents).values({
+        id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        workspaceId,
+        type: "agent_learning_signal",
+        actor,
+        payload: {
+          agentId: input.agentId,
+          outputId: input.outputId,
+          signalType: input.signalType,
+          hasEdit: !!input.editedContent
+        },
+        createdAt: now
+      })
+    ).catch(() => null);
+
+    const result: LearningSignal = {
+      id,
+      workspaceId,
+      agentId: input.agentId,
+      outputId: input.outputId,
+      signalType: input.signalType,
+      editedContent: row?.editedContent ?? input.editedContent ?? null,
+      actor,
+      createdAt: now.toISOString()
+    };
+
+    store.saveLearningSignal(result);
+    return result;
+  },
+
+  async listLearningSignals(input: {
+    workspaceId: string;
+    agentId?: string;
+    outputId?: string;
+    signalType?: string;
+    since?: string;
+    limit?: number;
+  }): Promise<LearningSignal[]> {
+    const limit = Math.min(200, input.limit ?? 100);
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(learningSignals)
+        .where(
+          sql`${learningSignals.workspaceId} = ${input.workspaceId}
+            ${input.agentId  ? sql`AND ${learningSignals.agentId}   = ${input.agentId}`   : sql``}
+            ${input.outputId ? sql`AND ${learningSignals.outputId}  = ${input.outputId}`  : sql``}
+            ${input.signalType ? sql`AND ${learningSignals.signalType} = ${input.signalType}` : sql``}
+            ${input.since    ? sql`AND ${learningSignals.createdAt} >= ${new Date(input.since)}` : sql``}`
+        )
+        .orderBy(desc(learningSignals.createdAt))
+        .limit(limit)
+    );
+    if (rows && rows.length > 0) {
+      return rows.map((r) => ({
+        id:            r.id,
+        workspaceId:   r.workspaceId,
+        agentId:       r.agentId,
+        outputId:      r.outputId,
+        signalType:    r.signalType as LearningSignal["signalType"],
+        editedContent: r.editedContent ?? null,
+        actor:         r.actor,
+        createdAt:     r.createdAt.toISOString()
+      }));
+    }
+    return store.listLearningSignals(input);
+  },
+
+  async getLearningSignalSummary(workspaceId: string, agentId?: string): Promise<LearningSignalSummary[]> {
+    const signals = await repository.listLearningSignals({ workspaceId, agentId, limit: 1000 });
+    const byAgent = new Map<string, LearningSignal[]>();
+    for (const s of signals) {
+      const list = byAgent.get(s.agentId) ?? [];
+      list.push(s);
+      byAgent.set(s.agentId, list);
+    }
+    return Array.from(byAgent.entries()).map(([aid, list]) => {
+      const total     = list.length;
+      const approvals = list.filter((s) => s.signalType === "approve" || s.signalType === "thumbs_up").length;
+      const edits     = list.filter((s) => s.signalType === "edit").length;
+      const rejections = list.filter((s) => s.signalType === "reject" || s.signalType === "thumbs_down").length;
+      const thumbsUp  = list.filter((s) => s.signalType === "thumbs_up").length;
+      const thumbsDown = list.filter((s) => s.signalType === "thumbs_down").length;
+      return {
+        agentId:       aid,
+        totalSignals:  total,
+        approvals,
+        edits,
+        rejections,
+        thumbsUp,
+        thumbsDown,
+        approvalRate:  total > 0 ? approvals / total : 0,
+        rejectionRate: total > 0 ? rejections / total : 0,
+        editRate:      total > 0 ? edits / total : 0
+      };
+    });
   }
 };

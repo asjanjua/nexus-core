@@ -38,11 +38,12 @@ Verify at: `http://localhost:3000/api/health`
 
 ## Production Deploy
 
-NexusAI is deployed on Vercel with Neon Postgres and Cloudflare R2.
+NexusAI is deployed on Render with Neon Postgres and Cloudflare R2.
 
 ```bash
 # From nexus-core root
-bash deploy-company-context.sh
+# Push to GitHub, then trigger a Render Blueprint sync.
+# See DEPLOY.md and docs/RENDER_DEPLOY.md for the full runbook.
 ```
 
 After deploy, confirm:

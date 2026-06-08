@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   actionRightSchema,
+  agentOutputSchema,
   agentControlProfileSchema,
   evidenceRecordSchema,
   ingestionStatusSchema,
@@ -99,5 +100,25 @@ describe("contracts", () => {
 
     expect(parsed.success).toBe(true);
     expect(actionRightSchema.safeParse("send_email").success).toBe(false);
+  });
+
+  it("validates the U3 agent output contract", () => {
+    const parsed = agentOutputSchema.safeParse({
+      id: "out-test",
+      workspaceId: "workspace-a",
+      agentId: "risk_agent",
+      agentVersion: 1,
+      roleKey: "ceo",
+      content: "Risk brief content.",
+      inputSummary: "Prompt summary",
+      evidenceRefs: ["ev-test"],
+      confidence: 0.82,
+      outputVersion: 1,
+      isActive: true,
+      replacedById: null,
+      createdAt: new Date().toISOString()
+    });
+
+    expect(parsed.success).toBe(true);
   });
 });

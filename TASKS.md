@@ -16,7 +16,7 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 
 ---
 
-## Current Status (as of 2026-06-01) — v0.14.0
+## Current Status (as of 2026-06-01) — v0.16.0
 
 **Phases 1–6: Complete.**
 **Pre-7A Technical Prep: Complete.** (v0.9.1)
@@ -25,16 +25,56 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 **Phase 7C: Code complete.** (v0.11.0) — external services (Sentry, Stripe, uptime) still to wire.
 **Phase 8: Complete.** (v0.12.0) — export artifacts, demo tools, pilot kit.
 **Phase 9D: Complete.** (v0.13.0) — product brief, SOW templates, demo scripts, ROI calculator.
-**Phase 7D / V1.1 Tier 1: In progress.** (v0.14.0) — U1 readiness assessment shipped; U2 Agent Control Profiles/passports complete for current V1.1 surfaces. U3 per-agent logs/rollback and U4 learning-signal capture remain open.
-**V1.1 Upgrade Plan: Reassessed.** (target v0.14.0 → v0.15.0) — Phase 7D governance blockers remain first; Phase 8A now starts the universal Decision & Action Twin before workflow scoring.
-**Production DB: Migrated.** Migrations 0009–0013 applied to Neon production.
-**Baseline pushed commit before v0.13.4 dependency cleanup:** `54cc40e` — `docs: realign nexus workflow twin roadmap`.
-**Latest local verification:** `npx tsc --noEmit`, `npm run test` (13 files / 57 tests),
-and `npm run build` all passed after U2 completion. `npm audit --json` previously passed
-with 0 vulnerabilities after dependency cleanup.
+**Phase 7D / V1.1 Tier 1: Complete.** (v0.15.0) — U1, U2, U3, U4 all shipped.
+**Phase 8A Decision & Action Twin: Core shipped.** (v0.16.0) — full CRUD, interactive page, audit trail.
+**Phase 2 production items: Scoped.** — P2-A eval harness, P2-B prompt registry, P2-C red-team checks, P2-D workspace AI settings. Detailed task breakdown in TASKS.md Phase 2 section. Estimate: 5–7 sessions.
+**Demo packs: Audited and rewritten.** (v0.15.1) — All 3 sector packs now CEO-grade with pre-tuned Ask questions.
+**Production DB: Needs migrations 0014–0017.** Run before next Render deploy.
+**Latest local verification:** `npx tsc --noEmit` passed after v0.16.0.
 
-**The product is feature-complete for a first paid pilot demo.**
-**Immediate next: Phase 7D V1.1 Tier 1 — build U3 per-agent logs/rollback, then U4 learning-signal capture. In parallel, plan Phase 8A around the cross-industry Decision & Action Twin.**
+**The product is demo-ready and pilot-ready for GCC fintech, professional services, and SaaS buyers.**
+**Immediate next: P2-A (eval harness) + P2-C (red-team checks) are the highest-priority blockers for regulated-sector pilots. Run P2-B and P2-D in parallel or after.**
+
+What is built locally for v0.16.0 (Phase 8A — Decision & Action Twin):
+- Migration 0017: extended `decisions` table (sourceOutputId FK, deadline, priority, timestamps).
+  New `actions` table (decisionId FK cascade, actionText, owner, dueDate, isBlocker, status, completedAt).
+- Contracts: extended `decisionSchema` + `decisionInputSchema`; new `actionSchema`, `actionInputSchema`,
+  `actionStatusSchema`, `decisionPrioritySchema`.
+- Repository: `listDecisions`, `createDecision`, `updateDecision`, `listActions`, `createAction`,
+  `updateAction` — all Postgres-first with in-memory fallback + audit events on every mutation.
+- Store: `saveDecision`, `listActions`, `saveAction` in-memory fallback with blocker-first sort.
+- API: `GET/POST /api/decisions`, `PATCH /api/decisions/[id]`,
+  `GET/POST /api/actions`, `PATCH /api/actions/[id]`.
+- Decisions page: full interactive rewrite — priority badges, status tabs, summary strip (open/decided/
+  open actions/blockers), Mark Decided button, inline action list with checkbox completion,
+  blocker badge, overdue date highlighting, Add Action inline form, New Decision form.
+
+What is built locally for v0.15.1 (Demo Pack Audit):
+- All 3 sector packs rewritten to CEO sales-test standard: named metrics, named risks,
+  named deadlines, named people, consequence language.
+- Added `suggestedQuestions` (3 per pack, pre-tuned, not AI-generated at runtime).
+- Added `demoSummary` field (one sentence per pack for Settings UI).
+- Settings → Demo tab shows post-reset panel with workspace name, summary, and numbered questions.
+
+What is built locally for v0.15.0 (U4 Learning Signals):
+- Migration 0016 `learning_signals` table with FK cascade on agent_outputs.
+- `LearningSignalType` enum, `learningSignalSchema`, `learningSignalInputSchema`,
+  `learningSignalSummarySchema` in contracts.ts.
+- `saveLearnningSignal`, `listLearningSignals`, `getLearningSignalSummary` in repository + store.
+- Every signal write fires an `agent_learning_signal` audit event.
+- `POST /api/learning-signals`, `GET /api/learning-signals`, `GET /api/learning-signals/summary`.
+- Agent Output Log now shows Approve / Edit / Reject / thumbs_up / thumbs_down per output card.
+- 12 tests in `tests/learning-signals.test.ts`.
+
+What is built locally for v0.14.1:
+- U3 `agent_outputs` table, migration 0015, contract, DB repository, and in-memory fallback.
+- Dashboard agent brief generation now writes full output history with agent id, agent version,
+  role key, prompt summary, evidence refs, confidence, active version, and output version.
+- Rollback API restores a previous output version, deactivates the current version, preserves
+  all history, and writes an audit event.
+- Settings → Agent Governance now includes a searchable Agent Output Log with agent/date filters
+  and rollback controls.
+- U3 tests cover version retention, active output switching, rollback, and audit visibility.
 
 What is built locally for v0.14.0:
 - U2 Agent Governance Settings UI with profile listing, seeding, edit-as-new-version,
@@ -195,16 +235,95 @@ Positioning rule from the 2026-05-31 reassessment:
 - [x] Add AI audit event schema for every generation, classification, recommendation, refusal, and agent action
 - [x] Add hallucination controls: cite evidence, refuse weak evidence, show confidence, and never invent source references
 - [x] Add per-phase AI responsibility map so every roadmap phase states what AI detects, what AI drafts, what AI routes, and what humans approve
-- [ ] Add AI evaluation harness with golden prompts for risks, decisions, recommendations, sector
-  classification, source grounding, and restricted-data refusal. Required before regulated-sector
-  pilots (financial services, healthcare) — clients will ask how the AI is tested.
-- [ ] Add prompt/version registry so every AI behaviour has a named prompt, owner, version, and
-  changelog. Required before the team grows beyond one person editing prompts.
-- [ ] Add red-team checks for sensitive data leakage, unsafe recommendations, unsupported claims,
-  and role-inappropriate outputs. Block any brief containing raw customer PII or account numbers.
-- [ ] Add workspace-level AI policy settings in Settings page: allowed providers, local-only mode
-  toggle, per-workspace sensitivity ceiling, and approval-required threshold. Currently these are
-  set via environment variables only — pilot clients need UI control.
+### P2-A: AI Evaluation Harness
+> Required before regulated-sector pilots. Financial services and GCC clients will ask "how do you
+> test the AI?" before signing. Estimate: 2 sessions.
+
+- [ ] Create `lib/eval/golden-set.ts` — typed golden prompt set with 30 cases across 6 categories:
+      risk detection, decision framing, recommendation quality, sector classification,
+      source grounding, and restricted-data refusal. Each case has: prompt, expected_keywords[],
+      must_not_contain[], min_confidence, and pass_criteria description.
+- [ ] Create `lib/eval/harness.ts` — `runEval(goldenSet, llmFn)` returns EvalResult[]:
+      case_id, passed, score (0-1), actual_output, matched_keywords[], failed_keywords[],
+      confidence_met, latency_ms, and notes. Aggregates to: total, passed, failed, pass_rate,
+      avg_confidence, avg_latency.
+- [ ] Add `POST /api/eval/run` — admin-scoped route that runs the full golden set against the live
+      LLM and returns results + aggregate. Rate-limited to 1 run per 5 minutes.
+- [ ] Add `GET  /api/eval/results` — returns the last 10 eval runs stored in audit_events
+      (type: `eval_run_complete`) with aggregate scores.
+- [ ] Add Settings → Eval tab UI — shows last run results, pass rate badge, per-category breakdown,
+      and a "Run eval now" button (admin only).
+- [ ] Add `tests/eval-harness.test.ts` — unit tests for golden set structure validation, harness
+      aggregation logic, and pass/fail scoring. Does not call live LLM.
+
+### P2-B: Prompt Version Registry
+> Required before second team member edits prompts. Prevents silent regressions.
+> Estimate: 1-2 sessions.
+
+- [ ] Create `lib/prompts/registry.ts` — `PROMPT_REGISTRY` map keyed by prompt_key (e.g.
+      `"dashboard.ceo.brief"`, `"ask.synthesis"`, `"onboarding.company-detect"`). Each entry:
+      key, version (semver string), owner, description, template (string with {{variables}}),
+      changelog[], and last_updated.
+- [ ] Migrate all 8 current hardcoded LLM prompt strings out of `lib/services/dashboard.ts`,
+      `lib/services/retrieval.ts`, and `lib/services/company-detection.ts` into registry entries.
+      Replace inline strings with `getPrompt(key, variables)` calls.
+- [ ] Add `getPrompt(key: string, variables: Record<string, string>): string` helper that
+      interpolates variables, throws on unknown key, and logs prompt_key + version to audit
+      as `prompt_rendered` event (workspaceId, promptKey, promptVersion, route).
+- [ ] Add `GET /api/prompts` — admin-scoped, returns registry manifest (keys, versions, owners,
+      descriptions, changelogs). No template bodies exposed in the API response.
+- [ ] Add Settings → Prompts tab UI — table of prompt keys, versions, owners, last updated, and
+      changelog. Read-only in V1.
+- [ ] Add `tests/prompt-registry.test.ts` — tests: all registered keys resolve, variable
+      interpolation, missing-variable detection, and unknown-key throw.
+
+### P2-C: Red-Team Checks
+> Required before any regulated-sector pilot receives real client data.
+> Estimate: 1-2 sessions.
+
+- [ ] Create `lib/security/red-team.ts` — `checkOutput(content: string, context: RedTeamContext)`
+      returns `RedTeamResult`: passed (bool), violations[], and sanitized_content.
+      RedTeamContext: workspaceId, agentId, roleKey, maxSensitivity.
+- [ ] Implement 5 check categories in `checkOutput`:
+      1. PII detection — regex + pattern matching for IBAN, credit card (Luhn), passport
+         numbers, national IDs (CNIC, Iqama, Emirates ID patterns), and email-in-brief.
+      2. Unsupported claim detection — phrases like "guaranteed", "certain to", "will definitely",
+         "100% accurate" flagged as overconfidence violations.
+      3. Unsafe recommendation detection — output containing "transfer funds", "wire to",
+         "make payment", "send money", "submit filing", "contact regulator" without a
+         human_review gate flag.
+      4. Role-inappropriate output — brief containing sensitivity level higher than the agent
+         passport's maxSensitivity.
+      5. Hard-stop action leakage — any of the U2 hard-stop phrases appearing in a non-blocked
+         output (catches gate bypass bugs).
+- [ ] Wire `checkOutput` into dashboard brief generation after LLM call and before response
+      return in `lib/services/dashboard.ts`. Failed checks: block output, return safe error
+      message to UI, write `red_team_violation` audit event with violations[].
+- [ ] Wire same check into Ask synthesis response in `lib/services/retrieval.ts`.
+- [ ] Add `tests/red-team.test.ts` — tests for each of the 5 check categories with both
+      passing and failing inputs. No live LLM required.
+
+### P2-D: Workspace AI Policy Settings
+> Required for pilot clients who need UI control over AI behaviour (currently env-var only).
+> Estimate: 1 session.
+
+- [ ] Add `aiPolicySettings` columns to `workspace_settings` in `db/schema.ts`:
+      `allowed_providers` (jsonb, string[]), `local_only_mode` (boolean, default false),
+      `sensitivity_ceiling` (sensitivity enum, default "confidential"),
+      `approval_required_threshold` (integer 0-100, default 70 — outputs below this confidence
+      require human review before display).
+- [ ] Add migration `0017_workspace_ai_policy.sql` for the 4 new columns.
+- [ ] Update `workspaceSettingsSchema` in `contracts.ts` with the 4 new fields.
+- [ ] Update `getWorkspaceSettings` and `saveWorkspaceSettings` in repository + store to
+      read/write the new fields.
+- [ ] Update `lib/services/llm.ts` to read `allowedProviders` and `localOnlyMode` from workspace
+      settings before routing to a provider — refuse if provider not in allowed list.
+- [ ] Update dashboard and Ask to check `approvalRequiredThreshold` — route low-confidence outputs
+      to human review queue instead of direct display.
+- [ ] Add Settings → AI Policy tab UI — provider checkboxes, local-only toggle, sensitivity
+      ceiling dropdown, confidence threshold slider. Save via `PATCH /api/workspace/settings`.
+- [ ] Add `tests/ai-policy.test.ts` — tests: provider allow/deny routing, local-only block,
+      threshold routing logic.
 
 ---
 
@@ -1033,20 +1152,20 @@ Positioning rule from the 2026-05-31 reassessment:
 
 ### U3 — Searchable Per-Agent Log and Granular Rollback
 - [x] Add client-facing Govern and Assure messaging document: `docs/GOVERN_ASSURE_MESSAGING.md`.
-- [ ] Extend audit_events to capture per-agent action detail: agentId, agentVersion, inputSummary
+- [x] Extend audit_events to capture per-agent action detail: agentId, agentVersion, inputSummary
   (first 200 chars of the prompt), evidenceIdsUsed (array), outputId, outputVersion, confidence,
   and processingMs. Existing audit events remain unchanged — this adds fields to agent-generated events.
-- [ ] Add `agent_outputs` table: outputId, workspaceId, agentId, agentVersion, roleKey,
+- [x] Add `agent_outputs` table: outputId, workspaceId, agentId, agentVersion, roleKey,
   content (the full brief text), evidenceRefs, confidence, createdAt, isActive (boolean),
   replacedById (nullable FK). Every dashboard card generation writes a row.
-- [ ] Rollback mechanism: when a user or admin triggers a rollback, the previous `agent_outputs`
+- [x] Rollback mechanism: when a user or admin triggers a rollback, the previous `agent_outputs`
   row is restored (isActive = true), the current row is deactivated (isActive = false, replacedById
   set), and an audit event is written with: actor, agentId, rolledBackFrom (outputId),
   rolledBackTo (outputId), and reason. Prior versions are never deleted.
-- [ ] Searchable log UI in Settings > Agent Governance: filter by agent, date range, action type.
+- [x] Searchable log UI in Settings > Agent Governance: filter by agent, date range, action type.
   Shows: timestamp, agent name, action, input summary, output confidence, and a "Roll back" button
   for agent-generated outputs that are still active.
-- [ ] Acceptance test: reviewer can search all actions by a single agent over a 7-day range,
+- [x] Acceptance test: reviewer can search all actions by a single agent over a 7-day range,
   select a specific output, roll it back to the previous version, and verify both the prior version
   and the rollback event appear in the audit log. History is never deleted.
 
@@ -1102,35 +1221,25 @@ Positioning rule from the 2026-05-31 reassessment:
 > industry-specific too early. The first universal workflow twin is the Decision & Action Twin.
 
 ### Decision & Action Twin
-- [ ] Add `action_items` as a first-class product object because Nexus currently has decisions
-  and recommendations but no owner/action tracker. Minimum fields: workspaceId, title, owner,
-  department, dueDate, status, evidenceRefs, sourceType, confidence, freshness, createdBy,
-  reviewedBy, reviewedAt, and timestamps.
-- [ ] Add workflow twin primitives: `workflow_twins` and `workflow_twin_runs`.
-  Initial `type` values: `decision_action`, `workflow_scorer`, and `ops_review`.
-- [ ] Build `GET /api/workflow-twins`, `POST /api/workflow-twins`,
-  `POST /api/workflow-twins/:id/run`, `GET /api/action-items`, and
-  `POST /api/action-items/:id/review`.
-- [ ] Build `/workflows` page with Decision & Action Twin as the first card. Show inputs,
-  outputs, governance boundary, last run, confidence, and review status.
-- [ ] Build an Action Items panel or page showing owner, due date, status, source refs,
-  confidence, and approval state.
-- [ ] Decision & Action Twin inputs: approved evidence, meeting notes, Slack/Teams messages,
-  uploaded docs, dashboard signals, and existing decisions/recommendations.
-- [ ] Decision & Action Twin outputs: decisions, action items, owners, risks, blockers,
-  recommendations, evidence refs, freshness, and confidence.
-- [ ] Enforce Agent Control Profiles before evidence enters the Decision & Action Twin prompt
-  or retrieval path. Passport-denied evidence must never enter model context.
-- [ ] Human approval remains required before an action item becomes canonical or externally
-  shareable. No autonomous sending, filing, payment, contract change, HR action, legal
-  commitment, or source-system writeback.
-- [ ] Acceptance test: given approved evidence, the twin produces decisions, action items,
-  risks, blockers, and recommendations with evidence refs.
-- [ ] Acceptance test: the twin refuses or routes to review when evidence is missing,
-  restricted, stale, or passport-denied.
+- [x] Add `actions` as a first-class product object. Fields: workspaceId, decisionId (FK),
+  actionText, owner, dueDate, isBlocker, status (open/done/deferred/cancelled), completedAt,
+  timestamps. Migration 0017.
+- [x] Extended `decisions` table with sourceOutputId (FK to agent_outputs), deadline, priority
+  (low/medium/high/critical), createdAt, updatedAt.
+- [x] Build `GET/POST /api/decisions`, `PATCH /api/decisions/[id]`,
+  `GET/POST /api/actions`, `PATCH /api/actions/[id]`.
+- [x] Build `/decisions` page with full interactive Decision & Action Twin UI: priority badges,
+  status tabs, summary strip, Mark Decided, inline action list, blocker badges, overdue
+  highlighting, Add Action inline form, New Decision form. All mutations via API.
+- [x] Every decision and action mutation writes an audit event (decision_created,
+  decision_updated, action_created, action_updated).
+- [ ] Wire Decision creation from agent brief panel — "Create Decision from this brief" button
+  on dashboard card populates sourceOutputId + pre-fills rationale from brief content.
+- [ ] Add workflow twin primitives: `workflow_twins` and `workflow_twin_runs` tables for
+  structured AI-assisted decision extraction from meeting notes and uploaded docs.
+- [ ] Enforce Agent Control Profiles before evidence enters workflow twin prompt or retrieval.
 - [ ] Acceptance test: no action item becomes canonical without human approval.
-- [ ] Acceptance test: output works across at least three company profiles: professional
-  services, SaaS/digital-native, and physical/operations-heavy business.
+- [ ] Acceptance test: output works across financial services, professional services, and SaaS profiles.
 
 ### Later workflow templates, not the universal first twin
 - [ ] Add Proposal/SOW Twin template after Decision & Action Twin is working.
@@ -1315,7 +1424,7 @@ Positioning rule from the 2026-05-31 reassessment:
 - [ ] If any client has EU operations or EU-based employees whose data passes through NexusAI,
   GDPR applies. Add a GDPR-compliant DPA addendum. Identify sub-processors and their
   Standard Contractual Clauses (SCCs) status: Anthropic, OpenAI, Neon, Cloudflare R2,
-  Clerk, Twilio, Vercel.
+  Clerk, Twilio, Render.
 - [ ] Add cookie consent banner to the landing page and any unauthenticated pages.
   Authenticated app pages behind login are lower priority for cookie compliance.
 - [ ] Add a privacy-by-design checklist to the development process: any new feature that
@@ -1546,7 +1655,7 @@ Positioning rule from the 2026-05-31 reassessment:
   verification at enterprise tier. Document migration path but do not build it in Phase 1.
 - [ ] Required environment variables: `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`,
   `TWILIO_WHATSAPP_NUMBER`, `TWILIO_SMS_NUMBER`, `TWILIO_VOICE_NUMBER`.
-  Add to `.env.example` and Vercel/Render environment documentation.
+  Add to `.env.example` and Render environment documentation.
 - [ ] Twilio webhook verification: all inbound webhooks must verify the X-Twilio-Signature
   header before processing. Reject unsigned requests with 403.
 

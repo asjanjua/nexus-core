@@ -90,6 +90,7 @@ ${evidenceBlock}
 Task: Produce this agent's brief using only the evidence above. Include what changed, why it matters, and the most useful next action if the evidence supports one.`;
 
   let summary: string;
+  const startedAt = Date.now();
   try {
     summary = await ask(userPrompt, DASHBOARD_SYSTEM_PROMPT, {
       maxTokens: 256,
@@ -120,6 +121,18 @@ Task: Produce this agent's brief using only the evidence above. Include what cha
     summary = `${summary}\n\nHuman review required: ${gate.reason}.`;
   }
 
+  const output = await repository.saveAgentOutput({
+    workspaceId,
+    agentId: agent.id,
+    agentVersion: passport?.version ?? 1,
+    roleKey: role,
+    content: summary,
+    inputSummary: userPrompt.slice(0, 200),
+    evidenceRefs,
+    confidence: avgConfidence,
+    processingMs: Date.now() - startedAt
+  });
+
   return {
     id: `${role}-${agent.id}`,
     role,
@@ -137,7 +150,9 @@ Task: Produce this agent's brief using only the evidence above. Include what cha
     summary,
     confidence: avgConfidence,
     freshnessHours: minFreshness,
-    evidenceRefs
+    evidenceRefs,
+    outputId: output.id,
+    outputVersion: output.outputVersion
   };
 }
 

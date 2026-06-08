@@ -1,287 +1,195 @@
 # NexusAI Production Cutover Runbook
 
-Everything is deployed and built. The only remaining step is wiring 8 env vars,
-running two migrations, and redeploying. This document covers both paths.
+This is the current cutover checklist for the Render + Neon deployment path.
+
+Use this when moving a new build from local validation to a live pilot URL.
 
 ---
 
-## Prerequisites
+## Step 1 - Confirm Required Accounts
 
-```bash
-# Install Vercel CLI if needed
-npm install -g vercel
+You need access to:
 
-# Log in (skip if already authenticated)
-vercel login
-
-# Link to the project (run from monorepo root)
-cd nexus-core
-vercel link
-# When prompted: set root directory to apps/mission-control
-```
+- Render project or blueprint
+- Neon database project
+- Clerk application
+- Cloudflare R2 bucket
+- LLM provider dashboard
+- GitHub repository
 
 ---
 
-## Step 1 — Add missing env vars
+## Step 2 - Set Render Environment Variables
 
-Pick **one** of the two approaches below.
+In Render, open the `nexus-mission-control` service and set:
 
-### Option A — CLI (recommended, end-to-end, no browser needed)
-
-Run each command in sequence. The CLI will prompt for the value; paste and press Enter.
-Set for both **production** and **preview** unless noted.
-
-```bash
-# From the monorepo root where vercel link was run
-
-# 1. Vercel Postgres connection URL
-#    Get from: Vercel Dashboard → Storage → your DB → .env.local tab → POSTGRES_URL
-vercel env add DATABASE_URL production
-vercel env add DATABASE_URL preview
-
-# 2. OpenAI API key for text-embedding-3-small (vector search)
-#    Get from: platform.openai.com → API keys
-vercel env add OPENAI_API_KEY production
-vercel env add OPENAI_API_KEY preview
-
-# 3. Enable vector search feature flag
-echo "enabled" | vercel env add NEXUS_VECTOR_SEARCH production
-echo "enabled" | vercel env add NEXUS_VECTOR_SEARCH preview
-
-# 4. Enable R2 original file storage
-echo "enabled" | vercel env add NEXUS_R2_ORIGINALS production
-echo "enabled" | vercel env add NEXUS_R2_ORIGINALS preview
-
-# 5-8. Cloudflare R2 credentials
-#    Get from: Cloudflare Dashboard → R2 → your bucket → Manage R2 API tokens
-#    R2_ACCOUNT_ID is your Cloudflare account ID (top-right in the dashboard)
-vercel env add R2_ACCOUNT_ID production
-vercel env add R2_ACCOUNT_ID preview
-
-vercel env add R2_ACCESS_KEY_ID production
-vercel env add R2_ACCESS_KEY_ID preview
-
-vercel env add R2_SECRET_ACCESS_KEY production
-vercel env add R2_SECRET_ACCESS_KEY preview
-
-vercel env add R2_BUCKET production
-vercel env add R2_BUCKET preview
+```text
+DATABASE_URL=
+NEXT_PUBLIC_APP_URL=
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+CLERK_SECRET_KEY=
+CLERK_WEBHOOK_SECRET=
+AUTH_SECRET=
+NEXUS_DB_REQUIRED=true
+NEXUS_ENV=pilot
+NEXT_PUBLIC_NEXUS_ENV=pilot
+NEXUS_LLM_PROVIDER=deepseek
+NEXUS_LLM_MODEL=deepseek-chat
+DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_API_KEY=
+OPENAI_API_KEY=
+NEXUS_VECTOR_SEARCH=enabled
+NEXUS_R2_ORIGINALS=enabled
+R2_ACCOUNT_ID=
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
+R2_BUCKET=
+SLACK_CLIENT_ID=
+SLACK_CLIENT_SECRET=
+SLACK_SIGNING_SECRET=
 ```
 
-Verify all vars are set:
-```bash
-vercel env ls production | grep -E "DATABASE_URL|OPENAI|NEXUS_VECTOR|NEXUS_R2|R2_"
-```
-You should see 8 lines.
-
-### Option B — Vercel UI
-
-Go to: **Vercel Dashboard → your project → Settings → Environment Variables**
-
-Add each of these for Production and Preview:
-
-| Variable              | Value                                     | Where to get it                                      |
-|-----------------------|-------------------------------------------|------------------------------------------------------|
-| `DATABASE_URL`        | `postgres://...` (pooling URL)            | Vercel Storage → your DB → `.env.local` tab          |
-| `OPENAI_API_KEY`      | `sk-...`                                  | platform.openai.com → API keys                       |
-| `NEXUS_VECTOR_SEARCH` | `enabled`                                 | literal string                                       |
-| `NEXUS_R2_ORIGINALS`  | `enabled`                                 | literal string                                       |
-| `R2_ACCOUNT_ID`       | your Cloudflare account ID                | Cloudflare Dashboard top-right                       |
-| `R2_ACCESS_KEY_ID`    | R2 token access key                       | Cloudflare R2 → Manage R2 API tokens                 |
-| `R2_SECRET_ACCESS_KEY`| R2 token secret                           | same token creation screen                           |
-| `R2_BUCKET`           | bucket name (e.g. `nexus-originals`)      | Cloudflare R2 → your bucket name                     |
+Only set Slack variables when the Slack connector is active.
 
 ---
 
-## Step 2 — Run production migrations
+## Step 3 - Run Migrations
 
-**Must use the non-pooling URL** (direct connection, bypasses PgBouncer — DDL requires this).
-
-Get it from: Vercel Dashboard → Storage → your DB → `.env.local` tab → `POSTGRES_URL_NON_POOLING`
+Use the Neon direct/non-pooling connection string for schema changes.
 
 ```bash
-export DIRECT_URL="postgres://..."   # paste POSTGRES_URL_NON_POOLING here
-
-cd apps/mission-control
-
-# Migration 0006 — recommendation workspace/status composite index
-psql $DIRECT_URL -f db/migrations/0006_recommendation_status_index.sql
-
-# Migration 0007 — pgvector extension + real vector(1536) column + HNSW index
-# Note: 0007 contains CREATE INDEX CONCURRENTLY which cannot run inside a
-# transaction block. Run the file as-is; psql sends each statement separately.
-psql $DIRECT_URL -f db/migrations/0007_pgvector.sql
+cd /Users/alijanjua/Documents/Playground/nexus-core/apps/mission-control
+DATABASE_URL="<direct Neon connection string>" npm run db:migrate
 ```
 
-### Verify migrations applied correctly
+Verify:
 
 ```bash
-# Confirm pgvector extension is active
-psql $DIRECT_URL -c "SELECT extname, extversion FROM pg_extension WHERE extname = 'vector';"
-# Expected: vector | 0.x.x
+DATABASE_URL="<direct Neon connection string>" npm run db:check
+```
 
-# Confirm embedding column is vector type (not jsonb)
-psql $DIRECT_URL -c "
-  SELECT column_name, data_type, udt_name
-  FROM information_schema.columns
-  WHERE table_name = 'evidence_records' AND column_name = 'embedding';
-"
-# Expected: embedding | USER-DEFINED | vector
+Confirm these features exist in the database:
 
-# Confirm HNSW index exists
-psql $DIRECT_URL -c "
-  SELECT indexname, indexdef
-  FROM pg_indexes
-  WHERE tablename = 'evidence_records' AND indexname = 'idx_evidence_embedding_hnsw';
-"
+- `vector` extension
+- `evidence_records.embedding`
+- `agent_control_profiles`
+- `agent_outputs`
+- workspace/evidence/audit indexes
 
-# Confirm composite indexes
-psql $DIRECT_URL -c "
-  SELECT indexname FROM pg_indexes
-  WHERE tablename IN ('evidence_records', 'audit_events', 'recommendations')
-  AND indexname LIKE 'idx_%'
-  ORDER BY indexname;
-"
-# Expected: idx_audit_workspace_created, idx_evidence_embedding_hnsw,
-#           idx_evidence_workspace_status, idx_recommendations_workspace_status
+---
+
+## Step 4 - Deploy
+
+Recommended path:
+
+1. Push the current branch to GitHub.
+2. Open Render.
+3. Open the Nexus blueprint or web service.
+4. Trigger **Manual Sync** or **Manual Deploy**.
+5. Wait for the build and health check to pass.
+
+Expected build commands from `render.yaml`:
+
+```bash
+npm ci && npm run build
+npm run start -w @nexus/mission-control -- -p $PORT
 ```
 
 ---
 
-## Step 3 — Redeploy
+## Step 5 - Health Verification
+
+Set:
 
 ```bash
-# From monorepo root (where vercel link was run)
-vercel --prod
+BASE=https://nexus-mission-control.onrender.com
 ```
 
-Or push to main if GitHub auto-deploy is enabled.
-
-Watch the build output for any env var errors. A clean deploy should show:
-```
-✓ Build completed in Xs
-✓ Deployed to production
-```
-
----
-
-## Step 4 — Health verification
-
-Replace `YOUR_APP` with your actual Vercel deployment URL.
+Then run:
 
 ```bash
-BASE=https://YOUR_APP.vercel.app
-
-# Primary health check — must return all three flags true
-curl -s $BASE/api/health | jq .
+curl -s "$BASE/api/health"
 ```
 
-Expected response:
+Expected:
+
 ```json
 {
-  "status": "ok",
-  "timestamp": "2026-05-03T...",
-  "environment": "pilot",
-  "checks": {
-    "database": {
-      "ok": true,
-      "usingDatabase": true
-    },
-    "vectorSearch": true,
-    "originalsStorage": true
+  "data": {
+    "status": "ok"
   }
 }
 ```
 
-If any flag is false, check the table below:
+If health fails:
 
-| Flag false          | Most likely cause                                     | Fix                                          |
-|---------------------|-------------------------------------------------------|----------------------------------------------|
-| `usingDatabase`     | `DATABASE_URL` not set or wrong URL format            | Re-add env var, use the pooling URL          |
-| `vectorSearch`      | `NEXUS_VECTOR_SEARCH` not set to `enabled`            | Confirm exact string value is `enabled`      |
-| `originalsStorage`  | Any of the 4 R2 vars missing or `NEXUS_R2_ORIGINALS` not `enabled` | Check all 5 R2-related vars     |
-
----
-
-## Step 5 — Smoke tests
-
-```bash
-BASE=https://YOUR_APP.vercel.app
-
-# 1. Auth check (requires Clerk session — grab __session from browser DevTools)
-curl -s -H "Cookie: __session=<token>" $BASE/api/auth/me | jq .
-
-# 2. Evidence endpoint
-curl -s -H "Cookie: __session=<token>" \
-  "$BASE/api/evidence?status=processed&limit=5" | jq '.total, (.items | length)'
-
-# 3. Pending approval queue
-curl -s -H "Cookie: __session=<token>" \
-  "$BASE/api/evidence?status=pending_approval" | jq '.total'
-
-# 4. Upload a test PDF through the UI at /ingestion
-#    Then verify it appears at /approvals if confidence was 35-75%
-
-# 5. Ask query (LLM synthesis)
-curl -s -X POST $BASE/api/ask \
-  -H "Cookie: __session=<token>" \
-  -H "Content-Type: application/json" \
-  -d '{"query": "What are the top risks in this workspace?"}' | jq '.refused, .confidence'
-# refused: false = LLM synthesis working
-# refused: true with reason "insufficient_evidence" = no data yet (expected for fresh workspace)
-```
+| Failed area | Most likely cause | Fix |
+|---|---|---|
+| database | Wrong `DATABASE_URL` or migrations not run | Recheck Neon pooled URL and run migrations with direct URL |
+| vector search | `OPENAI_API_KEY` missing or migration missing | Add key and run migrations |
+| originals storage | R2 variables missing | Recheck R2 account, keys, and bucket |
+| LLM | provider key missing or provider/model mismatch | Recheck `NEXUS_LLM_PROVIDER`, model, and key |
 
 ---
 
-## Troubleshooting
+## Step 6 - Browser Smoke Test
 
-### Build fails with missing module `@aws-sdk/client-s3`
+Use the deployed URL:
 
-```bash
-cd apps/mission-control && npm install
-vercel --prod
+```text
+https://nexus-mission-control.onrender.com
 ```
 
-### `CREATE INDEX CONCURRENTLY cannot run inside a transaction block`
+Checklist:
 
-Run the HNSW index statement separately:
+- [ ] `/sign-up` renders.
+- [ ] New user can sign up.
+- [ ] Onboarding appears after signup.
+- [ ] Company profile step saves.
+- [ ] Upload accepts a small PDF or DOCX.
+- [ ] Evidence is processed, pending approval, or quarantined with clear status.
+- [ ] Pending evidence can be approved.
+- [ ] CEO/COO/CBO/CTO dashboards render.
+- [ ] Ask answers with evidence refs or refuses when evidence is weak.
+- [ ] Settings -> Agent Governance renders profiles and output log.
+- [ ] Rollback button is visible for prior agent outputs when history exists.
+
+---
+
+## Step 7 - API Smoke Test
+
+With a valid browser session or scoped bearer token:
+
 ```bash
-psql $DIRECT_URL -c "
-  CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_evidence_embedding_hnsw
-    ON evidence_records
-    USING hnsw (embedding vector_cosine_ops)
-    WITH (m = 16, ef_construction = 128);
-"
+curl -s "$BASE/api/auth/me"
+curl -s "$BASE/api/evidence?status=processed&limit=5"
+curl -s "$BASE/api/agent-control-profiles"
+curl -s "$BASE/api/agent-outputs?limit=5"
 ```
 
-### Database health check passes but data is wrong
+Unauthenticated calls to protected APIs should return `401` or equivalent auth failure.
 
-Confirm the app is using the pooling URL for runtime (not the non-pooling one):
-- `DATABASE_URL` = `POSTGRES_URL` (pooling, for the app)
-- `POSTGRES_URL_NON_POOLING` = migrations only, not in env vars
+---
 
-### R2 uploads silently fail
+## Step 8 - Tag After Verification
 
-Test the R2 credentials directly:
+Only tag after:
+
+- local tests pass
+- local build passes
+- migrations have run
+- Render deploy is healthy
+- browser smoke path passes
+
 ```bash
-# Install AWS CLI and configure with R2 endpoint
-aws s3 ls s3://YOUR_BUCKET_NAME \
-  --endpoint-url https://YOUR_ACCOUNT_ID.r2.cloudflarestorage.com \
-  --no-sign-request
-# Or with credentials:
-AWS_ACCESS_KEY_ID=YOUR_KEY AWS_SECRET_ACCESS_KEY=YOUR_SECRET \
-  aws s3 ls s3://YOUR_BUCKET_NAME \
-  --endpoint-url https://YOUR_ACCOUNT_ID.r2.cloudflarestorage.com
+git tag v1-pilot-cutover
+git push origin v1-pilot-cutover
 ```
 
 ---
 
-## Post-cutover checklist
+## Step 9 - Rollback
 
-- [ ] `/api/health` returns `status: ok` with all three flags `true`
-- [ ] Can sign in via Clerk and land on `/dashboard/ceo`
-- [ ] Can upload a file at `/ingestion` — it appears in `/approvals` or goes straight to processed
-- [ ] Approving a record at `/approvals` makes it visible on the dashboard
-- [ ] Ask panel at `/ask` returns an answer grounded in evidence
-- [ ] Audit events appear at `/review` after approval actions
-- [ ] Tag the release: `git tag v1-pilot-cutover && git push --tags`
+Use Render's deploy rollback if the app deploy breaks.
+
+If a migration causes an issue, create a forward corrective migration. Do not manually delete tables or rewrite migration history in a live pilot database.

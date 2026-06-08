@@ -1,137 +1,160 @@
-# NexusAI Mission Control — Vercel Deployment Runbook
+# NexusAI Mission Control - Render Deployment Runbook
 
-This document covers every step to take the platform from a local dev environment to a production-grade pilot deployment on Vercel.
+This document covers the current production pilot path for NexusAI Mission Control.
+
+Current stack:
+
+- Render Web Service for the Next.js app
+- Neon Postgres with `pgvector`
+- Clerk for signup, login, and organization tenancy
+- Cloudflare R2 for original file retention
+- DeepSeek/OpenAI/Anthropic-compatible LLM routing
 
 ---
 
-## Prerequisites
+## 1. Prerequisites
 
 Before starting, you need:
 
-- A Vercel account (Pro tier recommended for Postgres add-on limits)
-- A Clerk account at [clerk.com](https://clerk.com) with a new application created
-- An Anthropic API key (or OpenAI key if you prefer GPT-4o)
-- A Slack app registered at [api.slack.com/apps](https://api.slack.com/apps) if you want the Slack connector
-- Node.js 20+ installed locally
-- The `vercel` CLI: `npm install -g vercel`
+- A Render account connected to GitHub
+- A Neon project with a Postgres database
+- A Clerk application with Organizations enabled
+- A Cloudflare R2 bucket and R2 API token
+- A DeepSeek, Anthropic, or compatible LLM API key
+- An OpenAI API key if `NEXUS_VECTOR_SEARCH=enabled`
+- Node.js 20+ locally
 
 ---
 
-## 1. Vercel Project Setup
+## 2. Neon Database
+
+Create a Neon project and copy both connection strings:
+
+- Pooled URL for application runtime
+- Direct/non-pooling URL for migrations
+
+Set the pooled URL as `DATABASE_URL` in Render.
+
+Run migrations with the direct URL:
 
 ```bash
-# From the monorepo root
-cd nexus-core
-vercel link   # connect to your Vercel account and create/select a project
+cd /Users/alijanjua/Documents/Playground/nexus-core/apps/mission-control
+DATABASE_URL="<direct Neon connection string>" npm run db:migrate
 ```
 
-Set the root directory to `apps/mission-control` when prompted. Vercel detects Next.js automatically.
-
-### 1.1 Add Vercel Postgres
-
-In the Vercel dashboard, go to your project, then **Storage → Create Database → Postgres**.
-
-Name it `nexus-db` (or any name you prefer). Select the region closest to your primary user base.
-
-Once created, Vercel automatically injects these env vars into your project:
-
-```
-POSTGRES_URL
-POSTGRES_URL_NON_POOLING
-POSTGRES_PRISMA_URL
-POSTGRES_USER
-POSTGRES_PASSWORD
-POSTGRES_DATABASE
-POSTGRES_HOST
-```
-
-You will use `POSTGRES_URL` as `DATABASE_URL` in your env. Vercel Postgres uses pgvector by default — no separate extension install needed.
-
-### 1.2 Run Database Migrations
-
-Connect to your Vercel Postgres instance from your local machine using the `POSTGRES_URL_NON_POOLING` connection string (bypasses PgBouncer for DDL):
+Verify the schema:
 
 ```bash
-# Set the connection string for migration
-export DATABASE_URL="<paste POSTGRES_URL_NON_POOLING here>"
-
-# Run all migrations in order
-cd apps/mission-control
-psql $DATABASE_URL -f db/migrations/0001_init.sql
-psql $DATABASE_URL -f db/migrations/0002_auth_users.sql
-psql $DATABASE_URL -f db/migrations/0003_agent_keys_and_settings.sql
-psql $DATABASE_URL -f db/migrations/0004_connectors.sql
-psql $DATABASE_URL -f db/migrations/0005_pending_approval_status.sql
-psql $DATABASE_URL -f db/migrations/0006_recommendation_status_index.sql
-psql $DATABASE_URL -f db/migrations/0007_pgvector.sql
+DATABASE_URL="<direct Neon connection string>" npm run db:check
 ```
 
-> **Note on migration 0007**: The HNSW index creation uses a regular
-> `CREATE INDEX IF NOT EXISTS` so the repository's Node migration runner can
-> apply it inside its transaction wrapper. For a large production table, switch
-> this to `CREATE INDEX CONCURRENTLY` and run that statement separately.
-
-Verify:
-```bash
-psql $DATABASE_URL -c "\dt"
-```
-
-You should see: `evidence_records`, `recommendations`, `tenants`, `workspaces`, `workspace_settings`, `connectors`, `agent_keys`, `users`, `roles`, `entities`, `decisions`, `audit_events`.
+The migration runner auto-discovers migration files in `db/migrations` in order.
 
 ---
 
-## 2. Clerk Configuration
+## 3. Render Web Service
 
-### 2.1 Application Settings
+Preferred path:
 
-In the Clerk dashboard ([dashboard.clerk.com](https://dashboard.clerk.com)):
+1. Push the repository to GitHub.
+2. In Render, choose **New -> Blueprint**.
+3. Select the `nexus-core` repository.
+4. Let Render read `render.yaml`.
+5. Fill every `sync: false` environment variable.
+6. Trigger a manual sync.
 
-1. Create a new application or use an existing one.
-2. Enable **Organizations** — go to **Configure → Organizations** and toggle it on. This is required for multi-tenant workspace isolation.
-3. Under **User & Authentication**, enable email/password and any social providers you want (Google is recommended for B2B pilots).
+The blueprint uses:
 
-### 2.2 Redirect URLs
+```bash
+npm ci && npm run build
+npm run start -w @nexus/mission-control -- -p $PORT
+```
 
-In **Configure → Paths**, set:
+Health check path:
+
+```text
+/api/health
+```
+
+---
+
+## 4. Required Environment Variables
+
+Set these in Render.
+
+| Variable | Purpose |
+|---|---|
+| `DATABASE_URL` | Neon pooled runtime connection string |
+| `NEXT_PUBLIC_APP_URL` | Public Render URL or custom domain |
+| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | Clerk browser key |
+| `CLERK_SECRET_KEY` | Clerk server key |
+| `CLERK_WEBHOOK_SECRET` | Clerk webhook signing secret |
+| `AUTH_SECRET` | Random 32-byte hex string; Render can generate this |
+| `NEXUS_DB_REQUIRED` | Set to `true` in deployed environments |
+| `NEXUS_ENV` | Usually `pilot` |
+| `NEXT_PUBLIC_NEXUS_ENV` | Usually `pilot` |
+| `NEXUS_LLM_PROVIDER` | `deepseek`, `anthropic`, or compatible provider |
+| `NEXUS_LLM_MODEL` | Active synthesis model |
+| `DEEPSEEK_API_KEY` | Required when using DeepSeek |
+| `DEEPSEEK_BASE_URL` | `https://api.deepseek.com` |
+| `ANTHROPIC_API_KEY` | Optional Anthropic provider key |
+| `ANTHROPIC_BASE_URL` | Optional Cloudflare AI Gateway endpoint |
+| `CLOUDFLARE_AI_GATEWAY_TOKEN` | Optional AI Gateway token |
+| `OPENAI_API_KEY` | Required for embeddings when vector search is enabled |
+| `NEXUS_VECTOR_SEARCH` | Set to `enabled` to use `pgvector` retrieval |
+| `NEXUS_R2_ORIGINALS` | Set to `enabled` to retain original uploads |
+| `R2_ACCOUNT_ID` | Cloudflare account id |
+| `R2_ACCESS_KEY_ID` | R2 access key |
+| `R2_SECRET_ACCESS_KEY` | R2 secret |
+| `R2_BUCKET` | R2 bucket name |
+| `SLACK_CLIENT_ID` | Optional Slack connector |
+| `SLACK_CLIENT_SECRET` | Optional Slack connector |
+| `SLACK_SIGNING_SECRET` | Optional Slack event verification |
+
+Generate `AUTH_SECRET` locally if needed:
+
+```bash
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+```
+
+---
+
+## 5. Clerk Configuration
+
+In Clerk:
+
+1. Enable Organizations.
+2. Configure sign-in and sign-up paths:
 
 | Setting | Value |
-|---------|-------|
+|---|---|
 | Sign-in URL | `/sign-in` |
 | Sign-up URL | `/sign-up` |
 | After sign-in URL | `/dashboard/ceo` |
 | After sign-up URL | `/onboarding` |
 
-Also add your Vercel deployment URL to **Allowed redirect URLs**:
+3. Add the deployed app URL and custom domain to allowed redirect URLs.
+4. Configure the webhook endpoint:
+
+```text
+https://your-render-service.onrender.com/api/webhooks/clerk
 ```
-https://your-app.vercel.app
-https://your-custom-domain.com   # if applicable
-```
 
-### 2.3 Webhooks
-
-Go to **Configure → Webhooks → Add Endpoint**.
-
-- Endpoint URL: `https://your-app.vercel.app/api/webhooks/clerk`
-- Subscribe to: `organization.created`
-
-Copy the **Signing Secret** — you will need it as `CLERK_WEBHOOK_SECRET`.
-
-### 2.4 Retrieve API Keys
-
-Go to **API Keys** and copy:
-- `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` (starts with `pk_live_` or `pk_test_`)
-- `CLERK_SECRET_KEY` (starts with `sk_live_` or `sk_test_`)
-
-Use live keys for production, test keys for staging.
+Subscribe to `organization.created`.
 
 ---
 
-## 3. Slack App Setup (optional — needed for Task 22 connector)
+## 6. Slack Connector
 
-In the Slack app manifest at [api.slack.com/apps](https://api.slack.com/apps), create or update your app with:
+If using Slack, add this redirect URL in the Slack app:
 
-**OAuth Scopes (Bot Token Scopes):**
+```text
+https://your-render-service.onrender.com/api/connectors/slack/callback
 ```
+
+Required bot scopes:
+
+```text
 channels:history
 channels:read
 groups:history
@@ -140,281 +163,58 @@ users:read
 files:read
 ```
 
-**Redirect URLs:**
-```
-https://your-app.vercel.app/api/connectors/slack/callback
+---
+
+## 7. Smoke Test
+
+After deployment:
+
+```bash
+BASE=https://your-render-service.onrender.com
+curl -s "$BASE/api/health"
 ```
 
-Copy:
-- `SLACK_CLIENT_ID`
-- `SLACK_CLIENT_SECRET`
-- `SLACK_SIGNING_SECRET` (from Basic Information)
+Expected top-level result:
+
+```json
+{
+  "data": {
+    "status": "ok"
+  }
+}
+```
+
+Browser smoke path:
+
+1. Visit `/sign-up`.
+2. Create a user.
+3. Complete onboarding.
+4. Upload one small PDF or DOCX.
+5. Confirm it appears in Approvals or Evidence.
+6. Approve it if needed.
+7. Open a dashboard.
+8. Ask: `What are the top risks?`
 
 ---
 
-## 4. Environment Variables
+## 8. Rollback
 
-In the Vercel dashboard, go to **Settings → Environment Variables** and add all of the following. Set them for **Production**, **Preview**, and **Development** environments as appropriate.
+Render rollback path:
 
-### Required
+1. Open the Render service.
+2. Go to **Deploys**.
+3. Select the last known-good deploy.
+4. Click **Rollback**.
 
-| Variable | Value | Notes |
-|----------|-------|-------|
-| `DATABASE_URL` | Paste `POSTGRES_URL` from Vercel Postgres | Use the pooling URL for app connections |
-| `NEXUS_DB_REQUIRED` | `true` | Enables DB-required mode in production |
-| `NEXT_PUBLIC_APP_URL` | `https://your-app.vercel.app` | Used for OAuth redirect URIs |
-| `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY` | `pk_live_...` | From Clerk dashboard |
-| `CLERK_SECRET_KEY` | `sk_live_...` | From Clerk dashboard |
-| `NEXT_PUBLIC_CLERK_SIGN_IN_URL` | `/sign-in` | |
-| `NEXT_PUBLIC_CLERK_SIGN_UP_URL` | `/sign-up` | |
-| `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL` | `/dashboard/ceo` | |
-| `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL` | `/onboarding` | |
-| `CLERK_WEBHOOK_SECRET` | `whsec_...` | From Clerk webhook settings |
-| `AUTH_SECRET` | 64-char random string | Signs agent Bearer tokens and Slack OAuth state |
-| `NEXUS_LLM_PROVIDER` | `deepseek` | Use `anthropic` if you want Claude as the synthesis provider. |
-| `DEEPSEEK_API_KEY` | `sk-...` | Required when `NEXUS_LLM_PROVIDER=deepseek`. |
-| `DEEPSEEK_BASE_URL` | `https://api.deepseek.com` | DeepSeek OpenAI-compatible endpoint. |
-| `ANTHROPIC_API_KEY` | `sk-ant-...` | Required only when `NEXUS_LLM_PROVIDER=anthropic`. |
-| `ANTHROPIC_BASE_URL` | `https://gateway.ai.cloudflare.com/v1/<account>/<gateway>/anthropic` | Optional. Set this to use Cloudflare AI Gateway with Anthropic. |
-| `CLOUDFLARE_AI_GATEWAY_TOKEN` | `replace_me` | Optional. Only needed if your AI Gateway is configured as authenticated. |
-| `NEXUS_LLM_MODEL` | `deepseek-v4-pro` | Use `claude-opus-4-6` when `NEXUS_LLM_PROVIDER=anthropic`. |
-| `NEXUS_VECTOR_SEARCH` | `enabled` | Optional. Set to `enabled` to activate pgvector semantic retrieval. Requires `OPENAI_API_KEY` and migration 0007. Defaults to keyword search when unset. |
-| `OPENAI_API_KEY` | `sk-...` | Optional. Required only when `NEXUS_VECTOR_SEARCH=enabled`. Used exclusively for text-embedding-3-small (1536-dim). Claude remains the synthesis model. |
-| `NEXUS_R2_ORIGINALS` | `enabled` | Optional. Set to `enabled` to retain original uploaded files in Cloudflare R2 for provenance and re-review. |
-| `R2_ACCOUNT_ID` | `replace_me` | Required when `NEXUS_R2_ORIGINALS=enabled`. |
-| `R2_ACCESS_KEY_ID` | `replace_me` | Required when `NEXUS_R2_ORIGINALS=enabled`. |
-| `R2_SECRET_ACCESS_KEY` | `replace_me` | Required when `NEXUS_R2_ORIGINALS=enabled`. |
-| `R2_BUCKET` | `nexus-evidence` | Required when `NEXUS_R2_ORIGINALS=enabled`. |
-| `NEXUS_ENV` | `pilot` | |
-| `NEXT_PUBLIC_NEXUS_ENV` | `pilot` | Shown in UI |
-
-### Generate AUTH_SECRET
-
-```bash
-node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-```
-
-### Optional (Slack connector)
-
-| Variable | Value |
-|----------|-------|
-| `SLACK_CLIENT_ID` | From Slack app settings |
-| `SLACK_CLIENT_SECRET` | From Slack app settings |
-| `SLACK_SIGNING_SECRET` | From Slack app Basic Information |
+Database migrations are forward-only. If a schema migration needs reversal, create a new migration that restores the prior behavior without deleting history.
 
 ---
 
-## 5. Deploy
+## 9. Operational Notes
 
-```bash
-# From the monorepo root
-vercel --prod
-```
+Render free services can sleep when idle. That is acceptable for demos and early pilots, but a paid instance is recommended for customer-facing usage where first-load latency matters.
 
-Or push to your main branch if you have GitHub auto-deploy enabled in Vercel.
+For deeper production checks, see:
 
-### Build Command
-
-If Vercel doesn't detect it automatically, set in **Settings → Build & Output**:
-
-- **Build Command:** `npm run build` (or `cd apps/mission-control && npm run build`)
-- **Output Directory:** `.next`
-- **Install Command:** `npm install`
-- **Root Directory:** `apps/mission-control`
-
----
-
-## 6. Post-Deployment Smoke Test
-
-Run through this checklist after the first successful deploy:
-
-### 6.1 Authentication
-
-- [ ] Visit `https://your-app.vercel.app/sign-in` — Clerk sign-in page renders
-- [ ] Create an account and an organization
-- [ ] Clerk webhook fires, workspace auto-provisions (check Vercel logs: `organization.created` event)
-- [ ] Redirected to `/onboarding` after org creation
-- [ ] Onboarding wizard completes: provision → upload a test PDF → evidence preview → dashboard selection
-
-### 6.2 Database
-
-```bash
-# Check that rows were created after onboarding
-psql $DATABASE_URL -c "SELECT id, name FROM tenants LIMIT 5;"
-psql $DATABASE_URL -c "SELECT id, ingestion_status, extraction_confidence FROM evidence_records LIMIT 5;"
-```
-
-### 6.3 API Health
-
-```bash
-BASE=https://your-app.vercel.app
-
-# Public health check (no auth needed)
-curl $BASE/api/health
-
-# Auth check (requires valid Clerk session cookie — use browser DevTools to get it)
-curl -H "Cookie: __session=<your-session-token>" $BASE/api/auth/me
-
-# Agent Bearer token flow
-curl -X POST $BASE/api/oauth/token \
-  -H "Content-Type: application/json" \
-  -d '{"keyId":"your-key-id","secret":"your-key-secret","scopes":["read:dashboard"]}'
-```
-
-### 6.4 Evidence Pipeline
-
-- [ ] Upload a PDF via `/ingestion` page
-- [ ] Check status at `/approvals` — items with 35–75% confidence appear in queue
-- [ ] Approve an item and verify it moves to `/dashboard/ceo`
-- [ ] Check `/api/evidence?status=pending_approval` returns the correct count
-
-### 6.5 LLM Synthesis
-
-Visit `/dashboard/ceo` and verify:
-
-- [ ] Recommendations load (LLM synthesis ran successfully)
-- [ ] Charts render (SVG-based, no external deps)
-- [ ] `Ask` page returns answers based on uploaded evidence
-
-### 6.6 Optional Cloudflare AI Gateway
-
-If you want V1 to use Cloudflare AI Gateway without changing application code:
-
-1. Create an AI Gateway in Cloudflare.
-2. Set:
-
-```bash
-ANTHROPIC_BASE_URL=https://gateway.ai.cloudflare.com/v1/<account_id>/<gateway_id>/anthropic
-```
-
-3. If the gateway requires authenticated access, also set:
-
-```bash
-CLOUDFLARE_AI_GATEWAY_TOKEN=<your_cloudflare_gateway_token>
-```
-
-4. Redeploy and re-run an `Ask` query plus one role dashboard generation.
-
-This preserves the Vercel-hosted Mission Control runtime while adding Cloudflare-side LLM observability, rate limiting, and usage control.
-
-### 6.7 Optional Cloudflare R2 Originals
-
-If you want Nexus to retain original uploaded files for evidence provenance:
-
-1. Create an R2 bucket in Cloudflare.
-2. Create an R2 API token with read/write access to that bucket.
-3. Set:
-
-```bash
-NEXUS_R2_ORIGINALS=enabled
-R2_ACCOUNT_ID=<your_cloudflare_account_id>
-R2_ACCESS_KEY_ID=<your_r2_access_key_id>
-R2_SECRET_ACCESS_KEY=<your_r2_secret_access_key>
-R2_BUCKET=<your_bucket_name>
-```
-
-4. Redeploy and upload a test document.
-5. Open the evidence detail page and confirm the `open stored original` link appears.
-
-When enabled, Mission Control uploads the original file to R2 during ingestion, stores the resulting `r2://...` URI in `sourceUri`, and exposes the original back through an authenticated download route.
-
----
-
-## 7. Custom Domain (optional)
-
-In Vercel, go to **Settings → Domains** and add your domain. Update:
-
-- `NEXT_PUBLIC_APP_URL` to your custom domain
-- Clerk allowed redirect URLs (add your new domain)
-- Slack OAuth redirect URL in the Slack app settings
-
----
-
-## 8. Scaling for Pilot Clients
-
-### 8.1 Per-Tenant Isolation
-
-Each client signs up, creates a Clerk Organization, and gets their own `tenantId/workspaceId`. No data crosses tenant boundaries. Verified at the repository layer by `ctx.workspaceId` enforcement on every query.
-
-### 8.2 Adding a New Pilot
-
-1. Invite the client's admin user to their Clerk Organization via the Clerk dashboard.
-2. They land on `/onboarding`, provision their workspace, and connect their first data source.
-3. No code changes or manual DB setup required — fully self-serve.
-
-### 8.3 LLM Cost Management
-
-Set `NEXUS_LLM_PROVIDER=deepseek` with `NEXUS_LLM_MODEL=deepseek-v4-pro` for the default paid API path. Use `deepseek-v4-flash` for lower-stakes draft and triage routes when that model is enabled in your provider account. Switch to `NEXUS_LLM_PROVIDER=anthropic` with `claude-opus-4-6` only for high-stakes executive briefings where you explicitly want Claude.
-
-Recommended V1 posture:
-
-- keep Mission Control on Vercel
-- keep Clerk for auth and org tenancy
-- keep Postgres plus `pgvector`
-- add Cloudflare AI Gateway first
-- add R2 for original file retention when provenance review is needed
-- defer Cloudflare Queues until ingestion volume justifies async complexity
-
-### 8.4 Evidence Volume
-
-Vercel Postgres (Hobby: 256MB, Pro: 512MB). For pilots with heavy document ingestion, consider:
-
-- Storing extracted text in object storage (S3/R2) and keeping only embeddings + metadata in Postgres
-- Enabling pgvector indexing once the evidence table exceeds 10,000 rows
-
----
-
-## 9. Rollback Procedure
-
-```bash
-# List deployments
-vercel ls
-
-# Roll back to a specific deployment
-vercel rollback <deployment-url>
-```
-
-For DB schema rollbacks, migrations must be reversed manually. Keep the previous migration SQL file and write explicit DOWN steps before deploying schema changes to production.
-
----
-
-## 10. Monitoring
-
-Vercel provides basic request logs and function logs out of the box. For a pilot:
-
-- **Vercel Logs**: Check function runtimes and error rates at `vercel.com/your-team/your-project/logs`
-- **Clerk Dashboard**: User activity, sign-ins, and webhook delivery status
-- **Postgres Metrics**: Query performance and storage usage in the Vercel Storage tab
-
-For production observability, add [Vercel Monitoring](https://vercel.com/docs/observability) or connect a third-party provider such as Datadog, Sentry, or Axiom.
-
----
-
-## Quick Reference — All Required Env Vars
-
-```bash
-# Copy this block into Vercel's env settings
-DATABASE_URL=<from Vercel Postgres>
-NEXUS_DB_REQUIRED=true
-NEXT_PUBLIC_APP_URL=https://your-app.vercel.app
-NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=pk_live_...
-CLERK_SECRET_KEY=sk_live_...
-NEXT_PUBLIC_CLERK_SIGN_IN_URL=/sign-in
-NEXT_PUBLIC_CLERK_SIGN_UP_URL=/sign-up
-NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL=/dashboard/ceo
-NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL=/onboarding
-CLERK_WEBHOOK_SECRET=whsec_...
-AUTH_SECRET=<64-char random hex>
-NEXUS_LLM_PROVIDER=deepseek
-DEEPSEEK_API_KEY=<deepseek-api-key>
-DEEPSEEK_BASE_URL=https://api.deepseek.com
-NEXUS_LLM_MODEL=deepseek-v4-pro
-NEXUS_ENV=pilot
-NEXT_PUBLIC_NEXUS_ENV=pilot
-SLACK_CLIENT_ID=<optional>
-SLACK_CLIENT_SECRET=<optional>
-SLACK_SIGNING_SECRET=<optional>
-# Vector search (optional — keyword search works without these)
-NEXUS_VECTOR_SEARCH=enabled
-OPENAI_API_KEY=<sk-...>
-```
+- `CUTOVER.md`
+- `docs/PRODUCTION_HEALTH_CHECKLIST.md`

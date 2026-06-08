@@ -73,6 +73,22 @@ type AgentControlProfile = {
   updatedAt: string;
 };
 
+type AgentOutput = {
+  id: string;
+  workspaceId: string;
+  agentId: string;
+  agentVersion: number;
+  roleKey: string;
+  content: string;
+  inputSummary: string;
+  evidenceRefs: string[];
+  confidence: number;
+  outputVersion: number;
+  isActive: boolean;
+  replacedById?: string | null;
+  createdAt: string;
+};
+
 type WorkspaceProfile = {
   companyName?: string | null;
   sector?: string | null;
@@ -919,10 +935,16 @@ Then use: Authorization: Bearer <access_token>`}</pre>
 // Agent Governance tab
 // ---------------------------------------------------------------------------
 
+type LearningSignalType = "approve" | "edit" | "reject" | "thumbs_up" | "thumbs_down";
+
 function AgentGovernanceTab() {
   const [profiles, setProfiles] = useState<AgentControlProfile[]>([]);
+  const [outputs, setOutputs] = useState<AgentOutput[]>([]);
+  const [outputAgent, setOutputAgent] = useState("");
+  const [outputDays, setOutputDays] = useState("7");
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
+  const [signalSent, setSignalSent] = useState<Record<string, LearningSignalType>>({});
   const [error, setError] = useState<string | null>(null);
 
   async function load() {
@@ -933,6 +955,7 @@ function AgentGovernanceTab() {
       const json = await res.json();
       if (!json.ok) throw new Error(json.error ?? "load_failed");
       setProfiles(json.data.profiles ?? []);
+      await loadOutputs();
     } catch (err) {
       setError(err instanceof Error ? err.message : "unknown_error");
     } finally {
@@ -941,6 +964,15 @@ function AgentGovernanceTab() {
   }
 
   useEffect(() => { load(); }, []);
+
+  async function loadOutputs(agent = outputAgent, days = outputDays) {
+    const params = new URLSearchParams({ days, limit: "50" });
+    if (agent) params.set("agentId", agent);
+    const res = await fetch(`/api/agent-outputs?${params.toString()}`);
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error ?? "outputs_load_failed");
+    setOutputs(json.data.outputs ?? []);
+  }
 
   const latestProfiles = Object.values(
     profiles.reduce<Record<string, AgentControlProfile>>((acc, profile) => {
@@ -1022,6 +1054,55 @@ function AgentGovernanceTab() {
 
   function splitList(value: string) {
     return value.split(",").map((item) => item.trim()).filter(Boolean);
+  }
+
+  async function sendSignal(output: AgentOutput, signalType: LearningSignalType) {
+    setSavingKey(`sig-${output.id}`);
+    setError(null);
+    try {
+      let editedContent: string | undefined;
+      if (signalType === "edit") {
+        editedContent = window.prompt("Paste the corrected version of this brief:", output.content) ?? undefined;
+        if (!editedContent) return; // user cancelled
+      }
+      const res = await fetch("/api/learning-signals", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          agentId: output.agentId,
+          outputId: output.id,
+          signalType,
+          editedContent
+        })
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error ?? "signal_failed");
+      setSignalSent((prev) => ({ ...prev, [output.id]: signalType }));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "unknown_error");
+    } finally {
+      setSavingKey(null);
+    }
+  }
+
+  async function rollbackOutput(output: AgentOutput) {
+    const reason = window.prompt("Why are we rolling back this output?", "Reviewer selected prior version") ?? "";
+    setSavingKey(output.id);
+    setError(null);
+    try {
+      const res = await fetch(`/api/agent-outputs/${encodeURIComponent(output.id)}/rollback`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ reason })
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error ?? "rollback_failed");
+      await loadOutputs();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "unknown_error");
+    } finally {
+      setSavingKey(null);
+    }
   }
 
   return (
@@ -1162,6 +1243,148 @@ function AgentGovernanceTab() {
           ))}
         </div>
       )}
+
+      <section className="panel space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-sm font-semibold text-white">Searchable Agent Output Log</p>
+            <p className="mt-1 text-xs text-white/50">
+              Review generated briefs by agent, evidence, confidence, and version. Rollback keeps history intact.
+            </p>
+          </div>
+          <button className="btn-secondary text-xs" onClick={() => loadOutputs()}>
+            Refresh log
+          </button>
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-3">
+          <label className="text-xs text-white/50">
+            Agent
+            <select
+              className="input mt-1"
+              value={outputAgent}
+              onChange={(e) => {
+                setOutputAgent(e.target.value);
+                void loadOutputs(e.target.value, outputDays);
+              }}
+            >
+              <option value="">All agents</option>
+              {latestProfiles.map((profile) => (
+                <option key={profile.agentKey} value={profile.agentKey}>{profile.name}</option>
+              ))}
+            </select>
+          </label>
+          <label className="text-xs text-white/50">
+            Date range
+            <select
+              className="input mt-1"
+              value={outputDays}
+              onChange={(e) => {
+                setOutputDays(e.target.value);
+                void loadOutputs(outputAgent, e.target.value);
+              }}
+            >
+              <option value="7">Last 7 days</option>
+              <option value="30">Last 30 days</option>
+              <option value="90">Last 90 days</option>
+            </select>
+          </label>
+          <label className="text-xs text-white/50">
+            Action type
+            <select className="input mt-1" defaultValue="agent_output_created" disabled>
+              <option value="agent_output_created">Agent outputs</option>
+            </select>
+          </label>
+        </div>
+
+        {outputs.length === 0 ? (
+          <p className="text-sm text-white/40">No agent outputs found for this filter yet. Open a dashboard to generate briefs.</p>
+        ) : (
+          <div className="space-y-2">
+            {outputs.map((output) => (
+              <article key={output.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-white">{output.agentId} · {output.roleKey}</p>
+                    <p className="mt-1 text-xs text-white/40">
+                      {new Date(output.createdAt).toLocaleString()} · output v{output.outputVersion} · agent v{output.agentVersion}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <span className={`badge ${output.isActive ? "badge-green" : "badge-muted"}`}>
+                      {output.isActive ? "active" : "historical"}
+                    </span>
+                    <span className="badge">{Math.round(output.confidence * 100)}%</span>
+                    <span className="badge">{output.evidenceRefs.length} sources</span>
+                  </div>
+                </div>
+                <p className="mt-2 text-xs text-white/45">Prompt: {output.inputSummary}</p>
+                <p className="mt-2 line-clamp-3 text-sm leading-6 text-white/70">{output.content}</p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-white/30">ID {output.id}</span>
+                  {signalSent[output.id] ? (
+                    <span className="text-xs text-emerald-400">
+                      Signal recorded: {signalSent[output.id]}
+                    </span>
+                  ) : (
+                    <>
+                      <button
+                        className="btn-secondary text-xs"
+                        title="Approve — this output is accurate and useful"
+                        onClick={() => sendSignal(output, "approve")}
+                        disabled={!!savingKey}
+                      >
+                        Approve
+                      </button>
+                      <button
+                        className="btn-secondary text-xs"
+                        title="Edit — submit a corrected version"
+                        onClick={() => sendSignal(output, "edit")}
+                        disabled={!!savingKey}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        className="btn-secondary text-xs"
+                        title="Reject — this output should not have been produced"
+                        onClick={() => sendSignal(output, "reject")}
+                        disabled={!!savingKey}
+                      >
+                        Reject
+                      </button>
+                      <button
+                        className="btn-secondary text-xs"
+                        title="Thumbs up"
+                        onClick={() => sendSignal(output, "thumbs_up")}
+                        disabled={!!savingKey}
+                      >
+                        👍
+                      </button>
+                      <button
+                        className="btn-secondary text-xs"
+                        title="Thumbs down"
+                        onClick={() => sendSignal(output, "thumbs_down")}
+                        disabled={!!savingKey}
+                      >
+                        👎
+                      </button>
+                    </>
+                  )}
+                  {!output.isActive && (
+                    <button
+                      className="btn-secondary text-xs"
+                      onClick={() => rollbackOutput(output)}
+                      disabled={savingKey === output.id}
+                    >
+                      {savingKey === output.id ? "Rolling back..." : "Roll back to this version"}
+                    </button>
+                  )}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }
@@ -1357,6 +1580,11 @@ function DemoTab({ workspaceId }: { workspaceId: string }) {
   const [togglingDemo, setTogglingDemo] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [resetResult, setResetResult] = useState<{
+    workspaceName: string;
+    demoSummary: string;
+    suggestedQuestions: string[];
+  } | null>(null);
 
   useEffect(() => {
     fetch("/api/settings/workspace")
@@ -1383,12 +1611,20 @@ function DemoTab({ workspaceId }: { workspaceId: string }) {
   }
 
   async function resetDemo() {
-    setResetting(true); setMessage(""); setError("");
+    setResetting(true); setMessage(""); setError(""); setResetResult(null);
     try {
       const res = await fetch(`/api/workspace/demo-reset?sector=${sector}`, { method: "POST" });
       const j = await res.json();
-      if (j.ok) setMessage(j.data?.message ?? "Demo workspace reset.");
-      else setError(j.error ?? "Reset failed");
+      if (j.ok) {
+        setMessage(j.data?.message ?? "Demo workspace reset.");
+        if (j.data?.suggestedQuestions) {
+          setResetResult({
+            workspaceName: j.data.workspaceName,
+            demoSummary: j.data.demoSummary,
+            suggestedQuestions: j.data.suggestedQuestions,
+          });
+        }
+      } else setError(j.error ?? "Reset failed");
     } catch { setError("Network error"); }
     finally { setResetting(false); }
   }
@@ -1444,6 +1680,29 @@ function DemoTab({ workspaceId }: { workspaceId: string }) {
 
       {message && <p className="text-xs text-green-300">{message}</p>}
       {error && <p className="text-xs text-red-300">{error}</p>}
+
+      {resetResult && (
+        <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-4 space-y-3">
+          <div>
+            <p className="text-sm font-semibold text-white">{resetResult.workspaceName}</p>
+            <p className="mt-1 text-xs text-white/55">{resetResult.demoSummary}</p>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-white/70 mb-2">Pre-loaded Ask questions for this demo:</p>
+            <ol className="space-y-1.5">
+              {resetResult.suggestedQuestions.map((q, i) => (
+                <li key={i} className="flex gap-2 text-xs text-white/60">
+                  <span className="shrink-0 text-emerald-400 font-medium">{i + 1}.</span>
+                  <span>{q}</span>
+                </li>
+              ))}
+            </ol>
+          </div>
+          <p className="text-xs text-white/35">
+            Open the CEO dashboard and paste any of these into the Ask panel to start the demo.
+          </p>
+        </div>
+      )}
 
       <div className="rounded-xl border border-white/5 bg-white/3 p-4 text-xs text-white/40">
         <p className="font-medium text-white/60">Export Pilot Artifacts</p>

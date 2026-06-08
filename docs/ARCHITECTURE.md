@@ -1,34 +1,397 @@
-# Nexus Core Architecture (V1)
+# NexusAI Mission Control Architecture
 
-## Objective
-Provide executive intelligence outputs that are evidence-backed, role-aware, and operationally usable.
+Updated: 2026-06-01
+Current product state: v0.14.1 local architecture, covering U2 Agent Control Profiles and U3 rollback-ready output history.
 
-## Core Layers
-1. Source ingestion layer
-   - documents, meeting notes, selected communication channels
-2. Structuring layer
-   - extraction, confidence scoring, provenance mapping, quarantine
-3. Ontology layer
-   - Company, Department, Role, KPI, Risk, Opportunity, Recommendation, Decision
-4. Agent orchestration layer
-   - manager routing + specialist execution + quality gates
-5. Delivery layer
-   - executive briefs, dashboards, recommendation registers, decision memos
+## 1. Purpose
 
-## Output Contract Principles
-- Every high-impact insight must link to evidence.
-- Confidence and freshness metadata are mandatory.
-- Low-confidence/unprovenanced inputs do not flow into executive outputs.
-- Human approval gates remain enabled for consequential recommendations.
+NexusAI Mission Control is a governed intelligence operating layer for high-stakes professional workflows.
 
-## Integration Boundary
-Nexus Core does not replace upstream systems in V1.
-It sits as a decision-support layer above existing sources and workflows.
+It ingests company evidence, structures it with provenance and sensitivity metadata, retrieves only policy-allowed evidence, and produces role-aware agent briefs, recommendations, decisions, and reviewable outputs.
 
-## V1 Infrastructure Position
+The product is not designed to replace ERP, CRM, HRIS, core banking, BI, legal review, or source systems in V1. It sits above those systems as a decision-support and governance layer.
 
-- Mission Control stays on Vercel for V1 and pilot delivery.
-- Clerk remains the browser auth and organization-tenancy layer.
-- Postgres plus `pgvector` remains the primary evidence and retrieval store.
-- Cloudflare is adopted selectively: AI Gateway first, R2 next, Queues later if scale requires it.
-- D1 and Vectorize are out of scope for V1.
+## 2. Architecture Principles
+
+- Evidence first: every useful output should connect back to source material.
+- Governance outside the prompt: permissions are enforced in server-side code, not by prompt instructions alone.
+- Human approval: no autonomous sending, filing, payment, HR action, legal commitment, financial commitment, external posting, or source-system writeback in V1.
+- Least privilege by agent: each agent has an Agent Control Profile defining what it can see, do, and escalate.
+- Rollback-ready history: generated agent outputs are versioned, searchable, and restorable without deleting prior history.
+- Additive integration: NexusAI reads from source systems but does not become the system of record for upstream operations.
+
+## 3. Current Infrastructure
+
+| Layer | Current choice | Notes |
+|---|---|---|
+| Web app | Next.js App Router in `apps/mission-control` | Mission Control UI and API routes |
+| Hosting | Render Web Service | Primary pilot deployment path, configured by `render.yaml` |
+| Auth | Clerk | Browser sessions and organization-scoped tenancy |
+| Agent/API auth | Scoped Bearer tokens | Used for non-browser/agent callers |
+| Database | Postgres via Drizzle ORM | Primary system of record |
+| Vector retrieval | `pgvector` | Optional semantic retrieval path, filtered before ranking |
+| Object storage | Cloudflare R2 | Original-file retention path when enabled |
+| LLM providers | DeepSeek/OpenAI/Anthropic-style routing | Centralized LLM service with route policy |
+| Edge/security | Cloudflare selective services | DNS/CDN/WAF/AI Gateway/R2; no full Workers migration in V1 |
+
+## 4. System Diagram
+
+```mermaid
+flowchart TB
+  User["User / Sponsor"] --> Clerk["Clerk Auth"]
+  Clerk --> MC["Mission Control<br/>Next.js App Router"]
+
+  APIClient["Agent / API Client"] --> Bearer["Scoped Bearer Token"]
+  Bearer --> MC
+
+  Slack["Slack Adapter"] --> MC
+
+  MC --> Ingestion["Ingestion + Extraction"]
+  Ingestion --> Trust["Trust Gateway<br/>provenance, confidence, sensitivity"]
+  Trust --> DB["Postgres<br/>Evidence, Profiles, Outputs, Audit"]
+  Trust --> R2["Cloudflare R2<br/>Original Files"]
+
+  MC --> Retrieval["Governed Retrieval"]
+  Retrieval --> ACP["Agent Control Profiles"]
+  Retrieval --> Vector["pgvector Search"]
+  Retrieval --> Keyword["Keyword Search"]
+  Vector --> DB
+  Keyword --> DB
+
+  Retrieval --> LLM["LLM Provider"]
+  LLM --> Gate["Output Gate<br/>escalate or block"]
+  Gate --> Outputs["Agent Outputs<br/>versioned history"]
+  Outputs --> DB
+
+  MC --> UI["Dashboards, Ask, Approvals,<br/>Settings, Exports"]
+  UI --> Audit["Audit Events + Rollback"]
+  Audit --> DB
+```
+
+## 5. Core Product Layers
+
+### 5.1 Source Ingestion Layer
+
+Inputs include uploaded documents and selected communication sources.
+
+Current primary paths:
+- PDF, DOCX, PPTX, XLSX, TXT, Markdown uploads
+- Slack adapter/events
+- Google Drive / SharePoint / Teams remain connector roadmap surfaces
+
+Every evidence record carries:
+- `workspaceId`
+- `sourceType`
+- `sourcePath`
+- `sourceUri`
+- `sourceTimestamp`
+- `ingestedAt`
+- `hash`
+- `sensitivity`
+- `extractionConfidence`
+- `freshnessHours`
+- `ingestionStatus`
+
+Original files can be retained in R2 when `NEXUS_R2_ORIGINALS=enabled`.
+
+### 5.2 Trust Gateway
+
+The ingestion layer classifies evidence into:
+- `processed`: high enough confidence to enter dashboards and Ask
+- `pending_approval`: requires human review before synthesis
+- `quarantined`: excluded from executive outputs
+- `failed`: extraction or processing failed
+
+Low-confidence, missing-provenance, restricted, or policy-denied evidence does not enter executive outputs.
+
+### 5.3 Evidence and Retrieval Layer
+
+Postgres is the system of record. `pgvector` is used for semantic search when enabled, with keyword search as fallback.
+
+Retrieval rules:
+- workspace scope is always applied
+- processed status is required
+- restricted evidence is excluded from general retrieval
+- Agent Control Profile filtering runs before vector ranking and before keyword ranking
+- denied evidence is audited
+- forbidden evidence must not enter model prompt context
+
+### 5.4 Agent Governance Layer
+
+U2 introduced Agent Control Profiles, also called passports.
+
+Each profile defines:
+- identity: `agentKey`, name, purpose, version, status
+- data controls: allowed scopes, forbidden scopes, max sensitivity
+- tool controls: allowed tools, forbidden tools, policy-controlled APIs
+- action rights: retrieve, summarize, draft, recommend, prepare for approval
+- hard stops: email sending, filings, payments, contract modification, regulator contact, external posting, source-system writeback, HR action, legal/financial commitment
+- escalation triggers: legal, regulatory, pricing, data residency, data protection, cross-entity access, external communication, financial thresholds
+- approval level, risk rating, review cadence, watcher agents, log level
+
+Profiles are versioned. Editing creates a new profile row. Suspended agents cannot retrieve evidence or generate outputs.
+
+### 5.5 Agent Output Layer
+
+U3 introduced rollback-ready agent output history through `agent_outputs`.
+
+Every dashboard agent brief writes:
+- output id
+- workspace id
+- agent id
+- agent profile version
+- role key
+- full content
+- input summary
+- evidence refs
+- confidence
+- output version
+- active flag
+- replaced-by linkage
+- created timestamp
+
+Rollback restores a prior output version, deactivates the current active version, preserves all historical rows, and writes an audit event.
+
+### 5.6 Delivery Layer
+
+Primary surfaces:
+- Mission Control dashboards / Agent Rooms
+- Ask panel
+- Settings / Agent Governance
+- Approvals and review queues
+- Evidence drill-down
+- Export pages and pilot kit
+- Slack as a governed secondary surface
+
+## 6. Key Data Stores
+
+| Table | Purpose |
+|---|---|
+| `workspaces` | tenant/workspace status and billing state |
+| `workspace_settings` | runtime settings, LLM model, demo mode |
+| `workspace_profiles` | company profile and context |
+| `evidence_records` | extracted evidence, provenance, confidence, sensitivity, embeddings |
+| `recommendations` | AI-generated or reviewed recommendations |
+| `decisions` | decision records and rationale |
+| `approvals` | human approval records |
+| `audit_events` | append-style event log |
+| `agent_control_profiles` | U2 agent passports and versions |
+| `agent_outputs` | U3 rollback-ready generated output history |
+| `agent_keys` | scoped API key access |
+| `connectors` | installed connector metadata and encrypted credentials |
+| `llm_usage` | cost and usage tracking |
+
+## 7. Main Runtime Flows
+
+### 7.1 Ingestion Flow
+
+```mermaid
+sequenceDiagram
+  participant User
+  participant UI as Mission Control UI
+  participant API as Ingestion API
+  participant R2 as R2 Originals
+  participant DB as Postgres
+
+  User->>UI: Upload files
+  UI->>API: POST /api/ingestion/status
+  API->>R2: Store original file if enabled
+  API->>API: Extract text + classify source
+  API->>API: Compute confidence + sensitivity
+  API->>DB: Save evidence record
+  API->>DB: Save audit event
+  API-->>UI: processed / pending / quarantined
+```
+
+### 7.2 Ask Flow
+
+```mermaid
+sequenceDiagram
+  participant User
+  participant Ask as Ask API
+  participant ACP as Agent Control Profile
+  participant DB as Postgres
+  participant LLM
+  participant Audit
+
+  User->>Ask: POST /api/ask with query and optional agentKey
+  Ask->>DB: Load processed evidence
+  Ask->>ACP: Apply passport filters
+  ACP-->>Audit: Log denied evidence
+  Ask->>DB: Vector/keyword retrieval over allowed candidates
+  Ask->>LLM: Send allowed evidence context
+  LLM-->>Ask: Draft answer
+  Ask->>Ask: Output gate
+  Ask-->>Audit: Escalate/block if needed
+  Ask-->>User: Evidence-backed answer or refusal
+```
+
+### 7.3 Dashboard Agent Brief Flow
+
+```mermaid
+sequenceDiagram
+  participant UI as Dashboard
+  participant Service as Dashboard Service
+  participant ACP as Agent Passport
+  participant LLM
+  participant DB as Postgres
+
+  UI->>Service: cardsForRole(role, workspace)
+  Service->>ACP: Load agent passport
+  Service->>DB: Load processed evidence
+  Service->>ACP: Filter evidence
+  Service->>LLM: Generate agent brief
+  Service->>Service: Output gate
+  Service->>DB: Save agent_outputs row
+  Service->>DB: Save audit event
+  Service-->>UI: Dashboard card with outputId
+```
+
+### 7.4 Rollback Flow
+
+```mermaid
+sequenceDiagram
+  participant Admin
+  participant Settings as Agent Governance UI
+  participant API as Rollback API
+  participant DB as Postgres
+
+  Admin->>Settings: Select historical output
+  Settings->>API: POST /api/agent-outputs/:id/rollback
+  API->>DB: Deactivate current active output
+  API->>DB: Reactivate selected prior output
+  API->>DB: Write agent_output_rolled_back audit event
+  API-->>Settings: Restored output version
+```
+
+## 8. Public and Internal Interfaces
+
+### Core User Routes
+
+- `/dashboard/[role]`
+- `/ask`
+- `/ingestion`
+- `/approvals`
+- `/recommendations`
+- `/evidence/[id]`
+- `/settings`
+- `/settings/connectors`
+- `/export`
+- `/pilot-kit`
+- `/readiness`
+
+### Key API Routes
+
+- `POST /api/ingestion/status`
+- `POST /api/ask`
+- `GET /api/dashboard/[role]`
+- `GET /api/evidence`
+- `GET /api/evidence/[id]`
+- `POST /api/evidence/[id]/review`
+- `GET /api/agent-control-profiles`
+- `POST /api/agent-control-profiles`
+- `POST /api/agent-control-profiles/[agentKey]/suspend`
+- `GET /api/agent-outputs`
+- `POST /api/agent-outputs/[id]/rollback`
+- `GET /api/audit/events`
+
+## 9. Security and Governance Boundaries
+
+### Enforced Today
+
+- Clerk browser auth and workspace scoping
+- Bearer-token API auth with scopes
+- workspace-scoped data access
+- evidence confidence and quarantine controls
+- sensitivity labels
+- Agent Control Profile filtering before retrieval
+- restricted-data blocking from general outputs
+- deterministic output gates
+- hard-stop action blocking
+- audit events for denied evidence, blocked outputs, tool denial, profile changes, output creation, and rollback
+- versioned agent outputs
+
+### Deliberately Not Enabled in V1
+
+- autonomous outbound emails
+- autonomous legal or financial commitments
+- source-system writeback
+- autonomous HR actions
+- autonomous filings or regulator contact
+- unrestricted Slack/Teams summaries
+- full ERP/CRM/HRIS replacement
+
+## 10. Current Completion State
+
+| Area | Status |
+|---|---|
+| Core Mission Control app | Complete for pilot |
+| Ingestion and provenance | Complete for pilot |
+| Workspace/company profile onboarding | Complete for pilot |
+| Role and Agent Room model | Complete for pilot |
+| U2 Agent Control Profiles | Complete for current V1.1 surfaces |
+| U3 output log and rollback | Complete locally in v0.14.1 |
+| U4 learning-signal capture | Next |
+| Decision & Action Twin | Planned Phase 8A |
+| Workflow Twin Scorer | Planned Phase 8B |
+| Ops Review Twin | Planned Phase 8C |
+| Local/on-prem edge client | Later enterprise moat |
+
+## 11. Near-Term Architecture Roadmap
+
+### U4: Learning Signals
+
+Capture reviewer decisions from approve/edit/reject actions:
+- decision type
+- optional reason
+- edit diff where available
+- evidence refs used
+- agent version
+- workspace scope
+
+This becomes the seed for evaluation, learning loops, and future quality reporting.
+
+### Phase 8A: Decision & Action Twin
+
+The first universal workflow twin should convert approved evidence and communications into:
+- decisions
+- action items
+- owners
+- risks
+- blockers
+- recommendations
+- evidence refs
+- confidence and freshness
+
+It must obey U2 profiles before evidence enters context and should write U3 output history.
+
+### Phase 8B: Workflow Twin Scorer
+
+Score candidate workflows by:
+- frequency
+- pain
+- data readiness
+- risk
+- senior judgment required
+- reusability
+- monetization
+- speed benefit
+
+### Phase 8C: Ops Review Twin
+
+Add a recurring operating review layer:
+- blockers
+- KPIs
+- overdue owners
+- department status
+- follow-up actions
+
+## 12. Architecture Decisions to Preserve
+
+- Keep Postgres plus `pgvector` for V1 evidence and retrieval.
+- Keep Clerk for self-serve signup and organization tenancy.
+- Keep Cloudflare adoption selective, not a full runtime migration.
+- Keep source systems as source systems.
+- Keep governance controls server-side.
+- Keep human approval as the boundary for consequential actions.
+- Keep output history append-style and rollback-ready; never delete prior versions as part of rollback.
