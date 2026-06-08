@@ -3,7 +3,7 @@ services:
     name: nexus-mission-control
     runtime: node
     plan: free
-    region: singapore
+    region: oregon
     rootDir: .
     buildCommand: npm ci && npm run build
     startCommand: npm run start -w @nexus/mission-control -- -p $PORT
