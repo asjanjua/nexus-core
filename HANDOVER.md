@@ -6,13 +6,13 @@
 
 ## Session Info
 
-- **Last updated:** 2026-06-10 (v0.16.3 -- entity extraction pipeline shipped)
+- **Last updated:** 2026-06-10 (v0.17.0 -- P2 AI trust layer shipped)
 - **Last model:** Codex
 - **Session number:** #18
-- **Current version:** 0.16.3 -- Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. Phase 8A Decision Twin core plus decision auto-extraction complete. Persistent Ask memory and entity extraction complete.
+- **Current version:** 0.17.0 -- Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. Phase 8A Decision Twin core plus decision auto-extraction complete. Persistent Ask memory, entity extraction, and P2 AI trust layer complete.
 - **Baseline pushed commit before this handover update:** `9a0c476` -- `feat: complete u2 agent control profiles`
-- **Remote status:** v0.16.3 ready to push/deploy. Migrations 0014-0019 applied.
-- **Local verification (2026-06-10):** `npm run test` passed 16 files / 74 tests. `npm run build` passed.
+- **Remote status:** v0.17.0 ready to push/deploy. Migrations 0014-0020 applied.
+- **Local verification (2026-06-10):** `npm run test` passed 20 files / 88 tests. `npm run build` passed.
 
 ---
 
@@ -20,7 +20,7 @@
 
 ### Confirmed Built and Wired
 
-- **152+ source files, 19 DB migrations**
+- **152+ source files, 20 DB migrations**
 - Phase 8A Decision Twin: `decisions` + `actions` tables, full CRUD APIs, interactive `/decisions` page with priority badges, status tabs, inline actions, blocker flags. Manual entry works.
 - Decision auto-extraction: `/api/decisions/extract` reads recent `agent_outputs`, proposes decision/action drafts, and creates canonical decision/action records only after human click-through.
 - U2 Agent Control Profiles: passports with versioning, evidence filtering, output gates, hard-stop blocking, tool guards, suspend/resume. Settings Agent Governance UI complete.
@@ -31,6 +31,7 @@
 - Confidence stored as 0-100 integer, converted at repository boundary (float truncation fixed).
 - Persistent Ask memory: migration `0018_ask_conversation_memory.sql`, DB-backed `ask_conversation_messages`, `GET/DELETE /api/ask`, and short recent-history prompt injection for follow-up questions.
 - Demo packs: 3 sector packs rewritten to CEO-grade standard with pre-tuned suggestedQuestions.
+- P2 AI trust layer: eval harness, prompt registry, red-team output checks, and workspace AI policy controls.
 
 ### Confirmed Missing
 
@@ -63,13 +64,14 @@ This session did a comprehensive audit of the entire codebase to verify what is 
 - Persistent Ask conversation memory: Postgres table, repository methods, `GET/DELETE /api/ask`, retrieval prompt context, and UI history loading/clearing.
 - Entity extraction pipeline: deterministic extraction from processed evidence, evidence-to-entity links,
   repository/API surface, and tests.
+- P2 trust layer: 30-case eval harness, red-team checks, prompt registry, workspace AI policy UI/API,
+  provider allow-list enforcement, local-only blocking, and low-confidence review routing.
 
 **Priority reordering after fast-follow:**
-1. P2-A Eval Harness / P2-C Red-Team Checks (regulated-buyer blockers)
-2. P2-B Prompt Registry / P2-D Workspace AI Policy Settings
-3. Entity pages/backlinks for Company Memory
-4. Workflow twin primitives (`workflow_twins`, `workflow_twin_runs`)
-5. Orchestration dispatcher (foundation for compound queries)
+1. Executive Synthesis Layer (leadership bigger-picture briefs)
+2. Entity pages/backlinks for Company Memory
+3. Workflow twin primitives (`workflow_twins`, `workflow_twin_runs`)
+4. Orchestration dispatcher (foundation for compound queries)
 
 ---
 
@@ -645,7 +647,8 @@ CLOUDFLARE_R2_*            R2 object storage (optional)
 | Phase 8A -- Decision Twin Core | Complete | v0.16.0 |
 | Phase 8A -- Decision Auto-Extraction | Complete | v0.16.1 |
 | Persistent Ask Conversation Memory | Complete | v0.16.2 |
-| Phase 2 P2-A/B/C/D | Scoped, not started | -- |
+| Entity Extraction Pipeline | Complete | v0.16.3 |
+| Phase 2 P2-A/B/C/D AI Trust Layer | Complete | v0.17.0 |
 | Phase 8B -- Workflow Twin Scorer | Docs done, code not started | -- |
 | Phase 8C -- Ops Review Twin | Not started | -- |
 | Phase 9 -- Team Members | Build when pilot client needs it | -- |
@@ -653,18 +656,15 @@ CLOUDFLARE_R2_*            R2 object storage (optional)
 
 ## What Needs to Come Next
 
-### Before regulated-sector pilots
+### Highest leadership impact
 
-1. **P2-A: Eval Harness** (2 sessions) -- answers "how do you test the AI?"
-2. **P2-C: Red-Team Checks** (1-2 sessions) -- PII detection, overconfidence, unsafe recommendations
-3. **P2-B: Prompt Registry** (1-2 sessions) -- versioned prompts, audit logging
-4. **P2-D: Workspace AI Policy Settings** (1 session) -- UI for provider/sensitivity/threshold controls
+1. **Executive Synthesis Layer** -- bigger-picture leadership brief over specialist agent outputs.
 
 ### Foundational (compound memory + orchestration)
 
-5. **Entity pages/backlinks** -- turn extracted entities into navigable Company Memory pages.
-6. **Workflow twin primitives** -- add `workflow_twins` and `workflow_twin_runs` after Decision & Action Twin proposal flow stabilizes.
-7. **Orchestration dispatcher** -- multi-step reasoning, agent-to-agent coordination
+2. **Entity pages/backlinks** -- turn extracted entities into navigable Company Memory pages.
+3. **Workflow twin primitives** -- add `workflow_twins` and `workflow_twin_runs` after Decision & Action Twin proposal flow stabilizes.
+4. **Orchestration dispatcher** -- multi-step reasoning, agent-to-agent coordination
 
 ### Operational sign-off (see docs/SECURITY_REVIEW.md)
 
@@ -712,16 +712,16 @@ Before doing anything else, read:
 3. TASKS.md
 4. AGENTS.md
 
-Current version: 0.16.3
-Last audit: 2026-06-10. 152+ source files, 16 test files / 74 tests, build clean.
+Current version: 0.17.0
+Last audit: 2026-06-10. 152+ source files, 20 test files / 88 tests, build clean.
 
-Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. Phase 8A Decision Twin core, decision auto-extraction, persistent Ask memory, and entity extraction complete.
-Migrations 0014-0019 applied to Neon production.
+Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. Phase 8A Decision Twin core, decision auto-extraction, persistent Ask memory, entity extraction, and P2 trust layer complete.
+Migrations 0014-0020 applied to Neon production.
 
 Immediate next builds:
-1. P2-A eval harness and P2-C red-team checks
-2. P2-B prompt registry and P2-D workspace AI policy settings
-3. Entity pages/backlinks
+1. Executive Synthesis Layer
+2. Entity pages/backlinks
+3. Workflow twin primitives
 
 Known missing (from 2026-06-10 audit):
 - Orchestration/dispatcher: all LLM calls are single-shot, no agent coordination

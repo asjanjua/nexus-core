@@ -1,7 +1,7 @@
 # NexusAI Mission Control Architecture
 
 Updated: 2026-06-10
-Current product state: v0.16.3 (verified). Covers U2 Agent Control Profiles, U3 output history/rollback, U4 learning signals, Phase 8A Decision & Action Twin, AI decision proposals, persistent Ask memory, and entity extraction.
+Current product state: v0.17.0 (verified). Covers U2 Agent Control Profiles, U3 output history/rollback, U4 learning signals, Phase 8A Decision & Action Twin, AI decision proposals, persistent Ask memory, entity extraction, and P2 AI trust controls.
 
 ## 1. Purpose
 
@@ -171,9 +171,20 @@ Signal types: approve, edit, reject, thumbs_up, thumbs_down. Each signal records
 
 The Agent Output Log UI shows signal buttons on every output card. Summary endpoint aggregates signal counts and quality metrics per agent.
 
-This is the foundation for eval harness (P2-A) and future learning loops (U9).
+This is the foundation for future learning loops (U9).
 
-### 5.8 Decision & Action Twin Layer
+### 5.8 AI Trust Layer
+
+P2 introduced an explicit trust layer for regulated-buyer confidence.
+
+It includes:
+- 30-case eval harness across risk, decisions, recommendations, classification, grounding, and refusal.
+- Prompt registry with versioned prompt metadata and read-only admin manifest.
+- Red-team output checks for PII, overconfidence, unsafe actions, sensitivity ceiling breaches, and hard-stop leakage.
+- Workspace AI policy controls for allowed providers, local-only mode, sensitivity ceiling, and approval threshold.
+- Audit events for prompt renders, red-team violations, and eval completion.
+
+### 5.9 Decision & Action Twin Layer
 
 Phase 8A introduced the Decision & Action Twin through extended `decisions` and new `actions` tables.
 
@@ -201,6 +212,8 @@ Current state: full CRUD via API and interactive `/decisions` page. AI proposal 
 | `learning_signals` | U4 per-output quality signals (approve/edit/reject/thumbs) |
 | `entities` | extracted people, organizations, risks, KPIs, amounts, dates, systems, processes |
 | `evidence_entity_links` | evidence-to-entity backlinks with confidence |
+| `prompt_registry` | versioned prompt manifest entries |
+| `eval_runs` | persisted eval summaries and per-case results |
 | `agent_keys` | scoped API key access |
 | `connectors` | installed connector metadata and encrypted credentials |
 | `llm_usage` | cost and usage tracking |
@@ -370,7 +383,8 @@ sequenceDiagram
 | Phase 8A Decision auto-extraction from agent outputs | Complete (v0.16.1) |
 | Ask conversation memory | Complete (v0.16.2) |
 | Entity extraction | Complete (v0.16.3) |
-| Orchestration / dispatcher | Not built -- all LLM calls single-shot |
+| P2 AI trust layer | Complete (v0.17.0) |
+| Executive Synthesis Layer | Approved for build -- dispatcher + role-aware synthesis |
 | Connectors | Skeleton only (Slack OAuth/events) |
 | Workflow Twin Scorer | Planned Phase 8B |
 | Ops Review Twin | Planned Phase 8C |
@@ -378,21 +392,17 @@ sequenceDiagram
 
 ## 11. Near-Term Architecture Roadmap
 
+### Executive Synthesis Layer (APPROVED FOR BUILD -- next)
+
+A thin dispatcher collects the latest active agent_outputs for a workspace grouped by role/room, then a synthesis service produces one evidence-backed leadership brief per role. The CEO gets a cross-functional synthesis answering 7 questions (what changed, what matters, what needs a decision, what is at risk, where are we blocked, what to do next, what evidence supports this). Every other leadership role gets a role-tuned synthesis with 5 questions. Archetype language (corporate vs sme_physical) carries through to the synthesis. No new tables: synthesis outputs use agent_outputs with outputType "synthesis". Dashboard reframe: synthesis becomes the primary view, specialist agent cards become drill-down. Full spec in docs/EXECUTIVE_SYNTHESIS_SPEC.md.
+
 ### Entity Pages and Backlinks (next Company Memory step)
 
 Entity extraction now writes `entities` and `evidence_entity_links` during ingestion for processed evidence. The next architecture step is to add entity pages, timeline views, backlinks from decisions/recommendations/actions, and graph traversal for Company Memory.
 
-### Workflow Twin Run Primitives
+### Scheduled Synthesis
 
-Decision proposal extraction currently reads recent `agent_outputs` directly. The next structural step is to add `workflow_twins` and `workflow_twin_runs` so Decision & Action, Workflow Scorer, and Ops Review runs have their own run metadata, evidence refs, generated output refs, confidence, status, and audit trail.
-
-### Eval Harness (P2-A)
-
-Golden set of 30 Q&A cases with expected answers, automated scoring against ground truth. Answers "how do you test the AI?" for regulated buyers.
-
-### Orchestration Dispatcher
-
-Currently all LLM calls are single-shot with no multi-agent coordination. Future: task decomposition, agent-to-agent routing, ReAct loops for complex queries spanning multiple rooms.
+Once the synthesis layer exists, a scheduled task can trigger synthesis refresh on a cadence (daily, weekly). The CEO receives a fresh "company picture" every Monday morning without logging in.
 
 ### Phase 8B: Workflow Twin Scorer
 

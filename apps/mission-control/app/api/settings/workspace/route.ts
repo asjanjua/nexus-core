@@ -14,12 +14,16 @@ const patchSchema = z.object({
   workspaceId: z.string().optional(),
   name: z.string().min(2).max(200).optional(),
   timezone: z.string().optional(),
-  llmProvider: z.enum(["anthropic", "openai", "azure_openai"]).optional(),
+  llmProvider: z.enum(["anthropic", "openai", "azure_openai", "deepseek", "openai_compatible"]).optional(),
   llmModel: z.string().optional(),
   quarantineThreshold: z.number().min(0).max(1).optional(),
   defaultSensitivity: sensitivitySchema.optional(),
   slackEnabled: z.boolean().optional(),
   teamsEnabled: z.boolean().optional(),
+  allowedProviders: z.array(z.enum(["anthropic", "openai", "azure_openai", "deepseek", "openai_compatible", "local"])).optional(),
+  localOnlyMode: z.boolean().optional(),
+  sensitivityCeiling: sensitivitySchema.optional(),
+  approvalRequiredThreshold: z.number().min(0).max(1).optional(),
   demoMode: z.boolean().optional()
 });
 

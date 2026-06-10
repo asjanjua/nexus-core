@@ -14,22 +14,15 @@ import { agentBriefIdsForRoleContext, agentForId, AGENT_ROOMS, roomForRole, type
 import { filterEvidenceByPassport } from "@/lib/agents/passport-policy";
 import { evaluateOutputGate } from "@/lib/agents/output-gate";
 import type { AgentControlProfile } from "@/lib/contracts";
+import { getPrompt } from "@/lib/prompts/registry";
+import { checkOutput } from "@/lib/security/red-team";
+import { shouldRouteOutputToReview } from "@/lib/security/ai-policy";
 
 // ---------------------------------------------------------------------------
 // Agent prompt configuration
 // ---------------------------------------------------------------------------
 
-const DASHBOARD_SYSTEM_PROMPT = `You are an executive intelligence analyst for NexusAI Mission Control.
-Your role is to operate as a specialist business agent and synthesize evidence into concise, actionable Agent Briefs.
-
-Rules:
-- Write 2-4 sentences maximum per card.
-- Be specific. Reference facts from the evidence directly. Do not invent information.
-- Use executive language: clear, direct, no jargon.
-- If the company context says "Plain brief mode", use 2-3 short plain-English sentences and one clear action. Do not use corporate finance jargon.
-- If evidence is insufficient for a card topic, say: "Insufficient evidence - [what is missing]."
-- Stay inside the agent mandate and approval policy.
-- Do not add generic advice or best practices not grounded in the evidence.`;
+const DASHBOARD_SYSTEM_PROMPT = getPrompt("dashboard.agent-brief", { roleName: "specialist agent" });
 
 // ---------------------------------------------------------------------------
 // Evidence preparation
@@ -119,6 +112,40 @@ Task: Produce this agent's brief using only the evidence above. Include what cha
       payload: { agentKey: agent.id, reason: gate.reason, role }
     });
     summary = `${summary}\n\nHuman review required: ${gate.reason}.`;
+  }
+
+  const redTeam = checkOutput(summary, {
+    workspaceId,
+    agentId: agent.id,
+    roleKey: role,
+    maxSensitivity: passport?.maxSensitivity ?? "confidential",
+    outputSensitivity: "internal",
+    humanReviewGate: gate.escalationRequired
+  });
+  if (!redTeam.passed) {
+    await repository.pushAudit({
+      workspaceId,
+      type: "red_team_violation",
+      actor: agent.id,
+      payload: { route: "dashboard", role, agentKey: agent.id, violations: redTeam.violations }
+    });
+    summary = "NexusAI blocked this agent brief because the safety review detected sensitive data, overconfident language, or an unsafe action. A human-reviewed brief is required.";
+  }
+
+  const settings = await repository.getWorkspaceSettings(workspaceId);
+  if (shouldRouteOutputToReview(settings, avgConfidence)) {
+    await repository.pushAudit({
+      workspaceId,
+      type: "dashboard_output_review_required",
+      actor: agent.id,
+      payload: {
+        role,
+        agentKey: agent.id,
+        confidence: avgConfidence,
+        threshold: settings.approvalRequiredThreshold
+      }
+    });
+    summary = "NexusAI held this agent brief for human review because evidence confidence is below the workspace threshold.";
   }
 
   const output = await repository.saveAgentOutput({

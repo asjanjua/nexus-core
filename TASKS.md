@@ -16,9 +16,9 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 
 ---
 
-## Current Status (verified 2026-06-10) -- v0.16.3
+## Current Status (verified 2026-06-10) -- v0.17.0
 
-**Verified:** 16 test files, 74 tests passing, build clean. 19 DB migrations.
+**Verified:** 20 test files, 88 tests passing, build clean. 20 DB migrations.
 
 **Phases 1-6: Complete.**
 **Pre-7A Technical Prep: Complete.** (v0.9.1)
@@ -31,18 +31,16 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 **Phase 8A Decision & Action Twin: Shipped.** (v0.16.0-v0.16.1) -- full CRUD, interactive page, audit trail, and AI proposal extraction from agent outputs with human acceptance.
 **Persistent Ask Conversation Memory: Shipped.** (v0.16.2) -- DB-backed conversation history, recent-turn prompt context, history load and clear.
 **Entity Extraction Pipeline: Shipped.** (v0.16.3) -- deterministic entity extraction on processed evidence, `evidence_entity_links`, and `GET /api/entities`.
+**Phase 2 AI Trust Layer: Shipped.** (v0.17.0) -- eval harness, red-team checks, prompt registry, and workspace AI policy settings.
 **Demo packs: Audited and rewritten.** (v0.15.1) -- All 3 sector packs CEO-grade with pre-tuned Ask questions.
-**Production DB: Migrations 0014-0019 applied.**
+**Production DB: Migrations 0014-0020 applied.**
 
 **The product is demo-ready and pilot-ready for GCC fintech, professional services, and SaaS buyers.**
 
-**Priority order (reordered after 2026-06-10 audit):**
-1. P2-A eval harness (2 sessions) -- regulated buyer confidence
-2. P2-C red-team checks (1-2 sessions) -- parallel with eval harness
-3. P2-B prompt registry (1-2 sessions) -- parallel or after
-4. P2-D workspace AI policy settings
-5. Workflow twin primitives -- foundation for Phase 8B/8C runs
-6. Orchestration dispatcher -- foundation for multi-agent coordination
+**Priority order (reordered 2026-06-10):**
+1. Executive Synthesis Layer (2 sessions) -- dispatcher + role-aware synthesis briefs. See EXECUTIVE_SYNTHESIS_SPEC.md. APPROVED FOR BUILD.
+2. Workflow twin primitives -- foundation for Phase 8B/8C runs
+3. Orchestration dispatcher -- foundation for multi-agent coordination
 
 What is built locally for v0.16.0 (Phase 8A — Decision & Action Twin):
 - Migration 0017: extended `decisions` table (sourceOutputId FK, deadline, priority, timestamps).
@@ -270,93 +268,50 @@ Positioning rule from the 2026-05-31 reassessment:
 - [x] Add per-phase AI responsibility map so every roadmap phase states what AI detects, what AI drafts, what AI routes, and what humans approve
 ### P2-A: AI Evaluation Harness
 > Required before regulated-sector pilots. Financial services and GCC clients will ask "how do you
-> test the AI?" before signing. Estimate: 2 sessions.
+> test the AI?" before signing. Shipped in v0.17.0.
 
-- [ ] Create `lib/eval/golden-set.ts` — typed golden prompt set with 30 cases across 6 categories:
-      risk detection, decision framing, recommendation quality, sector classification,
-      source grounding, and restricted-data refusal. Each case has: prompt, expected_keywords[],
-      must_not_contain[], min_confidence, and pass_criteria description.
-- [ ] Create `lib/eval/harness.ts` — `runEval(goldenSet, llmFn)` returns EvalResult[]:
-      case_id, passed, score (0-1), actual_output, matched_keywords[], failed_keywords[],
-      confidence_met, latency_ms, and notes. Aggregates to: total, passed, failed, pass_rate,
-      avg_confidence, avg_latency.
-- [ ] Add `POST /api/eval/run` — admin-scoped route that runs the full golden set against the live
-      LLM and returns results + aggregate. Rate-limited to 1 run per 5 minutes.
-- [ ] Add `GET  /api/eval/results` — returns the last 10 eval runs stored in audit_events
-      (type: `eval_run_complete`) with aggregate scores.
-- [ ] Add Settings → Eval tab UI — shows last run results, pass rate badge, per-category breakdown,
-      and a "Run eval now" button (admin only).
-- [ ] Add `tests/eval-harness.test.ts` — unit tests for golden set structure validation, harness
-      aggregation logic, and pass/fail scoring. Does not call live LLM.
+- [x] Create `lib/eval/golden-set.ts` with 30 cases across risk detection, decision framing,
+      recommendation quality, sector classification, source grounding, and restricted-data refusal.
+- [x] Create `lib/eval/harness.ts` with deterministic scoring, latency, confidence, and aggregate summaries.
+- [x] Add `POST /api/eval/run` admin route with 5-minute workspace rate limit.
+- [x] Add `GET /api/eval/results` admin route backed by `eval_runs` with audit fallback.
+- [x] Add Settings → Eval tab with latest run, pass-rate badge, run button, and case preview.
+- [x] Add `tests/eval-harness.test.ts`.
 
 ### P2-B: Prompt Version Registry
 > Required before second team member edits prompts. Prevents silent regressions.
-> Estimate: 1-2 sessions.
+> Shipped in v0.17.0.
 
-- [ ] Create `lib/prompts/registry.ts` — `PROMPT_REGISTRY` map keyed by prompt_key (e.g.
-      `"dashboard.ceo.brief"`, `"ask.synthesis"`, `"onboarding.company-detect"`). Each entry:
-      key, version (semver string), owner, description, template (string with {{variables}}),
-      changelog[], and last_updated.
-- [ ] Migrate all 8 current hardcoded LLM prompt strings out of `lib/services/dashboard.ts`,
-      `lib/services/retrieval.ts`, and `lib/services/company-detection.ts` into registry entries.
-      Replace inline strings with `getPrompt(key, variables)` calls.
-- [ ] Add `getPrompt(key: string, variables: Record<string, string>): string` helper that
-      interpolates variables, throws on unknown key, and logs prompt_key + version to audit
-      as `prompt_rendered` event (workspaceId, promptKey, promptVersion, route).
-- [ ] Add `GET /api/prompts` — admin-scoped, returns registry manifest (keys, versions, owners,
-      descriptions, changelogs). No template bodies exposed in the API response.
-- [ ] Add Settings → Prompts tab UI — table of prompt keys, versions, owners, last updated, and
-      changelog. Read-only in V1.
-- [ ] Add `tests/prompt-registry.test.ts` — tests: all registered keys resolve, variable
-      interpolation, missing-variable detection, and unknown-key throw.
+- [x] Create `lib/prompts/registry.ts` with keyed prompt entries, versions, owners, descriptions,
+      changelog, and lastUpdated.
+- [x] Move Ask and dashboard system prompts to registry-backed `getPrompt()` calls.
+- [x] Add `getPrompt()` interpolation, unknown-key errors, missing-variable errors, and optional audit.
+- [x] Add `GET /api/prompts` admin route returning manifest metadata only.
+- [x] Add Settings → Prompts read-only manifest tab.
+- [x] Add `tests/prompt-registry.test.ts`.
+- [ ] Future cleanup: migrate remaining company-detection/onboarding prompts into the registry.
 
 ### P2-C: Red-Team Checks
 > Required before any regulated-sector pilot receives real client data.
-> Estimate: 1-2 sessions.
+> Shipped in v0.17.0.
 
-- [ ] Create `lib/security/red-team.ts` — `checkOutput(content: string, context: RedTeamContext)`
-      returns `RedTeamResult`: passed (bool), violations[], and sanitized_content.
-      RedTeamContext: workspaceId, agentId, roleKey, maxSensitivity.
-- [ ] Implement 5 check categories in `checkOutput`:
-      1. PII detection — regex + pattern matching for IBAN, credit card (Luhn), passport
-         numbers, national IDs (CNIC, Iqama, Emirates ID patterns), and email-in-brief.
-      2. Unsupported claim detection — phrases like "guaranteed", "certain to", "will definitely",
-         "100% accurate" flagged as overconfidence violations.
-      3. Unsafe recommendation detection — output containing "transfer funds", "wire to",
-         "make payment", "send money", "submit filing", "contact regulator" without a
-         human_review gate flag.
-      4. Role-inappropriate output — brief containing sensitivity level higher than the agent
-         passport's maxSensitivity.
-      5. Hard-stop action leakage — any of the U2 hard-stop phrases appearing in a non-blocked
-         output (catches gate bypass bugs).
-- [ ] Wire `checkOutput` into dashboard brief generation after LLM call and before response
-      return in `lib/services/dashboard.ts`. Failed checks: block output, return safe error
-      message to UI, write `red_team_violation` audit event with violations[].
-- [ ] Wire same check into Ask synthesis response in `lib/services/retrieval.ts`.
-- [ ] Add `tests/red-team.test.ts` — tests for each of the 5 check categories with both
-      passing and failing inputs. No live LLM required.
+- [x] Create `lib/security/red-team.ts` with `checkOutput()` and sanitized content.
+- [x] Implement PII, overconfidence, unsafe action, sensitivity ceiling, and hard-stop checks.
+- [x] Wire red-team checks into dashboard brief generation before display/output save.
+- [x] Wire red-team checks into Ask synthesis before response return.
+- [x] Add `tests/red-team.test.ts`.
 
 ### P2-D: Workspace AI Policy Settings
 > Required for pilot clients who need UI control over AI behaviour (currently env-var only).
-> Estimate: 1 session.
+> Shipped in v0.17.0.
 
-- [ ] Add `aiPolicySettings` columns to `workspace_settings` in `db/schema.ts`:
-      `allowed_providers` (jsonb, string[]), `local_only_mode` (boolean, default false),
-      `sensitivity_ceiling` (sensitivity enum, default "confidential"),
-      `approval_required_threshold` (integer 0-100, default 70 — outputs below this confidence
-      require human review before display).
-- [ ] Add migration `0017_workspace_ai_policy.sql` for the 4 new columns.
-- [ ] Update `workspaceSettingsSchema` in `contracts.ts` with the 4 new fields.
-- [ ] Update `getWorkspaceSettings` and `saveWorkspaceSettings` in repository + store to
-      read/write the new fields.
-- [ ] Update `lib/services/llm.ts` to read `allowedProviders` and `localOnlyMode` from workspace
-      settings before routing to a provider — refuse if provider not in allowed list.
-- [ ] Update dashboard and Ask to check `approvalRequiredThreshold` — route low-confidence outputs
-      to human review queue instead of direct display.
-- [ ] Add Settings → AI Policy tab UI — provider checkboxes, local-only toggle, sensitivity
-      ceiling dropdown, confidence threshold slider. Save via `PATCH /api/workspace/settings`.
-- [ ] Add `tests/ai-policy.test.ts` — tests: provider allow/deny routing, local-only block,
-      threshold routing logic.
+- [x] Add workspace AI policy columns in migration `0020_p2_trust_layer.sql`.
+- [x] Update `workspaceSettingsSchema` in `contracts.ts`.
+- [x] Update repository + store read/write paths.
+- [x] Update `lib/services/llm.ts` to enforce provider allow-list and local-only mode.
+- [x] Update dashboard and Ask to route low-confidence outputs to human review.
+- [x] Add Settings → AI Policy tab.
+- [x] Add `tests/ai-policy.test.ts`.
 
 ---
 
@@ -1281,6 +1236,55 @@ Positioning rule from the 2026-05-31 reassessment:
 - [ ] Add Proposal/SOW Twin template after Decision & Action Twin is working.
 - [ ] Add Regulatory Response Twin template after output gates and escalation routing are working.
 - [ ] Add Agreement Review Twin template after legal-risk triggers and review routing are working.
+
+---
+
+## Phase 8A+ — Executive Synthesis Layer (APPROVED FOR BUILD)
+
+> Specialist agents produce signals. Leadership receives synthesis. The dispatcher collects
+> agent outputs per role, the synthesis service produces one evidence-backed brief answering
+> the questions that matter to that seat. See docs/EXECUTIVE_SYNTHESIS_SPEC.md for full design.
+
+### Session 1 — Dispatcher + Synthesis Service + Tests
+
+- [ ] Create `lib/services/dispatcher.ts`: collect latest active agent_outputs per role/workspace,
+  group by room, apply archetype override via `agentBriefIdsForRoleContext()`, build
+  DispatcherResult with evidence ref union and staleness check.
+- [ ] Create `lib/agents/synthesis-prompts.ts`: per-role question frameworks (CEO 7 questions,
+  COO 5, CFO 5, CTO 5, CBO 5, CRO 5, CHRO 5, sme_physical owner 5). Each framework
+  produces a structured synthesis prompt with company context and brief language instruction.
+- [ ] Create `lib/services/executive-synthesis.ts`: accepts DispatcherResult, calls LLM with
+  role-specific synthesis prompt, runs output through evaluateOutputGate(), saves as
+  agent_outputs row with outputType "synthesis", writes audit event.
+- [ ] CEO cross-functional view: dispatcher collects outputs from all agents with "ceo" in
+  roleLens, not just the 3 in ROLE_AGENT_BRIEFS["ceo"].
+- [ ] Create `app/api/synthesis/route.ts`: GET /api/synthesis?role=ceo (read cached or generate),
+  POST /api/synthesis/refresh (force regeneration).
+- [ ] Create `tests/executive-synthesis.test.ts`:
+  - Dispatcher collects correct agents per role
+  - Dispatcher applies archetype override for sme_physical
+  - CEO cross-functional view includes agents from multiple rooms
+  - Synthesis prompt includes role-specific questions
+  - Synthesis output saved to agent_outputs with outputType "synthesis"
+  - Output gate runs on synthesis result
+  - Staleness warning triggers when source output > 7 days old
+  - Empty agent outputs produce "no signals available" response
+- [ ] Type-check: `npx tsc --noEmit 2>&1 | grep -v ".next/"`
+- [ ] All tests pass: `npm run test`
+
+### Session 2 — Dashboard Reframe + UX
+
+- [ ] Update `/dashboard/[role]` page: fetch synthesis via GET /api/synthesis as primary view.
+- [ ] Render synthesis card as first and largest element with structured sections matching the
+  role question framework (what changed, what matters, what needs a decision, etc.).
+- [ ] Move existing agent cards into collapsible "Specialist Signals" section below synthesis.
+- [ ] Add citation links: each synthesis finding cites which agent produced it. Clicking scrolls
+  to or expands that agent's card.
+- [ ] Add Refresh button wired to POST /api/synthesis/refresh.
+- [ ] Add staleness banner when any source output is older than threshold.
+- [ ] Add learning signal buttons (approve/edit/reject/thumbs) to synthesis card.
+- [ ] Type-check and test.
+- [ ] Update HANDOVER.md with session results.
 
 ---
 

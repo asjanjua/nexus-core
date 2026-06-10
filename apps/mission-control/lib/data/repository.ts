@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { verifyPassword } from "@/lib/auth";
 import { store } from "@/lib/data/store";
-import type { Action, ActionInput, ActionStatus, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, Entity, EntityInput, EntityType, EvidenceRecord, IngestionStatus, LearningSignal, LearningSignalInput, LearningSignalSummary, Recommendation, RecommendationStatus, Role, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
+import type { Action, ActionInput, ActionStatus, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, Entity, EntityInput, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, LearningSignal, LearningSignalInput, LearningSignalSummary, PromptRegistryEntry, Recommendation, RecommendationStatus, Role, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
 import { assertDbConfigured, isDbRequired } from "@/lib/data/db-policy";
 import { normalizeDatabaseUrl } from "@/lib/data/postgres-url";
 import { encryptCredentials, decryptCredentials } from "@/lib/crypto";
@@ -19,10 +19,12 @@ import {
   connectors,
   decisions,
   entities,
+  evalRuns,
   evidenceEntityLinks,
   evidenceRecords,
   learningSignals,
   llmUsage,
+  promptRegistry,
   recommendations,
   roles,
   tenants,
@@ -1444,6 +1446,10 @@ export const repository = {
         defaultSensitivity: r.defaultSensitivity,
         slackEnabled: r.slackEnabled,
         teamsEnabled: r.teamsEnabled,
+        allowedProviders: Array.isArray(r.allowedProviders) ? r.allowedProviders as WorkspaceSettings["allowedProviders"] : ["anthropic", "deepseek", "openai_compatible"],
+        localOnlyMode: r.localOnlyMode ?? false,
+        sensitivityCeiling: r.sensitivityCeiling ?? "confidential",
+        approvalRequiredThreshold: decodeStoredPercent(r.approvalRequiredThreshold ?? 70),
         demoMode: r.demoMode ?? false,
         updatedAt: r.updatedAt.toISOString()
       };
@@ -1471,6 +1477,10 @@ export const repository = {
           defaultSensitivity: next.defaultSensitivity,
           slackEnabled: next.slackEnabled,
           teamsEnabled: next.teamsEnabled,
+          allowedProviders: next.allowedProviders,
+          localOnlyMode: next.localOnlyMode,
+          sensitivityCeiling: next.sensitivityCeiling,
+          approvalRequiredThreshold: Math.round(next.approvalRequiredThreshold * 100),
           demoMode: next.demoMode ?? false,
           updatedAt: new Date()
         })
@@ -1485,6 +1495,10 @@ export const repository = {
             defaultSensitivity: next.defaultSensitivity,
             slackEnabled: next.slackEnabled,
             teamsEnabled: next.teamsEnabled,
+            allowedProviders: next.allowedProviders,
+            localOnlyMode: next.localOnlyMode,
+            sensitivityCeiling: next.sensitivityCeiling,
+            approvalRequiredThreshold: Math.round(next.approvalRequiredThreshold * 100),
             demoMode: next.demoMode ?? false,
             updatedAt: new Date()
           }
@@ -1493,6 +1507,109 @@ export const repository = {
 
     store.updateWorkspaceSettings(workspaceId, next);
     return next;
+  },
+
+  async upsertPromptRegistry(entries: PromptRegistryEntry[]): Promise<void> {
+    const wrote = await runDb(async (db) => {
+      for (const entry of entries) {
+        await db
+          .insert(promptRegistry)
+          .values({
+            key: entry.key,
+            version: entry.version,
+            owner: entry.owner,
+            description: entry.description,
+            template: entry.template,
+            changelog: entry.changelog,
+            lastUpdated: new Date(entry.lastUpdated)
+          })
+          .onConflictDoUpdate({
+            target: promptRegistry.key,
+            set: {
+              version: entry.version,
+              owner: entry.owner,
+              description: entry.description,
+              template: entry.template,
+              changelog: entry.changelog,
+              lastUpdated: new Date(entry.lastUpdated)
+            }
+          });
+      }
+      return true;
+    });
+    if (!wrote) return;
+  },
+
+  async listPromptRegistry(): Promise<PromptRegistryEntry[]> {
+    const rows = await runDb((db) =>
+      db.select().from(promptRegistry).orderBy(promptRegistry.key)
+    );
+    if (!rows) return [];
+    return rows.map((row) => ({
+      key: row.key,
+      version: row.version,
+      owner: row.owner,
+      description: row.description,
+      template: row.template,
+      changelog: Array.isArray(row.changelog) ? row.changelog : [],
+      lastUpdated: row.lastUpdated instanceof Date ? row.lastUpdated.toISOString() : String(row.lastUpdated)
+    }));
+  },
+
+  async saveEvalRun(run: EvalRunSummary): Promise<void> {
+    const wrote = await runDb(async (db) => {
+      await db.insert(evalRuns).values({
+        id: run.id,
+        workspaceId: run.workspaceId,
+        total: run.total,
+        passed: run.passed,
+        failed: run.failed,
+        passRate: Math.round(run.passRate * 100),
+        avgConfidence: Math.round(run.avgConfidence * 100),
+        avgLatencyMs: run.avgLatencyMs,
+        results: run.results,
+        createdAt: new Date(run.createdAt)
+      });
+      return true;
+    });
+    if (!wrote) {
+      await repository.pushAudit({
+        workspaceId: run.workspaceId,
+        type: "eval_run_complete",
+        actor: "eval_harness",
+        payload: run as unknown as Record<string, unknown>
+      });
+    }
+  },
+
+  async listEvalRuns(workspaceId: string, limit = 10): Promise<EvalRunSummary[]> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(evalRuns)
+        .where(eq(evalRuns.workspaceId, workspaceId))
+        .orderBy(desc(evalRuns.createdAt))
+        .limit(limit)
+    );
+    if (rows) {
+      return rows.map((row) => ({
+        id: row.id,
+        workspaceId: row.workspaceId,
+        total: row.total,
+        passed: row.passed,
+        failed: row.failed,
+        passRate: decodeStoredPercent(row.passRate),
+        avgConfidence: decodeStoredPercent(row.avgConfidence),
+        avgLatencyMs: row.avgLatencyMs,
+        results: Array.isArray(row.results) ? row.results as EvalRunSummary["results"] : [],
+        createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt)
+      }));
+    }
+    const audits = await repository.getAuditEvents(workspaceId, limit * 3);
+    return audits
+      .filter((event) => event.type === "eval_run_complete")
+      .slice(0, limit)
+      .map((event) => event.payload as unknown as EvalRunSummary);
   },
 
   // -------------------------------------------------------------------------
@@ -1541,6 +1658,10 @@ export const repository = {
           defaultSensitivity: "internal",
           slackEnabled: false,
           teamsEnabled: false,
+          allowedProviders: ["anthropic", "deepseek", "openai_compatible"],
+          localOnlyMode: false,
+          sensitivityCeiling: "confidential",
+          approvalRequiredThreshold: 70,
           demoMode: false,
           updatedAt: now
         })
@@ -1561,6 +1682,10 @@ export const repository = {
         defaultSensitivity: "internal",
         slackEnabled: false,
         teamsEnabled: false,
+        allowedProviders: ["anthropic", "deepseek", "openai_compatible"],
+        localOnlyMode: false,
+        sensitivityCeiling: "confidential",
+        approvalRequiredThreshold: 0.7,
         demoMode: false,
         updatedAt: now.toISOString()
       });

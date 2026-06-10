@@ -10,6 +10,7 @@
  */
 
 import { repository } from "@/lib/data/repository";
+import { isProviderAllowed } from "@/lib/security/ai-policy";
 
 const ANTHROPIC_BASE_URL = (
   process.env.ANTHROPIC_BASE_URL?.trim().replace(/\/+$/, "") ||
@@ -17,7 +18,9 @@ const ANTHROPIC_BASE_URL = (
 );
 const ANTHROPIC_API = `${ANTHROPIC_BASE_URL}/v1/messages`;
 const ANTHROPIC_VERSION = "2023-06-01";
-const LLM_PROVIDER = (process.env.NEXUS_LLM_PROVIDER ?? "anthropic").trim().toLowerCase();
+type LLMProvider = "anthropic" | "deepseek" | "openai_compatible";
+
+const LLM_PROVIDER = (process.env.NEXUS_LLM_PROVIDER ?? "anthropic").trim().toLowerCase() as LLMProvider;
 const DEFAULT_MODEL =
   process.env.NEXUS_LLM_MODEL ??
   (LLM_PROVIDER === "deepseek" ? "deepseek-chat" : "claude-opus-4-6");
@@ -87,16 +90,37 @@ export type LLMResponse = {
   fromFallback: boolean;
 };
 
-function apiKey(): string | null {
-  if (LLM_PROVIDER === "deepseek") {
+function normalizeProvider(value: string | undefined | null): LLMProvider {
+  const provider = (value ?? "anthropic").trim().toLowerCase();
+  if (provider === "deepseek") return "deepseek";
+  if (provider === "openai_compatible" || provider === "openai") return "openai_compatible";
+  return "anthropic";
+}
+
+function apiKey(provider: LLMProvider): string | null {
+  if (provider === "deepseek") {
     return process.env.DEEPSEEK_API_KEY ?? null;
   }
 
-  if (LLM_PROVIDER === "openai_compatible") {
+  if (provider === "openai_compatible") {
     return process.env.OPENAI_COMPAT_API_KEY ?? process.env.DEEPSEEK_API_KEY ?? null;
   }
 
   return process.env.ANTHROPIC_API_KEY ?? null;
+}
+
+async function resolveProviderForWorkspace(opts: LLMOptions): Promise<LLMProvider> {
+  const provider = normalizeProvider(process.env.NEXUS_LLM_PROVIDER);
+  if (!opts.workspaceId || opts.workspaceId === "_global_") return provider;
+  const settings = await repository.getWorkspaceSettings(opts.workspaceId).catch(() => null);
+  if (!settings) return provider;
+  if (settings.localOnlyMode) {
+    throw new Error(`llm_policy_blocked: workspace ${opts.workspaceId} is in local-only mode`);
+  }
+  if (!isProviderAllowed(settings, provider)) {
+    throw new Error(`llm_provider_denied: ${provider} is not allowed for workspace ${opts.workspaceId}`);
+  }
+  return provider;
 }
 
 function estimateTokens(messages: LLMMessage[], systemPrompt?: string): number {
@@ -219,7 +243,7 @@ async function callOpenAICompatible(
   opts: LLMOptions,
   provider: "deepseek" | "openai_compatible"
 ): Promise<LLMResponse> {
-  const key = apiKey();
+  const key = apiKey(provider);
 
   if (!key) {
     return {
@@ -288,11 +312,12 @@ export async function callLLM(
   messages: LLMMessage[],
   opts: LLMOptions = {}
 ): Promise<LLMResponse> {
-  if (LLM_PROVIDER === "deepseek" || LLM_PROVIDER === "openai_compatible") {
-    return callOpenAICompatible(messages, opts, LLM_PROVIDER);
+  const provider = await resolveProviderForWorkspace(opts);
+  if (provider === "deepseek" || provider === "openai_compatible") {
+    return callOpenAICompatible(messages, opts, provider);
   }
 
-  const key = apiKey();
+  const key = apiKey(provider);
 
   if (!key) {
     return {

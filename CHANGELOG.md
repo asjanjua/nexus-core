@@ -2,6 +2,52 @@
 
 ---
 
+## 0.17.0 — Phase 2 AI Trust Layer (2026-06-10)
+
+This release completes the P2 trust and operating-model blockers needed for regulated-buyer
+conversations: eval harness, red-team checks, prompt registry, and workspace AI policy controls.
+
+**Schema — migration 0020**
+- Added workspace AI policy fields: `allowed_providers`, `local_only_mode`,
+  `sensitivity_ceiling`, and `approval_required_threshold`.
+- Added `prompt_registry` for durable prompt manifest/version metadata.
+- Added `eval_runs` for persisted evaluation summaries and per-case results.
+
+**Evaluation harness**
+- Added `lib/eval/golden-set.ts` with 30 golden cases across six categories:
+  risk detection, decision framing, recommendation quality, sector classification,
+  source grounding, and restricted-data refusal.
+- Added `lib/eval/harness.ts` for deterministic scoring, confidence checks, latency tracking,
+  and aggregate run summaries.
+- Added `POST /api/eval/run` and `GET /api/eval/results`.
+- Added Settings → Eval tab.
+
+**Prompt registry**
+- Added `lib/prompts/registry.ts` with versioned prompt entries, owner, description,
+  changelog, interpolation, missing-variable errors, and optional audit.
+- Moved Ask and dashboard system prompts onto registry-backed `getPrompt()` calls.
+- Added `GET /api/prompts` and Settings → Prompts tab.
+
+**Red-team checks**
+- Added `lib/security/red-team.ts` with PII, overconfidence, unsafe action, sensitivity ceiling,
+  and hard-stop leakage checks.
+- Wired red-team blocking into Ask and dashboard synthesis before user-visible output.
+- Writes `red_team_violation` audit events when checks fail.
+
+**Workspace AI policy**
+- Added `lib/security/ai-policy.ts`.
+- LLM calls now enforce workspace provider allow-list and local-only mode server-side.
+- Ask and dashboard outputs below the workspace confidence threshold are routed to review.
+- Added Settings → AI Policy tab for provider controls, local-only mode, sensitivity ceiling,
+  and human-review threshold.
+
+**Verification**
+- Added tests for eval harness, prompt registry, red-team checks, and AI policy.
+- `npm run test` passed: 20 files / 88 tests.
+- `npm run build` passed.
+
+---
+
 ## 0.16.3 — Entity Extraction Pipeline (2026-06-10)
 
 This release turns the previously dormant `entities` table into the first working substrate for

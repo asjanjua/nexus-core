@@ -159,6 +159,10 @@ const workspaceSettingsStore: Map<string, WorkspaceSettings> = new Map([
       defaultSensitivity: "internal",
       slackEnabled: false,
       teamsEnabled: false,
+      allowedProviders: ["anthropic", "deepseek", "openai_compatible"],
+      localOnlyMode: false,
+      sensitivityCeiling: "confidential",
+      approvalRequiredThreshold: 0.7,
       demoMode: false,
       updatedAt: new Date().toISOString()
     }
@@ -564,6 +568,10 @@ export const store = {
         defaultSensitivity: "internal",
         slackEnabled: false,
         teamsEnabled: false,
+        allowedProviders: ["anthropic", "deepseek", "openai_compatible"],
+        localOnlyMode: false,
+        sensitivityCeiling: "confidential",
+        approvalRequiredThreshold: 0.7,
         demoMode: false,
         updatedAt: new Date().toISOString()
       }

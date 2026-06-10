@@ -22,12 +22,16 @@ type WorkspaceSettings = {
   workspaceId: string;
   name: string;
   timezone: string;
-  llmProvider: "anthropic" | "openai" | "azure_openai";
+  llmProvider: "anthropic" | "openai" | "azure_openai" | "deepseek" | "openai_compatible";
   llmModel: string;
   quarantineThreshold: number;
   defaultSensitivity: string;
   slackEnabled: boolean;
   teamsEnabled: boolean;
+  allowedProviders: Array<"anthropic" | "openai" | "azure_openai" | "deepseek" | "openai_compatible" | "local">;
+  localOnlyMode: boolean;
+  sensitivityCeiling: "public" | "internal" | "confidential" | "restricted";
+  approvalRequiredThreshold: number;
   updatedAt: string;
 };
 
@@ -114,6 +118,9 @@ const TABS = [
   { id: "llm", label: "LLM Provider" },
   { id: "sources", label: "Sources" },
   { id: "policies", label: "Policies" },
+  { id: "ai-policy", label: "AI Policy" },
+  { id: "eval", label: "Eval" },
+  { id: "prompts", label: "Prompts" },
   { id: "agent-governance", label: "Agent Governance" },
   { id: "apikeys", label: "API Keys" },
   { id: "roles", label: "Roles" },
@@ -565,6 +572,8 @@ function LLMTab({ workspaceId }: { workspaceId: string }) {
 
   const modelOptions: Record<string, string[]> = {
     anthropic: ["claude-opus-4-6", "claude-sonnet-4-6", "claude-haiku-4-5-20251001"],
+    deepseek: ["deepseek-chat", "deepseek-reasoner"],
+    openai_compatible: ["deepseek-chat", "qwen-plus", "kimi-k2"],
     openai: ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"],
     azure_openai: ["gpt-4o", "gpt-4-turbo"]
   };
@@ -605,6 +614,8 @@ function LLMTab({ workspaceId }: { workspaceId: string }) {
           }
         >
           <option value="anthropic">Anthropic (Claude)</option>
+          <option value="deepseek">DeepSeek</option>
+          <option value="openai_compatible">OpenAI-compatible</option>
           <option value="openai">OpenAI (GPT)</option>
           <option value="azure_openai">Azure OpenAI</option>
         </select>
@@ -625,6 +636,8 @@ function LLMTab({ workspaceId }: { workspaceId: string }) {
         <label className="label">Environment Variable Required</label>
         <p className="text-white/50 text-xs font-mono mt-1">
           {settings.llmProvider === "anthropic" && "ANTHROPIC_API_KEY"}
+          {settings.llmProvider === "deepseek" && "DEEPSEEK_API_KEY"}
+          {settings.llmProvider === "openai_compatible" && "OPENAI_COMPAT_API_KEY or DEEPSEEK_API_KEY"}
           {settings.llmProvider === "openai" && "OPENAI_API_KEY"}
           {settings.llmProvider === "azure_openai" && "AZURE_OPENAI_API_KEY + AZURE_OPENAI_ENDPOINT"}
         </p>
@@ -762,6 +775,236 @@ function PoliciesTab({ workspaceId }: { workspaceId: string }) {
       <button className="btn-primary" onClick={save} disabled={saving}>
         {saving ? "Saving..." : saved ? "Saved" : "Save Policies"}
       </button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// AI Policy tab (P2-D)
+// ---------------------------------------------------------------------------
+
+function AIPolicyTab({ workspaceId }: { workspaceId: string }) {
+  const [settings, setSettings] = useState<WorkspaceSettings | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const providers: WorkspaceSettings["allowedProviders"] = ["anthropic", "deepseek", "openai_compatible", "openai", "azure_openai"];
+
+  useEffect(() => {
+    fetch(`/api/settings/workspace?workspaceId=${workspaceId}`)
+      .then((r) => r.json())
+      .then((j) => j.ok && setSettings(j.data));
+  }, [workspaceId]);
+
+  if (!settings) return <p className="text-white/50 text-sm">Loading...</p>;
+
+  function toggleProvider(provider: WorkspaceSettings["allowedProviders"][number]) {
+    if (!settings) return;
+    const current = settings.allowedProviders ?? [];
+    setSettings({
+      ...settings,
+      allowedProviders: current.includes(provider)
+        ? current.filter((item) => item !== provider)
+        : [...current, provider]
+    });
+  }
+
+  async function save() {
+    setSaving(true);
+    await fetch("/api/settings/workspace", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        workspaceId,
+        allowedProviders: settings!.allowedProviders,
+        localOnlyMode: settings!.localOnlyMode,
+        sensitivityCeiling: settings!.sensitivityCeiling,
+        approvalRequiredThreshold: settings!.approvalRequiredThreshold
+      })
+    });
+    setSaving(false);
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+  }
+
+  return (
+    <div className="space-y-5 max-w-2xl">
+      <div className="panel text-sm text-white/70">
+        Control which AI providers can process this workspace, what sensitivity level is allowed,
+        and when low-confidence outputs should route to human review.
+      </div>
+      <div className="panel space-y-3">
+        <p className="panel-title">Allowed providers</p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          {providers.map((provider) => (
+            <label key={provider} className="flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-sm">
+              <input
+                type="checkbox"
+                checked={(settings.allowedProviders ?? []).includes(provider)}
+                onChange={() => toggleProvider(provider)}
+              />
+              <span>{provider}</span>
+            </label>
+          ))}
+        </div>
+      </div>
+      <label className="panel flex items-center justify-between gap-4 text-sm">
+        <span>
+          <span className="block font-medium text-white/85">Local-only mode</span>
+          <span className="text-white/45">Blocks cloud LLM calls for this workspace.</span>
+        </span>
+        <input
+          type="checkbox"
+          checked={settings.localOnlyMode}
+          onChange={(e) => setSettings({ ...settings, localOnlyMode: e.target.checked })}
+        />
+      </label>
+      <div>
+        <label className="label">Sensitivity ceiling</label>
+        <select
+          className="input"
+          value={settings.sensitivityCeiling}
+          onChange={(e) => setSettings({ ...settings, sensitivityCeiling: e.target.value as WorkspaceSettings["sensitivityCeiling"] })}
+        >
+          <option value="public">Public</option>
+          <option value="internal">Internal</option>
+          <option value="confidential">Confidential</option>
+          <option value="restricted">Restricted</option>
+        </select>
+      </div>
+      <div>
+        <label className="label">Human-review threshold</label>
+        <p className="text-white/50 text-xs mb-2">Outputs below {Math.round(settings.approvalRequiredThreshold * 100)}% confidence should be reviewed before use.</p>
+        <input
+          type="range"
+          min={0}
+          max={100}
+          value={Math.round(settings.approvalRequiredThreshold * 100)}
+          onChange={(e) => setSettings({ ...settings, approvalRequiredThreshold: Number(e.target.value) / 100 })}
+          className="w-full accent-blue-400"
+        />
+      </div>
+      <button className="btn-primary" onClick={save} disabled={saving}>
+        {saving ? "Saving..." : saved ? "Saved" : "Save AI Policy"}
+      </button>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Eval tab (P2-A)
+// ---------------------------------------------------------------------------
+
+type EvalRun = {
+  id: string;
+  total: number;
+  passed: number;
+  failed: number;
+  passRate: number;
+  avgConfidence: number;
+  avgLatencyMs: number;
+  createdAt: string;
+  results: Array<{ caseId: string; category: string; passed: boolean; notes: string }>;
+};
+
+function EvalTab() {
+  const [runs, setRuns] = useState<EvalRun[]>([]);
+  const [running, setRunning] = useState(false);
+
+  async function load() {
+    const res = await fetch("/api/eval/results");
+    const json = await res.json();
+    if (json.ok) setRuns(json.data.runs);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function runNow() {
+    setRunning(true);
+    const res = await fetch("/api/eval/run", { method: "POST" });
+    const json = await res.json();
+    setRunning(false);
+    if (json.ok) setRuns([json.data, ...runs].slice(0, 10));
+  }
+
+  const latest = runs[0];
+  return (
+    <div className="space-y-5 max-w-3xl">
+      <div className="panel flex items-center justify-between gap-4">
+        <div>
+          <p className="panel-title">AI evaluation harness</p>
+          <p className="mt-1 text-sm text-white/55">Runs 30 golden cases across risk, decisions, recommendations, classification, grounding, and refusal.</p>
+        </div>
+        <button className="btn-primary" onClick={runNow} disabled={running}>
+          {running ? "Running..." : "Run eval now"}
+        </button>
+      </div>
+      {latest ? (
+        <div className="panel">
+          <p className="panel-title">Latest run</p>
+          <div className="mt-3 grid gap-3 sm:grid-cols-4">
+            <div><p className="text-xs text-white/40">Pass rate</p><p className="text-2xl">{Math.round(latest.passRate * 100)}%</p></div>
+            <div><p className="text-xs text-white/40">Passed</p><p className="text-2xl">{latest.passed}/{latest.total}</p></div>
+            <div><p className="text-xs text-white/40">Confidence</p><p className="text-2xl">{Math.round(latest.avgConfidence * 100)}%</p></div>
+            <div><p className="text-xs text-white/40">Avg latency</p><p className="text-2xl">{latest.avgLatencyMs}ms</p></div>
+          </div>
+          <ul className="mt-4 space-y-2">
+            {latest.results.slice(0, 8).map((result) => (
+              <li key={result.caseId} className="rounded-lg border border-white/10 px-3 py-2 text-sm">
+                <span className={result.passed ? "text-green-300" : "text-red-300"}>{result.passed ? "Pass" : "Fail"}</span>
+                <span className="ml-2 text-white/70">{result.caseId}</span>
+                <span className="ml-2 text-white/35">{result.category}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : (
+        <p className="text-sm text-white/45">No eval runs yet.</p>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Prompt Registry tab (P2-B)
+// ---------------------------------------------------------------------------
+
+type PromptManifestEntry = {
+  key: string;
+  version: string;
+  owner: string;
+  description: string;
+  changelog: string[];
+  lastUpdated: string;
+};
+
+function PromptsTab() {
+  const [prompts, setPrompts] = useState<PromptManifestEntry[]>([]);
+
+  useEffect(() => {
+    fetch("/api/prompts")
+      .then((r) => r.json())
+      .then((j) => j.ok && setPrompts(j.data.prompts));
+  }, []);
+
+  return (
+    <div className="space-y-4 max-w-4xl">
+      <div className="panel text-sm text-white/70">
+        Read-only prompt manifest. Template bodies are intentionally hidden from this API response;
+        this view is for versioning, ownership, and regression control.
+      </div>
+      {prompts.map((prompt) => (
+        <div key={prompt.key} className="panel">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="font-mono text-sm text-white/85">{prompt.key}</p>
+            <span className="badge badge-muted">v{prompt.version}</span>
+            <span className="text-xs text-white/35">{prompt.owner}</span>
+          </div>
+          <p className="mt-2 text-sm text-white/60">{prompt.description}</p>
+          <p className="mt-2 text-xs text-white/35">{prompt.changelog[0]}</p>
+        </div>
+      ))}
     </div>
   );
 }
@@ -1765,6 +2008,9 @@ export default function SettingsPage() {
         {activeTab === "llm" && <LLMTab workspaceId={workspaceId} />}
         {activeTab === "sources" && <SourcesTab />}
         {activeTab === "policies" && <PoliciesTab workspaceId={workspaceId} />}
+        {activeTab === "ai-policy" && <AIPolicyTab workspaceId={workspaceId} />}
+        {activeTab === "eval" && <EvalTab />}
+        {activeTab === "prompts" && <PromptsTab />}
         {activeTab === "agent-governance" && <AgentGovernanceTab />}
         {activeTab === "apikeys" && <APIKeysTab workspaceId={workspaceId} />}
         {activeTab === "roles" && <RolesTab />}

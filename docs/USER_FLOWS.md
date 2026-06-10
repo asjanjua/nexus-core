@@ -1,7 +1,7 @@
 # NexusAI Mission Control -- User Flows
 
 Updated: 2026-06-10
-Version: v0.16.3
+Version: v0.17.0
 
 > This document describes the end-to-end journeys a user takes through NexusAI Mission Control.
 > It serves three audiences: pilot sponsors (what happens when I use this), developers (how the
@@ -142,6 +142,22 @@ Once onboarded, the daily product loop has four surfaces: Dashboards (Agent Room
 5. User can interact with each card: view evidence refs, submit learning signals (approve/edit/reject/thumbs_up/thumbs_down), or drill into evidence.
 
 **What the user sees:** A room staffed by named AI analysts, each producing a brief grounded in their evidence. Not a BI dashboard. Not charts. Synthesis.
+
+### 4.1a Executive Synthesis Brief (planned -- approved for build)
+
+**Entry:** `/dashboard/[role]` (primary view, replacing individual cards as the first thing the user sees)
+
+**Flow:**
+1. Dashboard loads and calls `GET /api/synthesis?role=[role]`.
+2. The dispatcher in `dispatcher.ts` collects the latest active agent_outputs for agents serving this role. For CEO, this is cross-functional: every agent with "ceo" in its roleLens across all rooms.
+3. The synthesis service in `executive-synthesis.ts` feeds all collected outputs into a single LLM call with a role-specific question framework. CEO gets 7 questions (what changed, what matters, what needs a decision, what is at risk, where are we blocked, what to do next, what evidence supports this). COO gets 5 operations questions. CFO gets 5 finance questions. Each role has its own framework.
+4. Archetype language carries through: the sme_physical coffee chain owner gets plain English ("How are my locations doing? What is my cash picture?"), the bank CEO gets formal executive language.
+5. Output runs through `evaluateOutputGate()`, saves as agent_outputs with outputType "synthesis", writes audit event.
+6. Dashboard renders the synthesis as the primary card with structured sections. Specialist agent cards appear below in a collapsible "Specialist Signals" drill-down.
+7. Each synthesis finding cites which specialist agent produced the evidence. Clicking a citation expands that agent's card.
+8. User can submit learning signals on the synthesis, refresh it, or drill into any specialist signal.
+
+**What the user sees:** One executive brief that answers the only questions that matter for their role. Specialist agents are the proof trail, not the primary experience.
 
 ### 4.2 Ask Panel
 
@@ -404,6 +420,15 @@ Confidence is stored as a 0-100 integer and converted at repository boundaries. 
 
 Per-workspace rate limiting (Map keyed by workspaceId). Daily token budget tracked in `llm_usage` table. Multi-provider routing: Anthropic, DeepSeek, OpenAI-compatible. Cost per request logged.
 
+### 10.5 AI Trust Controls
+
+P2 adds a visible trust layer for regulated buyers:
+- Settings > Eval runs the 30-case golden set and stores run summaries.
+- Settings > Prompts shows the read-only prompt manifest with owners and versions.
+- Settings > AI Policy controls provider allow-list, local-only mode, sensitivity ceiling, and review threshold.
+- Ask and dashboard outputs run through red-team checks before display.
+- Low-confidence outputs below workspace threshold route to review instead of normal display.
+
 ---
 
 ## Appendix: Flow Summary Matrix
@@ -418,6 +443,8 @@ Per-workspace rate limiting (Map keyed by workspaceId). Daily token budget track
 | Decisions | `/decisions` | Yes | repository CRUD | decisions, actions, audit_events |
 | Approvals | `/approvals` | Yes | repository review | evidence_records, audit_events |
 | Settings | `/settings` | Yes | various | workspace_settings, agent_control_profiles, audit_events |
+| Eval Harness | Settings > Eval | Yes | eval/harness, llm | eval_runs, audit_events |
+| Prompt Registry | Settings > Prompts | Yes | prompts/registry | prompt_registry, audit_events |
 | Exports | `/export` | Yes | dashboard.ts, repository | (read-only) |
 | Demo Reset | Settings > Demo | Yes | sector-packs | evidence_records, workspace_settings |
 | API Access | API routes | Bearer token | retrieval, repository | varies by endpoint |

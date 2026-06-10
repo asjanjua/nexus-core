@@ -25,6 +25,9 @@ import { generateEmbedding, isVectorSearchEnabled } from "@/lib/services/embeddi
 import { buildCompanyContext } from "@/lib/domain/sector-library";
 import { filterEvidenceByPassport } from "@/lib/agents/passport-policy";
 import { evaluateOutputGate } from "@/lib/agents/output-gate";
+import { getPrompt } from "@/lib/prompts/registry";
+import { checkOutput } from "@/lib/security/red-team";
+import { shouldRouteOutputToReview } from "@/lib/security/ai-policy";
 
 // ---------------------------------------------------------------------------
 // Keyword ranking (pre-filter before LLM call)
@@ -143,15 +146,7 @@ async function rankEvidence(
 // LLM synthesis
 // ---------------------------------------------------------------------------
 
-const ASK_SYSTEM_PROMPT = `You are a senior executive intelligence analyst embedded in NexusAI Mission Control.
-Your job is to answer executive questions concisely and precisely, grounded only in the evidence provided.
-
-Rules:
-- Answer in 3-5 sentences unless the question demands more detail.
-- Reference specific facts from the evidence. Do not speculate beyond what is in the evidence.
-- If the evidence is insufficient, say so explicitly and explain what is missing.
-- Use professional, executive-ready language. No bullet points unless listing distinct items.
-- End with a confidence note: e.g. "Evidence confidence: 84%."`;
+const ASK_SYSTEM_PROMPT = getPrompt("ask.synthesis");
 
 function buildEvidenceContext(records: EvidenceRecord[]): string {
   return records
@@ -301,6 +296,59 @@ export async function answerWithEvidence(
         actor: options.agentKey ?? "ask",
         payload: { agentKey: options.agentKey, reason: gate.reason, query }
       });
+    }
+
+    const redTeam = checkOutput(answer, {
+      workspaceId,
+      agentId: options.agentKey ?? "ask",
+      maxSensitivity: passport?.maxSensitivity ?? "confidential",
+      outputSensitivity: results.some((item) => item.sensitivity === "confidential") ? "confidential" : "internal",
+      humanReviewGate: gate.escalationRequired
+    });
+    if (!redTeam.passed) {
+      await repository.pushAudit({
+        workspaceId,
+        type: "red_team_violation",
+        actor: options.agentKey ?? "ask",
+        payload: { route: "ask", violations: redTeam.violations, query }
+      });
+      return {
+        answer: "NexusAI blocked this answer because the safety review detected sensitive data, overconfident language, or an unsafe action. Please narrow the question or request a human-reviewed brief.",
+        confidence: avgConfidence,
+        freshnessHours: minFreshness,
+        refused: true,
+        refusalReason: "red_team_violation",
+        evidenceRefs: results.map((r) => r.id),
+        agentKey: options.agentKey,
+        escalationRequired: true,
+        escalationReason: "red_team_violation"
+      };
+    }
+
+    const settings = await repository.getWorkspaceSettings(workspaceId);
+    if (shouldRouteOutputToReview(settings, avgConfidence)) {
+      await repository.pushAudit({
+        workspaceId,
+        type: "ask_output_review_required",
+        actor: options.agentKey ?? "ask",
+        payload: {
+          agentKey: options.agentKey,
+          confidence: avgConfidence,
+          threshold: settings.approvalRequiredThreshold,
+          query
+        }
+      });
+      return {
+        answer: "NexusAI generated an answer, but the evidence confidence is below this workspace's human-review threshold. Review the source evidence before using this answer.",
+        confidence: avgConfidence,
+        freshnessHours: minFreshness,
+        refused: true,
+        refusalReason: "approval_threshold",
+        evidenceRefs: results.map((r) => r.id),
+        agentKey: options.agentKey,
+        escalationRequired: true,
+        escalationReason: "approval_threshold"
+      };
     }
 
     return {

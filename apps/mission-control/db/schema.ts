@@ -181,9 +181,36 @@ export const workspaceSettings = pgTable("workspace_settings", {
   defaultSensitivity: sensitivityEnum("default_sensitivity").notNull().default("internal"),
   slackEnabled: boolean("slack_enabled").notNull().default(false),
   teamsEnabled: boolean("teams_enabled").notNull().default(false),
+  allowedProviders: jsonb("allowed_providers").$type<string[]>().default(["anthropic", "deepseek", "openai_compatible"]).notNull(),
+  localOnlyMode: boolean("local_only_mode").notNull().default(false),
+  sensitivityCeiling: sensitivityEnum("sensitivity_ceiling").notNull().default("confidential"),
+  approvalRequiredThreshold: integer("approval_required_threshold").notNull().default(70),
   /** Demo mode: disables real ingestion and shows a "Demo" badge. Used during sales demos. */
   demoMode: boolean("demo_mode").notNull().default(false),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+});
+
+export const promptRegistry = pgTable("prompt_registry", {
+  key: text("key").primaryKey(),
+  version: varchar("version", { length: 32 }).notNull(),
+  owner: varchar("owner", { length: 120 }).notNull(),
+  description: text("description").notNull(),
+  template: text("template").notNull(),
+  changelog: jsonb("changelog").$type<string[]>().default([]).notNull(),
+  lastUpdated: timestamp("last_updated", { withTimezone: true }).defaultNow().notNull()
+});
+
+export const evalRuns = pgTable("eval_runs", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull(),
+  total: integer("total").notNull(),
+  passed: integer("passed").notNull(),
+  failed: integer("failed").notNull(),
+  passRate: integer("pass_rate").notNull(),
+  avgConfidence: integer("avg_confidence").notNull(),
+  avgLatencyMs: integer("avg_latency_ms").notNull(),
+  results: jsonb("results").$type<Record<string, unknown>[]>().default([]).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
 });
 
 export const decisions = pgTable("decisions", {

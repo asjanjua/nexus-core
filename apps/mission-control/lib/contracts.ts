@@ -488,13 +488,67 @@ export const workspaceSettingsSchema = z.object({
   workspaceId: z.string(),
   name: z.string(),
   timezone: z.string().default("UTC"),
-  llmProvider: z.enum(["anthropic", "openai", "azure_openai"]).default("anthropic"),
+  llmProvider: z.enum(["anthropic", "openai", "azure_openai", "deepseek", "openai_compatible"]).default("anthropic"),
   llmModel: z.string().default("claude-opus-4-6"),
   quarantineThreshold: z.number().min(0).max(1).default(0.55),
   defaultSensitivity: sensitivitySchema.default("internal"),
   slackEnabled: z.boolean().default(false),
   teamsEnabled: z.boolean().default(false),
+  allowedProviders: z.array(z.enum(["anthropic", "openai", "azure_openai", "deepseek", "openai_compatible", "local"])).default(["anthropic", "deepseek", "openai_compatible"]),
+  localOnlyMode: z.boolean().default(false),
+  sensitivityCeiling: sensitivitySchema.default("confidential"),
+  approvalRequiredThreshold: z.number().min(0).max(1).default(0.7),
   demoMode: z.boolean().default(false),
   updatedAt: z.string()
 });
 export type WorkspaceSettings = z.infer<typeof workspaceSettingsSchema>;
+
+export const promptRegistryEntrySchema = z.object({
+  key: z.string(),
+  version: z.string(),
+  owner: z.string(),
+  description: z.string(),
+  template: z.string(),
+  changelog: z.array(z.string()),
+  lastUpdated: z.string()
+});
+export type PromptRegistryEntry = z.infer<typeof promptRegistryEntrySchema>;
+
+export const evalCaseCategorySchema = z.enum([
+  "risk_detection",
+  "decision_framing",
+  "recommendation_quality",
+  "sector_classification",
+  "source_grounding",
+  "restricted_data_refusal"
+]);
+export type EvalCaseCategory = z.infer<typeof evalCaseCategorySchema>;
+
+export const evalResultSchema = z.object({
+  caseId: z.string(),
+  category: evalCaseCategorySchema,
+  passed: z.boolean(),
+  score: z.number().min(0).max(1),
+  actualOutput: z.string(),
+  matchedKeywords: z.array(z.string()),
+  failedKeywords: z.array(z.string()),
+  forbiddenMatches: z.array(z.string()),
+  confidenceMet: z.boolean(),
+  latencyMs: z.number().int().nonnegative(),
+  notes: z.string()
+});
+export type EvalResult = z.infer<typeof evalResultSchema>;
+
+export const evalRunSummarySchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  total: z.number().int().nonnegative(),
+  passed: z.number().int().nonnegative(),
+  failed: z.number().int().nonnegative(),
+  passRate: z.number().min(0).max(1),
+  avgConfidence: z.number().min(0).max(1),
+  avgLatencyMs: z.number().int().nonnegative(),
+  results: z.array(evalResultSchema),
+  createdAt: z.string()
+});
+export type EvalRunSummary = z.infer<typeof evalRunSummarySchema>;
