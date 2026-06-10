@@ -36,6 +36,23 @@ type Action = {
   createdAt: string;
 };
 
+type ProposedAction = {
+  actionText: string;
+  owner: string;
+  dueDate?: string | null;
+  isBlocker: boolean;
+};
+
+type ProposedDecision = {
+  title: string;
+  owner: string;
+  rationale: string;
+  priority: DecisionPriority;
+  sourceOutputId?: string | null;
+  evidenceRefs: string[];
+  actions: ProposedAction[];
+};
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -230,6 +247,90 @@ function NewActionForm({ decisionId, onCreated }: { decisionId: string; onCreate
 }
 
 // ---------------------------------------------------------------------------
+// Agent-output proposal panel
+// ---------------------------------------------------------------------------
+
+function ProposalPanel({
+  proposals,
+  createdKeys,
+  acceptingKey,
+  onAccept
+}: {
+  proposals: ProposedDecision[];
+  createdKeys: Set<string>;
+  acceptingKey: string | null;
+  onAccept: (proposal: ProposedDecision, key: string) => void;
+}) {
+  if (!proposals.length) return null;
+
+  return (
+    <section className="panel space-y-4 border-sky-400/20">
+      <div>
+        <p className="text-sm font-semibold text-white">AI-proposed decisions</p>
+        <p className="mt-1 text-xs leading-5 text-white/45">
+          These are drafts extracted from recent specialist agent outputs. Review before creating records.
+        </p>
+      </div>
+      <div className="space-y-3">
+        {proposals.map((proposal, index) => {
+          const key = `${proposal.sourceOutputId ?? "manual"}:${proposal.title}:${index}`;
+          const created = createdKeys.has(key);
+          return (
+            <article key={key} className={`rounded-xl border border-white/10 bg-black/20 p-4 ${created ? "opacity-55" : ""}`}>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="mb-2 flex flex-wrap items-center gap-2">
+                    <span className={`rounded border px-1.5 py-0.5 text-xs font-medium ${PRIORITY_COLORS[proposal.priority]}`}>
+                      {proposal.priority}
+                    </span>
+                    {proposal.sourceOutputId && (
+                      <span className="font-mono text-xs text-white/30">
+                        output {proposal.sourceOutputId.slice(0, 12)}
+                      </span>
+                    )}
+                    {proposal.evidenceRefs.length > 0 && (
+                      <span className="text-xs text-white/35">
+                        {proposal.evidenceRefs.length} source{proposal.evidenceRefs.length === 1 ? "" : "s"}
+                      </span>
+                    )}
+                  </div>
+                  <h3 className="text-sm font-semibold leading-snug text-white">{proposal.title}</h3>
+                  <p className="mt-1 text-xs text-white/45">Owner: {proposal.owner}</p>
+                </div>
+                <button
+                  onClick={() => onAccept(proposal, key)}
+                  disabled={created || acceptingKey === key}
+                  className="btn-primary shrink-0 text-xs"
+                >
+                  {created ? "Created" : acceptingKey === key ? "Creating..." : "Create decision"}
+                </button>
+              </div>
+              <p className="mt-3 text-sm leading-6 text-white/65">{proposal.rationale}</p>
+              {proposal.actions.length > 0 && (
+                <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                  <p className="mb-2 text-xs font-medium text-white/45">
+                    Proposed actions · {proposal.actions.length}
+                  </p>
+                  <ul className="space-y-1.5">
+                    {proposal.actions.map((action, actionIndex) => (
+                      <li key={`${key}:action:${actionIndex}`} className="text-xs leading-5 text-white/60">
+                        {action.isBlocker && <span className="mr-1 rounded bg-red-500/20 px-1 py-0.5 text-red-300">BLOCKER</span>}
+                        {action.actionText}
+                        <span className="ml-1 text-white/30">— {action.owner}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Action row
 // ---------------------------------------------------------------------------
 
@@ -395,6 +496,11 @@ function DecisionCard({
 export default function DecisionsPage() {
   const [decisions, setDecisions] = useState<Decision[]>([]);
   const [actions, setActions] = useState<Action[]>([]);
+  const [proposals, setProposals] = useState<ProposedDecision[]>([]);
+  const [createdProposalKeys, setCreatedProposalKeys] = useState<Set<string>>(new Set());
+  const [extracting, setExtracting] = useState(false);
+  const [acceptingProposal, setAcceptingProposal] = useState<string | null>(null);
+  const [proposalMessage, setProposalMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<DecisionStatus | "all">("all");
 
@@ -430,6 +536,79 @@ export default function DecisionsPage() {
     setActions(prev => prev.map(x => x.id === a.id ? a : x));
   }
 
+  async function extractProposals() {
+    setExtracting(true);
+    setProposalMessage(null);
+    try {
+      const res = await fetch("/api/decisions/extract", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ days: 7, limit: 12 })
+      });
+      const j = await res.json();
+      if (!j.ok) throw new Error(j.error ?? "extract_failed");
+      const next = (j.data.proposals ?? []) as ProposedDecision[];
+      setProposals(next);
+      setProposalMessage(
+        next.length
+          ? `${next.length} proposed decision${next.length === 1 ? "" : "s"} found.`
+          : "No strong decision candidates found in recent agent outputs. Generate a dashboard brief first, then try again."
+      );
+    } catch (err) {
+      setProposalMessage(err instanceof Error ? err.message : "Failed to extract proposals");
+    } finally {
+      setExtracting(false);
+    }
+  }
+
+  async function acceptProposal(proposal: ProposedDecision, key: string) {
+    setAcceptingProposal(key);
+    try {
+      const decisionRes = await fetch("/api/decisions", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          title: proposal.title,
+          owner: proposal.owner,
+          rationale: proposal.rationale,
+          priority: proposal.priority,
+          sourceOutputId: proposal.sourceOutputId ?? undefined,
+          status: "open"
+        })
+      });
+      const decisionPayload = await decisionRes.json();
+      if (!decisionPayload.ok) throw new Error(decisionPayload.error ?? "decision_create_failed");
+      const decision = decisionPayload.data.decision as Decision;
+      setDecisions(prev => [decision, ...prev]);
+
+      const createdActions = await Promise.all(
+        proposal.actions.map(async (action) => {
+          const actionRes = await fetch("/api/actions", {
+            method: "POST",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              decisionId: decision.id,
+              actionText: action.actionText,
+              owner: action.owner,
+              dueDate: action.dueDate ?? undefined,
+              isBlocker: action.isBlocker
+            })
+          });
+          const actionPayload = await actionRes.json();
+          if (!actionPayload.ok) throw new Error(actionPayload.error ?? "action_create_failed");
+          return actionPayload.data.action as Action;
+        })
+      );
+      setActions(prev => [...createdActions, ...prev]);
+      setCreatedProposalKeys(prev => new Set(prev).add(key));
+      setProposalMessage("Decision created. You can edit owner, priority, and actions from the list below.");
+    } catch (err) {
+      setProposalMessage(err instanceof Error ? err.message : "Failed to create proposed decision");
+    } finally {
+      setAcceptingProposal(null);
+    }
+  }
+
   const filtered = filter === "all"
     ? decisions
     : decisions.filter(d => d.status === filter);
@@ -449,8 +628,26 @@ export default function DecisionsPage() {
             Track what was decided, who owns it, and what actions are flowing from each decision.
           </p>
         </div>
-        <NewDecisionForm onCreated={handleDecisionCreated} />
+        <div className="flex flex-wrap gap-2">
+          <button onClick={extractProposals} disabled={extracting} className="btn-secondary text-sm">
+            {extracting ? "Scanning outputs..." : "Propose from agent outputs"}
+          </button>
+          <NewDecisionForm onCreated={handleDecisionCreated} />
+        </div>
       </div>
+
+      {proposalMessage && (
+        <div className="rounded-lg border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white/60">
+          {proposalMessage}
+        </div>
+      )}
+
+      <ProposalPanel
+        proposals={proposals}
+        createdKeys={createdProposalKeys}
+        acceptingKey={acceptingProposal}
+        onAccept={acceptProposal}
+      />
 
       {/* Summary strip */}
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
