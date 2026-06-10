@@ -9,6 +9,8 @@ import {
   type ConversationMessage,
   type Decision,
   type DecisionStatus,
+  type Entity,
+  type EntityInput,
   type EvidenceRecord,
   type IngestionStatus,
   type LearningSignal,
@@ -136,6 +138,7 @@ const auditEvents: AuditEvent[] = [];
 const conversations: ConversationStore = {};
 const agentOutputs: AgentOutput[] = [];
 const learningSignalStore: LearningSignal[] = [];
+const entityStore: Entity[] = [];
 
 // Agent keys in-memory store (keyed by workspaceId)
 type StoredAgentKey = AgentKey & { keyHash: string };
@@ -184,6 +187,7 @@ export const store = {
   auditEvents,
   agentOutputs,
   conversations,
+  entities: entityStore,
   getEvidenceById(id: string): EvidenceRecord | undefined {
     return evidence.find((item) => item.id === id);
   },
@@ -192,6 +196,41 @@ export const store = {
   },
   getRecommendations(workspaceId: string): Recommendation[] {
     return recommendations.filter((item) => item.workspaceId === workspaceId);
+  },
+  listEntities(workspaceId: string, options: { type?: string; query?: string; limit?: number } = {}): Entity[] {
+    const q = options.query?.toLowerCase();
+    return entityStore
+      .filter((entity) => entity.workspaceId === workspaceId)
+      .filter((entity) => !options.type || entity.type === options.type)
+      .filter((entity) => !q || entity.name.toLowerCase().includes(q))
+      .slice(0, options.limit ?? 100);
+  },
+  upsertEntity(input: EntityInput): Entity {
+    const normalizedName = input.name.trim();
+    const existing = entityStore.find(
+      (entity) =>
+        entity.workspaceId === input.workspaceId &&
+        entity.type === input.type &&
+        entity.name.toLowerCase() === normalizedName.toLowerCase()
+    );
+    if (existing) {
+      existing.metadata = { ...existing.metadata, ...input.metadata };
+      existing.confidence = Math.max(existing.confidence, input.confidence);
+      if (!existing.evidenceRefs.includes(input.evidenceId)) existing.evidenceRefs.push(input.evidenceId);
+      return existing;
+    }
+    const record: Entity = {
+      id: `ent-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      workspaceId: input.workspaceId,
+      type: input.type,
+      name: normalizedName,
+      metadata: input.metadata,
+      evidenceRefs: [input.evidenceId],
+      confidence: input.confidence,
+      createdAt: nowIso()
+    };
+    entityStore.push(record);
+    return record;
   },
   addRecommendation(rec: Recommendation): Recommendation {
     recommendations.push(rec);

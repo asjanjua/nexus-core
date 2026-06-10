@@ -1,7 +1,7 @@
 # NexusAI Mission Control Architecture
 
 Updated: 2026-06-10
-Current product state: v0.16.2 (verified). Covers U2 Agent Control Profiles, U3 output history/rollback, U4 learning signals, Phase 8A Decision & Action Twin, AI decision proposals, and persistent Ask memory.
+Current product state: v0.16.3 (verified). Covers U2 Agent Control Profiles, U3 output history/rollback, U4 learning signals, Phase 8A Decision & Action Twin, AI decision proposals, persistent Ask memory, and entity extraction.
 
 ## 1. Purpose
 
@@ -199,7 +199,8 @@ Current state: full CRUD via API and interactive `/decisions` page. AI proposal 
 | `agent_control_profiles` | U2 agent passports and versions |
 | `agent_outputs` | U3 rollback-ready generated output history |
 | `learning_signals` | U4 per-output quality signals (approve/edit/reject/thumbs) |
-| `entities` | entity extraction targets (schema exists, not yet wired) |
+| `entities` | extracted people, organizations, risks, KPIs, amounts, dates, systems, processes |
+| `evidence_entity_links` | evidence-to-entity backlinks with confidence |
 | `agent_keys` | scoped API key access |
 | `connectors` | installed connector metadata and encrypted credentials |
 | `llm_usage` | cost and usage tracking |
@@ -222,6 +223,7 @@ sequenceDiagram
   API->>API: Extract text + classify source
   API->>API: Compute confidence + sensitivity
   API->>DB: Save evidence record
+  API->>DB: Extract and link entities for processed evidence
   API->>DB: Save audit event
   API-->>UI: processed / pending / quarantined
 ```
@@ -367,7 +369,7 @@ sequenceDiagram
 | Phase 8A Decision & Action Twin | Complete (v0.16.0) |
 | Phase 8A Decision auto-extraction from agent outputs | Complete (v0.16.1) |
 | Ask conversation memory | Complete (v0.16.2) |
-| Entity extraction | Not built -- schema exists, zero usage |
+| Entity extraction | Complete (v0.16.3) |
 | Orchestration / dispatcher | Not built -- all LLM calls single-shot |
 | Connectors | Skeleton only (Slack OAuth/events) |
 | Workflow Twin Scorer | Planned Phase 8B |
@@ -376,9 +378,9 @@ sequenceDiagram
 
 ## 11. Near-Term Architecture Roadmap
 
-### Entity Extraction Pipeline (next)
+### Entity Pages and Backlinks (next Company Memory step)
 
-The `entities` table exists but is not yet used. The next architecture step is to extract people, projects, risks, KPIs, dates, amounts, systems, and processes during ingestion, link them to evidence records, and expose entity summaries. This creates the substrate for Company Memory and later graph traversal.
+Entity extraction now writes `entities` and `evidence_entity_links` during ingestion for processed evidence. The next architecture step is to add entity pages, timeline views, backlinks from decisions/recommendations/actions, and graph traversal for Company Memory.
 
 ### Workflow Twin Run Primitives
 
@@ -387,10 +389,6 @@ Decision proposal extraction currently reads recent `agent_outputs` directly. Th
 ### Eval Harness (P2-A)
 
 Golden set of 30 Q&A cases with expected answers, automated scoring against ground truth. Answers "how do you test the AI?" for regulated buyers.
-
-### Entity Extraction Pipeline
-
-NER on ingestion, write to `entities` table (schema exists, zero repository methods today), link to evidence records. Foundation for Phase 12 Company Memory / knowledge graph with backlinks.
 
 ### Orchestration Dispatcher
 

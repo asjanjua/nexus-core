@@ -16,9 +16,9 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 
 ---
 
-## Current Status (verified 2026-06-10) -- v0.16.2
+## Current Status (verified 2026-06-10) -- v0.16.3
 
-**Verified:** 15 test files, 72 tests passing, build clean. 18 DB migrations.
+**Verified:** 16 test files, 74 tests passing, build clean. 19 DB migrations.
 
 **Phases 1-6: Complete.**
 **Pre-7A Technical Prep: Complete.** (v0.9.1)
@@ -30,19 +30,19 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 **Phase 7D / V1.1 Tier 1: Complete.** (v0.15.0) -- U1, U2, U3, U4 all shipped.
 **Phase 8A Decision & Action Twin: Shipped.** (v0.16.0-v0.16.1) -- full CRUD, interactive page, audit trail, and AI proposal extraction from agent outputs with human acceptance.
 **Persistent Ask Conversation Memory: Shipped.** (v0.16.2) -- DB-backed conversation history, recent-turn prompt context, history load and clear.
+**Entity Extraction Pipeline: Shipped.** (v0.16.3) -- deterministic entity extraction on processed evidence, `evidence_entity_links`, and `GET /api/entities`.
 **Demo packs: Audited and rewritten.** (v0.15.1) -- All 3 sector packs CEO-grade with pre-tuned Ask questions.
-**Production DB: Migrations 0014-0018 applied.**
+**Production DB: Migrations 0014-0019 applied.**
 
 **The product is demo-ready and pilot-ready for GCC fintech, professional services, and SaaS buyers.**
 
 **Priority order (reordered after 2026-06-10 audit):**
-1. Entity extraction pipeline -- foundation for company memory
-2. P2-A eval harness (2 sessions) -- regulated buyer confidence
-3. P2-C red-team checks (1-2 sessions) -- parallel with eval harness
-4. P2-B prompt registry (1-2 sessions) -- parallel or after
-5. P2-D workspace AI policy settings
-6. Workflow twin primitives -- foundation for Phase 8B/8C runs
-7. Orchestration dispatcher -- foundation for multi-agent coordination
+1. P2-A eval harness (2 sessions) -- regulated buyer confidence
+2. P2-C red-team checks (1-2 sessions) -- parallel with eval harness
+3. P2-B prompt registry (1-2 sessions) -- parallel or after
+4. P2-D workspace AI policy settings
+5. Workflow twin primitives -- foundation for Phase 8B/8C runs
+6. Orchestration dispatcher -- foundation for multi-agent coordination
 
 What is built locally for v0.16.0 (Phase 8A — Decision & Action Twin):
 - Migration 0017: extended `decisions` table (sourceOutputId FK, deadline, priority, timestamps).
@@ -72,6 +72,15 @@ What is built at v0.16.2 (Persistent Ask Conversation Memory):
 - `GET /api/ask` loads history, `DELETE /api/ask` clears history, and `POST /api/ask`
   injects recent turns into retrieval prompt context.
 - Ask UI loads persistent history on open and clears it server-side.
+
+What is built at v0.16.3 (Entity Extraction Pipeline):
+- Migration 0019 adds `evidence_entity_links` to connect extracted entities to source evidence.
+- Entity contracts cover people, organizations, projects, risks, KPIs, amounts, dates, systems,
+  processes, locations, products, and unknowns.
+- Processed evidence now triggers deterministic entity extraction after ingestion.
+- Repository methods list and upsert entities with evidence refs and confidence.
+- `GET /api/entities` exposes workspace-scoped entity summaries with type/search/limit filters.
+- Tests cover risk/system/process/amount/date/org extraction and evidence linkage.
 
 What is built locally for v0.15.1 (Demo Pack Audit):
 - All 3 sector packs rewritten to CEO sales-test standard: named metrics, named risks,
@@ -2606,8 +2615,9 @@ Positioning rule from the 2026-05-31 reassessment:
   NexusAI outputs, not to profile or rank individual staff.
 
 ### Core company-memory graph
-- [ ] Define Nexus company-memory model: Evidence, Entity, Decision, Recommendation, Risk, KPI, Project, Person, Department, System, Process, and Meeting
-- [ ] Add backlinks between evidence, entities, decisions, recommendations, owners, risks, and KPIs
+- [x] Define Nexus company-memory model: Evidence, Entity, Decision, Recommendation, Risk, KPI, Project, Person, Department, System, Process, and Meeting
+- [x] Add initial evidence-to-entity backlinks through `evidence_entity_links`
+- [ ] Add backlinks between entities, decisions, recommendations, owners, risks, and KPIs
 - [ ] Add entity pages that show timeline, linked evidence, decisions, open risks, and recommendations
 - [ ] Add "What changed since last week?" memory diff view
 - [ ] Add recurring-memory detection for risks, blockers, customers, projects, and strategic themes

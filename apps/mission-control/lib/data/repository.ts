@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { verifyPassword } from "@/lib/auth";
 import { store } from "@/lib/data/store";
-import type { Action, ActionInput, ActionStatus, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, EvidenceRecord, IngestionStatus, LearningSignal, LearningSignalInput, LearningSignalSummary, Recommendation, RecommendationStatus, Role, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
+import type { Action, ActionInput, ActionStatus, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, Entity, EntityInput, EntityType, EvidenceRecord, IngestionStatus, LearningSignal, LearningSignalInput, LearningSignalSummary, Recommendation, RecommendationStatus, Role, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
 import { assertDbConfigured, isDbRequired } from "@/lib/data/db-policy";
 import { normalizeDatabaseUrl } from "@/lib/data/postgres-url";
 import { encryptCredentials, decryptCredentials } from "@/lib/crypto";
@@ -18,6 +18,8 @@ import {
   auditEvents,
   connectors,
   decisions,
+  entities,
+  evidenceEntityLinks,
   evidenceRecords,
   learningSignals,
   llmUsage,
@@ -340,6 +342,131 @@ export const repository = {
     });
     if (!inserted) return store.addEvidenceRecord(record);
     return record;
+  },
+
+  async listEntities(
+    workspaceId: string,
+    options: { type?: EntityType; query?: string; limit?: number } = {}
+  ): Promise<Entity[]> {
+    const limit = Math.min(250, Math.max(1, options.limit ?? 100));
+    const rows = await runDb((db) =>
+      db
+        .select({
+          id: entities.id,
+          workspaceId: entities.workspaceId,
+          type: entities.type,
+          name: entities.name,
+          metadata: entities.metadata,
+          evidenceRefs: sql<string[]>`COALESCE(array_agg(DISTINCT ${evidenceEntityLinks.evidenceId}) FILTER (WHERE ${evidenceEntityLinks.evidenceId} IS NOT NULL), ARRAY[]::text[])`,
+          confidence: sql<number>`COALESCE(MAX(${evidenceEntityLinks.confidence}), 70)`
+        })
+        .from(entities)
+        .leftJoin(evidenceEntityLinks, eq(evidenceEntityLinks.entityId, entities.id))
+        .where(
+          sql`${entities.workspaceId} = ${workspaceId}
+            ${options.type ? sql`AND ${entities.type} = ${options.type}` : sql``}
+            ${options.query ? sql`AND lower(${entities.name}) LIKE ${`%${options.query.toLowerCase()}%`}` : sql``}`
+        )
+        .groupBy(entities.id)
+        .orderBy(desc(sql<number>`COALESCE(MAX(${evidenceEntityLinks.confidence}), 70)`))
+        .limit(limit)
+    );
+    if (!rows) return store.listEntities(workspaceId, options);
+    return rows.map((row) => ({
+      id: row.id,
+      workspaceId: row.workspaceId,
+      type: row.type as EntityType,
+      name: row.name,
+      metadata: row.metadata && typeof row.metadata === "object" ? row.metadata as Record<string, unknown> : {},
+      evidenceRefs: Array.isArray(row.evidenceRefs) ? row.evidenceRefs : [],
+      confidence: decodeStoredPercent(Number(row.confidence ?? 70))
+    }));
+  },
+
+  async upsertEntity(input: EntityInput): Promise<Entity> {
+    const normalizedName = input.name.trim().replace(/\s+/g, " ");
+    const saved = await runDb(async (db) => {
+      const existing = await db
+        .select()
+        .from(entities)
+        .where(
+          sql`${entities.workspaceId} = ${input.workspaceId}
+            AND ${entities.type} = ${input.type}
+            AND lower(${entities.name}) = ${normalizedName.toLowerCase()}`
+        )
+        .limit(1);
+
+      const entityId =
+        existing[0]?.id ?? `ent-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+      if (existing[0]) {
+        await db
+          .update(entities)
+          .set({
+            metadata: {
+              ...((existing[0].metadata as Record<string, unknown>) ?? {}),
+              ...input.metadata
+            }
+          })
+          .where(eq(entities.id, entityId));
+      } else {
+        await db.insert(entities).values({
+          id: entityId,
+          workspaceId: input.workspaceId,
+          type: input.type,
+          name: normalizedName,
+          metadata: input.metadata
+        });
+      }
+
+      const confidence = encodeStoredPercent(input.confidence);
+      await db
+        .insert(evidenceEntityLinks)
+        .values({
+          id: `eel-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          workspaceId: input.workspaceId,
+          evidenceId: input.evidenceId,
+          entityId,
+          confidence
+        })
+        .onConflictDoNothing();
+
+      return {
+        id: entityId,
+        workspaceId: input.workspaceId,
+        type: input.type,
+        name: normalizedName,
+        metadata: input.metadata,
+        evidenceRefs: [input.evidenceId],
+        confidence: input.confidence
+      } satisfies Entity;
+    });
+    if (saved) return saved;
+    return store.upsertEntity({ ...input, name: normalizedName });
+  },
+
+  async upsertEntities(inputs: EntityInput[], actor = "entity_extractor"): Promise<Entity[]> {
+    const deduped = new Map<string, EntityInput>();
+    for (const input of inputs) {
+      const key = `${input.workspaceId}:${input.evidenceId}:${input.type}:${input.name.trim().toLowerCase()}`;
+      if (!deduped.has(key)) deduped.set(key, input);
+    }
+    const saved = await Promise.all(Array.from(deduped.values()).map((input) => repository.upsertEntity(input)));
+    if (saved.length) {
+      const workspaceId = saved[0].workspaceId;
+      const evidenceIds = Array.from(new Set(inputs.map((input) => input.evidenceId)));
+      await repository.pushAudit({
+        workspaceId,
+        type: "entities_extracted",
+        actor,
+        payload: {
+          count: saved.length,
+          evidenceIds,
+          entityTypes: Array.from(new Set(saved.map((entity) => entity.type)))
+        }
+      });
+    }
+    return saved;
   },
 
   async addRecommendation(rec: Omit<Recommendation, "createdAt" | "updatedAt">): Promise<Recommendation> {

@@ -2,6 +2,38 @@
 
 ---
 
+## 0.16.3 — Entity Extraction Pipeline (2026-06-10)
+
+This release turns the previously dormant `entities` table into the first working substrate for
+Company Memory.
+
+**Schema — migration 0019**
+- Added `evidence_entity_links` to connect extracted entities to source evidence.
+- Added uniqueness on evidence/entity pairs and indexes for workspace, evidence, entity, type,
+  and name lookup.
+
+**Contracts**
+- Added `entityTypeSchema`, `entitySchema`, and `entityInputSchema`.
+- Entity types now cover people, organizations, projects, risks, KPIs, amounts, dates, systems,
+  processes, locations, products, and unknowns.
+
+**Ingestion**
+- Processed evidence now triggers deterministic entity extraction after the evidence record is saved.
+- Extracted entities carry source path/type, department context, confidence, and evidence linkage.
+- Pending/quarantined records remain excluded from entity extraction until reviewed.
+
+**Repository and API**
+- Added Postgres-first entity upsert/list methods with in-memory fallback.
+- Added `GET /api/entities` with workspace scoping, type filter, search filter, limit, and by-type summary.
+- Added `/api/entities` to the scoped agent/API route matcher.
+
+**Verification**
+- Added entity extraction tests for risks, systems, processes, amounts, dates, organizations, and evidence links.
+- `npm run test` passed: 16 files / 74 tests.
+- `npm run build` passed.
+
+---
+
 ## 0.16.0 — Phase 8A Decision & Action Twin (2026-06-01)
 
 This release pulls Phase 8A forward into the active build track, making NexusAI a daily-use tool

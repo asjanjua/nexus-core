@@ -24,9 +24,9 @@ Every document uploaded, every question asked, every decision logged makes Nexus
 
 ---
 
-## Where We Are -- Current State (v0.16.2, verified 2026-06-10)
+## Where We Are -- Current State (v0.16.3, verified 2026-06-10)
 
-The product is demo-ready and pilot-ready. 18 DB migrations, 15 test files / 72 tests passing.
+The product is demo-ready and pilot-ready. 19 DB migrations, 16 test files / 74 tests passing.
 
 **What is built and verified:**
 
@@ -37,28 +37,23 @@ The product is demo-ready and pilot-ready. 18 DB migrations, 15 test files / 72 
 - **Ask:** Natural language Q&A with evidence refs, confidence scores, passport filtering, output gates, escalation triggers, and persistent recent-turn conversation memory for follow-up questions.
 - **Governance:** Agent Control Profiles (passports) with evidence scoping, sensitivity ceilings, tool guards, hard-stop blocking, output gates, suspend/resume. Per-agent output log with rollback. Learning signal capture (approve/edit/reject/thumbs) with quality summary.
 - **Decision Twin:** Full CRUD for decisions and actions with priority, deadline, blocker flags, status tracking, audit trail, plus AI proposal extraction from recent agent outputs. Interactive `/decisions` page.
+- **Company Memory substrate:** Processed evidence now extracts people, organizations, risks, KPIs, amounts, dates, systems, and processes into `entities`, linked back to source evidence through `evidence_entity_links`.
 - **Exports:** Weekly brief, risk radar CSV, reco register CSV, one-pager. Export hub.
 - **Demo/Sales:** 3 CEO-grade demo sector packs, demo mode with reset, pilot kit, product brief page, readiness assessment (public), SOW templates, demo scripts, ROI calculator.
 - **Auth:** Clerk SSO, scope-based API keys, workspace status (trial/pilot/active/suspended), LLM cost tracking.
 
 **What is confirmed missing (2026-06-10 audit):**
 
-- Entity extraction (table exists, zero usage)
 - Orchestration/dispatcher (single-shot LLM calls only)
 - Connectors (Slack skeleton only, no live data flow)
 - Workflow twin primitives (no tables/APIs)
-- Knowledge graph / entity relationships (no backlinks, no graph traversal)
+- Knowledge graph UI / entity pages (initial evidence-to-entity links exist; no graph traversal yet)
 
 ---
 
 ## Next Priorities
 
-### Immediate -- Highest Pilot Impact
-
-**Entity Extraction Pipeline** (2-3 sessions)
-The `entities` table exists, but no ingestion path writes people, projects, risks, KPIs, dates, or amounts. Add NER on ingestion, link extracted entities back to evidence records, and expose entity summaries. This is the foundation for Company Memory.
-
-### Parallel -- Regulated Buyer Confidence
+### Immediate -- Regulated Buyer Confidence
 
 **Eval Harness (P2-A)** (2 sessions)
 Golden set of 30 Q&A cases with expected answers. Answers "how do you test the AI?" for compliance teams and regulated buyers. Automated scoring against ground truth.
@@ -66,13 +61,15 @@ Golden set of 30 Q&A cases with expected answers. Answers "how do you test the A
 **Red-Team Checks (P2-C)** (1-2 sessions)
 PII detection, overconfidence flagging, unsafe recommendations, role-inappropriate sensitivity leakage, hard-stop bypass testing.
 
+### Parallel -- Regulated Buyer Confidence
+
 **Prompt Registry (P2-B)** (1-2 sessions)
 Versioned prompts with audit logging. Every system prompt change tracked and revertible.
 
 ### Foundational -- Compound Memory and Orchestration
 
-**Entity Extraction Pipeline**
-NER on ingestion, write to entities table (schema exists, zero usage today), link to evidence records. Foundation for Phase 12 Company Memory / knowledge graph.
+**Entity Pages and Backlinks**
+Entity extraction now exists. The next Company Memory step is UI: entity pages with linked evidence, decisions, recommendations, owner/action references, and timeline views.
 
 **Orchestration Dispatcher**
 Multi-step reasoning, agent-to-agent coordination, task decomposition. Currently all LLM calls are single-shot. Foundation for complex queries spanning multiple rooms.

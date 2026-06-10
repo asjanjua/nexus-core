@@ -1,7 +1,7 @@
 # NexusAI Mission Control -- User Flows
 
 Updated: 2026-06-10
-Version: v0.16.2
+Version: v0.16.3
 
 > This document describes the end-to-end journeys a user takes through NexusAI Mission Control.
 > It serves three audiences: pilot sponsors (what happens when I use this), developers (how the
@@ -201,7 +201,21 @@ Once onboarded, the daily product loop has four surfaces: Dashboards (Agent Room
 
 **Why this matters:** Nexus moves from "track decisions manually" to "read agent work, detect likely decisions, and let the human approve the record."
 
-### 4.4 Evidence Review and Approvals
+### 4.4 Entity Extraction and Company Memory
+
+**Entry:** any successful upload through onboarding or `/ingestion`
+
+**Flow:**
+1. User uploads a document or evidence file.
+2. The ingestion service extracts text, classifies confidence/sensitivity, and saves the evidence record.
+3. If the record is `processed`, Nexus extracts candidate entities such as organizations, people, systems, risks, KPIs, amounts, dates, and processes.
+4. Extracted entities are upserted into the workspace entity index.
+5. Each entity is linked back to the source evidence through `evidence_entity_links` with confidence metadata.
+6. Agent/API clients can query `GET /api/entities` with optional type/search filters to inspect the workspace memory index.
+
+**Why this matters:** Nexus now begins to remember the nouns of the company, not just the documents. This is the first substrate for future entity pages, backlinks, graph views, and the Obsidian-like Company Memory layer.
+
+### 4.5 Evidence Review and Approvals
 
 **Entry:** `/approvals`
 

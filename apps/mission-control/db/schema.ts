@@ -135,6 +135,15 @@ export const entities = pgTable("entities", {
   metadata: jsonb("metadata")
 });
 
+export const evidenceEntityLinks = pgTable("evidence_entity_links", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull(),
+  evidenceId: text("evidence_id").notNull().references(() => evidenceRecords.id, { onDelete: "cascade" }),
+  entityId: text("entity_id").notNull().references(() => entities.id, { onDelete: "cascade" }),
+  confidence: integer("confidence").notNull().default(70),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+});
+
 export const recommendations = pgTable("recommendations", {
   id: text("id").primaryKey(),
   workspaceId: text("workspace_id").notNull(),

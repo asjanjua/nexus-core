@@ -72,6 +72,44 @@ export const evidenceRecordSchema = z.object({
 });
 export type EvidenceRecord = z.infer<typeof evidenceRecordSchema>;
 
+export const entityTypeSchema = z.enum([
+  "person",
+  "organization",
+  "project",
+  "risk",
+  "kpi",
+  "amount",
+  "date",
+  "system",
+  "process",
+  "location",
+  "product",
+  "unknown"
+]);
+export type EntityType = z.infer<typeof entityTypeSchema>;
+
+export const entitySchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  type: entityTypeSchema,
+  name: z.string(),
+  metadata: z.record(z.unknown()).default({}),
+  evidenceRefs: z.array(z.string()).default([]),
+  confidence: z.number().min(0).max(1).default(0.7),
+  createdAt: z.string().optional()
+});
+export type Entity = z.infer<typeof entitySchema>;
+
+export const entityInputSchema = z.object({
+  workspaceId: z.string(),
+  evidenceId: z.string(),
+  type: entityTypeSchema,
+  name: z.string().min(1).max(200),
+  confidence: z.number().min(0).max(1).default(0.7),
+  metadata: z.record(z.unknown()).default({})
+});
+export type EntityInput = z.infer<typeof entityInputSchema>;
+
 export const dashboardCardSchema = z.object({
   id: z.string(),
   role: z.string(),

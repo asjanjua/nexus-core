@@ -54,6 +54,7 @@ const isAgentApiRoute = createRouteMatcher([
   "/api/dashboard(.*)",
   "/api/recommendations(.*)",
   "/api/evidence(.*)",
+  "/api/entities(.*)",
   "/api/ask(.*)",
   "/api/ingestion(.*)",
   "/api/approvals(.*)",
