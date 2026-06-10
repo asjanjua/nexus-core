@@ -208,6 +208,15 @@ export const actions = pgTable("actions", {
   updatedAt:   timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 });
 
+export const askConversationMessages = pgTable("ask_conversation_messages", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull(),
+  userId: text("user_id").notNull(),
+  role: varchar("role", { length: 16 }).notNull(),
+  text: text("text").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+});
+
 export const approvals = pgTable("approvals", {
   id: text("id").primaryKey(),
   workspaceId: text("workspace_id").notNull(),

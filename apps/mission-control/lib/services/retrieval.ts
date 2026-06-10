@@ -18,7 +18,7 @@
  * Falls back to a bullet summary when ANTHROPIC_API_KEY is absent (dev / demo).
  */
 
-import type { AskResponse, EvidenceRecord } from "@/lib/contracts";
+import type { AskResponse, ConversationMessage, EvidenceRecord } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
 import { ask } from "@/lib/services/llm";
 import { generateEmbedding, isVectorSearchEnabled } from "@/lib/services/embeddings";
@@ -162,6 +162,14 @@ function buildEvidenceContext(records: EvidenceRecord[]): string {
     .join("\n\n");
 }
 
+function buildConversationContext(history: ConversationMessage[] = []): string {
+  const recent = history.slice(-8);
+  if (!recent.length) return "";
+  return recent
+    .map((message) => `${message.role === "user" ? "User" : "NexusAI"}: ${message.text}`)
+    .join("\n");
+}
+
 // ---------------------------------------------------------------------------
 // Public interface
 // ---------------------------------------------------------------------------
@@ -169,7 +177,7 @@ function buildEvidenceContext(records: EvidenceRecord[]): string {
 export async function answerWithEvidence(
   query: string,
   workspaceId: string,
-  options: { department?: string; agentKey?: string } = {}
+  options: { department?: string; agentKey?: string; conversationHistory?: ConversationMessage[] } = {}
 ): Promise<AskResponse> {
   const [ranked, profile, passport] = await Promise.all([
     rankEvidence(query, workspaceId, options),
@@ -248,9 +256,13 @@ export async function answerWithEvidence(
   }
 
   const context = buildEvidenceContext(results);
+  const conversationContext = buildConversationContext(options.conversationHistory);
   const companyContext = profile ? buildCompanyContext(profile) : "";
   const contextPrefix = companyContext ? `${companyContext}\n\n` : "";
-  const userPrompt = `${contextPrefix}Evidence:\n\n${context}\n\nQuestion: ${query}`;
+  const historyPrefix = conversationContext
+    ? `Recent conversation:\n${conversationContext}\n\nUse this only to interpret follow-up wording. Evidence remains the source of truth.\n\n`
+    : "";
+  const userPrompt = `${contextPrefix}${historyPrefix}Evidence:\n\n${context}\n\nQuestion: ${query}`;
 
   try {
     const answer = await ask(userPrompt, ASK_SYSTEM_PROMPT, {

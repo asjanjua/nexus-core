@@ -6,6 +6,7 @@ import {
   type AgentOutputInput,
   type AgentControlProfile,
   type AgentScope,
+  type ConversationMessage,
   type Decision,
   type DecisionStatus,
   type EvidenceRecord,
@@ -27,12 +28,6 @@ type AuditEvent = {
   actor: string;
   timestamp: string;
   payload: Record<string, unknown>;
-};
-
-type ConversationMessage = {
-  role: "user" | "assistant";
-  text: string;
-  timestamp: string;
 };
 
 type ConversationStore = Record<string, ConversationMessage[]>;
@@ -247,13 +242,25 @@ export const store = {
     else actionStore.push(action);
     return action;
   },
-  appendConversation(workspaceId: string, userId: string, role: "user" | "assistant", text: string): void {
+  appendConversation(workspaceId: string, userId: string, role: "user" | "assistant", text: string): ConversationMessage {
     const key = `${workspaceId}:${userId}`;
     if (!conversations[key]) conversations[key] = [];
-    conversations[key].push({ role, text, timestamp: nowIso() });
+    const record = {
+      id: `conv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      workspaceId,
+      userId,
+      role,
+      text,
+      createdAt: nowIso()
+    };
+    conversations[key].push(record);
+    return record;
   },
-  getConversation(workspaceId: string, userId: string): ConversationMessage[] {
-    return conversations[`${workspaceId}:${userId}`] ?? [];
+  getConversation(workspaceId: string, userId: string, limit = 20): ConversationMessage[] {
+    return (conversations[`${workspaceId}:${userId}`] ?? []).slice(-limit);
+  },
+  clearConversation(workspaceId: string, userId: string): void {
+    conversations[`${workspaceId}:${userId}`] = [];
   },
   pushAudit,
   getAuditEvents(workspaceId: string, limit = 20): AuditEvent[] {

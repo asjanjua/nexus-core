@@ -14,6 +14,11 @@ type AskResult = {
   escalationReason?: string;
 };
 
+type ConversationMessage = {
+  role: "user" | "assistant";
+  text: string;
+};
+
 const AGENT_OPTIONS = [
   { key: "", label: "General Ask" },
   { key: "strategy_agent", label: "Strategy Agent" },
@@ -73,6 +78,21 @@ export function AskPanel({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/ask?limit=20")
+      .then((res) => res.json())
+      .then((payload) => {
+        if (cancelled || !payload.ok) return;
+        const messages = (payload.data.messages ?? []) as ConversationMessage[];
+        setHistory(messages.map((message) => ({ role: message.role, text: message.text })));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   // Auto-fire when a first question comes in via ?q= URL param
   useEffect(() => {
     if (initialQuery && initialQuery.trim().length > 4) {
@@ -110,6 +130,11 @@ export function AskPanel({
     } finally {
       setLoading(false);
     }
+  }
+
+  async function clearHistory() {
+    setHistory([]);
+    await fetch("/api/ask", { method: "DELETE" }).catch(() => undefined);
   }
 
   return (
@@ -282,7 +307,7 @@ export function AskPanel({
           {history.length > 0 && (
             <button
               type="button"
-              onClick={() => setHistory([])}
+              onClick={clearHistory}
               className="text-xs text-white/30 transition hover:text-white/60"
             >
               Clear

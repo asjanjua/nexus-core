@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { verifyPassword } from "@/lib/auth";
 import { store } from "@/lib/data/store";
-import type { Action, ActionInput, ActionStatus, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, Decision, DecisionInput, DecisionStatus, EvidenceRecord, IngestionStatus, LearningSignal, LearningSignalInput, LearningSignalSummary, Recommendation, RecommendationStatus, Role, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
+import type { Action, ActionInput, ActionStatus, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, EvidenceRecord, IngestionStatus, LearningSignal, LearningSignalInput, LearningSignalSummary, Recommendation, RecommendationStatus, Role, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
 import { assertDbConfigured, isDbRequired } from "@/lib/data/db-policy";
 import { normalizeDatabaseUrl } from "@/lib/data/postgres-url";
 import { encryptCredentials, decryptCredentials } from "@/lib/crypto";
@@ -14,6 +14,7 @@ import {
   agentControlProfiles,
   agentOutputs,
   agentKeys,
+  askConversationMessages,
   auditEvents,
   connectors,
   decisions,
@@ -898,12 +899,66 @@ export const repository = {
     return updated;
   },
 
-  getConversation(workspaceId: string, userId: string) {
-    return store.getConversation(workspaceId, userId);
+  async getConversation(workspaceId: string, userId: string, limit = 20): Promise<ConversationMessage[]> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(askConversationMessages)
+        .where(sql`${askConversationMessages.workspaceId} = ${workspaceId} AND ${askConversationMessages.userId} = ${userId}`)
+        .orderBy(desc(askConversationMessages.createdAt))
+        .limit(limit)
+    );
+    if (!rows) return store.getConversation(workspaceId, userId, limit);
+    return rows
+      .reverse()
+      .map((row) => ({
+        id: row.id,
+        workspaceId: row.workspaceId,
+        userId: row.userId,
+        role: row.role === "assistant" ? "assistant" : "user",
+        text: row.text,
+        createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt)
+      }));
   },
 
-  appendConversation(workspaceId: string, userId: string, role: "user" | "assistant", text: string) {
-    store.appendConversation(workspaceId, userId, role, text);
+  async appendConversation(workspaceId: string, userId: string, role: "user" | "assistant", text: string): Promise<ConversationMessage> {
+    const id = `conv-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const now = new Date();
+    const wrote = await runDb(async (db) => {
+      const [row] = await db
+        .insert(askConversationMessages)
+        .values({
+          id,
+          workspaceId,
+          userId,
+          role,
+          text,
+          createdAt: now
+        })
+        .returning();
+      return row;
+    });
+    if (wrote) {
+      return {
+        id: wrote.id,
+        workspaceId: wrote.workspaceId,
+        userId: wrote.userId,
+        role: wrote.role === "assistant" ? "assistant" : "user",
+        text: wrote.text,
+        createdAt: wrote.createdAt instanceof Date ? wrote.createdAt.toISOString() : String(wrote.createdAt)
+      };
+    }
+    return store.appendConversation(workspaceId, userId, role, text);
+  },
+
+  async clearConversation(workspaceId: string, userId: string): Promise<void> {
+    const cleared = await runDb(async (db) => {
+      await db
+        .delete(askConversationMessages)
+        .where(sql`${askConversationMessages.workspaceId} = ${workspaceId} AND ${askConversationMessages.userId} = ${userId}`);
+      return true;
+    });
+    if (!cleared) store.clearConversation(workspaceId, userId);
   },
 
   checkSlackSafety(text: string, refs: string[]) {

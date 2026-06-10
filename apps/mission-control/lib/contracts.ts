@@ -321,6 +321,16 @@ export const apiEnvelopeSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
 
 export type AskResponse = z.infer<typeof askResponseSchema>;
 
+export const conversationMessageSchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  userId: z.string(),
+  role: z.enum(["user", "assistant"]),
+  text: z.string(),
+  createdAt: z.string()
+});
+export type ConversationMessage = z.infer<typeof conversationMessageSchema>;
+
 // ---------------------------------------------------------------------------
 // Agent OAuth / API Key contracts
 // ---------------------------------------------------------------------------
