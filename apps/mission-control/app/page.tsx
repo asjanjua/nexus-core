@@ -58,11 +58,11 @@ export default function HomePage() {
               </p>
             </div>
             <div className="flex flex-wrap gap-3">
-              <Link href="/sign-up" className="btn-primary px-5 py-3">
+              <Link href="/start-pilot" className="btn-primary px-5 py-3" prefetch={false}>
                 Start a Pilot
               </Link>
-              <Link href="/sign-in" className="btn-subtle px-5 py-3">
-                View Demo Workspace
+              <Link href="/workspace" className="btn-subtle px-5 py-3" prefetch={false}>
+                View Workspace
               </Link>
             </div>
             <p className="max-w-2xl text-sm text-white/50">
