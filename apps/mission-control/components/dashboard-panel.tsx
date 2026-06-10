@@ -1,8 +1,10 @@
 import { cardsForRole } from "@/lib/services/dashboard";
-import type { Role } from "@/lib/contracts";
+import { synthesiseForRole } from "@/lib/services/synthesis";
+import type { EvidenceRecord, Role } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
 import { DashboardCharts } from "@/components/dashboard-charts";
 import { EvidenceSourceList } from "@/components/evidence-source-list";
+import { ExecutiveSynthesisBrief, AgentDetailSection } from "@/components/synthesis-brief";
 import { AGENT_ROOMS, agentBriefIdsForRoleContext, agentForId, roomForRole } from "@/lib/agents/agent-library";
 import { labelForRole } from "@/lib/domain/role-registry";
 
@@ -17,13 +19,18 @@ export async function DashboardPanel({
   department?: string;
   agentId?: string;
 }) {
-  const cards = await cardsForRole(role, workspaceId, { department, agentId });
-  const activeRoom = roomForRole(role);
-  const [recs, evidence, profile] = await Promise.all([
+  const [cards, recs, evidence, profile] = await Promise.all([
+    cardsForRole(role, workspaceId, { department, agentId }),
     repository.getRecommendations(workspaceId),
     repository.getEvidenceForWorkspace(workspaceId),
     repository.getWorkspaceProfile(workspaceId).catch(() => null),
   ]);
+
+  const synthesis = agentId
+    ? null
+    : await synthesiseForRole(role, workspaceId, { department, cards });
+
+  const activeRoom = roomForRole(role);
   const roleAgents = agentBriefIdsForRoleContext(role, profile?.companyArchetype).map(agentForId);
   const roomLabel =
     profile?.companyArchetype === "sme_physical"
@@ -35,6 +42,7 @@ export async function DashboardPanel({
 
   return (
     <div className="space-y-4">
+      {/* Room navigation header */}
       <section className="panel space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
@@ -44,7 +52,6 @@ export async function DashboardPanel({
               NexusAI staffs this room with evidence-backed specialist agents. Each agent reads approved evidence only, drafts source-backed briefs, and routes high-impact actions through human approval.
             </p>
           </div>
-          <span className="badge badge-green">Human-approved actions only</span>
         </div>
         <div className="flex flex-wrap gap-2">
           {AGENT_ROOMS.map((room) => (
@@ -60,6 +67,7 @@ export async function DashboardPanel({
         </div>
       </section>
 
+      {/* Department filter */}
       {departments.length > 0 && (
         <section className="panel flex flex-wrap items-center gap-2 text-sm">
           <span className="text-white/45">Department:</span>
@@ -77,65 +85,96 @@ export async function DashboardPanel({
           ))}
         </section>
       )}
-      {roleAgents.length > 1 && (
+
+      {/* ----------------------------------------------------------------- */}
+      {/* PRIMARY: Executive Synthesis Brief                                  */}
+      {/* ----------------------------------------------------------------- */}
+      {synthesis && (
+        <ExecutiveSynthesisBrief synthesis={synthesis} roleLabel={roomLabel} />
+      )}
+
+      {/* Single-agent view header when filtered */}
+      {agentId && (
         <section className="panel flex flex-wrap items-center gap-2 text-sm">
-          <span className="text-white/45">Agent:</span>
+          <span className="text-white/45">Filtered to agent:</span>
+          <span className="badge badge-green">{cards[0]?.agentName ?? agentId}</span>
           <a
             href={`/dashboard/${role}${department ? `?department=${encodeURIComponent(department)}` : ""}`}
-            className={`badge ${!agentId ? "badge-green" : "badge-muted"}`}
+            className="badge badge-muted"
           >
-            All
+            Clear filter
           </a>
-          {roleAgents.map((agent) => {
-            const params = new URLSearchParams();
-            if (department) params.set("department", department);
-            params.set("agent", agent.id);
-            return (
-              <a
-                key={agent.id}
-                href={`/dashboard/${role}?${params.toString()}`}
-                className={`badge ${agentId === agent.id ? "badge-green" : "badge-muted"}`}
-                title={agent.mandate}
-              >
-                {agent.name}
-              </a>
-            );
-          })}
         </section>
       )}
-      <div className="grid gap-4 md:grid-cols-2">
-        {cards.map((card) => (
-          <article key={card.id} className="panel">
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div>
-                <p className="text-xs uppercase tracking-wide text-white/35">Agent Brief</p>
-                <p className="mt-1 text-base font-semibold text-white">{card.agentName ?? card.title}</p>
-              </div>
-              <span className="badge badge-muted">{card.outputType ?? "brief"}</span>
+
+      {/* ----------------------------------------------------------------- */}
+      {/* SECONDARY: Specialist Agent Detail (collapsible unless filtered)    */}
+      {/* ----------------------------------------------------------------- */}
+      {synthesis ? (
+        <AgentDetailSection cardCount={cards.length}>
+          {/* Agent filter — inside the collapsible */}
+          {roleAgents.length > 1 && (
+            <div className="panel flex flex-wrap items-center gap-2 text-sm">
+              <span className="text-white/45">Agent:</span>
+              <a
+                href={`/dashboard/${role}${department ? `?department=${encodeURIComponent(department)}` : ""}`}
+                className={`badge ${!agentId ? "badge-green" : "badge-muted"}`}
+              >
+                All
+              </a>
+              {roleAgents.map((agent) => {
+                const params = new URLSearchParams();
+                if (department) params.set("department", department);
+                params.set("agent", agent.id);
+                return (
+                  <a
+                    key={agent.id}
+                    href={`/dashboard/${role}?${params.toString()}`}
+                    className={`badge ${agentId === agent.id ? "badge-green" : "badge-muted"}`}
+                    title={agent.mandate}
+                  >
+                    {agent.name}
+                  </a>
+                );
+              })}
             </div>
-            {card.mandate && (
-              <p className="mt-2 text-xs leading-5 text-white/45">{card.mandate}</p>
-            )}
-            <p className="mt-2 text-sm text-white/80 line-clamp-6">{card.summary}</p>
-            <div className="mt-3 flex gap-2">
-              <span className="badge">confidence {Math.round(card.confidence * 100)}%</span>
-              <span className="badge">freshness {card.freshnessHours}h</span>
-              <span className="badge">{card.approvalPolicy?.replace(/_/g, " ") ?? "read only"}</span>
-            </div>
-            {card.suggestedNextAction && (
-              <p className="mt-3 rounded-lg border border-nexus-accent/20 bg-nexus-accent/5 px-3 py-2 text-xs text-nexus-accent/80">
-                Suggested next action: {card.suggestedNextAction}
-              </p>
-            )}
-            <EvidenceSourceList records={evidence} ids={card.evidenceRefs} compact />
-            {card.skillHints?.length ? (
-              <p className="mt-2 text-xs text-white/30">
-                Future skills: {card.skillHints.slice(0, 3).join(", ")}
-              </p>
-            ) : null}
-          </article>
-        ))}
-      </div>
+          )}
+          <AgentCards cards={cards} evidence={evidence} />
+        </AgentDetailSection>
+      ) : (
+        /* Agent filter bar — visible when not in synthesis mode */
+        <>
+          {roleAgents.length > 1 && (
+            <section className="panel flex flex-wrap items-center gap-2 text-sm">
+              <span className="text-white/45">Agent:</span>
+              <a
+                href={`/dashboard/${role}${department ? `?department=${encodeURIComponent(department)}` : ""}`}
+                className={`badge ${!agentId ? "badge-green" : "badge-muted"}`}
+              >
+                All
+              </a>
+              {roleAgents.map((agent) => {
+                const params = new URLSearchParams();
+                if (department) params.set("department", department);
+                params.set("agent", agent.id);
+                return (
+                  <a
+                    key={agent.id}
+                    href={`/dashboard/${role}?${params.toString()}`}
+                    className={`badge ${agentId === agent.id ? "badge-green" : "badge-muted"}`}
+                    title={agent.mandate}
+                  >
+                    {agent.name}
+                  </a>
+                );
+              })}
+            </section>
+          )}
+          <AgentCards cards={cards} evidence={evidence} />
+        </>
+      )}
+
+      {/* Recommendations */}
       <section className="panel">
         <p className="panel-title">Active Recommendations</p>
         <ul className="mt-3 space-y-2 text-sm text-white/80">
@@ -168,11 +207,59 @@ export async function DashboardPanel({
         </ul>
       </section>
 
-      {/* Role-specific chart analytics */}
+      {/* Analytics */}
       <section>
         <p className="text-xs uppercase tracking-wide text-white/40 mb-4">Analytics</p>
         <DashboardCharts role={role} workspaceId={workspaceId} />
       </section>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Agent card grid — extracted to avoid duplication above
+// ---------------------------------------------------------------------------
+
+function AgentCards({
+  cards,
+  evidence,
+}: {
+  cards: Awaited<ReturnType<typeof cardsForRole>>;
+  evidence: EvidenceRecord[];
+}) {
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      {cards.map((card) => (
+        <article key={card.id} className="panel">
+          <div className="flex flex-wrap items-start justify-between gap-2">
+            <div>
+              <p className="text-xs uppercase tracking-wide text-white/35">Agent Brief</p>
+              <p className="mt-1 text-base font-semibold text-white">{card.agentName ?? card.title}</p>
+            </div>
+            <span className="badge badge-muted">{card.outputType ?? "brief"}</span>
+          </div>
+          {card.mandate && (
+            <p className="mt-2 text-xs leading-5 text-white/45">{card.mandate}</p>
+          )}
+          <p className="mt-2 text-sm text-white/80 line-clamp-6">{card.summary}</p>
+          <div className="mt-3 flex gap-2">
+            <span className="badge">confidence {Math.round(card.confidence * 100)}%</span>
+            <span className="badge">freshness {card.freshnessHours}h</span>
+            <span className="badge">{card.approvalPolicy?.replace(/_/g, " ") ?? "read only"}</span>
+          </div>
+          {card.suggestedNextAction && (
+            <p className="mt-3 rounded-lg border border-nexus-accent/20 bg-nexus-accent/5 px-3 py-2 text-xs text-nexus-accent/80">
+              Suggested next action: {card.suggestedNextAction}
+            </p>
+          )}
+          <EvidenceSourceList records={evidence} ids={card.evidenceRefs} compact />
+          {card.skillHints?.length ? (
+            <p className="mt-2 text-xs text-white/30">
+              Future skills: {card.skillHints.slice(0, 3).join(", ")}
+            </p>
+          ) : null}
+        </article>
+      ))}
     </div>
   );
 }

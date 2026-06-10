@@ -176,6 +176,29 @@ export const agentBriefSchema = dashboardCardSchema.extend({
 export type AgentBrief = z.infer<typeof agentBriefSchema>;
 
 // ---------------------------------------------------------------------------
+// Executive Synthesis contracts
+// ---------------------------------------------------------------------------
+
+export const executiveSynthesisQuestionSchema = z.object({
+  question: z.string(),
+  answer: z.string(),
+  confidence: z.number().min(0).max(1),
+  evidenceRefs: z.array(z.string())
+});
+export type ExecutiveSynthesisQuestion = z.infer<typeof executiveSynthesisQuestionSchema>;
+
+export const executiveSynthesisSchema = z.object({
+  role: z.string(),
+  workspaceId: z.string(),
+  generatedAt: z.string(),
+  questions: z.array(executiveSynthesisQuestionSchema),
+  overallConfidence: z.number().min(0).max(1),
+  totalEvidenceRefs: z.array(z.string()),
+  agentCardCount: z.number().int().nonnegative()
+});
+export type ExecutiveSynthesis = z.infer<typeof executiveSynthesisSchema>;
+
+// ---------------------------------------------------------------------------
 // Agent Control Profile (passport) contracts
 // ---------------------------------------------------------------------------
 

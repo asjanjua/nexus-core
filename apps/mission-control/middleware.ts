@@ -68,6 +68,7 @@ const isAgentApiRoute = createRouteMatcher([
   "/api/actions(.*)",
   "/api/learning-signals(.*)",
   "/api/settings(.*)",
+  "/api/synthesis(.*)",
   "/api/connectors(.*)",  // includes install, callback, and list/revoke
   "/api/workspace(.*)",
 ]);

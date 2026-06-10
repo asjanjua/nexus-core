@@ -16,9 +16,9 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 
 ---
 
-## Current Status (verified 2026-06-10) -- v0.17.0
+## Current Status (verified 2026-06-10) -- v0.18.0
 
-**Verified:** 20 test files, 88 tests passing, build clean. 20 DB migrations.
+**Verified:** 21 test files, 102 tests passing (13 new synthesis tests), build clean. 20 DB migrations.
 
 **Phases 1-6: Complete.**
 **Pre-7A Technical Prep: Complete.** (v0.9.1)
@@ -32,15 +32,35 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 **Persistent Ask Conversation Memory: Shipped.** (v0.16.2) -- DB-backed conversation history, recent-turn prompt context, history load and clear.
 **Entity Extraction Pipeline: Shipped.** (v0.16.3) -- deterministic entity extraction on processed evidence, `evidence_entity_links`, and `GET /api/entities`.
 **Phase 2 AI Trust Layer: Shipped.** (v0.17.0) -- eval harness, red-team checks, prompt registry, and workspace AI policy settings.
+**Executive Synthesis Layer: Shipped.** (v0.18.0) -- on-demand dispatcher/synthesis service, role question sets, API, collapsible UI reframe.
 **Demo packs: Audited and rewritten.** (v0.15.1) -- All 3 sector packs CEO-grade with pre-tuned Ask questions.
 **Production DB: Migrations 0014-0020 applied.**
 
 **The product is demo-ready and pilot-ready for GCC fintech, professional services, and SaaS buyers.**
 
-**Priority order (reordered 2026-06-10):**
-1. Executive Synthesis Layer (2 sessions) -- dispatcher + role-aware synthesis briefs. See EXECUTIVE_SYNTHESIS_SPEC.md. APPROVED FOR BUILD.
-2. Workflow twin primitives -- foundation for Phase 8B/8C runs
-3. Orchestration dispatcher -- foundation for multi-agent coordination
+**Priority order (updated 2026-06-10):**
+1. Executive Synthesis Layer Session 2 (1 session) -- scheduled refresh, optional synthesis output history, entity backlinks in synthesis answers. NEXT.
+2. Workflow twin primitives -- foundation for Phase 8B/8C runs.
+3. Orchestration dispatcher -- foundation for multi-agent coordination.
+
+What is built at v0.18.0 (Executive Synthesis Layer):
+- No new DB migrations. Synthesis is computed on demand from existing agent outputs + evidence.
+- `lib/services/synthesis.ts` -- dispatcher calls `cardsForRole()`, synthesis engine answers
+  role-specific questions in parallel. CEO: 7 cross-functional questions. COO, CFO, CTO, CBO,
+  CHRO: 5 role-tuned questions. All other roles: 5 generic leadership questions.
+- Archetype language (bank CEO vs coffee shop owner) carried through via `buildCompanyContext()`.
+- Red-team check applied per question answer before returning to user.
+- `synthesis.executive` added to prompt registry.
+- `GET /api/synthesis/:role` -- scope `read:dashboard`. Returns `ExecutiveSynthesis`.
+- `ExecutiveSynthesisBrief` component -- primary hero panel with numbered Q&A, confidence badge,
+  evidence count, answered/total indicator.
+- `AgentDetailSection` component -- collapsible wrapper for agent cards below synthesis.
+- `SynthesisBriefSkeleton` -- loading skeleton.
+- `components/dashboard-panel.tsx` reframed -- synthesis primary, agent cards collapsible.
+  Dashboard cards are generated once and reused by synthesis. Single-agent filter bypasses synthesis.
+- `ExecutiveSynthesis` and `ExecutiveSynthesisQuestion` types in `lib/contracts.ts`.
+- `docs/EXECUTIVE_SYNTHESIS_SPEC.md` committed.
+- 13 tests in `tests/synthesis.test.ts`.
 
 What is built locally for v0.16.0 (Phase 8A — Decision & Action Twin):
 - Migration 0017: extended `decisions` table (sourceOutputId FK, deadline, priority, timestamps).
@@ -1239,52 +1259,40 @@ Positioning rule from the 2026-05-31 reassessment:
 
 ---
 
-## Phase 8A+ — Executive Synthesis Layer (APPROVED FOR BUILD)
+## Phase 8A+ — Executive Synthesis Layer (SHIPPED v0.18.0)
 
 > Specialist agents produce signals. Leadership receives synthesis. The dispatcher collects
 > agent outputs per role, the synthesis service produces one evidence-backed brief answering
 > the questions that matter to that seat. See docs/EXECUTIVE_SYNTHESIS_SPEC.md for full design.
 
-### Session 1 — Dispatcher + Synthesis Service + Tests
+### Session 1 — On-Demand Dispatcher + Synthesis Service + Tests
 
-- [ ] Create `lib/services/dispatcher.ts`: collect latest active agent_outputs per role/workspace,
-  group by room, apply archetype override via `agentBriefIdsForRoleContext()`, build
-  DispatcherResult with evidence ref union and staleness check.
-- [ ] Create `lib/agents/synthesis-prompts.ts`: per-role question frameworks (CEO 7 questions,
-  COO 5, CFO 5, CTO 5, CBO 5, CRO 5, CHRO 5, sme_physical owner 5). Each framework
-  produces a structured synthesis prompt with company context and brief language instruction.
-- [ ] Create `lib/services/executive-synthesis.ts`: accepts DispatcherResult, calls LLM with
-  role-specific synthesis prompt, runs output through evaluateOutputGate(), saves as
-  agent_outputs row with outputType "synthesis", writes audit event.
-- [ ] CEO cross-functional view: dispatcher collects outputs from all agents with "ceo" in
-  roleLens, not just the 3 in ROLE_AGENT_BRIEFS["ceo"].
-- [ ] Create `app/api/synthesis/route.ts`: GET /api/synthesis?role=ceo (read cached or generate),
-  POST /api/synthesis/refresh (force regeneration).
-- [ ] Create `tests/executive-synthesis.test.ts`:
-  - Dispatcher collects correct agents per role
-  - Dispatcher applies archetype override for sme_physical
-  - CEO cross-functional view includes agents from multiple rooms
-  - Synthesis prompt includes role-specific questions
-  - Synthesis output saved to agent_outputs with outputType "synthesis"
-  - Output gate runs on synthesis result
-  - Staleness warning triggers when source output > 7 days old
-  - Empty agent outputs produce "no signals available" response
-- [ ] Type-check: `npx tsc --noEmit 2>&1 | grep -v ".next/"`
-- [ ] All tests pass: `npm run test`
+- [x] Create `lib/services/synthesis.ts`: combined dispatcher/synthesis engine that calls
+  `cardsForRole()`, builds a specialist brief block, computes evidence refs/confidence, and
+  answers role-specific leadership questions.
+- [x] Add role question frameworks: CEO 7 questions; COO, CFO, CTO/CDO, CBO/CMO, and CHRO
+  5 questions each; generic fallback for all other roles.
+- [x] Use workspace company context and brief-language instructions in synthesis prompts.
+- [x] Add `synthesis.executive` to the prompt registry.
+- [x] Apply red-team checks per synthesis answer before returning to the user.
+- [x] Create `GET /api/synthesis/[role]` with `read:dashboard` scope and optional department filter.
+- [x] Add `/api/synthesis(.*)` to middleware agent/API route matching.
+- [x] Create `tests/synthesis.test.ts` covering role question sets and synthesis contracts.
+- [x] Type-check and build clean.
+- [x] All tests pass: `npm run test` (21 files / 102 tests).
 
 ### Session 2 — Dashboard Reframe + UX
 
-- [ ] Update `/dashboard/[role]` page: fetch synthesis via GET /api/synthesis as primary view.
-- [ ] Render synthesis card as first and largest element with structured sections matching the
-  role question framework (what changed, what matters, what needs a decision, etc.).
-- [ ] Move existing agent cards into collapsible "Specialist Signals" section below synthesis.
-- [ ] Add citation links: each synthesis finding cites which agent produced it. Clicking scrolls
-  to or expands that agent's card.
-- [ ] Add Refresh button wired to POST /api/synthesis/refresh.
-- [ ] Add staleness banner when any source output is older than threshold.
-- [ ] Add learning signal buttons (approve/edit/reject/thumbs) to synthesis card.
-- [ ] Type-check and test.
-- [ ] Update HANDOVER.md with session results.
+- [x] Render synthesis as the first dashboard panel for role dashboards.
+- [x] Move existing agent cards into collapsible "Specialist Agent Detail" below synthesis.
+- [x] Add confidence badge, evidence source count, answered/total indicator, and loading skeleton.
+- [x] Preserve single-agent filter (`?agent=`) as a direct specialist card view.
+- [x] Update HANDOVER.md, CHANGELOG.md, architecture docs, roadmap, and user flows.
+- [ ] Future: persist synthesis outputs into `agent_outputs` if rollback/history becomes necessary.
+- [ ] Future: add manual refresh endpoint/button for regenerated synthesis.
+- [ ] Future: add staleness banner when source evidence or source agent outputs exceed threshold.
+- [ ] Future: add entity backlinks and source names inside synthesis answers.
+- [ ] Future: add learning signal buttons directly on synthesis cards.
 
 ---
 

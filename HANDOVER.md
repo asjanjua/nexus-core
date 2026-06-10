@@ -6,13 +6,13 @@
 
 ## Session Info
 
-- **Last updated:** 2026-06-10 (v0.17.0 -- P2 AI trust layer shipped)
+- **Last updated:** 2026-06-10 (v0.18.0 -- Executive Synthesis Layer shipped)
 - **Last model:** Codex
 - **Session number:** #18
-- **Current version:** 0.17.0 -- Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. Phase 8A Decision Twin core plus decision auto-extraction complete. Persistent Ask memory, entity extraction, and P2 AI trust layer complete.
+- **Current version:** 0.18.0 -- Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. Phase 8A Decision Twin core plus decision auto-extraction complete. Persistent Ask memory, entity extraction, P2 AI trust layer, and Executive Synthesis Layer complete.
 - **Baseline pushed commit before this handover update:** `9a0c476` -- `feat: complete u2 agent control profiles`
-- **Remote status:** v0.17.0 ready to push/deploy. Migrations 0014-0020 applied.
-- **Local verification (2026-06-10):** `npm run test` passed 20 files / 88 tests. `npm run build` passed.
+- **Remote status:** v0.18.0 ready to push/deploy. Migrations 0014-0020 applied. No v0.18.0 DB migration required.
+- **Local verification (2026-06-10):** `npm run test` passed 21 files / 102 tests. `npm run build` passed.
 
 ---
 
@@ -66,12 +66,15 @@ This session did a comprehensive audit of the entire codebase to verify what is 
   repository/API surface, and tests.
 - P2 trust layer: 30-case eval harness, red-team checks, prompt registry, workspace AI policy UI/API,
   provider allow-list enforcement, local-only blocking, and low-confidence review routing.
+- Executive Synthesis Layer: on-demand role synthesis over specialist agent cards, primary dashboard
+  brief panel, collapsible specialist detail, prompt-registry backed synthesis prompt, red-team checks,
+  and `GET /api/synthesis/[role]`.
 
 **Priority reordering after fast-follow:**
-1. Executive Synthesis Layer (leadership bigger-picture briefs)
-2. Entity pages/backlinks for Company Memory
-3. Workflow twin primitives (`workflow_twins`, `workflow_twin_runs`)
-4. Orchestration dispatcher (foundation for compound queries)
+1. Executive Synthesis polish: scheduled refresh, optional synthesis output history, entity backlinks.
+2. Entity pages/backlinks for Company Memory.
+3. Workflow twin primitives (`workflow_twins`, `workflow_twin_runs`).
+4. Orchestration dispatcher (foundation for compound queries).
 
 ---
 
@@ -649,6 +652,7 @@ CLOUDFLARE_R2_*            R2 object storage (optional)
 | Persistent Ask Conversation Memory | Complete | v0.16.2 |
 | Entity Extraction Pipeline | Complete | v0.16.3 |
 | Phase 2 P2-A/B/C/D AI Trust Layer | Complete | v0.17.0 |
+| Executive Synthesis Layer | Complete | v0.18.0 |
 | Phase 8B -- Workflow Twin Scorer | Docs done, code not started | -- |
 | Phase 8C -- Ops Review Twin | Not started | -- |
 | Phase 9 -- Team Members | Build when pilot client needs it | -- |
@@ -658,13 +662,14 @@ CLOUDFLARE_R2_*            R2 object storage (optional)
 
 ### Highest leadership impact
 
-1. **Executive Synthesis Layer** -- bigger-picture leadership brief over specialist agent outputs.
+1. **Executive Synthesis polish** -- scheduled refresh, optional output history, entity backlinks,
+   source names, and learning signal controls on synthesis answers.
 
 ### Foundational (compound memory + orchestration)
 
 2. **Entity pages/backlinks** -- turn extracted entities into navigable Company Memory pages.
 3. **Workflow twin primitives** -- add `workflow_twins` and `workflow_twin_runs` after Decision & Action Twin proposal flow stabilizes.
-4. **Orchestration dispatcher** -- multi-step reasoning, agent-to-agent coordination
+4. **Orchestration dispatcher** -- multi-step reasoning, agent-to-agent coordination.
 
 ### Operational sign-off (see docs/SECURITY_REVIEW.md)
 
@@ -712,14 +717,14 @@ Before doing anything else, read:
 3. TASKS.md
 4. AGENTS.md
 
-Current version: 0.17.0
-Last audit: 2026-06-10. 152+ source files, 20 test files / 88 tests, build clean.
+Current version: 0.18.0
+Last audit: 2026-06-10. 152+ source files, 21 test files / 102 tests, build clean.
 
-Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. Phase 8A Decision Twin core, decision auto-extraction, persistent Ask memory, entity extraction, and P2 trust layer complete.
+Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. Phase 8A Decision Twin core, decision auto-extraction, persistent Ask memory, entity extraction, P2 trust layer, and Executive Synthesis Layer complete.
 Migrations 0014-0020 applied to Neon production.
 
 Immediate next builds:
-1. Executive Synthesis Layer
+1. Executive Synthesis polish
 2. Entity pages/backlinks
 3. Workflow twin primitives
 

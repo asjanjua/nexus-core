@@ -24,9 +24,9 @@ Every document uploaded, every question asked, every decision logged makes Nexus
 
 ---
 
-## Where We Are -- Current State (v0.17.0, verified 2026-06-10)
+## Where We Are -- Current State (v0.18.0, verified 2026-06-10)
 
-The product is demo-ready and pilot-ready. 20 DB migrations, 20 test files / 88 tests passing.
+The product is demo-ready and pilot-ready. 20 DB migrations, 21 test files / 102 tests passing.
 
 **What is built and verified:**
 
@@ -37,6 +37,7 @@ The product is demo-ready and pilot-ready. 20 DB migrations, 20 test files / 88 
 - **Ask:** Natural language Q&A with evidence refs, confidence scores, passport filtering, output gates, escalation triggers, and persistent recent-turn conversation memory for follow-up questions.
 - **Governance:** Agent Control Profiles (passports) with evidence scoping, sensitivity ceilings, tool guards, hard-stop blocking, output gates, suspend/resume. Per-agent output log with rollback. Learning signal capture (approve/edit/reject/thumbs) with quality summary.
 - **AI Trust Layer:** Eval harness, prompt registry, red-team output checks, provider allow-list, local-only mode, sensitivity ceiling, and confidence threshold controls.
+- **Executive Synthesis:** On-demand role-aware leadership brief on each dashboard, with specialist agent cards as collapsible drill-down.
 - **Decision Twin:** Full CRUD for decisions and actions with priority, deadline, blocker flags, status tracking, audit trail, plus AI proposal extraction from recent agent outputs. Interactive `/decisions` page.
 - **Company Memory substrate:** Processed evidence now extracts people, organizations, risks, KPIs, amounts, dates, systems, and processes into `entities`, linked back to source evidence through `evidence_entity_links`.
 - **Exports:** Weekly brief, risk radar CSV, reco register CSV, one-pager. Export hub.
@@ -54,10 +55,10 @@ The product is demo-ready and pilot-ready. 20 DB migrations, 20 test files / 88 
 
 ## Next Priorities
 
-### Immediate -- Highest Pilot Impact
+### Recently Shipped -- Highest Pilot Impact
 
-**Executive Synthesis Layer** (2 sessions) -- APPROVED FOR BUILD
-The single highest-differentiation feature. A thin dispatcher collects specialist agent outputs per role, then a synthesis service produces one evidence-backed leadership brief answering the questions that matter: what changed, what is at risk, what needs a decision, where are we blocked, what to do next. Every role gets a synthesis tuned to their mandate and archetype language. The CEO dashboard becomes the Executive Command Brief with specialist cards as drill-down. No new tables, no external framework. See EXECUTIVE_SYNTHESIS_SPEC.md for full design.
+**Executive Synthesis Layer** (v0.18.0)
+The single highest-differentiation feature. The dashboard now starts with one evidence-backed leadership brief answering the questions that matter: what needs attention, what is at risk, what needs a decision, where execution is blocked, and what to do next. Every role gets a synthesis tuned to its mandate and archetype language. Specialist agent cards remain available as drill-down detail.
 
 ### Recently Shipped -- Regulated Buyer Confidence
 
@@ -69,8 +70,8 @@ Nexus now has a 30-case eval harness, red-team output checks, a prompt registry,
 **Entity Pages and Backlinks**
 Entity extraction now exists. The next Company Memory step is UI: entity pages with linked evidence, decisions, recommendations, owner/action references, and timeline views.
 
-**Scheduled Synthesis**
-Once the synthesis layer exists, a scheduled task can trigger synthesis refresh on a cadence (daily, weekly). The CEO receives a fresh "company picture" every Monday morning without logging in.
+**Executive Synthesis Polish**
+Add scheduled refresh, optional synthesis output history, entity backlinks/source labels, and learning signal controls on synthesis answers. This turns the v0.18.0 read layer into a recurring executive operating cadence.
 
 ### Later
 

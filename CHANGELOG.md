@@ -2,6 +2,61 @@
 
 ---
 
+## 0.18.0 — Executive Synthesis Layer (2026-06-10)
+
+This release reframes the dashboard from a set of agent cards into a leadership brief that
+answers the questions executives actually ask at the start of their day.
+
+**Architecture**
+- No new database tables. Synthesis is computed on demand from existing `agent_outputs` and evidence.
+- Dispatcher calls `cardsForRole()` to collect all specialist agent outputs for a role, then the
+  synthesis engine answers role-specific questions grounded in those briefs.
+- Red-team checks applied per question answer before returning to the user.
+- `synthesis.executive` added to the prompt registry.
+
+**New service: `lib/services/synthesis.ts`**
+- `synthesiseForRole(role, workspaceId, options)` — dispatcher + synthesis engine.
+- `questionsForRole(role)` — returns role-specific question set:
+  CEO gets 7 cross-functional questions; COO, CFO, CTO, CBO, CHRO get 5 role-tuned questions;
+  all other roles get 5 generic leadership questions.
+- Archetype language (bank CEO vs coffee shop owner) carried through via existing
+  `buildCompanyContext()` and `briefLanguageInstruction()`.
+- Each question answered independently in parallel for speed.
+
+**New API: `GET /api/synthesis/:role`**
+- Scope: `read:dashboard`. Returns `ExecutiveSynthesis` with answered questions, confidence,
+  evidence refs, and agent card count.
+- Department filter via `?department=` query param.
+
+**New component: `components/synthesis-brief.tsx`**
+- `ExecutiveSynthesisBrief` — primary hero panel. Numbered questions with evidence-backed answers,
+  confidence badge, evidence source count, and answered/total indicator.
+- `AgentDetailSection` — collapsible wrapper for specialist agent cards below the brief.
+- `SynthesisBriefSkeleton` — loading skeleton matching question count.
+
+**Dashboard reframe: `components/dashboard-panel.tsx`**
+- Dashboard generation calls `cardsForRole()` once, then synthesis reuses those governed cards.
+- Synthesis brief renders as primary panel above agent cards.
+- Agent cards move into a collapsible `AgentDetailSection` (still fully accessible, one click).
+- Single-agent filter view (`?agent=`) bypasses synthesis and shows cards directly.
+- `AgentCards` extracted as internal component to avoid duplication.
+
+**New contracts: `lib/contracts.ts`**
+- `executiveSynthesisQuestionSchema` / `ExecutiveSynthesisQuestion`
+- `executiveSynthesisSchema` / `ExecutiveSynthesis`
+
+**Spec: `docs/EXECUTIVE_SYNTHESIS_SPEC.md`**
+- Full design spec committed with role question sets, architecture, UI layout before/after,
+  success criteria, and what this is not.
+
+**Verification**
+- 13 tests in `tests/synthesis.test.ts` covering question set correctness per role,
+  contract validation, boundary cases.
+- `npm run test` passed: 21 files / 102 tests.
+- `npm run build` passed.
+
+---
+
 ## 0.17.0 — Phase 2 AI Trust Layer (2026-06-10)
 
 This release completes the P2 trust and operating-model blockers needed for regulated-buyer

@@ -53,6 +53,19 @@ Return only items with clear evidence, owner or likely owner, rationale, priorit
 Do not create canonical records; humans approve all extracted candidates.`,
     changelog: ["Introduced as Decision Twin prompt registry entry."],
     lastUpdated: "2026-06-10T00:00:00.000Z"
+  },
+  "synthesis.executive": {
+    key: "synthesis.executive",
+    version: "1.0.0",
+    owner: "NexusAI Product",
+    description: "Cross-agent executive synthesis — answers role-specific leadership questions grounded in specialist agent briefs.",
+    template: `You are an executive intelligence analyst inside NexusAI Mission Control.
+Answer one specific executive question based only on the specialist agent briefs and evidence provided.
+Answer in 2-5 sentences. Be direct. Ground every statement in facts. No speculation.
+If no relevant evidence exists, say: "Insufficient evidence to answer this question."
+Use executive-ready language matching the company context.`,
+    changelog: ["Introduced as Executive Synthesis Layer prompt — v0.18.0."],
+    lastUpdated: "2026-06-10T00:00:00.000Z"
   }
 };
 

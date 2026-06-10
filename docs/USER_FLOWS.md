@@ -1,7 +1,7 @@
 # NexusAI Mission Control -- User Flows
 
 Updated: 2026-06-10
-Version: v0.17.0
+Version: v0.18.0
 
 > This document describes the end-to-end journeys a user takes through NexusAI Mission Control.
 > It serves three audiences: pilot sponsors (what happens when I use this), developers (how the
@@ -141,23 +141,25 @@ Once onboarded, the daily product loop has four surfaces: Dashboards (Agent Room
 4. Dashboard renders cards. Each card shows: agent name, brief content, confidence score, evidence count, and timestamp.
 5. User can interact with each card: view evidence refs, submit learning signals (approve/edit/reject/thumbs_up/thumbs_down), or drill into evidence.
 
-**What the user sees:** A room staffed by named AI analysts, each producing a brief grounded in their evidence. Not a BI dashboard. Not charts. Synthesis.
+**What the user sees:** One leadership synthesis first, with named AI analysts underneath as the proof trail. Not a BI dashboard. Not charts.
 
-### 4.1a Executive Synthesis Brief (planned -- approved for build)
+### 4.1a Executive Synthesis Brief
 
-**Entry:** `/dashboard/[role]` (primary view, replacing individual cards as the first thing the user sees)
+**Entry:** `/dashboard/[role]` (primary dashboard view)
 
 **Flow:**
-1. Dashboard loads and calls `GET /api/synthesis?role=[role]`.
-2. The dispatcher in `dispatcher.ts` collects the latest active agent_outputs for agents serving this role. For CEO, this is cross-functional: every agent with "ceo" in its roleLens across all rooms.
-3. The synthesis service in `executive-synthesis.ts` feeds all collected outputs into a single LLM call with a role-specific question framework. CEO gets 7 questions (what changed, what matters, what needs a decision, what is at risk, where are we blocked, what to do next, what evidence supports this). COO gets 5 operations questions. CFO gets 5 finance questions. Each role has its own framework.
-4. Archetype language carries through: the sme_physical coffee chain owner gets plain English ("How are my locations doing? What is my cash picture?"), the bank CEO gets formal executive language.
-5. Output runs through `evaluateOutputGate()`, saves as agent_outputs with outputType "synthesis", writes audit event.
-6. Dashboard renders the synthesis as the primary card with structured sections. Specialist agent cards appear below in a collapsible "Specialist Signals" drill-down.
-7. Each synthesis finding cites which specialist agent produced the evidence. Clicking a citation expands that agent's card.
-8. User can submit learning signals on the synthesis, refresh it, or drill into any specialist signal.
+1. Dashboard loads the normal specialist cards through `cardsForRole()`.
+2. The dashboard passes those governed cards into `synthesiseForRole()` to produce one role-aware brief from the specialist card summaries and evidence refs.
+3. The synthesis service applies company context, archetype language, and the `synthesis.executive` prompt registry entry.
+4. CEO receives 7 leadership questions. COO, CFO, CTO/CDO, CBO/CMO, and CHRO receive 5 role-tuned questions. Other roles receive a generic leadership framework.
+5. Each synthesis answer runs through red-team checks before display.
+6. Dashboard renders the synthesis as the primary card with numbered answers, confidence, evidence count, and answered/total indicator.
+7. Specialist agent cards appear below in a collapsible "Specialist Agent Detail" section.
+8. If the user filters by a single agent with `?agent=...`, Nexus bypasses synthesis and shows that specialist view directly.
 
 **What the user sees:** One executive brief that answers the only questions that matter for their role. Specialist agents are the proof trail, not the primary experience.
+
+**Known follow-on polish:** synthesis output history, manual refresh, source/entity backlinks in answers, and learning-signal controls directly on synthesis answers.
 
 ### 4.2 Ask Panel
 
@@ -438,7 +440,7 @@ P2 adds a visible trust layer for regulated buyers:
 | Readiness Assessment | `/readiness` | No | readiness scoring | audit_events |
 | Sign-up/Login | `/sign-up`, `/sign-in` | Clerk | Clerk auth | workspaces |
 | Onboarding | `/onboarding` | Yes | company-detection, role-suggestion, ingestion | workspaces, workspace_profiles, evidence_records, audit_events |
-| Dashboard | `/dashboard/[role]` | Yes | dashboard.ts, passport-policy, output-gate, llm | agent_outputs, audit_events |
+| Dashboard | `/dashboard/[role]` | Yes | dashboard.ts, synthesis.ts, passport-policy, output-gate, llm | agent_outputs, audit_events |
 | Ask | `/ask` | Yes | retrieval.ts, passport-policy, output-gate, llm | audit_events |
 | Decisions | `/decisions` | Yes | repository CRUD | decisions, actions, audit_events |
 | Approvals | `/approvals` | Yes | repository review | evidence_records, audit_events |

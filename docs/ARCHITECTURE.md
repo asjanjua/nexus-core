@@ -1,7 +1,7 @@
 # NexusAI Mission Control Architecture
 
 Updated: 2026-06-10
-Current product state: v0.17.0 (verified). Covers U2 Agent Control Profiles, U3 output history/rollback, U4 learning signals, Phase 8A Decision & Action Twin, AI decision proposals, persistent Ask memory, entity extraction, and P2 AI trust controls.
+Current product state: v0.18.0 (verified). Covers U2 Agent Control Profiles, U3 output history/rollback, U4 learning signals, Phase 8A Decision & Action Twin, AI decision proposals, persistent Ask memory, entity extraction, P2 AI trust controls, and the Executive Synthesis Layer.
 
 ## 1. Purpose
 
@@ -62,6 +62,8 @@ flowchart TB
   LLM --> Gate["Output Gate<br/>escalate or block"]
   Gate --> Outputs["Agent Outputs<br/>versioned history"]
   Outputs --> DB
+  Outputs --> Synthesis["Executive Synthesis<br/>on-demand leadership brief"]
+  Synthesis --> UI
 
   MC --> UI["Dashboards, Ask, Approvals,<br/>Settings, Exports"]
   UI --> Audit["Audit Events + Rollback"]
@@ -193,6 +195,20 @@ Decisions carry: title, description, status (open/decided/deferred/cancelled), p
 Actions carry: decisionId (FK cascade), actionText, owner, dueDate, isBlocker flag, status (open/in_progress/done/cancelled), completedAt. Blocker-first sort ensures critical blockers surface first.
 
 Current state: full CRUD via API and interactive `/decisions` page. AI proposal extraction from recent `agent_outputs` is built through `/api/decisions/extract`; proposed decisions/actions remain drafts until a user explicitly creates them.
+
+### 5.10 Executive Synthesis Layer
+
+v0.18.0 introduced an on-demand synthesis layer that reframes leadership dashboards from "several agent cards" into one role-aware brief first, with specialist agent detail underneath.
+
+Current behavior:
+- `lib/services/synthesis.ts` dispatches to `cardsForRole()` to collect the same governed specialist cards a role already sees.
+- The service builds a single specialist-brief context block, applies workspace company context and archetype language, then answers role-specific leadership questions.
+- CEO gets seven cross-functional questions. COO, CFO, CTO/CDO, CBO/CMO, and CHRO get five role-tuned questions. Other roles use a generic leadership set.
+- Each synthesis answer runs through red-team checks before display.
+- `GET /api/synthesis/[role]` exposes the synthesis with `read:dashboard` scope.
+- The dashboard renders the synthesis as the primary panel and puts specialist cards in a collapsible drill-down section.
+
+No v0.18.0 migration was added. Synthesis is computed on demand and is not yet persisted to `agent_outputs`; output history, manual refresh, entity backlinks, and synthesis-level learning signals remain follow-on polish items.
 
 ## 6. Key Data Stores
 
@@ -384,7 +400,7 @@ sequenceDiagram
 | Ask conversation memory | Complete (v0.16.2) |
 | Entity extraction | Complete (v0.16.3) |
 | P2 AI trust layer | Complete (v0.17.0) |
-| Executive Synthesis Layer | Approved for build -- dispatcher + role-aware synthesis |
+| Executive Synthesis Layer | Complete (v0.18.0) -- on-demand role-aware synthesis |
 | Connectors | Skeleton only (Slack OAuth/events) |
 | Workflow Twin Scorer | Planned Phase 8B |
 | Ops Review Twin | Planned Phase 8C |
@@ -392,9 +408,9 @@ sequenceDiagram
 
 ## 11. Near-Term Architecture Roadmap
 
-### Executive Synthesis Layer (APPROVED FOR BUILD -- next)
+### Executive Synthesis Polish (next)
 
-A thin dispatcher collects the latest active agent_outputs for a workspace grouped by role/room, then a synthesis service produces one evidence-backed leadership brief per role. The CEO gets a cross-functional synthesis answering 7 questions (what changed, what matters, what needs a decision, what is at risk, where are we blocked, what to do next, what evidence supports this). Every other leadership role gets a role-tuned synthesis with 5 questions. Archetype language (corporate vs sme_physical) carries through to the synthesis. No new tables: synthesis outputs use agent_outputs with outputType "synthesis". Dashboard reframe: synthesis becomes the primary view, specialist agent cards become drill-down. Full spec in docs/EXECUTIVE_SYNTHESIS_SPEC.md.
+The v0.18.0 synthesis layer is shipped as an on-demand dashboard read layer. The next architecture step is to add optional persistence/history, scheduled refresh, entity backlinks/source labels inside answers, and learning signal controls on synthesis questions if pilots show those are needed.
 
 ### Entity Pages and Backlinks (next Company Memory step)
 
