@@ -1,4 +1,4 @@
-# HANDOVER.md — NexusAI Live Session State
+# HANDOVER.md -- NexusAI Live Session State
 
 > This file is the memory of the NexusAI relay team. Update it at the end of every meaningful work session.
 
@@ -6,16 +6,70 @@
 
 ## Session Info
 
-- **Last updated:** 2026-06-01 (v0.14.1 — U3 per-agent outputs and rollback)
+- **Last updated:** 2026-06-10 (v0.16.2 -- decision extraction + persistent Ask memory shipped)
 - **Last model:** Codex
-- **Session number:** #17
-- **Current version:** 0.14.1 — Phase 7D U2 Agent Control Profiles complete and U3 per-agent output history/rollback built locally; U4 learning signals remain next.
-- **Baseline pushed commit before this handover update:** `9a0c476` — `feat: complete u2 agent control profiles`
-- **Remote status:** v0.14.1 U3 completion is local until committed and pushed.
+- **Session number:** #18
+- **Current version:** 0.16.2 -- Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. Phase 8A Decision Twin core plus decision auto-extraction complete. Persistent Ask memory complete.
+- **Baseline pushed commit before this handover update:** `9a0c476` -- `feat: complete u2 agent control profiles`
+- **Remote status:** v0.16.2 pushed to `main` and deployed to Render. Migrations 0014-0018 applied.
+- **Local verification (2026-06-10):** `npm run test` passed 15 files / 72 tests. `npm run build` passed.
+
+---
+
+## Verified Codebase State (2026-06-10 Audit)
+
+### Confirmed Built and Wired
+
+- **152+ source files, 18 DB migrations**
+- Phase 8A Decision Twin: `decisions` + `actions` tables, full CRUD APIs, interactive `/decisions` page with priority badges, status tabs, inline actions, blocker flags. Manual entry works.
+- Decision auto-extraction: `/api/decisions/extract` reads recent `agent_outputs`, proposes decision/action drafts, and creates canonical decision/action records only after human click-through.
+- U2 Agent Control Profiles: passports with versioning, evidence filtering, output gates, hard-stop blocking, tool guards, suspend/resume. Settings Agent Governance UI complete.
+- U3 Agent Outputs: `agent_outputs` table, rollback API, searchable Agent Output Log in Settings.
+- U4 Learning Signals: `learning_signals` table, approve/edit/reject/thumbs per output, summary endpoint, Agent Output Log UI integration. 12 dedicated tests.
+- Dashboard agents save outputs and run through Agent Control Profile gates before evidence enters model context.
+- Ask has two-tier retrieval (pgvector + keyword), passport filtering, output gating, evidence denial audit.
+- Confidence stored as 0-100 integer, converted at repository boundary (float truncation fixed).
+- Persistent Ask memory: migration `0018_ask_conversation_memory.sql`, DB-backed `ask_conversation_messages`, `GET/DELETE /api/ask`, and short recent-history prompt injection for follow-up questions.
+- Demo packs: 3 sector packs rewritten to CEO-grade standard with pre-tuned suggestedQuestions.
+
+### Confirmed Missing
+
+- **Entity extraction:** `entities` table exists in db/schema.ts but has zero repository methods, zero writes, zero usage anywhere in the codebase.
+- **Workflow twin primitives:** no `workflow_twins` or `workflow_twin_runs` tables/APIs.
+- **Connectors:** Slack OAuth/events skeleton exists (routes + adapter), no live data sync or ingestion flow.
+- **Orchestration/dispatcher:** no multi-agent coordination, no task decomposition, no ReAct loop. All LLM calls are single-shot.
+- **Entity relationships / knowledge graph:** no junction table, no backlinks, no graph traversal.
+
+### Architecture Gaps Identified
+
+The codebase has strong **agent governance** (who can do what, under what limits) but zero **agent orchestration** (how agents coordinate, chain, decompose tasks, or maintain memory). These are different systems. Governance is the competitive advantage for regulated buyers. Orchestration is what makes compound queries and company memory work.
 
 ---
 
 ## What Was Completed This Session
+
+### Session #18 -- Full Codebase Audit + Fast-Follow Builds (2026-06-10)
+
+This session did a comprehensive audit of the entire codebase to verify what is actually built versus what documentation claims.
+
+**Findings:**
+- Phase 8A (Decision Twin) is further along than memory files indicated: full CRUD + interactive UI exist.
+- U4 learning signals are fully built with 12 tests, not just planned.
+- Test count is 15 files / 72 tests (up from last recorded 14/59).
+- Memory files, HANDOVER, ROADMAP, and TASKS updated to reflect verified state.
+
+**Fast-follow builds shipped after audit:**
+- Decision auto-extraction from agent outputs: service, API, and `/decisions` proposal review panel.
+- Persistent Ask conversation memory: Postgres table, repository methods, `GET/DELETE /api/ask`, retrieval prompt context, and UI history loading/clearing.
+
+**Priority reordering after fast-follow:**
+1. Entity extraction pipeline (foundation for Phase 12 Company Memory)
+2. P2-A Eval Harness / P2-C Red-Team Checks (regulated-buyer blockers)
+3. P2-B Prompt Registry / P2-D Workspace AI Policy Settings
+4. Workflow twin primitives (`workflow_twins`, `workflow_twin_runs`)
+5. Orchestration dispatcher (foundation for compound queries)
+
+---
 
 ### v0.14.1 — U3 Per-Agent Output Log and Rollback
 
@@ -570,51 +624,68 @@ CLOUDFLARE_R2_*            R2 object storage (optional)
 
 ---
 
-## Plan Status — Reviewed and Tightened 2026-05-30
+## Plan Status -- Verified 2026-06-10
 
-TASKS.md has 24 phases covering the full product roadmap. Phases 1–7B are complete.
-
-| Phase | Status |
-|---|---|
-| Phases 1–6 | Complete |
-| Pre-7A Technical Prep | Complete (v0.9.1) |
-| Phase 7A — Role System + Archetypes | Complete (v0.10.0–0.10.2) |
-| Phase 7B — Agent Rooms UI | Complete (v0.10.3) |
-| Phase 7C — Production Operations | Complete (v0.11.0) — partial; external services still needed |
-| Phase 8 — Paid Pilot Packaging | **Build now** |
-| Phase 2 open items (4 tasks) | Before regulated-sector scale |
-| Phase 9 — Team Members | When first pilot needs >1 user |
-| Phase 9B — Mobile and Voice | After Phase 8 — market differentiator for GCC/Pakistan |
-| Phase 9C — Data Residency + Compliance | Before GCC regulated-sector clients |
-| Phase 9D — Go-to-Market Execution | Alongside Phase 8 |
-| Phase 10 — Enterprise SaaS Connectors | Each removes a manual upload step |
-| Phase 10B — Infrastructure Connectors | GCC/Pakistan banking, POS, regulatory portals |
-| Phase 11 — Social/Market Signals | Digital-native companies |
-| Phase 11B — Language Support | Arabic and Urdu for GCC/Pakistan scale |
-| Phase 12–15 | Long-term enterprise moat |
+| Phase | Status | Version |
+|---|---|---|
+| Phases 1-6 | Complete | v0.1-v0.9.0 |
+| Pre-7A Technical Prep | Complete | v0.9.1 |
+| Phase 7A -- Role System + Archetypes | Complete | v0.10.0-v0.10.2 |
+| Phase 7B -- Agent Rooms UI | Complete | v0.10.3 |
+| Phase 7C -- Production Operations | Code complete, external services pending | v0.11.0 |
+| Phase 8 -- Paid Pilot Packaging | Complete | v0.12.0 |
+| Phase 9D -- GTM Execution | Complete | v0.13.0 |
+| Phase 7D U1 -- Readiness Assessment | Complete | v0.13.1 |
+| Phase 7D U2 -- Agent Control Profiles | Complete | v0.14.0 |
+| Phase 7D U3 -- Agent Output Log + Rollback | Complete | v0.14.1 |
+| Phase 7D U4 -- Learning Signals | Complete | v0.15.0 |
+| Demo Pack Audit | Complete | v0.15.1 |
+| Phase 8A -- Decision Twin Core | Complete | v0.16.0 |
+| Phase 8A -- Decision Auto-Extraction | Complete | v0.16.1 |
+| Persistent Ask Conversation Memory | Complete | v0.16.2 |
+| Phase 2 P2-A/B/C/D | Scoped, not started | -- |
+| Phase 8B -- Workflow Twin Scorer | Docs done, code not started | -- |
+| Phase 8C -- Ops Review Twin | Not started | -- |
+| Phase 9 -- Team Members | Build when pilot client needs it | -- |
+| Phase 10+ | Future | -- |
 
 ## What Needs to Come Next
 
-**The product is fully commercially ready. Remaining blockers before the first pilot contract are operational, not code.**
+### Immediate builds (highest pilot impact)
 
-Pre-pilot sign-off checklist (see `docs/SECURITY_REVIEW.md`):
-- [ ] Wire Sentry for error tracking (30 min — add SDK and DSN to Render env vars)
-- [ ] Set up `support@nexusai.io` or Freshdesk (1 hour — email forwarding)
-- [ ] Run `npm audit --audit-level=high` and resolve any critical findings
-- [ ] Verify security headers via securityheaders.com after next deploy
-- [ ] Run tenant isolation test (2 Clerk orgs, verify no cross-workspace data access)
-- [ ] Stripe wiring (Phase 7C billing — not blocking for first pilot if manual invoicing)
+1. **Entity extraction pipeline** -- NER on ingestion, write to entities table, link to evidence records, and prepare the Company Memory layer.
 
-What is ready to take to a first client today:
-- `/product-brief` — public URL, share after first call
-- 3x pilot SOW Word docs — fintech, professional services, digital-native
-- Demo scripts for all 3 archetypes (Fintech CEO, Consulting Partner, D2C Founder)
-- ROI calculator + 30/60/90 review template + kickoff agenda (one Excel file)
-- Pilot sponsor onboarding checklist + success scorecard (`/pilot-kit`)
-- Export Hub: weekly brief PDF, risk radar CSV, recommendation register CSV, one-pager PDF
+### Before regulated-sector pilots
 
-**Next code phase: Phase 9 — Team Members.** Build only when a pilot client asks "can my COO also see this?"
-**Phase 9B — WhatsApp brief delivery** is the highest-value differentiator for GCC/Pakistan. Build after or alongside Phase 9.
+3. **P2-A: Eval Harness** (2 sessions) -- answers "how do you test the AI?"
+4. **P2-C: Red-Team Checks** (1-2 sessions) -- PII detection, overconfidence, unsafe recommendations
+5. **P2-B: Prompt Registry** (1-2 sessions) -- versioned prompts, audit logging
+6. **P2-D: Workspace AI Policy Settings** (1 session) -- UI for provider/sensitivity/threshold controls
+
+### Foundational (compound memory + orchestration)
+
+7. **Workflow twin primitives** -- add `workflow_twins` and `workflow_twin_runs` after Decision & Action Twin proposal flow stabilizes.
+8. **Orchestration dispatcher** -- multi-step reasoning, agent-to-agent coordination
+
+### Operational sign-off (see docs/SECURITY_REVIEW.md)
+
+- [ ] Wire Sentry for error tracking
+- [ ] Set up support@nexusai.io or Freshdesk
+- [ ] Run npm audit and resolve critical findings
+- [ ] Verify security headers via securityheaders.com
+- [ ] Run tenant isolation test
+- [x] Apply migrations 0014-0018 to Neon production
+- [ ] Stripe wiring (not blocking for first pilot if manual invoicing)
+
+### What is ready to take to a first client today
+
+- `/product-brief` -- public URL, share after first call
+- 3x pilot SOW Word docs (fintech, professional services, digital-native)
+- Demo scripts for 3 archetypes + competitor comparison
+- ROI calculator + 30/60/90 review template + kickoff agenda
+- `/pilot-kit` -- sponsor onboarding checklist + success scorecard
+- Export Hub: weekly brief, risk radar CSV, reco register CSV, one-pager
+- `/readiness` -- public AI-Native Readiness Assessment (lead gen)
 
 ---
 
@@ -641,19 +712,21 @@ Before doing anything else, read:
 3. TASKS.md
 4. AGENTS.md
 
-Current version: 0.13.0
-Last session completed: Phase 9D — GTM execution (product brief web page, 3 pilot SOW Word docs,
-demo scripts for 3 archetypes + competitor comparison, ROI calculator + pilot review templates +
-kickoff agenda Excel). Production DB migrated (migrations 0012 + 0013 applied successfully).
+Current version: 0.16.2
+Last audit: 2026-06-10. 152 source files, 22,138 LoC, 15 test files / 72 tests, build clean.
 
-The product is commercially ready. GTM materials are in ~/Documents/Playground/.
-TypeScript is clean.
+Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. Phase 8A Decision Twin core, decision auto-extraction, and persistent Ask memory complete.
+Migrations 0014-0018 applied to Neon production.
 
-Immediate next: operational setup before first pilot signs:
-- Sentry (30 min), support@nexusai.io (1 hour), npm audit, securityheaders.com verify, tenant isolation test.
-- Stripe wiring optional for first pilot if using manual invoicing.
+Immediate next builds:
+1. Entity extraction pipeline
+2. P2-A eval harness and P2-C red-team checks
 
-Next code phase: Phase 9 (Team Members) — only build when a pilot client needs multi-user access.
+Known missing (from 2026-06-10 audit):
+- Entity extraction: entities table in schema, zero usage
+- Orchestration/dispatcher: all LLM calls are single-shot, no agent coordination
+- Connectors: Slack skeleton only, no live data flow
+- Workflow twin primitives: no tables/APIs yet
 
 Start by confirming git status, then read the files above, then proceed.
 ```

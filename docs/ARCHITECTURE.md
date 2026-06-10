@@ -1,7 +1,7 @@
 # NexusAI Mission Control Architecture
 
-Updated: 2026-06-01
-Current product state: v0.14.1 local architecture, covering U2 Agent Control Profiles and U3 rollback-ready output history.
+Updated: 2026-06-10
+Current product state: v0.16.2 (verified). Covers U2 Agent Control Profiles, U3 output history/rollback, U4 learning signals, Phase 8A Decision & Action Twin, AI decision proposals, and persistent Ask memory.
 
 ## 1. Purpose
 
@@ -163,6 +163,26 @@ Primary surfaces:
 - Export pages and pilot kit
 - Slack as a governed secondary surface
 
+### 5.7 Learning Signal Layer
+
+U4 introduced per-output learning signal capture through `learning_signals`.
+
+Signal types: approve, edit, reject, thumbs_up, thumbs_down. Each signal records the output ID, workspace, signal type, optional comment, and actor. Every signal write fires an `agent_learning_signal` audit event.
+
+The Agent Output Log UI shows signal buttons on every output card. Summary endpoint aggregates signal counts and quality metrics per agent.
+
+This is the foundation for eval harness (P2-A) and future learning loops (U9).
+
+### 5.8 Decision & Action Twin Layer
+
+Phase 8A introduced the Decision & Action Twin through extended `decisions` and new `actions` tables.
+
+Decisions carry: title, description, status (open/decided/deferred/cancelled), priority (low/medium/high/critical), deadline, sourceOutputId (FK to agent_outputs for future auto-extraction), and full audit trail.
+
+Actions carry: decisionId (FK cascade), actionText, owner, dueDate, isBlocker flag, status (open/in_progress/done/cancelled), completedAt. Blocker-first sort ensures critical blockers surface first.
+
+Current state: full CRUD via API and interactive `/decisions` page. AI proposal extraction from recent `agent_outputs` is built through `/api/decisions/extract`; proposed decisions/actions remain drafts until a user explicitly creates them.
+
 ## 6. Key Data Stores
 
 | Table | Purpose |
@@ -172,11 +192,14 @@ Primary surfaces:
 | `workspace_profiles` | company profile and context |
 | `evidence_records` | extracted evidence, provenance, confidence, sensitivity, embeddings |
 | `recommendations` | AI-generated or reviewed recommendations |
-| `decisions` | decision records and rationale |
+| `decisions` | decision records with priority, deadline, sourceOutputId, rationale |
+| `actions` | action items linked to decisions with blocker flags and status |
 | `approvals` | human approval records |
 | `audit_events` | append-style event log |
 | `agent_control_profiles` | U2 agent passports and versions |
 | `agent_outputs` | U3 rollback-ready generated output history |
+| `learning_signals` | U4 per-output quality signals (approve/edit/reject/thumbs) |
+| `entities` | entity extraction targets (schema exists, not yet wired) |
 | `agent_keys` | scoped API key access |
 | `connectors` | installed connector metadata and encrypted credentials |
 | `llm_usage` | cost and usage tracking |
@@ -273,6 +296,7 @@ sequenceDiagram
 - `/ingestion`
 - `/approvals`
 - `/recommendations`
+- `/decisions`
 - `/evidence/[id]`
 - `/settings`
 - `/settings/connectors`
@@ -293,6 +317,13 @@ sequenceDiagram
 - `POST /api/agent-control-profiles/[agentKey]/suspend`
 - `GET /api/agent-outputs`
 - `POST /api/agent-outputs/[id]/rollback`
+- `GET/POST /api/decisions`
+- `PATCH /api/decisions/[id]`
+- `GET/POST /api/actions`
+- `PATCH /api/actions/[id]`
+- `POST /api/learning-signals`
+- `GET /api/learning-signals`
+- `GET /api/learning-signals/summary`
 - `GET /api/audit/events`
 
 ## 9. Security and Governance Boundaries
@@ -321,70 +352,57 @@ sequenceDiagram
 - unrestricted Slack/Teams summaries
 - full ERP/CRM/HRIS replacement
 
-## 10. Current Completion State
+## 10. Current Completion State (verified 2026-06-10)
 
 | Area | Status |
 |---|---|
 | Core Mission Control app | Complete for pilot |
 | Ingestion and provenance | Complete for pilot |
 | Workspace/company profile onboarding | Complete for pilot |
-| Role and Agent Room model | Complete for pilot |
-| U2 Agent Control Profiles | Complete for current V1.1 surfaces |
-| U3 output log and rollback | Complete locally in v0.14.1 |
-| U4 learning-signal capture | Next |
-| Decision & Action Twin | Planned Phase 8A |
+| Role and Agent Room model (20 roles, 5 archetypes) | Complete |
+| Agent Rooms (7 rooms, named specialists) | Complete |
+| U2 Agent Control Profiles / passports | Complete |
+| U3 Output log and rollback | Complete |
+| U4 Learning signal capture | Complete (v0.15.0) |
+| Phase 8A Decision & Action Twin | Complete (v0.16.0) |
+| Phase 8A Decision auto-extraction from agent outputs | Complete (v0.16.1) |
+| Ask conversation memory | Complete (v0.16.2) |
+| Entity extraction | Not built -- schema exists, zero usage |
+| Orchestration / dispatcher | Not built -- all LLM calls single-shot |
+| Connectors | Skeleton only (Slack OAuth/events) |
 | Workflow Twin Scorer | Planned Phase 8B |
 | Ops Review Twin | Planned Phase 8C |
 | Local/on-prem edge client | Later enterprise moat |
 
 ## 11. Near-Term Architecture Roadmap
 
-### U4: Learning Signals
+### Entity Extraction Pipeline (next)
 
-Capture reviewer decisions from approve/edit/reject actions:
-- decision type
-- optional reason
-- edit diff where available
-- evidence refs used
-- agent version
-- workspace scope
+The `entities` table exists but is not yet used. The next architecture step is to extract people, projects, risks, KPIs, dates, amounts, systems, and processes during ingestion, link them to evidence records, and expose entity summaries. This creates the substrate for Company Memory and later graph traversal.
 
-This becomes the seed for evaluation, learning loops, and future quality reporting.
+### Workflow Twin Run Primitives
 
-### Phase 8A: Decision & Action Twin
+Decision proposal extraction currently reads recent `agent_outputs` directly. The next structural step is to add `workflow_twins` and `workflow_twin_runs` so Decision & Action, Workflow Scorer, and Ops Review runs have their own run metadata, evidence refs, generated output refs, confidence, status, and audit trail.
 
-The first universal workflow twin should convert approved evidence and communications into:
-- decisions
-- action items
-- owners
-- risks
-- blockers
-- recommendations
-- evidence refs
-- confidence and freshness
+### Eval Harness (P2-A)
 
-It must obey U2 profiles before evidence enters context and should write U3 output history.
+Golden set of 30 Q&A cases with expected answers, automated scoring against ground truth. Answers "how do you test the AI?" for regulated buyers.
+
+### Entity Extraction Pipeline
+
+NER on ingestion, write to `entities` table (schema exists, zero repository methods today), link to evidence records. Foundation for Phase 12 Company Memory / knowledge graph with backlinks.
+
+### Orchestration Dispatcher
+
+Currently all LLM calls are single-shot with no multi-agent coordination. Future: task decomposition, agent-to-agent routing, ReAct loops for complex queries spanning multiple rooms.
 
 ### Phase 8B: Workflow Twin Scorer
 
-Score candidate workflows by:
-- frequency
-- pain
-- data readiness
-- risk
-- senior judgment required
-- reusability
-- monetization
-- speed benefit
+Score candidate workflows by frequency, pain, data readiness, risk, senior judgment required, reusability, monetization, and speed benefit.
 
 ### Phase 8C: Ops Review Twin
 
-Add a recurring operating review layer:
-- blockers
-- KPIs
-- overdue owners
-- department status
-- follow-up actions
+Recurring operating review: blockers, KPIs, overdue owners, department status, follow-up actions.
 
 ## 12. Architecture Decisions to Preserve
 

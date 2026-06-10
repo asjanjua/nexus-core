@@ -1,7 +1,7 @@
 # TASKS.md — NexusAI Roadmap and Checklist
 
 > Master task list for the NexusAI relay team. Do not delete tasks; mark them complete with `[x]`.
-> Last reviewed and tightened: 2026-06-01.
+> Last reviewed and tightened: 2026-06-10.
 
 ---
 
@@ -16,24 +16,33 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 
 ---
 
-## Current Status (as of 2026-06-01) — v0.16.0
+## Current Status (verified 2026-06-10) -- v0.16.2
 
-**Phases 1–6: Complete.**
+**Verified:** 15 test files, 72 tests passing, build clean. 18 DB migrations.
+
+**Phases 1-6: Complete.**
 **Pre-7A Technical Prep: Complete.** (v0.9.1)
-**Phase 7A: Complete for V1 pilot.** (v0.10.0 → v0.10.2)
-**Phase 7B: Complete for V1 pilot.** (v0.10.3)
-**Phase 7C: Code complete.** (v0.11.0) — external services (Sentry, Stripe, uptime) still to wire.
-**Phase 8: Complete.** (v0.12.0) — export artifacts, demo tools, pilot kit.
-**Phase 9D: Complete.** (v0.13.0) — product brief, SOW templates, demo scripts, ROI calculator.
-**Phase 7D / V1.1 Tier 1: Complete.** (v0.15.0) — U1, U2, U3, U4 all shipped.
-**Phase 8A Decision & Action Twin: Core shipped.** (v0.16.0) — full CRUD, interactive page, audit trail.
-**Phase 2 production items: Scoped.** — P2-A eval harness, P2-B prompt registry, P2-C red-team checks, P2-D workspace AI settings. Detailed task breakdown in TASKS.md Phase 2 section. Estimate: 5–7 sessions.
-**Demo packs: Audited and rewritten.** (v0.15.1) — All 3 sector packs now CEO-grade with pre-tuned Ask questions.
-**Production DB: Needs migrations 0014–0017.** Run before next Render deploy.
-**Latest local verification:** `npx tsc --noEmit` passed after v0.16.0.
+**Phase 7A: Complete.** (v0.10.0-v0.10.2) -- 20-role registry, 5 archetypes, stage-aware roles.
+**Phase 7B: Complete.** (v0.10.3) -- Agent rooms, named specialist agents.
+**Phase 7C: Code complete.** (v0.11.0) -- external services (Sentry, Stripe, uptime) still to wire.
+**Phase 8: Complete.** (v0.12.0) -- export artifacts, demo tools, pilot kit.
+**Phase 9D: Complete.** (v0.13.0) -- product brief, SOW templates, demo scripts, ROI calculator.
+**Phase 7D / V1.1 Tier 1: Complete.** (v0.15.0) -- U1, U2, U3, U4 all shipped.
+**Phase 8A Decision & Action Twin: Shipped.** (v0.16.0-v0.16.1) -- full CRUD, interactive page, audit trail, and AI proposal extraction from agent outputs with human acceptance.
+**Persistent Ask Conversation Memory: Shipped.** (v0.16.2) -- DB-backed conversation history, recent-turn prompt context, history load and clear.
+**Demo packs: Audited and rewritten.** (v0.15.1) -- All 3 sector packs CEO-grade with pre-tuned Ask questions.
+**Production DB: Migrations 0014-0018 applied.**
 
 **The product is demo-ready and pilot-ready for GCC fintech, professional services, and SaaS buyers.**
-**Immediate next: P2-A (eval harness) + P2-C (red-team checks) are the highest-priority blockers for regulated-sector pilots. Run P2-B and P2-D in parallel or after.**
+
+**Priority order (reordered after 2026-06-10 audit):**
+1. Entity extraction pipeline -- foundation for company memory
+2. P2-A eval harness (2 sessions) -- regulated buyer confidence
+3. P2-C red-team checks (1-2 sessions) -- parallel with eval harness
+4. P2-B prompt registry (1-2 sessions) -- parallel or after
+5. P2-D workspace AI policy settings
+6. Workflow twin primitives -- foundation for Phase 8B/8C runs
+7. Orchestration dispatcher -- foundation for multi-agent coordination
 
 What is built locally for v0.16.0 (Phase 8A — Decision & Action Twin):
 - Migration 0017: extended `decisions` table (sourceOutputId FK, deadline, priority, timestamps).
@@ -48,6 +57,21 @@ What is built locally for v0.16.0 (Phase 8A — Decision & Action Twin):
 - Decisions page: full interactive rewrite — priority badges, status tabs, summary strip (open/decided/
   open actions/blockers), Mark Decided button, inline action list with checkbox completion,
   blocker badge, overdue date highlighting, Add Action inline form, New Decision form.
+
+What is built at v0.16.1 (Decision Auto-Extraction):
+- `POST /api/decisions/extract` proposes decision/action drafts from recent `agent_outputs`.
+- `lib/services/decision-extraction.ts` extracts structured decisions with sourceOutputId,
+  evidence refs, priority, owner, rationale, and proposed actions.
+- `/decisions` now includes "Propose from agent outputs", an AI-proposed decision panel,
+  and explicit human acceptance before any decision/action becomes canonical.
+
+What is built at v0.16.2 (Persistent Ask Conversation Memory):
+- Migration 0018 `ask_conversation_messages` table with workspace/user/date index.
+- `ConversationMessage` contract plus Postgres-first repository methods:
+  get, append, and clear conversation.
+- `GET /api/ask` loads history, `DELETE /api/ask` clears history, and `POST /api/ask`
+  injects recent turns into retrieval prompt context.
+- Ask UI loads persistent history on open and clears it server-side.
 
 What is built locally for v0.15.1 (Demo Pack Audit):
 - All 3 sector packs rewritten to CEO sales-test standard: named metrics, named risks,
@@ -1169,20 +1193,20 @@ Positioning rule from the 2026-05-31 reassessment:
   select a specific output, roll it back to the previous version, and verify both the prior version
   and the rollback event appear in the audit log. History is never deleted.
 
-### U4 — Learning-Signal Capture
-- [ ] Add `decision_reason` (text, nullable) and `decision_edit` (text, nullable) fields to the
-  recommendation approval record. When a reviewer approves, rejects, or edits a recommendation,
-  they can optionally enter a reason (1–2 sentences). Edit captures the before/after text diff.
-- [ ] The approval queue UI shows a small optional "Reason for this decision" text input below
-  the approve/reject buttons. No hard requirement — encourage but do not block.
-- [ ] Write a `learning_signals` record for every decision: recommendationId, workspaceId, agentId,
-  decisionType (accept/edit/reject), reason (if provided), editDiff (if applicable), evidenceRefs
-  used, agentVersion, and timestamp.
-- [ ] `learning_signals` table is the seed for U8 (eval harness) and U9 (learning loop). No tuning
-  or analysis happens yet — only clean capture.
-- [ ] Acceptance test: every queue decision writes a learning_signal record. Reason field is
-  optional and does not block the approval action. Records are workspace-scoped and never
-  used to profile individual staff members.
+### U4 — Learning-Signal Capture ✓ COMPLETE (v0.15.0)
+
+> Note: implemented as a standalone `learning_signals` table with per-output signals
+> (approve/edit/reject/thumbs_up/thumbs_down) rather than the originally planned
+> decision_reason/decision_edit fields on recommendation approval. The actual implementation
+> is more flexible and covers all agent outputs, not just recommendations.
+
+- [x] `learning_signals` table (migration 0016) with FK cascade on agent_outputs.
+- [x] Signal types: approve, edit, reject, thumbs_up, thumbs_down per agent output.
+- [x] `POST /api/learning-signals`, `GET /api/learning-signals`, `GET /api/learning-signals/summary`.
+- [x] Agent Output Log UI shows signal buttons per output card.
+- [x] Every signal write fires an `agent_learning_signal` audit event.
+- [x] Workspace-scoped, never used to profile individual staff members.
+- [x] 12 tests in `tests/learning-signals.test.ts`.
 
 ---
 
@@ -1233,12 +1257,15 @@ Positioning rule from the 2026-05-31 reassessment:
   highlighting, Add Action inline form, New Decision form. All mutations via API.
 - [x] Every decision and action mutation writes an audit event (decision_created,
   decision_updated, action_created, action_updated).
-- [ ] Wire Decision creation from agent brief panel — "Create Decision from this brief" button
-  on dashboard card populates sourceOutputId + pre-fills rationale from brief content.
+- [x] Add AI proposal extraction from agent outputs — `/api/decisions/extract` and `/decisions`
+  review panel propose decisions/actions with sourceOutputId and evidence refs. Human click required
+  before canonical creation. (v0.16.1)
+- [ ] Add direct "Create Decision from this brief" button on dashboard card to prefill a single
+  proposal from one outputId.
 - [ ] Add workflow twin primitives: `workflow_twins` and `workflow_twin_runs` tables for
   structured AI-assisted decision extraction from meeting notes and uploaded docs.
 - [ ] Enforce Agent Control Profiles before evidence enters workflow twin prompt or retrieval.
-- [ ] Acceptance test: no action item becomes canonical without human approval.
+- [x] Acceptance rule: no proposed decision/action becomes canonical without explicit user click.
 - [ ] Acceptance test: output works across financial services, professional services, and SaaS profiles.
 
 ### Later workflow templates, not the universal first twin

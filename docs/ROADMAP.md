@@ -24,92 +24,70 @@ Every document uploaded, every question asked, every decision logged makes Nexus
 
 ---
 
-## Where We Are — Current State (v0.9.1)
+## Where We Are -- Current State (v0.16.2, verified 2026-06-10)
 
-The core product loop is complete and demo-ready:
+The product is demo-ready and pilot-ready. 18 DB migrations, 15 test files / 72 tests passing.
 
-- **Onboarding:** 7-step AI-assisted wizard. Company detection, role selection, document starter pack, governance defaults, focus mapping.
-- **Ingestion:** Multi-file upload with sector-aware classification, confidence routing (processed/pending/quarantined), pgvector embeddings, original file storage on R2.
-- **Retrieval:** Two-tier search (vector + keyword fallback). Company context injected into every LLM call.
-- **Dashboards:** CEO, COO, CBO, CTO role cards. LLM-generated cards grounded in evidence with company context prefix.
-- **Ask:** Natural language Q&A with evidence refs, confidence scores, and freshness signals.
-- **Recommendations:** Evidence-to-recommendation pipeline. Approval workflow with audit trail.
-- **Auth:** Clerk SSO. API key management for agent access. Scope-based auth on every route.
-- **Phase 7A readiness:** Role keys are now open-ended, custom/future dashboard routes compile and
-  render with fallback agent briefs, and evidence records can store `connectorInstanceId` for
-  future connector provenance.
+**What is built and verified:**
 
-**What is working but not polished:**
-- Phase 7A role registry and archetype engine are not built yet; the runtime is prepared for them.
-- Phase 8 paid-pilot exports and demo reset tools are still pending.
-- Team-member invitations and role-based access are pending Phase 9.
+- **Onboarding:** 7-step AI-assisted wizard with company detection, archetype selection, 20-role registry with deterministic relevance engine, governance defaults, focus mapping.
+- **Ingestion:** Multi-file upload with sector-aware classification, digital/social/WhatsApp evidence types, confidence routing (processed/pending/quarantined), pgvector embeddings, R2 file storage.
+- **Retrieval:** Two-tier search (pgvector + keyword fallback). Company context injected on every LLM call. Agent Control Profile passport filtering before evidence enters model context.
+- **Dashboards:** 7 Agent Rooms with named specialist agents. 20 role dashboards with archetype-aware brief language. Agent briefs saved as versioned outputs with rollback.
+- **Ask:** Natural language Q&A with evidence refs, confidence scores, passport filtering, output gates, escalation triggers, and persistent recent-turn conversation memory for follow-up questions.
+- **Governance:** Agent Control Profiles (passports) with evidence scoping, sensitivity ceilings, tool guards, hard-stop blocking, output gates, suspend/resume. Per-agent output log with rollback. Learning signal capture (approve/edit/reject/thumbs) with quality summary.
+- **Decision Twin:** Full CRUD for decisions and actions with priority, deadline, blocker flags, status tracking, audit trail, plus AI proposal extraction from recent agent outputs. Interactive `/decisions` page.
+- **Exports:** Weekly brief, risk radar CSV, reco register CSV, one-pager. Export hub.
+- **Demo/Sales:** 3 CEO-grade demo sector packs, demo mode with reset, pilot kit, product brief page, readiness assessment (public), SOW templates, demo scripts, ROI calculator.
+- **Auth:** Clerk SSO, scope-based API keys, workspace status (trial/pilot/active/suspended), LLM cost tracking.
+
+**What is confirmed missing (2026-06-10 audit):**
+
+- Entity extraction (table exists, zero usage)
+- Orchestration/dispatcher (single-shot LLM calls only)
+- Connectors (Slack skeleton only, no live data flow)
+- Workflow twin primitives (no tables/APIs)
+- Knowledge graph / entity relationships (no backlinks, no graph traversal)
 
 ---
 
 ## Next Priorities
 
-### Phase 7A — Role System and Business Archetypes (Q3 2026, immediate next)
+### Immediate -- Highest Pilot Impact
 
-The four-role system (CEO, COO, CBO, CTO) was the right starting point. It is not the right destination. The roles a company needs depend on its archetype, stage, size, regulatory context, and what the people in those seats actually worry about.
+**Entity Extraction Pipeline** (2-3 sessions)
+The `entities` table exists, but no ingestion path writes people, projects, risks, KPIs, dates, or amounts. Add NER on ingestion, link extracted entities back to evidence records, and expose entity summaries. This is the foundation for Company Memory.
 
-**Five business archetypes** shape everything: corporate (formal C-suite, regulated or scaling toward enterprise), startup/scale-up (founder-led, functional over titular, stage is the dominant signal), sme_physical (owner-operated, physical presence, daily cash rhythm, staff and suppliers are the operating system), digital_native (internet-first, performance marketing, social-driven acquisition, PLG or D2C motion), professional_practice (partnership model, billing by time or retainer, client relationships are the asset).
+### Parallel -- Regulated Buyer Confidence
 
-The archetype changes the role labels, the agent brief language, the evidence types expected, and the KPIs surfaced. A street company owner and a fintech CFO both use the Finance dashboard — but the agent brief speaks completely differently to each.
+**Eval Harness (P2-A)** (2 sessions)
+Golden set of 30 Q&A cases with expected answers. Answers "how do you test the AI?" for compliance teams and regulated buyers. Automated scoring against ground truth.
 
-**Full role set** of 20 roles across tiers: universal (CEO locked, CFO, COO), regulatory specialist (CRO, CCO), commercial and growth (CBO, Growth Officer, VP Performance Marketing, Brand/Community, CMO), technology and product (CTO, CPO), people (CHRO), sector-specific (Managing Partner, Chief Medical, VP Supply Chain, Project Director, VP Customer Success, Practice Lead), and future-stage (Chief of Staff, General Counsel — shown as Staged).
+**Red-Team Checks (P2-C)** (1-2 sessions)
+PII detection, overconfidence flagging, unsafe recommendations, role-inappropriate sensitivity leakage, hard-stop bypass testing.
 
-**Digital marketing and social as first-class evidence**: Meta Ads exports, Google Ads reports, TikTok Business Center, LinkedIn Campaign Manager, email CRM exports. The performance marketing agent detects ROAS decay, creative fatigue, and audience burn. This is not an optional connector for internet companies — it is their primary operating evidence.
+**Prompt Registry (P2-B)** (1-2 sessions)
+Versioned prompts with audit logging. Every system prompt change tracked and revertible.
 
-**Stage-aware roles**: Active (live dashboard), Staged (anticipated for next stage, visible but not yet populated), Available (relevant but not activated). The system anticipates what roles a company will need next and has the dashboard ready.
+### Foundational -- Compound Memory and Orchestration
 
-### Phase 7B — Agent Rooms Visual Reframe (Q3 2026)
+**Entity Extraction Pipeline**
+NER on ingestion, write to entities table (schema exists, zero usage today), link to evidence records. Foundation for Phase 12 Company Memory / knowledge graph.
 
-The positioning shift: from role dashboards to agent rooms. Instead of "CEO dashboard" — the Executive Command Room. Instead of "COO dashboard" — the Operating Room. Each room is staffed by named specialist agents with defined mandates, evidence scopes, and output types.
+**Orchestration Dispatcher**
+Multi-step reasoning, agent-to-agent coordination, task decomposition. Currently all LLM calls are single-shot. Foundation for complex queries spanning multiple rooms.
 
-This is not a rebrand. It is the logical next step from where the product already is. The current dashboard cards are already agent outputs — they just aren't named that way. Naming them changes how clients understand the product and unlocks a richer configuration model.
+### Later
 
-Why this matters: clients who see "CEO dashboard" expect a BI tool. Clients who see "Executive Command Room staffed by AI analysts" immediately understand the value proposition.
+Phase 7A/7B are COMPLETE (20-role registry, 5 archetypes, agent rooms, stage-aware roles all built). Phase 8 paid pilot packaging is largely COMPLETE (exports, demo reset, pilot kit, readiness assessment all built).
 
-### Phase 8 — Paid Pilot Packaging (Q3 2026)
+**Phase 9 -- Team Members** (Q4 2026): workspace invitations, role-based access, CxO lens assignment. Build when a pilot client requests it.
 
-Before charging premium pilot fees:
-- Weekly executive brief export (PDF)
-- Risk radar export
-- Demo workspace reset for sales calls
-- Pilot success scorecard with measurable outcomes
-- Sponsor-facing onboarding checklist
+**Phase 10 -- Core Connectors** (Q4 2026 / Q1 2027): Google Drive, SharePoint, Slack, Teams, Gmail, Outlook, Jira, Salesforce, QuickBooks. Each with read-only ingestion, provenance, sensitivity policy, sync schedule. Slack OAuth/events skeleton already exists.
 
-The product is ready to demo now. One more polish pass to be ready to charge for at scale.
+**Phase 12 -- Company Memory** (2027): entity pages with backlinks, diff views, the Obsidian-for-companies concept. Requires entity extraction pipeline first.
 
-### Phase 9 — Team Members (Q4 2026)
-
-- Workspace member invitations
-- Role-based access: Owner, Admin, Executive, Reviewer, Contributor, Viewer
-- CxO lens assignment per member
-- Department and sensitivity access policies per member
-
-Build this when a pilot client requests it — do not build speculatively.
-
-### Phase 10 — Core Connectors (Q4 2026 / Q1 2027)
-
-Priority order based on where enterprise evidence actually lives:
-1. Google Drive / SharePoint / OneDrive
-2. Slack / Microsoft Teams
-3. Gmail / Outlook
-4. Jira / Asana / Linear
-5. Salesforce / HubSpot
-6. QuickBooks / Xero / NetSuite
-7. Workday / BambooHR
-
-Each connector: read-only ingestion, provenance-preserving extraction, sensitivity policy, sync schedule, audit trail.
-
-### Phase 12 — Company Memory (2027)
-
-Every entity (risk, project, person, decision, KPI) gets a page with backlinks to evidence, decisions, recommendations, and owners. "What changed since last week?" becomes a diff view. This is the Obsidian-for-companies concept. It requires Phases 6–10 to be done well first.
-
-### Phase 13 — Local Edge Client (2027)
-
-For regulated clients who cannot send documents to the cloud: a local processor that extracts and embeds on-premises, syncing only approved summaries to Nexus cloud. Mac Studio appliance. Local LLM processing option. This is the enterprise moat for financial services, healthcare, and government clients.
+**Phase 13 -- Local Edge Client** (2027): on-premises document processing for regulated clients. Mac Studio appliance, local LLM option. Enterprise moat for financial services, healthcare, and government.
 
 ---
 
