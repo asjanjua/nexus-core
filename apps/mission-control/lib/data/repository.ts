@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { verifyPassword } from "@/lib/auth";
 import { store } from "@/lib/data/store";
-import type { Action, ActionInput, ActionStatus, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, Entity, EntityInput, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, LearningSignal, LearningSignalInput, LearningSignalSummary, PromptRegistryEntry, Recommendation, RecommendationStatus, Role, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
+import type { Action, ActionInput, ActionStatus, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, DispatchJob, DispatchJobInput, DispatchJobStatus, Entity, EntityInput, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, LearningSignal, LearningSignalInput, LearningSignalSummary, PromptRegistryEntry, Recommendation, RecommendationStatus, Role, SynthesisSchedule, SynthesisScheduleInput, SynthesisScheduleStatus, WorkflowTwin, WorkflowTwinInput, WorkflowTwinRun, WorkflowTwinRunInput, WorkflowTwinRunStatus, WorkflowTwinStatus, WorkflowTwinType, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
 import { assertDbConfigured, isDbRequired } from "@/lib/data/db-policy";
 import { normalizeDatabaseUrl } from "@/lib/data/postgres-url";
 import { encryptCredentials, decryptCredentials } from "@/lib/crypto";
@@ -27,11 +27,16 @@ import {
   promptRegistry,
   recommendations,
   roles,
+  synthesisSchedules,
   tenants,
   users,
   workspaces,
   workspaceProfiles,
   workspaceSettings,
+  workflowTwinRuns,
+  workflowTwins,
+  planDefinitions,
+  dispatchJobs,
   type recommendationStatusEnum,
   type ingestionStatusEnum
 } from "@/db/schema";
@@ -158,6 +163,58 @@ function toAgentOutput(row: typeof agentOutputs.$inferSelect): AgentOutput {
   };
 }
 
+function toSynthesisSchedule(row: typeof synthesisSchedules.$inferSelect): SynthesisSchedule {
+  return {
+    id: row.id,
+    workspaceId: row.workspaceId,
+    enabled: row.enabled,
+    cron: row.cron,
+    timezone: row.timezone,
+    roles: Array.isArray(row.roles) ? row.roles : ["ceo"],
+    delivery: Array.isArray(row.delivery) ? row.delivery as SynthesisSchedule["delivery"] : ["in_app"],
+    emailTargets: Array.isArray(row.emailTargets) ? row.emailTargets : [],
+    slackChannel: row.slackChannel ?? null,
+    lastRunAt: row.lastRunAt ? row.lastRunAt.toISOString() : null,
+    lastStatus: row.lastStatus as SynthesisScheduleStatus | null,
+    createdAt: row.createdAt.toISOString(),
+    updatedAt: row.updatedAt.toISOString()
+  };
+}
+
+function toWorkflowTwin(row: typeof workflowTwins.$inferSelect): WorkflowTwin {
+  return {
+    id: row.id,
+    workspaceId: row.workspaceId,
+    type: row.type as WorkflowTwinType,
+    name: row.name,
+    status: row.status as WorkflowTwinStatus,
+    config: (row.config as Record<string, unknown>) ?? {},
+    owner: row.owner ?? null,
+    createdBy: row.createdBy,
+    createdAt: row.createdAt.toISOString(),
+    updatedBy: row.updatedBy ?? null,
+    updatedAt: row.updatedAt.toISOString()
+  };
+}
+
+function toWorkflowTwinRun(row: typeof workflowTwinRuns.$inferSelect): WorkflowTwinRun {
+  return {
+    id: row.id,
+    workspaceId: row.workspaceId,
+    twinId: row.twinId,
+    twinType: row.twinType as WorkflowTwinType,
+    evidenceRefs: Array.isArray(row.evidenceRefs) ? row.evidenceRefs : [],
+    generatedOutputRefs: Array.isArray(row.generatedOutputRefs) ? row.generatedOutputRefs : [],
+    confidence: decodeStoredPercent(row.confidence),
+    status: row.status as WorkflowTwinRunStatus,
+    summary: row.summary,
+    payload: (row.payload as Record<string, unknown>) ?? {},
+    runAt: row.runAt.toISOString(),
+    reviewedBy: row.reviewedBy ?? null,
+    reviewedAt: row.reviewedAt?.toISOString() ?? null
+  };
+}
+
 function toRecommendation(row: typeof recommendations.$inferSelect): Recommendation {
   const createdAt = typeof row.createdAt === "string" ? row.createdAt : row.createdAt.toISOString();
   const updatedAt = typeof row.updatedAt === "string" ? row.updatedAt : row.updatedAt.toISOString();
@@ -248,6 +305,57 @@ async function runDb<T>(runner: (db: DbShape) => Promise<T>): Promise<T | null> 
     if (isDbRequired()) throw error;
     return null;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Dispatch job helpers
+// ---------------------------------------------------------------------------
+
+/** Exponential backoff: 30s, 5m, 30m for attempts 1, 2, 3+ */
+function backoffMs(attempts: number): number {
+  const schedule = [30_000, 5 * 60_000, 30 * 60_000];
+  return schedule[Math.min(attempts - 1, schedule.length - 1)] ?? 30_000;
+}
+
+type DispatchJobRow = typeof dispatchJobs.$inferSelect;
+
+function mapDispatchJob(row: DispatchJobRow): DispatchJob {
+  return {
+    id:          row.id,
+    workspaceId: row.workspaceId,
+    jobType:     row.jobType as DispatchJob["jobType"],
+    payload:     (row.payload ?? {}) as Record<string, unknown>,
+    status:      row.status as DispatchJob["status"],
+    priority:    row.priority,
+    attempts:    row.attempts,
+    maxAttempts: row.maxAttempts,
+    runAfter:    row.runAfter instanceof Date ? row.runAfter.toISOString() : String(row.runAfter),
+    startedAt:   row.startedAt instanceof Date ? row.startedAt.toISOString() : (row.startedAt ?? null),
+    completedAt: row.completedAt instanceof Date ? row.completedAt.toISOString() : (row.completedAt ?? null),
+    error:       row.error ?? null,
+    parentJobId: row.parentJobId ?? null,
+    createdAt:   row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
+  };
+}
+
+function mapDispatchJobRaw(row: Record<string, unknown>): DispatchJob {
+  const toIso = (v: unknown) => v instanceof Date ? v.toISOString() : (v ? String(v) : null);
+  return {
+    id:          String(row.id),
+    workspaceId: String(row.workspace_id),
+    jobType:     String(row.job_type) as DispatchJob["jobType"],
+    payload:     (row.payload ?? {}) as Record<string, unknown>,
+    status:      String(row.status) as DispatchJob["status"],
+    priority:    Number(row.priority),
+    attempts:    Number(row.attempts),
+    maxAttempts: Number(row.max_attempts),
+    runAfter:    toIso(row.run_after) ?? new Date().toISOString(),
+    startedAt:   toIso(row.started_at),
+    completedAt: toIso(row.completed_at),
+    error:       row.error ? String(row.error) : null,
+    parentJobId: row.parent_job_id ? String(row.parent_job_id) : null,
+    createdAt:   toIso(row.created_at) ?? new Date().toISOString(),
+  };
 }
 
 export const repository = {
@@ -810,6 +918,104 @@ export const repository = {
     return store.rollbackAgentOutput(workspaceId, outputId, actor, reason);
   },
 
+  async getSynthesisSchedule(workspaceId: string): Promise<SynthesisSchedule | null> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(synthesisSchedules)
+        .where(eq(synthesisSchedules.workspaceId, workspaceId))
+        .limit(1)
+    );
+    if (rows) return rows[0] ? toSynthesisSchedule(rows[0]) : null;
+    return store.getSynthesisSchedule(workspaceId);
+  },
+
+  async listEnabledSynthesisSchedules(): Promise<SynthesisSchedule[]> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(synthesisSchedules)
+        .where(eq(synthesisSchedules.enabled, true))
+    );
+    if (rows) return rows.map(toSynthesisSchedule);
+    return store.listEnabledSynthesisSchedules();
+  },
+
+  async upsertSynthesisSchedule(
+    workspaceId: string,
+    input: SynthesisScheduleInput,
+    actor = "system"
+  ): Promise<SynthesisSchedule> {
+    const now = new Date();
+    const id = `synth-schedule-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const saved = await runDb(async (db) => {
+      const [row] = await db
+        .insert(synthesisSchedules)
+        .values({
+          id,
+          workspaceId,
+          enabled: input.enabled,
+          cron: input.cron,
+          timezone: input.timezone,
+          roles: input.roles,
+          delivery: input.delivery,
+          emailTargets: input.emailTargets,
+          slackChannel: input.slackChannel ?? null,
+          createdAt: now,
+          updatedAt: now
+        })
+        .onConflictDoUpdate({
+          target: synthesisSchedules.workspaceId,
+          set: {
+            enabled: input.enabled,
+            cron: input.cron,
+            timezone: input.timezone,
+            roles: input.roles,
+            delivery: input.delivery,
+            emailTargets: input.emailTargets,
+            slackChannel: input.slackChannel ?? null,
+            updatedAt: now
+          }
+        })
+        .returning();
+
+      await db.insert(auditEvents).values({
+        id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        workspaceId,
+        type: "synthesis_schedule_updated",
+        actor,
+        payload: {
+          enabled: input.enabled,
+          cron: input.cron,
+          timezone: input.timezone,
+          roles: input.roles,
+          delivery: input.delivery
+        }
+      });
+
+      return toSynthesisSchedule(row);
+    });
+    if (saved) return saved;
+    return store.upsertSynthesisSchedule(workspaceId, input, actor);
+  },
+
+  async updateSynthesisScheduleLastRun(
+    workspaceId: string,
+    status: SynthesisScheduleStatus
+  ): Promise<SynthesisSchedule | null> {
+    const now = new Date();
+    const updated = await runDb(async (db) => {
+      const [row] = await db
+        .update(synthesisSchedules)
+        .set({ lastRunAt: now, lastStatus: status, updatedAt: now })
+        .where(eq(synthesisSchedules.workspaceId, workspaceId))
+        .returning();
+      return row ? toSynthesisSchedule(row) : null;
+    });
+    if (updated !== null) return updated;
+    return store.updateSynthesisScheduleLastRun(workspaceId, status);
+  },
+
   // -------------------------------------------------------------------------
   // Agent Control Profiles (passports)
   // -------------------------------------------------------------------------
@@ -1291,6 +1497,128 @@ export const repository = {
     return all.find((a) => a.id === id) ?? null;
   },
 
+  async listWorkflowTwins(workspaceId: string): Promise<WorkflowTwin[]> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(workflowTwins)
+        .where(eq(workflowTwins.workspaceId, workspaceId))
+        .orderBy(desc(workflowTwins.updatedAt))
+    );
+    if (rows) return rows.map(toWorkflowTwin);
+    return store.listWorkflowTwins(workspaceId);
+  },
+
+  async getWorkflowTwin(workspaceId: string, id: string): Promise<WorkflowTwin | null> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(workflowTwins)
+        .where(sql`${workflowTwins.workspaceId} = ${workspaceId} AND ${workflowTwins.id} = ${id}`)
+        .limit(1)
+    );
+    if (rows) return rows[0] ? toWorkflowTwin(rows[0]) : null;
+    return store.getWorkflowTwin(workspaceId, id);
+  },
+
+  async createWorkflowTwin(workspaceId: string, input: WorkflowTwinInput, actor: string): Promise<WorkflowTwin> {
+    const id = `wt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const now = new Date();
+    const saved = await runDb(async (db) => {
+      const [row] = await db
+        .insert(workflowTwins)
+        .values({
+          id,
+          workspaceId,
+          type: input.type,
+          name: input.name,
+          status: input.status ?? "draft",
+          config: input.config ?? {},
+          owner: input.owner ?? null,
+          createdBy: actor,
+          createdAt: now,
+          updatedBy: actor,
+          updatedAt: now
+        })
+        .returning();
+
+      await db.insert(auditEvents).values({
+        id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        workspaceId,
+        type: "workflow_twin_created",
+        actor,
+        payload: { twinId: id, twinType: input.type, name: input.name, status: input.status ?? "draft" },
+        createdAt: now
+      });
+
+      return toWorkflowTwin(row);
+    });
+    if (saved) return saved;
+    return store.createWorkflowTwin(workspaceId, input, actor);
+  },
+
+  async listWorkflowTwinRuns(workspaceId: string, twinId?: string): Promise<WorkflowTwinRun[]> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(workflowTwinRuns)
+        .where(sql`${workflowTwinRuns.workspaceId} = ${workspaceId}
+          ${twinId ? sql`AND ${workflowTwinRuns.twinId} = ${twinId}` : sql``}`)
+        .orderBy(desc(workflowTwinRuns.runAt))
+    );
+    if (rows) return rows.map(toWorkflowTwinRun);
+    return store.listWorkflowTwinRuns(workspaceId, twinId);
+  },
+
+  async createWorkflowTwinRun(
+    workspaceId: string,
+    twin: WorkflowTwin,
+    input: WorkflowTwinRunInput,
+    actor: string
+  ): Promise<WorkflowTwinRun> {
+    const id = `wtr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const now = new Date();
+    const saved = await runDb(async (db) => {
+      const [row] = await db
+        .insert(workflowTwinRuns)
+        .values({
+          id,
+          workspaceId,
+          twinId: twin.id,
+          twinType: twin.type,
+          evidenceRefs: input.evidenceRefs ?? [],
+          generatedOutputRefs: input.generatedOutputRefs ?? [],
+          confidence: encodeStoredPercent(input.confidence ?? 0.7),
+          status: input.status ?? "generated",
+          summary: input.summary,
+          payload: input.payload ?? {},
+          runAt: now
+        })
+        .returning();
+
+      await db.insert(auditEvents).values({
+        id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        workspaceId,
+        type: "workflow_twin_run_created",
+        actor,
+        payload: {
+          twinId: twin.id,
+          runId: id,
+          twinType: twin.type,
+          status: input.status ?? "generated",
+          evidenceRefs: input.evidenceRefs ?? [],
+          generatedOutputRefs: input.generatedOutputRefs ?? [],
+          confidence: input.confidence ?? 0.7
+        },
+        createdAt: now
+      });
+
+      return toWorkflowTwinRun(row);
+    });
+    if (saved) return saved;
+    return store.createWorkflowTwinRun(workspaceId, twin, input, actor);
+  },
+
   // keep legacy read-only accessor for backward compat
   getDecisions(workspaceId: string) {
     return store.getDecisions(workspaceId);
@@ -1767,6 +2095,311 @@ export const repository = {
     ).catch(() => {
       // Non-fatal — cost tracking should never break the product
     });
+
+    // Also atomically increment monthly_token_used on the workspace
+    const totalTokens = (input.inputTokens ?? 0) + (input.outputTokens ?? 0);
+    if (totalTokens > 0) {
+      void runDb((db) =>
+        db.execute(
+          sql`UPDATE workspaces SET monthly_token_used = monthly_token_used + ${totalTokens} WHERE id = ${input.workspaceId}`
+        )
+      ).catch(() => {
+        // Non-fatal
+      });
+    }
+  },
+
+  // -------------------------------------------------------------------------
+  // Billing: workspace billing state and plan definitions
+  // -------------------------------------------------------------------------
+
+  async getWorkspaceBillingState(workspaceId: string): Promise<{
+    plan: string;
+    monthlyTokenLimit: number;
+    monthlyTokenUsed: number;
+    tokenResetAt: string;
+    planChangedAt: string | null;
+  } | null> {
+    const rows = await runDb((db) =>
+      db
+        .select({
+          plan: workspaces.plan,
+          monthlyTokenLimit: workspaces.monthlyTokenLimit,
+          monthlyTokenUsed: workspaces.monthlyTokenUsed,
+          tokenResetAt: workspaces.tokenResetAt,
+          planChangedAt: workspaces.planChangedAt,
+        })
+        .from(workspaces)
+        .where(eq(workspaces.id, workspaceId))
+        .limit(1)
+    );
+    if (!rows || !rows.length) return null;
+    const r = rows[0];
+    return {
+      plan: r.plan,
+      monthlyTokenLimit: r.monthlyTokenLimit,
+      monthlyTokenUsed: r.monthlyTokenUsed,
+      tokenResetAt: r.tokenResetAt?.toISOString() ?? new Date().toISOString(),
+      planChangedAt: r.planChangedAt?.toISOString() ?? null,
+    };
+  },
+
+  async getPlanDefinition(planKey: string): Promise<import("@/lib/contracts").PlanDefinition | null> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(planDefinitions)
+        .where(eq(planDefinitions.planKey, planKey))
+        .limit(1)
+    );
+    if (!rows || !rows.length) return null;
+    const r = rows[0];
+    return {
+      planKey: r.planKey,
+      label: r.label,
+      priceCents: r.priceCents,
+      monthlyTokens: r.monthlyTokens,
+      maxRoles: r.maxRoles,
+      maxEvidence: r.maxEvidence,
+      maxTeam: r.maxTeam,
+      maxConnectors: r.maxConnectors,
+      maxApiKeys: r.maxApiKeys,
+      askDailyLimit: r.askDailyLimit,
+      scheduledSynthesis: r.scheduledSynthesis,
+      synthesisMaxCadence: r.synthesisMaxCadence,
+      emailDelivery: r.emailDelivery,
+      slackDelivery: r.slackDelivery,
+      exportsEnabled: r.exportsEnabled,
+      decisionExtraction: r.decisionExtraction,
+      customPassports: r.customPassports,
+      dataResidency: r.dataResidency,
+      apiAccess: r.apiAccess,
+      watermark: r.watermark,
+    };
+  },
+
+  async updateWorkspacePlan(workspaceId: string, plan: string, monthlyTokenLimit: number): Promise<void> {
+    await runDb((db) =>
+      db
+        .update(workspaces)
+        .set({
+          plan,
+          monthlyTokenLimit,
+          monthlyTokenUsed: 0,
+          planChangedAt: new Date(),
+        })
+        .where(eq(workspaces.id, workspaceId))
+    );
+    // Audit event
+    void this.pushAudit({
+      workspaceId,
+      type: "plan_upgraded",
+      actor: "system",
+      payload: { plan, monthlyTokenLimit },
+    }).catch(() => {});
+  },
+
+  async resetMonthlyTokens(workspaceId: string): Promise<void> {
+    await runDb((db) =>
+      db.execute(
+        sql`UPDATE workspaces
+            SET monthly_token_used = 0,
+                token_reset_at = token_reset_at + interval '1 month'
+            WHERE id = ${workspaceId}
+              AND token_reset_at <= NOW()`
+      )
+    );
+  },
+
+  async resetAllDueMonthlyTokens(): Promise<number> {
+    const result = await runDb((db) =>
+      db.execute(
+        sql`UPDATE workspaces
+            SET monthly_token_used = 0,
+                token_reset_at = token_reset_at + interval '1 month'
+            WHERE token_reset_at <= NOW()`
+      )
+    );
+    return (result as { rowCount?: number })?.rowCount ?? 0;
+  },
+
+  // -------------------------------------------------------------------------
+  // Stripe / plan lifecycle
+  // -------------------------------------------------------------------------
+
+  /** Returns the workspace's Stripe customer ID, or null if not yet set. */
+  async getStripeCustomerId(workspaceId: string): Promise<string | null> {
+    try {
+      const rows = await runDb((db) =>
+        db.select({ stripeCustomerId: workspaces.stripeCustomerId })
+          .from(workspaces)
+          .where(eq(workspaces.id, workspaceId))
+          .limit(1)
+      );
+      return rows[0]?.stripeCustomerId ?? null;
+    } catch {
+      return null;
+    }
+  },
+
+  /**
+   * Saves the Stripe customer and subscription IDs on the workspace.
+   * Called from the webhook after checkout.session.completed.
+   */
+  async setStripeIds(
+    workspaceId: string,
+    stripeCustomerId: string,
+    stripeSubscriptionId: string
+  ): Promise<void> {
+    await runDb((db) =>
+      db.update(workspaces)
+        .set({ stripeCustomerId, stripeSubscriptionId })
+        .where(eq(workspaces.id, workspaceId))
+    );
+  },
+
+  /**
+   * Activates a plan after a successful Stripe payment.
+   * Sets plan, token limit, clears token usage, saves Stripe IDs, writes audit event.
+   */
+  async activatePlan(
+    workspaceId: string,
+    plan: string,
+    monthlyTokenLimit: number,
+    stripeCustomerId: string,
+    stripeSubscriptionId: string
+  ): Promise<void> {
+    await runDb((db) =>
+      db.update(workspaces)
+        .set({
+          plan,
+          monthlyTokenLimit,
+          monthlyTokenUsed: 0,
+          stripeCustomerId,
+          stripeSubscriptionId,
+          status: "active",
+          planChangedAt: new Date(),
+        })
+        .where(eq(workspaces.id, workspaceId))
+    );
+    void this.pushAudit({
+      workspaceId,
+      type: "plan_activated",
+      actor: "stripe",
+      payload: { plan, monthlyTokenLimit, stripeCustomerId, stripeSubscriptionId },
+    }).catch(() => {});
+  },
+
+  /**
+   * Handles plan downgrade or cancellation from Stripe webhook.
+   * If plan is null/free, reverts to free with default limits.
+   */
+  async handleSubscriptionChange(
+    workspaceId: string,
+    plan: string,
+    monthlyTokenLimit: number,
+    stripeSubscriptionId: string,
+    reason: "updated" | "cancelled"
+  ): Promise<void> {
+    await runDb((db) =>
+      db.update(workspaces)
+        .set({
+          plan,
+          monthlyTokenLimit,
+          stripeSubscriptionId: reason === "cancelled" ? null : stripeSubscriptionId,
+          planChangedAt: new Date(),
+          // Don't reset monthlyTokenUsed on downgrade — preserve usage history
+        })
+        .where(eq(workspaces.id, workspaceId))
+    );
+    void this.pushAudit({
+      workspaceId,
+      type: reason === "cancelled" ? "plan_cancelled" : "plan_changed",
+      actor: "stripe",
+      payload: { plan, monthlyTokenLimit, stripeSubscriptionId, reason },
+    }).catch(() => {});
+  },
+
+  /**
+   * Suspends a workspace on payment failure.
+   * Sets suspendedAt timestamp; existing data is preserved.
+   */
+  async suspendWorkspace(workspaceId: string, reason: string): Promise<void> {
+    await runDb((db) =>
+      db.update(workspaces)
+        .set({ suspendedAt: new Date() })
+        .where(eq(workspaces.id, workspaceId))
+    );
+    void this.pushAudit({
+      workspaceId,
+      type: "workspace_suspended",
+      actor: "stripe",
+      payload: { reason },
+    }).catch(() => {});
+  },
+
+  /**
+   * Clears suspension on successful payment.
+   */
+  async unsuspendWorkspace(workspaceId: string): Promise<void> {
+    await runDb((db) =>
+      db.update(workspaces)
+        .set({ suspendedAt: null })
+        .where(eq(workspaces.id, workspaceId))
+    );
+    void this.pushAudit({
+      workspaceId,
+      type: "workspace_unsuspended",
+      actor: "stripe",
+      payload: {},
+    }).catch(() => {});
+  },
+
+  /**
+   * Converts expired trial workspaces to the free plan.
+   * Returns count of workspaces converted.
+   * Called from billing cron alongside monthly token reset.
+   */
+  async convertExpiredTrials(): Promise<number> {
+    const result = await runDb((db) =>
+      db.execute(
+        sql`UPDATE workspaces
+            SET plan = 'free',
+                status = 'active',
+                monthly_token_limit = 500000
+            WHERE status = 'trial'
+              AND trial_ends_at IS NOT NULL
+              AND trial_ends_at < NOW()`
+      )
+    );
+    const count = (result as { rowCount?: number })?.rowCount ?? 0;
+    if (count > 0) {
+      void this.pushAudit({
+        workspaceId: "_system_",
+        type: "trials_converted",
+        actor: "cron",
+        payload: { convertedCount: count, ranAt: new Date().toISOString() },
+      }).catch(() => {});
+    }
+    return count;
+  },
+
+  /**
+   * Finds a workspace by Stripe customer ID.
+   * Used in webhook processing to map Stripe events back to NexusAI workspaces.
+   */
+  async getWorkspaceByStripeCustomer(stripeCustomerId: string): Promise<{ id: string; plan: string } | null> {
+    try {
+      const rows = await runDb((db) =>
+        db.select({ id: workspaces.id, plan: workspaces.plan })
+          .from(workspaces)
+          .where(eq(workspaces.stripeCustomerId, stripeCustomerId))
+          .limit(1)
+      );
+      return rows[0] ?? null;
+    } catch {
+      return null;
+    }
   },
 
   // -------------------------------------------------------------------------
@@ -2119,5 +2752,188 @@ export const repository = {
         editRate:      total > 0 ? edits / total : 0
       };
     });
-  }
+  },
+
+  // ---------------------------------------------------------------------------
+  // Dispatch job queue
+  // ---------------------------------------------------------------------------
+
+  async enqueueDispatchJob(workspaceId: string, input: DispatchJobInput): Promise<DispatchJob> {
+    const id = crypto.randomUUID();
+    const runAfter = input.runAfter ? new Date(input.runAfter) : new Date();
+
+    if (isDbRequired()) {
+      const db = getDb();
+      const rows = await db.insert(dispatchJobs).values({
+        id,
+        workspaceId,
+        jobType: input.jobType,
+        payload: input.payload ?? {},
+        status: "pending",
+        priority: input.priority ?? 5,
+        maxAttempts: input.maxAttempts ?? 3,
+        runAfter,
+        parentJobId: input.parentJobId ?? null,
+      }).returning();
+      return mapDispatchJob(rows[0]);
+    }
+
+    const job: DispatchJob = {
+      id,
+      workspaceId,
+      jobType: input.jobType as DispatchJob["jobType"],
+      payload: input.payload ?? {},
+      status: "pending",
+      priority: input.priority ?? 5,
+      attempts: 0,
+      maxAttempts: input.maxAttempts ?? 3,
+      runAfter: runAfter.toISOString(),
+      startedAt: null,
+      completedAt: null,
+      error: null,
+      parentJobId: input.parentJobId ?? null,
+      createdAt: new Date().toISOString(),
+    };
+    store.dispatchJobs = store.dispatchJobs ?? [];
+    (store.dispatchJobs as DispatchJob[]).push(job);
+    return job;
+  },
+
+  async claimPendingJob(): Promise<DispatchJob | null> {
+    if (isDbRequired()) {
+      const db = getDb();
+      const rows = await db.execute(sql`
+        UPDATE dispatch_jobs
+        SET status = 'running', started_at = NOW(), attempts = attempts + 1
+        WHERE id = (
+          SELECT id FROM dispatch_jobs
+          WHERE status = 'pending'
+            AND run_after <= NOW()
+          ORDER BY priority ASC, run_after ASC
+          LIMIT 1
+          FOR UPDATE SKIP LOCKED
+        )
+        RETURNING *
+      `);
+      if (!rows.rows || rows.rows.length === 0) return null;
+      return mapDispatchJobRaw(rows.rows[0] as Record<string, unknown>);
+    }
+
+    const jobs = (store.dispatchJobs ?? []) as DispatchJob[];
+    const now = new Date();
+    const pending = jobs
+      .filter(j => j.status === "pending" && new Date(j.runAfter) <= now)
+      .sort((a, b) => a.priority - b.priority || new Date(a.runAfter).getTime() - new Date(b.runAfter).getTime());
+    if (pending.length === 0) return null;
+    const job = pending[0];
+    job.status = "running";
+    job.startedAt = now.toISOString();
+    job.attempts = (job.attempts ?? 0) + 1;
+    return { ...job };
+  },
+
+  async markJobDone(jobId: string): Promise<void> {
+    if (isDbRequired()) {
+      await getDb().update(dispatchJobs)
+        .set({ status: "done", completedAt: new Date() })
+        .where(eq(dispatchJobs.id, jobId));
+      return;
+    }
+    const job = ((store.dispatchJobs ?? []) as DispatchJob[]).find(j => j.id === jobId);
+    if (job) { job.status = "done"; job.completedAt = new Date().toISOString(); }
+  },
+
+  async markJobFailed(jobId: string, error: string, retryAfterMs?: number): Promise<void> {
+    if (isDbRequired()) {
+      const db = getDb();
+      const rows = await db.select().from(dispatchJobs).where(eq(dispatchJobs.id, jobId)).limit(1);
+      if (rows.length === 0) return;
+      const row = rows[0];
+      const exhausted = row.attempts >= row.maxAttempts;
+      if (exhausted) {
+        await db.update(dispatchJobs)
+          .set({ status: "failed", completedAt: new Date(), error })
+          .where(eq(dispatchJobs.id, jobId));
+      } else {
+        const delay = retryAfterMs ?? backoffMs(row.attempts);
+        await db.update(dispatchJobs)
+          .set({ status: "pending", error, runAfter: new Date(Date.now() + delay) })
+          .where(eq(dispatchJobs.id, jobId));
+      }
+      return;
+    }
+    const job = ((store.dispatchJobs ?? []) as DispatchJob[]).find(j => j.id === jobId);
+    if (!job) return;
+    if (job.attempts >= job.maxAttempts) {
+      job.status = "failed"; job.completedAt = new Date().toISOString(); job.error = error;
+    } else {
+      const delay = retryAfterMs ?? backoffMs(job.attempts);
+      job.status = "pending"; job.error = error;
+      job.runAfter = new Date(Date.now() + delay).toISOString();
+    }
+  },
+
+  async listDispatchJobs(workspaceId: string, opts?: {
+    status?: DispatchJobStatus;
+    jobType?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<DispatchJob[]> {
+    const limit  = opts?.limit  ?? 20;
+    const offset = opts?.offset ?? 0;
+
+    if (isDbRequired()) {
+      const db = getDb();
+      const rows = await db.execute(sql`
+        SELECT * FROM dispatch_jobs
+        WHERE workspace_id = ${workspaceId}
+          ${opts?.status  ? sql`AND status   = ${opts.status}`  : sql``}
+          ${opts?.jobType ? sql`AND job_type = ${opts.jobType}` : sql``}
+        ORDER BY created_at DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `);
+      return (rows.rows as Record<string, unknown>[]).map(mapDispatchJobRaw);
+    }
+
+    let jobs = ((store.dispatchJobs ?? []) as DispatchJob[]).filter(j => j.workspaceId === workspaceId);
+    if (opts?.status)  jobs = jobs.filter(j => j.status  === opts.status);
+    if (opts?.jobType) jobs = jobs.filter(j => j.jobType === opts.jobType);
+    jobs.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    return jobs.slice(offset, offset + limit);
+  },
+
+  async getDispatchJob(jobId: string): Promise<DispatchJob | null> {
+    if (isDbRequired()) {
+      const rows = await getDb().select().from(dispatchJobs).where(eq(dispatchJobs.id, jobId)).limit(1);
+      if (rows.length === 0) return null;
+      return mapDispatchJob(rows[0]);
+    }
+    return ((store.dispatchJobs ?? []) as DispatchJob[]).find(j => j.id === jobId) ?? null;
+  },
+
+  async cancelJob(jobId: string): Promise<void> {
+    if (isDbRequired()) {
+      await getDb().update(dispatchJobs)
+        .set({ status: "cancelled", completedAt: new Date() })
+        .where(eq(dispatchJobs.id, jobId));
+      return;
+    }
+    const job = ((store.dispatchJobs ?? []) as DispatchJob[]).find(j => j.id === jobId);
+    if (job) { job.status = "cancelled"; job.completedAt = new Date().toISOString(); }
+  },
+
+  async countPendingJobs(workspaceId?: string): Promise<number> {
+    if (isDbRequired()) {
+      const db = getDb();
+      const rows = await db.execute(sql`
+        SELECT COUNT(*) as count FROM dispatch_jobs
+        WHERE status = 'pending'
+          ${workspaceId ? sql`AND workspace_id = ${workspaceId}` : sql``}
+      `);
+      return Number((rows.rows[0] as Record<string, unknown>)?.count ?? 0);
+    }
+    return ((store.dispatchJobs ?? []) as DispatchJob[]).filter(j =>
+      j.status === "pending" && (!workspaceId || j.workspaceId === workspaceId)
+    ).length;
+  },
 };

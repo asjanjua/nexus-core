@@ -11,6 +11,7 @@
 
 import { repository } from "@/lib/data/repository";
 import { isProviderAllowed } from "@/lib/security/ai-policy";
+import { checkTokenBudget } from "@/lib/billing/budget";
 
 const ANTHROPIC_BASE_URL = (
   process.env.ANTHROPIC_BASE_URL?.trim().replace(/\/+$/, "") ||
@@ -378,12 +379,23 @@ export async function callLLM(
 
 /**
  * Convenience: single-turn ask with a system prompt.
+ * Checks the workspace token budget before calling the LLM.
+ * Returns a structured budget-exceeded message rather than throwing,
+ * so callers degrade gracefully (same pattern as missing API key).
  */
 export async function ask(
   userPrompt: string,
   systemPrompt: string,
   opts: Omit<LLMOptions, "systemPrompt"> = {}
 ): Promise<string> {
+  // Plan-level token budget gate
+  if (opts.workspaceId && opts.workspaceId !== "_global_") {
+    const budget = await checkTokenBudget(opts.workspaceId).catch(() => null);
+    if (budget && !budget.allowed) {
+      return `NexusAI has reached the monthly AI budget for this workspace (${budget.percentUsed}% used on the ${budget.plan} plan). Upgrade to continue using AI features.`;
+    }
+  }
+
   const r = await callLLM([{ role: "user", content: userPrompt }], {
     ...opts,
     systemPrompt

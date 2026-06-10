@@ -18,6 +18,13 @@ import {
   type RecommendationStatus,
   type Role,
   type Sensitivity,
+  type SynthesisSchedule,
+  type SynthesisScheduleInput,
+  type SynthesisScheduleStatus,
+  type WorkflowTwin,
+  type WorkflowTwinInput,
+  type WorkflowTwinRun,
+  type WorkflowTwinRunInput,
   type WorkspaceProfile,
   type WorkspaceSettings
 } from "@/lib/contracts";
@@ -135,10 +142,14 @@ const decisions: Decision[] = [
 
 const actionStore: Action[] = [];
 const auditEvents: AuditEvent[] = [];
+const dispatchJobStore: unknown[] = [];
 const conversations: ConversationStore = {};
 const agentOutputs: AgentOutput[] = [];
 const learningSignalStore: LearningSignal[] = [];
 const entityStore: Entity[] = [];
+const synthesisScheduleStore: SynthesisSchedule[] = [];
+const workflowTwinStore: WorkflowTwin[] = [];
+const workflowTwinRunStore: WorkflowTwinRun[] = [];
 
 // Agent keys in-memory store (keyed by workspaceId)
 type StoredAgentKey = AgentKey & { keyHash: string };
@@ -192,6 +203,9 @@ export const store = {
   agentOutputs,
   conversations,
   entities: entityStore,
+  workflowTwins: workflowTwinStore,
+  workflowTwinRuns: workflowTwinRunStore,
+  dispatchJobs: dispatchJobStore,
   getEvidenceById(id: string): EvidenceRecord | undefined {
     return evidence.find((item) => item.id === id);
   },
@@ -284,6 +298,83 @@ export const store = {
     if (idx >= 0) actionStore[idx] = action;
     else actionStore.push(action);
     return action;
+  },
+  listWorkflowTwins(workspaceId: string): WorkflowTwin[] {
+    return workflowTwinStore
+      .filter((twin) => twin.workspaceId === workspaceId)
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  },
+  getWorkflowTwin(workspaceId: string, id: string): WorkflowTwin | null {
+    return workflowTwinStore.find((twin) => twin.workspaceId === workspaceId && twin.id === id) ?? null;
+  },
+  createWorkflowTwin(workspaceId: string, input: WorkflowTwinInput, actor: string): WorkflowTwin {
+    const now = nowIso();
+    const record: WorkflowTwin = {
+      id: `wt-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      workspaceId,
+      type: input.type,
+      name: input.name,
+      status: input.status ?? "draft",
+      config: input.config ?? {},
+      owner: input.owner ?? null,
+      createdBy: actor,
+      createdAt: now,
+      updatedBy: actor,
+      updatedAt: now
+    };
+    workflowTwinStore.push(record);
+    pushAudit({
+      workspaceId,
+      type: "workflow_twin_created",
+      actor,
+      payload: { twinId: record.id, twinType: record.type, name: record.name, status: record.status }
+    });
+    return record;
+  },
+  listWorkflowTwinRuns(workspaceId: string, twinId?: string): WorkflowTwinRun[] {
+    return workflowTwinRunStore
+      .filter((run) => run.workspaceId === workspaceId)
+      .filter((run) => !twinId || run.twinId === twinId)
+      .sort((a, b) => b.runAt.localeCompare(a.runAt));
+  },
+  createWorkflowTwinRun(
+    workspaceId: string,
+    twin: WorkflowTwin,
+    input: WorkflowTwinRunInput,
+    actor: string
+  ): WorkflowTwinRun {
+    const now = nowIso();
+    const record: WorkflowTwinRun = {
+      id: `wtr-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      workspaceId,
+      twinId: twin.id,
+      twinType: twin.type,
+      evidenceRefs: input.evidenceRefs ?? [],
+      generatedOutputRefs: input.generatedOutputRefs ?? [],
+      confidence: input.confidence ?? 0.7,
+      status: input.status ?? "generated",
+      summary: input.summary,
+      payload: input.payload ?? {},
+      runAt: now,
+      reviewedBy: null,
+      reviewedAt: null
+    };
+    workflowTwinRunStore.push(record);
+    pushAudit({
+      workspaceId,
+      type: "workflow_twin_run_created",
+      actor,
+      payload: {
+        twinId: twin.id,
+        runId: record.id,
+        twinType: twin.type,
+        status: record.status,
+        evidenceRefs: record.evidenceRefs,
+        generatedOutputRefs: record.generatedOutputRefs,
+        confidence: record.confidence
+      }
+    });
+    return record;
   },
   appendConversation(workspaceId: string, userId: string, role: "user" | "assistant", text: string): ConversationMessage {
     const key = `${workspaceId}:${userId}`;
@@ -403,6 +494,64 @@ export const store = {
       }
     });
     return target;
+  },
+  getSynthesisSchedule(workspaceId: string): SynthesisSchedule | null {
+    return synthesisScheduleStore.find((schedule) => schedule.workspaceId === workspaceId) ?? null;
+  },
+  listEnabledSynthesisSchedules(): SynthesisSchedule[] {
+    return synthesisScheduleStore.filter((schedule) => schedule.enabled);
+  },
+  upsertSynthesisSchedule(
+    workspaceId: string,
+    input: SynthesisScheduleInput,
+    actor = "system"
+  ): SynthesisSchedule {
+    const now = nowIso();
+    const existing = synthesisScheduleStore.find((schedule) => schedule.workspaceId === workspaceId);
+    const record: SynthesisSchedule = {
+      id: existing?.id ?? `synth-schedule-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      workspaceId,
+      enabled: input.enabled,
+      cron: input.cron,
+      timezone: input.timezone,
+      roles: input.roles,
+      delivery: input.delivery,
+      emailTargets: input.emailTargets,
+      slackChannel: input.slackChannel ?? null,
+      lastRunAt: existing?.lastRunAt ?? null,
+      lastStatus: existing?.lastStatus ?? null,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now
+    };
+    if (existing) {
+      Object.assign(existing, record);
+    } else {
+      synthesisScheduleStore.push(record);
+    }
+    pushAudit({
+      workspaceId,
+      type: "synthesis_schedule_updated",
+      actor,
+      payload: {
+        enabled: record.enabled,
+        cron: record.cron,
+        timezone: record.timezone,
+        roles: record.roles,
+        delivery: record.delivery
+      }
+    });
+    return record;
+  },
+  updateSynthesisScheduleLastRun(
+    workspaceId: string,
+    status: SynthesisScheduleStatus
+  ): SynthesisSchedule | null {
+    const schedule = synthesisScheduleStore.find((item) => item.workspaceId === workspaceId);
+    if (!schedule) return null;
+    schedule.lastRunAt = nowIso();
+    schedule.lastStatus = status;
+    schedule.updatedAt = nowIso();
+    return schedule;
   },
   listAgentControlProfiles(workspaceId: string): AgentControlProfile[] {
     return agentControlProfileStore

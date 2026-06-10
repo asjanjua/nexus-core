@@ -1,7 +1,7 @@
 # NexusAI Mission Control Architecture
 
 Updated: 2026-06-10
-Current product state: v0.18.2 (verified). Covers U2 Agent Control Profiles, U3 output history/rollback, U4 learning signals, Phase 8A Decision & Action Twin, AI decision proposals, persistent Ask memory, entity extraction, P2 AI trust controls, the Executive Synthesis Layer, synthesis source/entity traceability, and manual synthesis refresh/history.
+Current product state: v0.19.1 (verified). Covers U2 Agent Control Profiles, U3 output history/rollback, U4 learning signals, Phase 8A Decision & Action Twin, AI decision proposals, persistent Ask memory, entity extraction, P2 AI trust controls, the Executive Synthesis Layer, synthesis source/entity traceability, scheduled synthesis core, and workflow twin primitives.
 
 ## 1. Purpose
 
@@ -228,6 +228,9 @@ No v0.18.0-v0.18.2 migration was added. Normal dashboard synthesis is computed o
 | `agent_control_profiles` | U2 agent passports and versions |
 | `agent_outputs` | U3 rollback-ready generated output history |
 | `learning_signals` | U4 per-output quality signals (approve/edit/reject/thumbs) |
+| `synthesis_schedules` | workspace cadence for scheduled synthesis refresh |
+| `workflow_twins` | configured workflow twins for Decision & Action, Workflow Scorer, and Ops Review |
+| `workflow_twin_runs` | run history with evidence refs, output refs, confidence, and review status |
 | `entities` | extracted people, organizations, risks, KPIs, amounts, dates, systems, processes |
 | `evidence_entity_links` | evidence-to-entity backlinks with confidence |
 | `prompt_registry` | versioned prompt manifest entries |
@@ -405,24 +408,30 @@ sequenceDiagram
 | Executive Synthesis Layer | Complete (v0.18.0) -- on-demand role-aware synthesis |
 | Executive Synthesis Traceability | Complete (v0.18.1) -- source pills and entity chips |
 | Executive Synthesis Refresh/History | Complete (v0.18.2) -- manual refresh saved to output history |
+| Scheduled Synthesis Refresh Core | Complete (v0.19.0) -- schedule config, cron endpoint, in-app history |
+| Workflow Twin Primitives | Complete (v0.19.1) -- workflow twin and run storage/APIs |
 | Connectors | Skeleton only (Slack OAuth/events) |
-| Workflow Twin Scorer | Planned Phase 8B |
-| Ops Review Twin | Planned Phase 8C |
+| Workflow Twin Scorer | Primitive run payload shipped; product UI/AI scoring planned Phase 8B |
+| Ops Review Twin | Primitive run payload shipped; product UI/AI review planned Phase 8C |
 | Local/on-prem edge client | Later enterprise moat |
 
 ## 11. Near-Term Architecture Roadmap
 
-### Executive Synthesis Polish (next)
+### Scheduled Synthesis Refresh (core shipped, delivery polish next)
 
-The v0.18.2 synthesis layer is shipped as an on-demand dashboard read layer with source/entity traceability and manual refresh history. The next architecture step is scheduled refresh and learning signal controls on synthesis questions if pilots show those are needed.
+The v0.19.0 core adds workspace-configurable scheduled refresh through `synthesis_schedules`, Settings UI, protected `POST /api/cron/synthesis`, and in-app persistence to existing `agent_outputs`. Email and Slack digest delivery remain follow-on delivery passes.
+
+### Workflow Twin Primitives (shipped)
+
+v0.19.1 adds `workflow_twins` and `workflow_twin_runs`, plus `GET/POST /api/workflow-twins`, `GET/POST /api/workflow-twins/:id/run`, and `GET /api/action-items`. First-pass deterministic run payloads exist for Decision & Action, Workflow Scorer, and Ops Review. The next step is product UI and LLM-assisted scoring/review on top of the substrate.
+
+### Billing Tiers and Usage Metering (scoped, after scheduled synthesis)
+
+Four-tier billing (Free/Pro/Business/Enterprise) with per-workspace LLM token budgets. New `plan_definitions` table defines limits per tier. New columns on `workspaces` track plan, monthly token usage, and reset date. Token budget enforcement uses an in-process cache (5-min TTL) before each LLM call; `recordLLMUsage()` atomically increments the workspace counter. Feature gating controls access to scheduled synthesis, exports, connectors, custom passports, and data residency by plan. Stripe Checkout handles self-serve upgrades; webhooks drive plan lifecycle. Trial (14 days) converts to Free plan instead of suspension. Full spec: `docs/BILLING_TIERS_SPEC.md`. Target: v0.20.0.
 
 ### Entity Pages and Backlinks (next Company Memory step)
 
 Entity extraction now writes `entities` and `evidence_entity_links` during ingestion for processed evidence. The next architecture step is to add entity pages, timeline views, backlinks from decisions/recommendations/actions, and graph traversal for Company Memory.
-
-### Scheduled Synthesis
-
-Once the synthesis layer exists, a scheduled task can trigger synthesis refresh on a cadence (daily, weekly). The CEO receives a fresh "company picture" every Monday morning without logging in.
 
 ### Phase 8B: Workflow Twin Scorer
 

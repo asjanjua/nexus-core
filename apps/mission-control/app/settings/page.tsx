@@ -93,6 +93,22 @@ type AgentOutput = {
   createdAt: string;
 };
 
+type SynthesisSchedule = {
+  id: string;
+  workspaceId: string;
+  enabled: boolean;
+  cron: string;
+  timezone: string;
+  roles: string[];
+  delivery: Array<"in_app" | "email" | "slack">;
+  emailTargets: string[];
+  slackChannel?: string | null;
+  lastRunAt?: string | null;
+  lastStatus?: "success" | "partial" | "failed" | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 type WorkspaceProfile = {
   companyName?: string | null;
   sector?: string | null;
@@ -113,6 +129,7 @@ type WorkspaceProfile = {
 };
 
 const TABS = [
+  { id: "plan", label: "Plan & Usage" },
   { id: "workspace", label: "Workspace" },
   { id: "profile", label: "Company Profile" },
   { id: "llm", label: "LLM Provider" },
@@ -122,6 +139,7 @@ const TABS = [
   { id: "eval", label: "Eval" },
   { id: "prompts", label: "Prompts" },
   { id: "agent-governance", label: "Agent Governance" },
+  { id: "synthesis-schedule", label: "Scheduled Synthesis" },
   { id: "apikeys", label: "API Keys" },
   { id: "roles", label: "Roles" },
   { id: "audit", label: "Audit Log" },
@@ -164,10 +182,282 @@ const SCOPE_OPTIONS = [
   { value: "read:dashboard", label: "Read dashboards" },
   { value: "read:evidence", label: "Read evidence" },
   { value: "read:recommendations", label: "Read recommendations" },
+  { value: "read:settings", label: "Read settings" },
+  { value: "read:workflows", label: "Read workflows" },
   { value: "write:ingest", label: "Ingest documents" },
   { value: "write:approvals", label: "Approve recommendations" },
+  { value: "write:settings", label: "Update settings" },
+  { value: "write:workflows", label: "Create workflow runs" },
   { value: "admin", label: "Full admin access" }
 ];
+
+// ---------------------------------------------------------------------------
+// Plan & Usage tab
+// ---------------------------------------------------------------------------
+
+type PlanSummaryData = {
+  plan: string;
+  planLabel: string;
+  priceCents: number;
+  tokenBudget: { used: number; limit: number; percentUsed: number; resetAt: string };
+  limits: {
+    roles: { used: number; limit: number };
+    evidence: { used: number; limit: number };
+    team: { used: number; limit: number };
+    apiKeys: { used: number; limit: number };
+    askDailyLimit: number | null;
+  };
+  features: {
+    scheduledSynthesis: boolean;
+    emailDelivery: boolean;
+    slackDelivery: boolean;
+    exports: boolean;
+    decisionExtraction: boolean;
+    customPassports: boolean;
+    dataResidency: boolean;
+    apiAccess: boolean;
+  };
+};
+
+function BudgetBar({ pct }: { pct: number }) {
+  const color = pct >= 95 ? "bg-red-500" : pct >= 80 ? "bg-amber-400" : "bg-nexus-accent";
+  return (
+    <div className="h-2 w-full rounded-full bg-white/10 overflow-hidden">
+      <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${Math.min(pct, 100)}%` }} />
+    </div>
+  );
+}
+
+function LimitRow({ label, used, limit }: { label: string; used: number; limit: number }) {
+  const unlimited = limit === -1 || limit === 0;
+  const pct = unlimited ? 0 : Math.min(100, Math.round((used / limit) * 100));
+  const warn = !unlimited && pct >= 80;
+  return (
+    <div className="flex items-center justify-between text-sm py-1.5 border-b border-white/5 last:border-0">
+      <span className="text-white/60">{label}</span>
+      <span className={warn ? "text-amber-300 font-medium" : "text-white/80"}>
+        {unlimited ? `${used} / Unlimited` : `${used} / ${limit}`}
+      </span>
+    </div>
+  );
+}
+
+function FeatureRow({ label, enabled, requiredPlan }: { label: string; enabled: boolean; requiredPlan?: string }) {
+  return (
+    <div className="flex items-center justify-between text-sm py-1.5 border-b border-white/5 last:border-0">
+      <span className="text-white/60">{label}</span>
+      {enabled
+        ? <span className="badge badge-green">Enabled</span>
+        : <span className="badge badge-muted">{requiredPlan ? `Requires ${requiredPlan}` : "Not available"}</span>
+      }
+    </div>
+  );
+}
+
+function PlanTab({ workspaceId }: { workspaceId: string }) {
+  const [data, setData] = useState<PlanSummaryData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [upgrading, setUpgrading] = useState<string | null>(null);
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [billingBanner, setBillingBanner] = useState<"success" | "cancelled" | null>(null);
+
+  useEffect(() => {
+    // Read billing result from URL query param (Stripe redirects here after checkout)
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const result = params.get("billing");
+      if (result === "success" || result === "cancelled") {
+        setBillingBanner(result);
+        // Clean the URL without reload
+        const clean = new URL(window.location.href);
+        clean.searchParams.delete("billing");
+        clean.searchParams.delete("plan");
+        window.history.replaceState({}, "", clean.toString());
+      }
+    }
+
+    fetch("/api/billing/plan", { headers: { "x-workspace-id": workspaceId } })
+      .then((r) => r.json())
+      .then((j) => { if (j.ok) setData(j.data); })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [workspaceId]);
+
+  async function handleUpgrade(plan: "pro" | "business") {
+    setUpgrading(plan);
+    try {
+      const res = await fetch("/api/billing/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-workspace-id": workspaceId },
+        body: JSON.stringify({ plan }),
+      });
+      const json = await res.json() as { ok: boolean; data?: { url: string }; error?: string };
+      if (json.ok && json.data?.url) {
+        window.location.href = json.data.url;
+      } else {
+        console.error("Checkout error:", json.error);
+        setUpgrading(null);
+      }
+    } catch {
+      setUpgrading(null);
+    }
+  }
+
+  async function handleManagePlan() {
+    setPortalLoading(true);
+    try {
+      const res = await fetch("/api/billing/portal", {
+        method: "POST",
+        headers: { "x-workspace-id": workspaceId },
+      });
+      const json = await res.json() as { ok: boolean; data?: { url: string }; error?: string };
+      if (json.ok && json.data?.url) {
+        window.location.href = json.data.url;
+      }
+    } finally {
+      setPortalLoading(false);
+    }
+  }
+
+  if (loading) return <p className="text-white/40 text-sm">Loading plan data...</p>;
+  if (!data) return <p className="text-white/40 text-sm">Plan data unavailable.</p>;
+
+  const { tokenBudget, limits, features } = data;
+  const priceFmt = data.priceCents > 0
+    ? `$${(data.priceCents / 100).toLocaleString()}/month`
+    : data.plan === "enterprise" ? "Custom pricing" : "Free";
+  const resetDate = new Date(tokenBudget.resetAt).toLocaleDateString(undefined, { month: "long", day: "numeric" });
+  const unlimited = tokenBudget.limit === 0;
+  const isPaid = data.plan === "pro" || data.plan === "business" || data.plan === "enterprise";
+
+  return (
+    <div className="space-y-6 max-w-2xl">
+
+      {/* Post-checkout banners */}
+      {billingBanner === "success" && (
+        <div className="rounded-lg border border-green-500/40 bg-green-500/10 px-4 py-3 text-sm text-green-300">
+          Your plan has been upgraded. It may take a moment to reflect below.
+        </div>
+      )}
+      {billingBanner === "cancelled" && (
+        <div className="rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/60">
+          Checkout was cancelled. Your plan has not changed.
+        </div>
+      )}
+
+      {/* Plan header */}
+      <section className="panel space-y-3">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <p className="text-xs uppercase tracking-wide text-nexus-accent/70">Your Plan</p>
+            <h3 className="mt-1 text-lg font-semibold text-white">{data.planLabel} — {priceFmt}</h3>
+          </div>
+          <div className="flex gap-2 flex-wrap">
+            {isPaid && (
+              <button
+                onClick={handleManagePlan}
+                disabled={portalLoading}
+                className="badge badge-outline hover:opacity-80 transition-opacity text-xs disabled:opacity-50"
+              >
+                {portalLoading ? "Opening..." : "Manage Plan"}
+              </button>
+            )}
+            {data.plan === "free" && (
+              <button
+                onClick={() => handleUpgrade("pro")}
+                disabled={upgrading !== null}
+                className="badge badge-green hover:opacity-80 transition-opacity text-xs disabled:opacity-50"
+              >
+                {upgrading === "pro" ? "Redirecting..." : "Upgrade to Pro — $499/mo"}
+              </button>
+            )}
+            {data.plan === "pro" && (
+              <button
+                onClick={() => handleUpgrade("business")}
+                disabled={upgrading !== null}
+                className="badge badge-green hover:opacity-80 transition-opacity text-xs disabled:opacity-50"
+              >
+                {upgrading === "business" ? "Redirecting..." : "Upgrade to Business — $2,500/mo"}
+              </button>
+            )}
+            {data.plan === "business" && (
+              <a
+                href="mailto:hello@nexusai.io?subject=NexusAI%20Enterprise%20Enquiry"
+                className="badge badge-green hover:opacity-80 transition-opacity text-xs"
+              >
+                Talk to us about Enterprise
+              </a>
+            )}
+          </div>
+        </div>
+
+        {/* Budget warning banners */}
+        {!unlimited && tokenBudget.percentUsed >= 100 && (
+          <div className="rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-300">
+            Monthly AI budget reached. AI features are paused until {resetDate} or you upgrade.
+          </div>
+        )}
+        {!unlimited && tokenBudget.percentUsed >= 95 && tokenBudget.percentUsed < 100 && (
+          <div className="rounded-lg border border-amber-400/40 bg-amber-400/10 px-4 py-3 text-sm text-amber-300">
+            Your AI budget is almost exhausted ({tokenBudget.percentUsed}% used). Responses may be limited soon.
+          </div>
+        )}
+        {!unlimited && tokenBudget.percentUsed >= 80 && tokenBudget.percentUsed < 95 && (
+          <div className="rounded-lg border border-amber-400/25 bg-amber-400/5 px-4 py-3 text-sm text-amber-200/80">
+            You&apos;ve used {tokenBudget.percentUsed}% of your monthly AI budget. Resets {resetDate}.
+          </div>
+        )}
+      </section>
+
+      {/* AI Budget */}
+      <section className="panel space-y-3">
+        <p className="panel-title">AI Budget This Month</p>
+        {unlimited ? (
+          <p className="text-sm text-white/60">Unlimited AI budget on your plan. Resets {resetDate}.</p>
+        ) : (
+          <>
+            <BudgetBar pct={tokenBudget.percentUsed} />
+            <div className="flex justify-between text-xs text-white/40">
+              <span>{(tokenBudget.used / 1_000_000).toFixed(1)}M of {(tokenBudget.limit / 1_000_000).toFixed(1)}M tokens used</span>
+              <span>Resets {resetDate}</span>
+            </div>
+          </>
+        )}
+      </section>
+
+      {/* Resource limits */}
+      <section className="panel space-y-1">
+        <p className="panel-title mb-2">Resource Limits</p>
+        <LimitRow label="Active roles" used={limits.roles.used} limit={limits.roles.limit} />
+        <LimitRow label="Evidence records" used={limits.evidence.used} limit={limits.evidence.limit} />
+        <LimitRow label="Team members" used={limits.team.used} limit={limits.team.limit} />
+        <LimitRow label="API keys" used={limits.apiKeys.used} limit={limits.apiKeys.limit} />
+        <div className="flex items-center justify-between text-sm py-1.5">
+          <span className="text-white/60">Ask questions / day</span>
+          <span className="text-white/80">{limits.askDailyLimit === null ? "Unlimited" : limits.askDailyLimit}</span>
+        </div>
+      </section>
+
+      {/* Features */}
+      <section className="panel space-y-1">
+        <p className="panel-title mb-2">Features</p>
+        <FeatureRow label="Scheduled synthesis" enabled={features.scheduledSynthesis} requiredPlan="Pro" />
+        <FeatureRow label="Email delivery" enabled={features.emailDelivery} requiredPlan="Business" />
+        <FeatureRow label="Slack delivery" enabled={features.slackDelivery} requiredPlan="Enterprise" />
+        <FeatureRow label="Exports (CSV, PDF, Word)" enabled={features.exports} requiredPlan="Pro" />
+        <FeatureRow label="AI decision extraction" enabled={features.decisionExtraction} requiredPlan="Business" />
+        <FeatureRow label="Custom agent passports" enabled={features.customPassports} requiredPlan="Business" />
+        <FeatureRow label="Data residency / local-only" enabled={features.dataResidency} requiredPlan="Enterprise" />
+        <FeatureRow label="API access" enabled={features.apiAccess} requiredPlan="Pro" />
+      </section>
+
+      <p className="text-xs text-white/30">
+        For Enterprise pricing or custom arrangements, contact{" "}
+        <a href="mailto:hello@nexusai.io" className="underline">hello@nexusai.io</a>.
+      </p>
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Workspace tab
@@ -1012,6 +1302,238 @@ function PromptsTab() {
 // ---------------------------------------------------------------------------
 // API Keys tab
 // ---------------------------------------------------------------------------
+
+const SYNTHESIS_ROLE_OPTIONS = [
+  { value: "ceo", label: "CEO brief" },
+  { value: "coo", label: "COO execution" },
+  { value: "cfo", label: "CFO finance" },
+  { value: "cto", label: "CTO / CDO tech" },
+  { value: "cbo", label: "CBO growth" },
+  { value: "chro", label: "CHRO people" }
+];
+
+const CRON_PRESETS = [
+  { label: "Monday 7:00 AM", value: "0 7 * * 1" },
+  { label: "Every weekday 7:00 AM", value: "0 7 * * 1,2,3,4,5" },
+  { label: "Daily 7:00 AM", value: "0 7 * * *" },
+  { label: "Every 15 minutes (testing)", value: "*/15 * * * *" }
+];
+
+function SynthesisScheduleTab() {
+  const [schedule, setSchedule] = useState<SynthesisSchedule | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [testing, setTesting] = useState(false);
+  const [message, setMessage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/synthesis-schedule")
+      .then((r) => r.json())
+      .then((j) => {
+        if (j.ok) setSchedule(j.data);
+        else setError(j.error ?? "Unable to load synthesis schedule.");
+      })
+      .catch(() => setError("Unable to load synthesis schedule."))
+      .finally(() => setLoading(false));
+  }, []);
+
+  function patchSchedule(patch: Partial<SynthesisSchedule>) {
+    if (!schedule) return;
+    setSchedule({ ...schedule, ...patch });
+    setMessage(null);
+    setError(null);
+  }
+
+  function toggleRole(role: string) {
+    if (!schedule) return;
+    const roles = schedule.roles.includes(role)
+      ? schedule.roles.filter((item) => item !== role)
+      : [...schedule.roles, role];
+    patchSchedule({ roles: roles.length ? roles : [role] });
+  }
+
+  async function save() {
+    if (!schedule) return;
+    setSaving(true);
+    setMessage(null);
+    setError(null);
+    try {
+      const response = await fetch("/api/synthesis-schedule", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          enabled: schedule.enabled,
+          cron: schedule.cron,
+          timezone: schedule.timezone,
+          roles: schedule.roles,
+          delivery: schedule.delivery,
+          emailTargets: schedule.emailTargets,
+          slackChannel: schedule.slackChannel ?? null
+        })
+      });
+      const json = await response.json();
+      if (!json.ok) throw new Error(json.error ?? "Unable to save schedule.");
+      setSchedule(json.data);
+      setMessage("Schedule saved.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to save schedule.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function runTest() {
+    setTesting(true);
+    setMessage(null);
+    setError(null);
+    try {
+      const response = await fetch("/api/synthesis-schedule/test", { method: "POST" });
+      const json = await response.json();
+      if (!json.ok) throw new Error(json.error ?? "Unable to run synthesis.");
+      setMessage(`Test run complete: ${json.data.generated} brief(s), ${json.data.failed} failure(s).`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Unable to run synthesis.");
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  if (loading) return <p className="text-white/50 text-sm">Loading synthesis schedule...</p>;
+  if (!schedule) return <p className="text-red-300 text-sm">{error ?? "Schedule unavailable."}</p>;
+
+  return (
+    <div className="space-y-6">
+      <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+          <div>
+            <p className="text-sm uppercase tracking-[0.2em] text-white/40">Scheduled Synthesis</p>
+            <h3 className="mt-2 text-xl font-semibold text-white">Refresh leadership briefs automatically</h3>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/60">
+              Nexus will regenerate selected executive synthesis briefs on a cadence and store each run in
+              the agent output history. Email and Slack delivery are configuration-ready, but in-app
+              delivery is the active pilot channel today.
+            </p>
+          </div>
+          <label className="flex items-center gap-2 rounded-full border border-white/10 bg-black/20 px-3 py-2 text-sm text-white/70">
+            <input
+              type="checkbox"
+              checked={schedule.enabled}
+              onChange={(e) => patchSchedule({ enabled: e.target.checked })}
+            />
+            Enabled
+          </label>
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="panel space-y-4">
+          <div>
+            <p className="panel-title">Cadence</p>
+            <p className="mt-1 text-sm text-white/50">Use a preset or enter a five-field cron expression.</p>
+          </div>
+          <select
+            className="input w-full"
+            value={CRON_PRESETS.some((preset) => preset.value === schedule.cron) ? schedule.cron : "custom"}
+            onChange={(e) => {
+              if (e.target.value !== "custom") patchSchedule({ cron: e.target.value });
+            }}
+          >
+            {CRON_PRESETS.map((preset) => (
+              <option key={preset.value} value={preset.value}>{preset.label}</option>
+            ))}
+            <option value="custom">Custom</option>
+          </select>
+          <input
+            className="input w-full font-mono"
+            value={schedule.cron}
+            onChange={(e) => patchSchedule({ cron: e.target.value })}
+            placeholder="0 7 * * 1"
+          />
+          <label className="block space-y-1">
+            <span className="text-xs uppercase tracking-[0.14em] text-white/40">Timezone</span>
+            <input
+              className="input w-full"
+              value={schedule.timezone}
+              onChange={(e) => patchSchedule({ timezone: e.target.value })}
+              placeholder="UTC"
+            />
+          </label>
+          <p className="text-xs text-white/35">
+            The cron endpoint checks a 15-minute window, so a scheduled 7:00 AM run can be triggered by a
+            scheduler polling at 7:00-7:14.
+          </p>
+        </div>
+
+        <div className="panel space-y-4">
+          <div>
+            <p className="panel-title">Roles to refresh</p>
+            <p className="mt-1 text-sm text-white/50">Pick the leadership lenses Nexus should regenerate.</p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {SYNTHESIS_ROLE_OPTIONS.map((role) => (
+              <label
+                key={role.value}
+                className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.02] px-3 py-2 text-sm text-white/70"
+              >
+                <input
+                  type="checkbox"
+                  checked={schedule.roles.includes(role.value)}
+                  onChange={() => toggleRole(role.value)}
+                />
+                {role.label}
+              </label>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      <div className="panel space-y-4">
+        <div>
+          <p className="panel-title">Delivery</p>
+          <p className="mt-1 text-sm text-white/50">In-app history is live. Email and Slack delivery are next-pass channels.</p>
+        </div>
+        <div className="grid gap-3 md:grid-cols-3">
+          <label className="rounded-xl border border-green-300/20 bg-green-300/10 p-3 text-sm text-green-100">
+            <input
+              className="mr-2"
+              type="checkbox"
+              checked={schedule.delivery.includes("in_app")}
+              onChange={() => patchSchedule({ delivery: ["in_app"] })}
+            />
+            In-app output history
+            <span className="mt-1 block text-xs text-green-100/60">Active now</span>
+          </label>
+          <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3 text-sm text-white/45">
+            Email digest
+            <span className="mt-1 block text-xs text-white/30">Coming next with Resend</span>
+          </div>
+          <div className="rounded-xl border border-white/10 bg-white/[0.02] p-3 text-sm text-white/45">
+            Slack digest
+            <span className="mt-1 block text-xs text-white/30">Coming after Slack sync is active</span>
+          </div>
+        </div>
+      </div>
+
+      {(message || error) && (
+        <div className={`rounded-xl border px-4 py-3 text-sm ${
+          error ? "border-red-300/30 bg-red-300/10 text-red-100" : "border-green-300/30 bg-green-300/10 text-green-100"
+        }`}>
+          {error ?? message}
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-3">
+        <button className="btn-primary" onClick={save} disabled={saving || schedule.roles.length === 0}>
+          {saving ? "Saving..." : "Save schedule"}
+        </button>
+        <button className="btn-subtle" onClick={runTest} disabled={testing || schedule.roles.length === 0}>
+          {testing ? "Running..." : "Run test now"}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 function APIKeysTab({ workspaceId }: { workspaceId: string }) {
   const [keys, setKeys] = useState<AgentKey[]>([]);
@@ -2003,6 +2525,7 @@ export default function SettingsPage() {
       </div>
 
       <div>
+        {activeTab === "plan" && <PlanTab workspaceId={workspaceId} />}
         {activeTab === "workspace" && <WorkspaceTab workspaceId={workspaceId} />}
         {activeTab === "profile" && <ProfileTab />}
         {activeTab === "llm" && <LLMTab workspaceId={workspaceId} />}
@@ -2012,6 +2535,7 @@ export default function SettingsPage() {
         {activeTab === "eval" && <EvalTab />}
         {activeTab === "prompts" && <PromptsTab />}
         {activeTab === "agent-governance" && <AgentGovernanceTab />}
+        {activeTab === "synthesis-schedule" && <SynthesisScheduleTab />}
         {activeTab === "apikeys" && <APIKeysTab workspaceId={workspaceId} />}
         {activeTab === "roles" && <RolesTab />}
         {activeTab === "audit" && <AuditTab />}

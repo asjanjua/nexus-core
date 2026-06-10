@@ -24,9 +24,9 @@ Every document uploaded, every question asked, every decision logged makes Nexus
 
 ---
 
-## Where We Are -- Current State (v0.18.2, verified 2026-06-10)
+## Where We Are -- Current State (v0.19.1, verified 2026-06-10)
 
-The product is demo-ready and pilot-ready. 20 DB migrations, 21 test files / 104 tests passing.
+The product is demo-ready and pilot-ready. 22 DB migrations, 23 test files / 110 tests passing.
 
 **What is built and verified:**
 
@@ -38,7 +38,9 @@ The product is demo-ready and pilot-ready. 20 DB migrations, 21 test files / 104
 - **Governance:** Agent Control Profiles (passports) with evidence scoping, sensitivity ceilings, tool guards, hard-stop blocking, output gates, suspend/resume. Per-agent output log with rollback. Learning signal capture (approve/edit/reject/thumbs) with quality summary.
 - **AI Trust Layer:** Eval harness, prompt registry, red-team output checks, provider allow-list, local-only mode, sensitivity ceiling, and confidence threshold controls.
 - **Executive Synthesis:** On-demand role-aware leadership brief on each dashboard, with specialist agent cards as collapsible drill-down, source pills/entity chips for traceability, and manual refresh saved to output history.
+- **Scheduled Synthesis:** Workspace schedule config, protected cron endpoint, test-run button, and in-app output history persistence.
 - **Decision Twin:** Full CRUD for decisions and actions with priority, deadline, blocker flags, status tracking, audit trail, plus AI proposal extraction from recent agent outputs. Interactive `/decisions` page.
+- **Workflow Twin substrate:** Workflow twin and run history tables/APIs for Decision & Action, Workflow Scorer, and Ops Review primitives.
 - **Company Memory substrate:** Processed evidence now extracts people, organizations, risks, KPIs, amounts, dates, systems, and processes into `entities`, linked back to source evidence through `evidence_entity_links`.
 - **Exports:** Weekly brief, risk radar CSV, reco register CSV, one-pager. Export hub.
 - **Demo/Sales:** 3 CEO-grade demo sector packs, demo mode with reset, pilot kit, product brief page, readiness assessment (public), SOW templates, demo scripts, ROI calculator.
@@ -48,7 +50,6 @@ The product is demo-ready and pilot-ready. 20 DB migrations, 21 test files / 104
 
 - Orchestration/dispatcher (single-shot LLM calls only)
 - Connectors (Slack skeleton only, no live data flow)
-- Workflow twin primitives (no tables/APIs)
 - Knowledge graph UI / entity pages (initial evidence-to-entity links exist; no graph traversal yet)
 
 ---
@@ -70,8 +71,11 @@ Nexus now has a 30-case eval harness, red-team output checks, a prompt registry,
 **Entity Pages and Backlinks**
 Entity extraction now exists. The next Company Memory step is UI: entity pages with linked evidence, decisions, recommendations, owner/action references, and timeline views.
 
-**Executive Synthesis Polish**
-Add scheduled refresh and learning signal controls on synthesis answers. This turns the v0.18.2 read layer into a recurring executive operating cadence.
+**Scheduled Synthesis Refresh** (scoped, next build)
+Add daily/weekly synthesis refresh jobs with email delivery, workspace-configurable schedule and role selection, and a settings UI. This turns the v0.18.2 read layer into a recurring executive operating cadence. Full spec: `docs/SCHEDULED_SYNTHESIS_SPEC.md`. Target: v0.19.0 in 2 sessions.
+
+**Billing Tiers and Usage Metering** (scoped, after scheduled synthesis)
+Four-tier billing: Free ($0, 1 role, 500K tokens/mo), Pro ($499, 5 roles, 5M tokens), Business ($2,500, 10 roles, 25M tokens, team members), Enterprise (custom, unlimited). LLM token budget enforcement per workspace, feature gating (scheduled synthesis, exports, connectors gated by tier), Stripe checkout, and usage UI in Settings. Trial converts to Free at day 15 instead of suspension. Full spec: `docs/BILLING_TIERS_SPEC.md`. Target: v0.20.0 in 2-3 sessions.
 
 ### Later
 
@@ -108,10 +112,12 @@ Phase 7A/7B are COMPLETE (20-role registry, 5 archetypes, agent rooms, stage-awa
 - No audit trail — addressed by confidence scores, evidence refs, approval workflow
 - Fear of data exposure — addressed by sensitivity controls, confidential defaults, local path
 
-**Pilot pricing direction:**
-- Pilot: $3,000–$8,000/month per workspace, 90-day commitment
-- Scale: seat-based + connector add-ons after pilot
-- Enterprise: custom for local edge client and private cloud
+**Pricing tiers (scoped):**
+- Free: $0/month. 1 role, 50 evidence records, 500K tokens/mo. Self-serve lead gen.
+- Pro: $499/month. 5 roles, 1,000 records, 5M tokens, weekly scheduled synthesis, exports.
+- Business: $2,500/month. 10 roles, 5,000 records, 25M tokens, daily synthesis + email, 5 team members, 3 connectors.
+- Enterprise: custom ($5K-$15K+). Unlimited everything, data residency, SLA, dedicated CSM.
+- See `docs/BILLING_TIERS_SPEC.md` for full spec including token economics and Stripe integration plan.
 
 ---
 

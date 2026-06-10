@@ -2,6 +2,112 @@
 
 ---
 
+## 0.22.0 — Orchestration Dispatcher (2026-06-10)
+
+Background job queue that decouples job submission from execution. Enables multi-agent fan-out, retry with backoff, priority queuing, job chaining, and a full audit trail of every agent invocation.
+
+**DB migration**
+- `db/migrations/0024_dispatch_jobs.sql`: `dispatch_jobs` table with partial index for efficient claim queries (`status='pending'`), workspace index, parent chain index.
+
+**Drizzle schema**
+- `db/schema.ts`: `dispatchJobs` pgTable with all columns.
+
+**Contracts**
+- `lib/contracts.ts`: `dispatchJobTypeSchema` (4 types), `dispatchJobStatusSchema` (5 statuses), `dispatchJobSchema`, `dispatchJobInputSchema`, `dispatchFanOutInputSchema`, and payload schemas for each job type.
+
+**Repository methods (`lib/data/repository.ts`)**
+- `enqueueDispatchJob()`: insert pending job (Postgres + in-memory fallback).
+- `claimPendingJob()`: atomic `UPDATE...RETURNING` with `FOR UPDATE SKIP LOCKED` — prevents double-execution in concurrent cron.
+- `markJobDone()`, `markJobFailed()` (with exponential backoff retry: 30s / 5m / 30m).
+- `listDispatchJobs()`: paginated, filterable by status and jobType.
+- `getDispatchJob()`: single job by ID.
+- `cancelJob()`: sets status to cancelled.
+- `countPendingJobs()`: counts pending jobs, optionally scoped to a workspace.
+
+**Dispatcher service (`lib/services/dispatcher.ts`)**
+- `enqueueJob()`: single-job enqueue wrapper.
+- `enqueueFanOut()`: one job per role/value with merged payload.
+- `claimNextJob()`: delegates to repository atomic claim.
+- `executeJob()`: routes to handler by `job_type`, calls `markJobDone` / `markJobFailed`.
+- `runDispatchCycle(batchSize)`: claims and executes up to N jobs sequentially — safe for token budget.
+- Handlers: `handleAgentBriefJob` → `cardsForRole()`, `handleSynthesisJob` → `synthesiseForRole()`, `handleWorkflowRunJob` → `buildWorkflowTwinRunInput()` + `createWorkflowTwinRun()`, `handleDecisionExtractJob` → `proposeDecisionsFromAgentOutputs()` + `createDecision()`.
+
+**API routes**
+- `POST /api/dispatch`: enqueue single job or fan-out; returns `{ jobId }` or `{ jobs: [...] }` with 202.
+- `GET /api/dispatch`: list workspace jobs (filterable by status, jobType; paginated).
+- `GET /api/dispatch/[jobId]`: get single job with full payload and error.
+- `DELETE /api/dispatch/[jobId]`: cancel a pending job.
+
+**Cron runner**
+- `POST /api/cron/dispatch`: claims and executes up to `NEXUS_DISPATCH_BATCH_SIZE` (default 5) jobs per tick. Returns `{ processed, succeeded, failed }`. Recommended Render schedule: every 2 minutes.
+
+**Tests**
+- `tests/dispatcher.test.ts`: ~25 tests covering enqueue, fan-out, claim priority ordering, executeJob success/failure, retry lifecycle, runDispatchCycle batch processing, cancel, countPendingJobs, workflow_run and decision_extract handlers.
+
+**TypeScript check:** clean.
+
+---
+
+## 0.21.0 — Billing Tiers Session 2: Stripe Integration (2026-06-10)
+
+Stripe Checkout, subscription lifecycle webhooks, Billing Portal, and trial-to-free conversion.
+
+**Stripe module (no SDK — pure fetch)**
+- `lib/billing/stripe.ts`: singleton Stripe HTTP client, `createCheckoutSession()`, `createBillingPortalSession()`, `verifyWebhookSignature()` (Web Crypto HMAC-SHA256), `getSubscription()`, `findOrCreateCustomer()`, `priceIdForPlan()`, `planFromPriceId()`, `PLAN_TOKEN_LIMITS`.
+
+**API routes**
+- `POST /api/billing/checkout`: creates Stripe Checkout Session for `pro`/`business` upgrade, returns `{ url }`. Rejects `free`/`enterprise`. Writes audit event.
+- `POST /api/billing/portal`: creates Stripe Billing Portal session for subscription management, returns `{ url }`.
+- `POST /api/billing/webhook`: handles `checkout.session.completed` (activate plan), `customer.subscription.updated` (plan change), `customer.subscription.deleted` (revert to free), `invoice.payment_failed` (suspend), `invoice.paid` (unsuspend). Signature verified with HMAC-SHA256 + replay protection (5-min window). Returns 200 for all valid events including unhandled types.
+
+**Repository additions**
+- `getStripeCustomerId()`, `setStripeIds()`, `activatePlan()`, `handleSubscriptionChange()`, `suspendWorkspace()`, `unsuspendWorkspace()`, `convertExpiredTrials()`, `getWorkspaceByStripeCustomer()`.
+
+**Cron update**
+- `POST /api/cron/billing`: now also runs `convertExpiredTrials()` (trial → free on expiry) alongside monthly token reset. Returns `{ workspacesReset, trialsConverted }`.
+
+**Settings UI (Plan & Usage tab)**
+- Upgrade to Pro / Upgrade to Business buttons that POST to `/api/billing/checkout` and redirect to Stripe.
+- Manage Plan button (paid plans only) that POSTs to `/api/billing/portal`.
+- Enterprise contact CTA for Business plan users.
+- Success/cancelled banners after Stripe redirect (reads `?billing=success|cancelled`, then cleans URL).
+
+**Env vars added to `.env.example`**: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `STRIPE_PRICE_PRO`, `STRIPE_PRICE_BUSINESS`, `NEXT_PUBLIC_APP_URL`.
+
+**Tests**
+- `tests/billing-stripe.test.ts`: 20 tests covering Stripe config, price ID resolution, token limits, webhook signature (valid/invalid/stale), trial conversion, customer lookup, checkout validation, portal validation, all 4 webhook event types.
+
+**TypeScript check:** clean.
+
+---
+
+## 0.20.0 — Billing Tiers Session 1 (2026-06-10)
+
+Plan-gated token budgets, feature flags, resource limits, and a Plan & Usage settings tab.
+
+**Data layer**
+- Migration `0023_billing_tiers.sql`: five new columns on `workspaces` (plan, monthly_token_limit, monthly_token_used, token_reset_at, plan_changed_at) and a `plan_definitions` table seeded with Free/Pro/Business/Enterprise rows.
+- `db/schema.ts`: `planEnum`, `planDefinitions` table, and billing columns on workspaces.
+
+**Budget enforcement**
+- `lib/billing/budget.ts`: `checkTokenBudget()` with 5-minute in-process TTL cache; `canUseFeature()` for 8 feature flags; `checkEvidenceLimit()`; `getWorkspacePlanSummary()`; `invalidateBudgetCache()`.
+- `lib/services/llm.ts`: `ask()` now gates on plan token budget before calling the LLM. Returns a structured budget-exceeded message on exhaustion; no change to callers.
+- `lib/data/repository.ts`: `recordLLMUsage()` fires async `monthly_token_used` increment after each LLM call. New methods: `getWorkspaceBillingState`, `getPlanDefinition`, `updateWorkspacePlan`, `resetMonthlyTokens`, `resetAllDueMonthlyTokens`.
+
+**API**
+- `GET /api/billing/plan` (scope: `read:workspace`): workspace plan summary for Settings UI.
+- `POST /api/cron/billing` (cron-secret): resets monthly token counters for all workspaces past reset date.
+
+**Settings UI**
+- New "Plan & Usage" tab added as the first tab in Settings, covering budget bar, limit rows (roles, evidence, team, API keys), and feature flag table.
+
+**Tests**
+- `tests/billing.test.ts`: 11 tests covering budget allow/block/unlimited/DB-error, feature gating, `ask()` budget gate, and cache TTL/invalidation.
+
+**TypeScript check:** clean.
+
+---
+
 ## 0.18.2 — Manual Synthesis Refresh and History (2026-06-10)
 
 This release completes the practical synthesis polish loop: users can manually regenerate an executive brief and preserve the refreshed output in the existing U3 output history.

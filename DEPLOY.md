@@ -102,6 +102,7 @@ Set these in Render.
 | `CLOUDFLARE_AI_GATEWAY_TOKEN` | Optional AI Gateway token |
 | `OPENAI_API_KEY` | Required for embeddings when vector search is enabled |
 | `NEXUS_VECTOR_SEARCH` | Set to `enabled` to use `pgvector` retrieval |
+| `NEXUS_CRON_SECRET` | Shared secret for `POST /api/cron/synthesis` scheduled refreshes |
 | `NEXUS_R2_ORIGINALS` | Set to `enabled` to retain original uploads |
 | `R2_ACCOUNT_ID` | Cloudflare account id |
 | `R2_ACCESS_KEY_ID` | R2 access key |

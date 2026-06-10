@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
+    "cron:synthesis": "node scripts/run-scheduled-synthesis.mjs",
     "db:generate": "npx --yes drizzle-kit@0.31.10 generate",
     "db:migrate": "node scripts/db-migrate.mjs",
     "db:seed": "node scripts/db-seed.mjs",

@@ -45,6 +45,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/oauth/token",                   // agent OAuth token endpoint
   "/api/readiness/submit",              // public readiness lead capture
   "/api/health(.*)",
+  "/api/cron/synthesis",                // protected by NEXUS_CRON_SECRET inside route
   "/api/connectors/slack/callback(.*)", // OAuth redirect — Slack hits this without a session
 ]);
 
@@ -66,9 +67,12 @@ const isAgentApiRoute = createRouteMatcher([
   "/api/agent-outputs(.*)",
   "/api/decisions(.*)",
   "/api/actions(.*)",
+  "/api/action-items(.*)",
+  "/api/workflow-twins(.*)",
   "/api/learning-signals(.*)",
   "/api/settings(.*)",
   "/api/synthesis(.*)",
+  "/api/synthesis-schedule(.*)",
   "/api/connectors(.*)",  // includes install, callback, and list/revoke
   "/api/workspace(.*)",
 ]);

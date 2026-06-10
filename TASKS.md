@@ -16,9 +16,9 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 
 ---
 
-## Current Status (verified 2026-06-10) -- v0.18.2
+## Current Status (verified 2026-06-10) -- v0.21.0
 
-**Verified:** 21 test files, 104 tests passing (15 synthesis tests), build clean. 20 DB migrations.
+**Verified:** 26 test files, ~166 tests (~25 new dispatcher tests), build clean. 24 DB migrations.
 
 **Phases 1-6: Complete.**
 **Pre-7A Technical Prep: Complete.** (v0.9.1)
@@ -35,15 +35,22 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 **Executive Synthesis Layer: Shipped.** (v0.18.0) -- on-demand dispatcher/synthesis service, role question sets, API, collapsible UI reframe.
 **Executive Synthesis Traceability: Shipped.** (v0.18.1) -- source pills and entity chips attached to synthesis answers.
 **Executive Synthesis Refresh/History: Shipped.** (v0.18.2) -- manual refresh route/button with history saved to `agent_outputs`.
+**Scheduled Synthesis Refresh Core: Shipped.** (v0.19.0) -- schedule table, Settings tab, protected cron endpoint, runner script, in-app delivery through `agent_outputs`.
+**Workflow Twin Primitives: Shipped.** (v0.19.1) -- `workflow_twins`, `workflow_twin_runs`, run APIs, action-items alias, deterministic first run payloads.
+**Billing Tiers Session 1: Shipped.** (v0.20.0) -- plan-gated token budgets, feature flags, `ask()` budget gate, cron reset, Plan & Usage settings tab.
+**Billing Tiers Session 2: Shipped.** (v0.21.0) -- Stripe Checkout, webhook lifecycle (5 events), Billing Portal, trial-to-free cron conversion, Settings upgrade CTAs.
+**Orchestration Dispatcher: Shipped.** (v0.22.0) -- `dispatch_jobs` table, atomic claim with `FOR UPDATE SKIP LOCKED`, priority queue, retry/backoff, fan-out, 4 job type handlers, dispatch API, cron runner.
 **Demo packs: Audited and rewritten.** (v0.15.1) -- All 3 sector packs CEO-grade with pre-tuned Ask questions.
-**Production DB: Migrations 0014-0020 applied.**
+**Production DB: Migrations 0014-0020 applied. Migrations 0021-0024 need to run before deployment.**
 
 **The product is demo-ready and pilot-ready for GCC fintech, professional services, and SaaS buyers.**
 
 **Priority order (updated 2026-06-10):**
-1. Scheduled synthesis cadence (1 session) -- daily/weekly refresh job and delivery policy. NEXT.
-2. Workflow twin primitives -- foundation for Phase 8B/8C runs.
-3. Orchestration dispatcher -- foundation for multi-agent coordination.
+1. [x] Billing tiers Session 1 -- token budgets, feature flags, usage UI. DONE v0.20.0.
+2. [x] Billing tiers Session 2 -- Stripe checkout, webhook lifecycle, portal, trial conversion. DONE v0.21.0.
+3. [x] Orchestration dispatcher -- `dispatch_jobs` queue, atomic claim, fan-out, 4 handlers, cron runner. DONE v0.22.0.
+4. Entity pages and backlinks -- next Company Memory UI layer.
+5. Connector data flow -- Slack/Drive/Teams ingestion beyond skeletons.
 
 What is built at v0.18.0 (Executive Synthesis Layer):
 - No new DB migrations. Synthesis is computed on demand from existing agent outputs + evidence.
@@ -1263,9 +1270,13 @@ Positioning rule from the 2026-05-31 reassessment:
   before canonical creation. (v0.16.1)
 - [ ] Add direct "Create Decision from this brief" button on dashboard card to prefill a single
   proposal from one outputId.
-- [ ] Add workflow twin primitives: `workflow_twins` and `workflow_twin_runs` tables for
-  structured AI-assisted decision extraction from meeting notes and uploaded docs.
-- [ ] Enforce Agent Control Profiles before evidence enters workflow twin prompt or retrieval.
+- [x] Add workflow twin primitives: `workflow_twins` and `workflow_twin_runs` tables for
+  structured AI-assisted decision extraction from meeting notes and uploaded docs. (v0.19.1)
+- [x] Add `GET/POST /api/workflow-twins`, `GET/POST /api/workflow-twins/:id/run`, and
+  `GET /api/action-items` alias for workflow surfaces. (v0.19.1)
+- [x] Add deterministic first-pass run payloads for Decision & Action, Workflow Scorer, and
+  Ops Review twin types. (v0.19.1)
+- [ ] Enforce Agent Control Profiles before evidence enters workflow twin LLM prompts.
 - [x] Acceptance rule: no proposed decision/action becomes canonical without explicit user click.
 - [ ] Acceptance test: output works across financial services, professional services, and SaaS profiles.
 
@@ -1310,6 +1321,76 @@ Positioning rule from the 2026-05-31 reassessment:
 - [ ] Future: add staleness banner when source evidence or source agent outputs exceed threshold.
 - [x] Add entity backlinks and source names inside synthesis answers.
 - [ ] Future: add learning signal buttons directly on synthesis cards.
+
+---
+
+## Phase 8A++ — Scheduled Synthesis Refresh (target v0.19.0)
+
+> Turns NexusAI from a pull product into a push product. The CEO gets a fresh leadership brief
+> every Monday morning without logging in. See `docs/SCHEDULED_SYNTHESIS_SPEC.md` for full spec.
+
+### Session 1 — Core Scheduled Synthesis
+
+- [ ] Migration `0021_synthesis_schedules.sql` and Drizzle schema for `synthesis_schedules` table.
+- [ ] Repository methods: `getSynthesisSchedule`, `upsertSynthesisSchedule`, `getDueSchedules`, `updateScheduleLastRun`.
+- [ ] Cron runner script: `scripts/run-scheduled-synthesis.ts` (evaluates per-workspace cron expressions).
+- [ ] Internal cron API route `POST /api/cron/synthesis` with shared-secret auth (`NEXUS_CRON_SECRET`).
+- [ ] Settings API routes: `GET/PUT /api/synthesis-schedule`, `POST /api/synthesis-schedule/test`.
+- [ ] Settings UI section: enable/disable toggle, schedule picker, role checkboxes, delivery channel config.
+- [ ] Add "Last refreshed" timestamp on synthesis brief panel from `agent_outputs.createdAt`.
+- [ ] Tests: schedule CRUD, cron window matching, runner dispatch logic.
+- [ ] Audit events: `synthesis_scheduled_run` and `synthesis_delivery_sent`.
+
+### Session 2 — Email Delivery and Polish
+
+- [ ] Install Resend, build React Email template for synthesis digest (`lib/email/synthesis-digest.tsx`).
+- [ ] Email delivery dispatch in cron runner (subject, role brief, CTA to dashboard).
+- [ ] Render cron job config in `render.yaml`.
+- [ ] End-to-end test: scheduled synthesis with email delivery.
+- [ ] Update ARCHITECTURE.md, ROADMAP.md, CHANGELOG.md.
+- [ ] Bump version to v0.19.0.
+
+---
+
+## Billing Tiers and Usage Metering (target v0.20.0)
+
+> Four-tier billing (Free / Pro / Business / Enterprise) with LLM token budget enforcement,
+> feature gating, Stripe checkout, and usage UI. See `docs/BILLING_TIERS_SPEC.md` for full spec.
+
+### Session 1 — Schema, Enforcement, and Settings UI
+
+- [ ] Migration `0022_billing_tiers.sql`: plan columns on workspaces, `plan_definitions` table with seed data.
+- [ ] Drizzle schema updates for plan fields and plan_definitions.
+- [ ] `checkTokenBudget(workspaceId)` with in-process cache (5-min TTL).
+- [ ] Extend `recordLLMUsage()` to atomically increment `workspaces.monthly_token_used`.
+- [ ] Feature gate function `canUseFeature()` for scheduled synthesis, exports, extraction, etc.
+- [ ] Enforce token budget at all LLM call points (Ask, dashboard, synthesis, extraction, ingestion).
+- [ ] Enforce resource limits: max roles, max evidence, max API keys, ask daily limit.
+- [ ] Plan and Usage section in Settings UI: plan display, usage percentage bar, resource limits, breakdown.
+- [ ] Warning banners at 80%/95%/100% of token budget.
+- [ ] Monthly token reset in cron runner.
+- [ ] Tests: budget check, feature gating, enforcement, reset logic.
+- [ ] Audit events: `plan_upgraded`, `plan_downgraded`, `token_budget_exceeded`.
+
+### Session 2 — Stripe Integration and Checkout
+
+- [ ] Install Stripe SDK, configure Products and Prices for Pro and Business.
+- [ ] Checkout session creation endpoint `POST /api/billing/checkout`.
+- [ ] Webhook handler `POST /api/billing/webhook` for subscription lifecycle events.
+- [ ] Upgrade flow in Settings: "Upgrade to Pro/Business" buttons with Stripe Checkout redirect.
+- [ ] Downgrade logic: adjust limits at next billing cycle, "resolve limits" banner.
+- [ ] Trial-to-Free conversion (day 15 drops to Free instead of suspension).
+- [ ] Invoice portal link in Settings.
+- [ ] End-to-end test: trial expiry, upgrade, downgrade, payment failure.
+
+### Session 3 (optional) — Polish and Analytics
+
+- [ ] Usage breakdown by feature type (Ask vs synthesis vs dashboard) in Settings.
+- [ ] Internal admin revenue dashboard: MRR, active plans, usage per workspace.
+- [ ] Upgrade CTA components across all gated features (lock icons, tooltips).
+- [ ] Annual pricing option (2 months free).
+- [ ] Update ARCHITECTURE.md, ROADMAP.md, CHANGELOG.md.
+- [ ] Bump version to v0.20.0.
 
 ---
 

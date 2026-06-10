@@ -1,4 +1,5 @@
 import {
+  bigint,
   boolean,
   customType,
   date,
@@ -59,6 +60,7 @@ export const riskRatingEnum = pgEnum("agent_risk_rating", ["low", "medium", "hig
 export const approvalLevelEnum = pgEnum("agent_approval_level", ["owner", "partner", "client", "board"]);
 export const reviewCadenceEnum = pgEnum("agent_review_cadence", ["per_output", "weekly", "monthly", "event"]);
 export const agentLogLevelEnum = pgEnum("agent_log_level", ["actions", "actions_sources", "full"]);
+export const planEnum = pgEnum("plan", ["free", "pro", "business", "enterprise"]);
 
 export const tenants = pgTable("tenants", {
   id: text("id").primaryKey(),
@@ -75,7 +77,35 @@ export const workspaces = pgTable("workspaces", {
   suspendedAt: timestamp("suspended_at", { withTimezone: true }),
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
+  plan: varchar("plan", { length: 32 }).notNull().default("free"),
+  monthlyTokenLimit: bigint("monthly_token_limit", { mode: "number" }).notNull().default(500000),
+  monthlyTokenUsed: bigint("monthly_token_used", { mode: "number" }).notNull().default(0),
+  tokenResetAt: timestamp("token_reset_at", { withTimezone: true }).notNull().defaultNow(),
+  planChangedAt: timestamp("plan_changed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+});
+
+export const planDefinitions = pgTable("plan_definitions", {
+  planKey: varchar("plan_key", { length: 32 }).primaryKey(),
+  label: varchar("label", { length: 64 }).notNull(),
+  priceCents: integer("price_cents").notNull().default(0),
+  monthlyTokens: bigint("monthly_tokens", { mode: "number" }).notNull(),
+  maxRoles: integer("max_roles").notNull(),
+  maxEvidence: integer("max_evidence").notNull(),
+  maxTeam: integer("max_team").notNull(),
+  maxConnectors: integer("max_connectors").notNull(),
+  maxApiKeys: integer("max_api_keys").notNull(),
+  askDailyLimit: integer("ask_daily_limit"),
+  scheduledSynthesis: boolean("scheduled_synthesis").notNull().default(false),
+  synthesisMaxCadence: varchar("synthesis_max_cadence", { length: 16 }),
+  emailDelivery: boolean("email_delivery").notNull().default(false),
+  slackDelivery: boolean("slack_delivery").notNull().default(false),
+  exportsEnabled: boolean("exports_enabled").notNull().default(false),
+  decisionExtraction: boolean("decision_extraction").notNull().default(false),
+  customPassports: boolean("custom_passports").notNull().default(false),
+  dataResidency: boolean("data_residency").notNull().default(false),
+  apiAccess: boolean("api_access").notNull().default(false),
+  watermark: boolean("watermark").notNull().default(true),
 });
 
 export const users = pgTable("users", {
@@ -190,6 +220,22 @@ export const workspaceSettings = pgTable("workspace_settings", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 });
 
+export const synthesisSchedules = pgTable("synthesis_schedules", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull(),
+  enabled: boolean("enabled").notNull().default(true),
+  cron: varchar("cron", { length: 64 }).notNull().default("0 7 * * 1"),
+  timezone: varchar("timezone", { length: 64 }).notNull().default("UTC"),
+  roles: jsonb("roles").$type<string[]>().default(["ceo"]).notNull(),
+  delivery: jsonb("delivery").$type<string[]>().default(["in_app"]).notNull(),
+  emailTargets: jsonb("email_targets").$type<string[]>().default([]).notNull(),
+  slackChannel: text("slack_channel"),
+  lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+  lastStatus: varchar("last_status", { length: 32 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+});
+
 export const promptRegistry = pgTable("prompt_registry", {
   key: text("key").primaryKey(),
   version: varchar("version", { length: 32 }).notNull(),
@@ -242,6 +288,36 @@ export const actions = pgTable("actions", {
   completedAt: timestamp("completed_at", { withTimezone: true }),
   createdAt:   timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt:   timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+});
+
+export const workflowTwins = pgTable("workflow_twins", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull(),
+  type: varchar("type", { length: 64 }).notNull(),
+  name: varchar("name", { length: 200 }).notNull(),
+  status: varchar("status", { length: 32 }).notNull().default("draft"),
+  config: jsonb("config").$type<Record<string, unknown>>().default({}).notNull(),
+  owner: varchar("owner", { length: 120 }),
+  createdBy: text("created_by").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedBy: text("updated_by"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+});
+
+export const workflowTwinRuns = pgTable("workflow_twin_runs", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull(),
+  twinId: text("twin_id").notNull().references(() => workflowTwins.id, { onDelete: "cascade" }),
+  twinType: varchar("twin_type", { length: 64 }).notNull(),
+  evidenceRefs: jsonb("evidence_refs").$type<string[]>().default([]).notNull(),
+  generatedOutputRefs: jsonb("generated_output_refs").$type<string[]>().default([]).notNull(),
+  confidence: integer("confidence").notNull().default(70),
+  status: varchar("status", { length: 32 }).notNull().default("generated"),
+  summary: text("summary").notNull(),
+  payload: jsonb("payload").$type<Record<string, unknown>>().default({}).notNull(),
+  runAt: timestamp("run_at", { withTimezone: true }).defaultNow().notNull(),
+  reviewedBy: text("reviewed_by"),
+  reviewedAt: timestamp("reviewed_at", { withTimezone: true })
 });
 
 export const askConversationMessages = pgTable("ask_conversation_messages", {
@@ -390,4 +466,26 @@ export const llmUsage = pgTable("llm_usage", {
   inputTokens: integer("input_tokens").notNull().default(0),
   outputTokens: integer("output_tokens").notNull().default(0),
   costUsdMicro: integer("cost_usd_micro").notNull().default(0),
+});
+
+/**
+ * Orchestration dispatcher job queue (migration 0024).
+ * Decouples job submission from execution. Supports priority, retry, and chaining.
+ * Claims are atomic via SQL FOR UPDATE SKIP LOCKED.
+ */
+export const dispatchJobs = pgTable("dispatch_jobs", {
+  id:           text("id").primaryKey(),
+  workspaceId:  text("workspace_id").notNull(),
+  jobType:      varchar("job_type", { length: 64 }).notNull(),
+  payload:      jsonb("payload").$type<Record<string, unknown>>().notNull().default({}),
+  status:       varchar("status", { length: 16 }).notNull().default("pending"),
+  priority:     integer("priority").notNull().default(5),
+  attempts:     integer("attempts").notNull().default(0),
+  maxAttempts:  integer("max_attempts").notNull().default(3),
+  runAfter:     timestamp("run_after", { withTimezone: true }).notNull().defaultNow(),
+  startedAt:    timestamp("started_at", { withTimezone: true }),
+  completedAt:  timestamp("completed_at", { withTimezone: true }),
+  error:        text("error"),
+  parentJobId:  text("parent_job_id"),
+  createdAt:    timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

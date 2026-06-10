@@ -211,6 +211,121 @@ export const executiveSynthesisSchema = z.object({
 });
 export type ExecutiveSynthesis = z.infer<typeof executiveSynthesisSchema>;
 
+export const synthesisDeliveryChannelSchema = z.enum(["in_app", "email", "slack"]);
+export type SynthesisDeliveryChannel = z.infer<typeof synthesisDeliveryChannelSchema>;
+
+export const synthesisScheduleStatusSchema = z.enum(["success", "partial", "failed"]);
+export type SynthesisScheduleStatus = z.infer<typeof synthesisScheduleStatusSchema>;
+
+const cronExpressionSchema = z
+  .string()
+  .min(9)
+  .max(64)
+  .refine((value) => value.trim().split(/\s+/).length === 5, "Expected a five-field cron expression");
+
+export const synthesisScheduleInputSchema = z.object({
+  enabled: z.boolean().default(true),
+  cron: cronExpressionSchema.default("0 7 * * 1"),
+  timezone: z.string().min(1).max(64).default("UTC"),
+  roles: z.array(roleSchema).min(1).default(["ceo"]),
+  delivery: z.array(synthesisDeliveryChannelSchema).min(1).default(["in_app"]),
+  emailTargets: z.array(z.string().email()).default([]),
+  slackChannel: z.string().nullable().optional()
+});
+export type SynthesisScheduleInput = z.infer<typeof synthesisScheduleInputSchema>;
+
+export const synthesisScheduleSchema = synthesisScheduleInputSchema.extend({
+  id: z.string(),
+  workspaceId: z.string(),
+  lastRunAt: z.string().nullable().optional(),
+  lastStatus: synthesisScheduleStatusSchema.nullable().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string()
+});
+export type SynthesisSchedule = z.infer<typeof synthesisScheduleSchema>;
+
+// ---------------------------------------------------------------------------
+// Billing tier contracts
+// ---------------------------------------------------------------------------
+
+export const billingPlanSchema = z.enum(["free", "pro", "business", "enterprise"]);
+export type BillingPlan = z.infer<typeof billingPlanSchema>;
+
+export const planDefinitionSchema = z.object({
+  planKey: z.string(),
+  label: z.string(),
+  priceCents: z.number().int().nonnegative(),
+  monthlyTokens: z.number().int(),          // 0 = unlimited
+  maxRoles: z.number().int(),               // -1 = unlimited
+  maxEvidence: z.number().int(),
+  maxTeam: z.number().int(),
+  maxConnectors: z.number().int(),
+  maxApiKeys: z.number().int(),
+  askDailyLimit: z.number().int().nullable(),
+  scheduledSynthesis: z.boolean(),
+  synthesisMaxCadence: z.string().nullable(),
+  emailDelivery: z.boolean(),
+  slackDelivery: z.boolean(),
+  exportsEnabled: z.boolean(),
+  decisionExtraction: z.boolean(),
+  customPassports: z.boolean(),
+  dataResidency: z.boolean(),
+  apiAccess: z.boolean(),
+  watermark: z.boolean(),
+});
+export type PlanDefinition = z.infer<typeof planDefinitionSchema>;
+
+export const tokenBudgetStatusSchema = z.object({
+  allowed: z.boolean(),
+  used: z.number().int().nonnegative(),
+  limit: z.number().int().nonnegative(),
+  percentUsed: z.number().int().min(0).max(100),
+  plan: billingPlanSchema,
+});
+export type TokenBudgetStatus = z.infer<typeof tokenBudgetStatusSchema>;
+
+export const billingFeatureSchema = z.enum([
+  "scheduled_synthesis",
+  "email_delivery",
+  "slack_delivery",
+  "exports",
+  "decision_extraction",
+  "custom_passports",
+  "data_residency",
+  "api_access",
+]);
+export type BillingFeature = z.infer<typeof billingFeatureSchema>;
+
+export const workspacePlanSummarySchema = z.object({
+  plan: billingPlanSchema,
+  planLabel: z.string(),
+  priceCents: z.number().int().nonnegative(),
+  tokenBudget: z.object({
+    used: z.number().int().nonnegative(),
+    limit: z.number().int().nonnegative(),
+    percentUsed: z.number().int().min(0).max(100),
+    resetAt: z.string(),
+  }),
+  limits: z.object({
+    roles: z.object({ used: z.number().int(), limit: z.number().int() }),
+    evidence: z.object({ used: z.number().int(), limit: z.number().int() }),
+    team: z.object({ used: z.number().int(), limit: z.number().int() }),
+    apiKeys: z.object({ used: z.number().int(), limit: z.number().int() }),
+    askDailyLimit: z.number().int().nullable(),
+  }),
+  features: z.object({
+    scheduledSynthesis: z.boolean(),
+    emailDelivery: z.boolean(),
+    slackDelivery: z.boolean(),
+    exports: z.boolean(),
+    decisionExtraction: z.boolean(),
+    customPassports: z.boolean(),
+    dataResidency: z.boolean(),
+    apiAccess: z.boolean(),
+  }),
+});
+export type WorkspacePlanSummary = z.infer<typeof workspacePlanSummarySchema>;
+
 // ---------------------------------------------------------------------------
 // Agent Control Profile (passport) contracts
 // ---------------------------------------------------------------------------
@@ -366,6 +481,70 @@ export const actionInputSchema = z.object({
 });
 export type ActionInput = z.infer<typeof actionInputSchema>;
 
+// ---------------------------------------------------------------------------
+// Workflow Twin primitives (Phase 8A/8B/8C substrate)
+// ---------------------------------------------------------------------------
+
+export const workflowTwinTypeSchema = z.enum(["decision_action", "workflow_scorer", "ops_review"]);
+export type WorkflowTwinType = z.infer<typeof workflowTwinTypeSchema>;
+
+export const workflowTwinStatusSchema = z.enum(["draft", "active", "paused", "archived"]);
+export type WorkflowTwinStatus = z.infer<typeof workflowTwinStatusSchema>;
+
+export const workflowTwinRunStatusSchema = z.enum(["generated", "in_review", "approved", "rejected", "failed"]);
+export type WorkflowTwinRunStatus = z.infer<typeof workflowTwinRunStatusSchema>;
+
+export const workflowTwinSchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  type: workflowTwinTypeSchema,
+  name: z.string(),
+  status: workflowTwinStatusSchema,
+  config: z.record(z.unknown()).default({}),
+  owner: z.string().optional().nullable(),
+  createdBy: z.string(),
+  createdAt: z.string(),
+  updatedBy: z.string().optional().nullable(),
+  updatedAt: z.string()
+});
+export type WorkflowTwin = z.infer<typeof workflowTwinSchema>;
+
+export const workflowTwinInputSchema = z.object({
+  type: workflowTwinTypeSchema,
+  name: z.string().min(1).max(200),
+  status: workflowTwinStatusSchema.default("draft"),
+  config: z.record(z.unknown()).default({}),
+  owner: z.string().max(120).optional().nullable()
+});
+export type WorkflowTwinInput = z.infer<typeof workflowTwinInputSchema>;
+
+export const workflowTwinRunSchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  twinId: z.string(),
+  twinType: workflowTwinTypeSchema,
+  evidenceRefs: z.array(z.string()).default([]),
+  generatedOutputRefs: z.array(z.string()).default([]),
+  confidence: z.number().min(0).max(1),
+  status: workflowTwinRunStatusSchema,
+  summary: z.string(),
+  payload: z.record(z.unknown()).default({}),
+  runAt: z.string(),
+  reviewedBy: z.string().optional().nullable(),
+  reviewedAt: z.string().optional().nullable()
+});
+export type WorkflowTwinRun = z.infer<typeof workflowTwinRunSchema>;
+
+export const workflowTwinRunInputSchema = z.object({
+  evidenceRefs: z.array(z.string()).default([]),
+  generatedOutputRefs: z.array(z.string()).default([]),
+  confidence: z.number().min(0).max(1).default(0.7),
+  status: workflowTwinRunStatusSchema.default("generated"),
+  summary: z.string().min(1),
+  payload: z.record(z.unknown()).default({})
+});
+export type WorkflowTwinRunInput = z.infer<typeof workflowTwinRunInputSchema>;
+
 export const askRequestSchema = z.object({
   workspaceId: z.string(),
   userId: z.string(),
@@ -413,8 +592,12 @@ export const agentScopeSchema = z.enum([
   "read:dashboard",
   "read:evidence",
   "read:recommendations",
+  "read:settings",
+  "read:workflows",
   "write:ingest",
   "write:approvals",
+  "write:settings",
+  "write:workflows",
   "admin"
 ]);
 export type AgentScope = z.infer<typeof agentScopeSchema>;
@@ -588,3 +771,80 @@ export const evalRunSummarySchema = z.object({
   createdAt: z.string()
 });
 export type EvalRunSummary = z.infer<typeof evalRunSummarySchema>;
+
+// ---------------------------------------------------------------------------
+// Orchestration Dispatcher
+// ---------------------------------------------------------------------------
+
+export const dispatchJobTypeSchema = z.enum([
+  "agent_brief",
+  "synthesis",
+  "workflow_run",
+  "decision_extract",
+]);
+export type DispatchJobType = z.infer<typeof dispatchJobTypeSchema>;
+
+export const dispatchJobStatusSchema = z.enum([
+  "pending",
+  "running",
+  "done",
+  "failed",
+  "cancelled",
+]);
+export type DispatchJobStatus = z.infer<typeof dispatchJobStatusSchema>;
+
+export const dispatchJobSchema = z.object({
+  id:           z.string(),
+  workspaceId:  z.string(),
+  jobType:      dispatchJobTypeSchema,
+  payload:      z.record(z.unknown()),
+  status:       dispatchJobStatusSchema,
+  priority:     z.number().int().min(1).max(10),
+  attempts:     z.number().int().nonnegative(),
+  maxAttempts:  z.number().int().positive(),
+  runAfter:     z.string(),
+  startedAt:    z.string().nullable(),
+  completedAt:  z.string().nullable(),
+  error:        z.string().nullable(),
+  parentJobId:  z.string().nullable(),
+  createdAt:    z.string(),
+});
+export type DispatchJob = z.infer<typeof dispatchJobSchema>;
+
+export const agentBriefPayloadSchema = z.object({
+  role:       z.string(),
+  agentId:    z.string().optional(),
+  department: z.string().optional(),
+});
+
+export const synthesisPayloadSchema = z.object({
+  role:       z.string(),
+  department: z.string().optional(),
+  persist:    z.boolean().optional().default(true),
+});
+
+export const workflowRunPayloadSchema = z.object({
+  workflowTwinId: z.string(),
+});
+
+export const decisionExtractPayloadSchema = z.object({
+  outputIds: z.array(z.string()).optional(),
+});
+
+export const dispatchJobInputSchema = z.object({
+  jobType:     dispatchJobTypeSchema,
+  payload:     z.record(z.unknown()).default({}),
+  priority:    z.number().int().min(1).max(10).optional().default(5),
+  maxAttempts: z.number().int().positive().optional().default(3),
+  runAfter:    z.string().optional(),
+  parentJobId: z.string().optional(),
+});
+export type DispatchJobInput = z.infer<typeof dispatchJobInputSchema>;
+
+export const dispatchFanOutInputSchema = z.object({
+  jobType:  dispatchJobTypeSchema,
+  fanOut:   z.array(z.string()).min(1),
+  payload:  z.record(z.unknown()).default({}),
+  priority: z.number().int().min(1).max(10).optional().default(5),
+});
+export type DispatchFanOutInput = z.infer<typeof dispatchFanOutInputSchema>;
