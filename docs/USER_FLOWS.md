@@ -1,7 +1,7 @@
 # NexusAI Mission Control -- User Flows
 
 Updated: 2026-06-10
-Version: v0.18.0
+Version: v0.18.1
 
 > This document describes the end-to-end journeys a user takes through NexusAI Mission Control.
 > It serves three audiences: pilot sponsors (what happens when I use this), developers (how the
@@ -153,13 +153,13 @@ Once onboarded, the daily product loop has four surfaces: Dashboards (Agent Room
 3. The synthesis service applies company context, archetype language, and the `synthesis.executive` prompt registry entry.
 4. CEO receives 7 leadership questions. COO, CFO, CTO/CDO, CBO/CMO, and CHRO receive 5 role-tuned questions. Other roles receive a generic leadership framework.
 5. Each synthesis answer runs through red-team checks before display.
-6. Dashboard renders the synthesis as the primary card with numbered answers, confidence, evidence count, and answered/total indicator.
+6. Dashboard renders the synthesis as the primary card with numbered answers, confidence, evidence count, answered/total indicator, clickable source pills, and company-memory entity chips.
 7. Specialist agent cards appear below in a collapsible "Specialist Agent Detail" section.
 8. If the user filters by a single agent with `?agent=...`, Nexus bypasses synthesis and shows that specialist view directly.
 
 **What the user sees:** One executive brief that answers the only questions that matter for their role. Specialist agents are the proof trail, not the primary experience.
 
-**Known follow-on polish:** synthesis output history, manual refresh, source/entity backlinks in answers, and learning-signal controls directly on synthesis answers.
+**Known follow-on polish:** synthesis output history, manual refresh, and learning-signal controls directly on synthesis answers.
 
 ### 4.2 Ask Panel
 

@@ -9,6 +9,7 @@
  */
 
 import { useState } from "react";
+import Link from "next/link";
 import type { ExecutiveSynthesis } from "@/lib/contracts";
 
 // ---------------------------------------------------------------------------
@@ -32,12 +33,16 @@ function QuestionCard({
   answer,
   confidence,
   evidenceCount,
+  sources,
+  entities,
 }: {
   index: number;
   question: string;
   answer: string;
   confidence: number;
   evidenceCount: number;
+  sources: ExecutiveSynthesis["questions"][number]["sources"];
+  entities: ExecutiveSynthesis["questions"][number]["entities"];
 }) {
   const isInsufficient =
     answer.startsWith("Insufficient evidence") ||
@@ -62,10 +67,41 @@ function QuestionCard({
             {answer}
           </p>
           {!isInsufficient && (
-            <div className="mt-2 flex flex-wrap gap-2">
-              <ConfidenceBadge confidence={confidence} />
-              {evidenceCount > 0 && (
-                <span className="badge badge-muted">{evidenceCount} evidence sources</span>
+            <div className="mt-3 space-y-2">
+              <div className="flex flex-wrap gap-2">
+                <ConfidenceBadge confidence={confidence} />
+                {evidenceCount > 0 && (
+                  <span className="badge badge-muted">{evidenceCount} evidence sources</span>
+                )}
+              </div>
+
+              {sources.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {sources.map((source) => (
+                    <Link
+                      key={source.id}
+                      href={`/evidence/${source.id}`}
+                      className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-xs text-white/55 hover:border-nexus-accent/50 hover:text-white"
+                      title={`${source.sourceType}${source.department ? ` · ${source.department}` : ""}`}
+                    >
+                      {source.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
+
+              {entities.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {entities.map((entity) => (
+                    <span
+                      key={entity.id}
+                      className="rounded-full border border-nexus-accent/15 bg-nexus-accent/5 px-2 py-0.5 text-xs text-nexus-accent/75"
+                      title={`${entity.type} · ${Math.round(entity.confidence * 100)}% confidence`}
+                    >
+                      {entity.name}
+                    </span>
+                  ))}
+                </div>
               )}
             </div>
           )}
@@ -132,6 +168,8 @@ export function ExecutiveSynthesisBrief({
             answer={q.answer}
             confidence={q.confidence}
             evidenceCount={q.evidenceRefs.length}
+            sources={q.sources}
+            entities={q.entities}
           />
         ))}
       </div>

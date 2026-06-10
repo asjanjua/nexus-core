@@ -16,9 +16,9 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 
 ---
 
-## Current Status (verified 2026-06-10) -- v0.18.0
+## Current Status (verified 2026-06-10) -- v0.18.1
 
-**Verified:** 21 test files, 102 tests passing (13 new synthesis tests), build clean. 20 DB migrations.
+**Verified:** 21 test files, 103 tests passing (14 synthesis tests), build clean. 20 DB migrations.
 
 **Phases 1-6: Complete.**
 **Pre-7A Technical Prep: Complete.** (v0.9.1)
@@ -33,13 +33,14 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 **Entity Extraction Pipeline: Shipped.** (v0.16.3) -- deterministic entity extraction on processed evidence, `evidence_entity_links`, and `GET /api/entities`.
 **Phase 2 AI Trust Layer: Shipped.** (v0.17.0) -- eval harness, red-team checks, prompt registry, and workspace AI policy settings.
 **Executive Synthesis Layer: Shipped.** (v0.18.0) -- on-demand dispatcher/synthesis service, role question sets, API, collapsible UI reframe.
+**Executive Synthesis Traceability: Shipped.** (v0.18.1) -- source pills and entity chips attached to synthesis answers.
 **Demo packs: Audited and rewritten.** (v0.15.1) -- All 3 sector packs CEO-grade with pre-tuned Ask questions.
 **Production DB: Migrations 0014-0020 applied.**
 
 **The product is demo-ready and pilot-ready for GCC fintech, professional services, and SaaS buyers.**
 
 **Priority order (updated 2026-06-10):**
-1. Executive Synthesis Layer Session 2 (1 session) -- scheduled refresh, optional synthesis output history, entity backlinks in synthesis answers. NEXT.
+1. Executive Synthesis Layer Session 2 remainder (1 session) -- scheduled refresh and optional synthesis output history. NEXT.
 2. Workflow twin primitives -- foundation for Phase 8B/8C runs.
 3. Orchestration dispatcher -- foundation for multi-agent coordination.
 
@@ -61,6 +62,14 @@ What is built at v0.18.0 (Executive Synthesis Layer):
 - `ExecutiveSynthesis` and `ExecutiveSynthesisQuestion` types in `lib/contracts.ts`.
 - `docs/EXECUTIVE_SYNTHESIS_SPEC.md` committed.
 - 13 tests in `tests/synthesis.test.ts`.
+
+What is built at v0.18.1 (Executive Synthesis Traceability):
+- Each synthesis question now carries readable `sources` and extracted `entities`.
+- Dashboard synthesis answers show clickable evidence source pills.
+- Dashboard synthesis answers show company-memory entity chips derived from overlapping evidence refs.
+- Older synthesis payloads remain valid because `sources` and `entities` default to empty arrays.
+- No DB migration required.
+- 14 synthesis tests; 103 total tests.
 
 What is built locally for v0.16.0 (Phase 8A — Decision & Action Twin):
 - Migration 0017: extended `decisions` table (sourceOutputId FK, deadline, priority, timestamps).
@@ -1291,7 +1300,7 @@ Positioning rule from the 2026-05-31 reassessment:
 - [ ] Future: persist synthesis outputs into `agent_outputs` if rollback/history becomes necessary.
 - [ ] Future: add manual refresh endpoint/button for regenerated synthesis.
 - [ ] Future: add staleness banner when source evidence or source agent outputs exceed threshold.
-- [ ] Future: add entity backlinks and source names inside synthesis answers.
+- [x] Add entity backlinks and source names inside synthesis answers.
 - [ ] Future: add learning signal buttons directly on synthesis cards.
 
 ---

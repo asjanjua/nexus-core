@@ -1,4 +1,4 @@
-# Executive Synthesis Layer -- v0.18.0 Specification
+# Executive Synthesis Layer -- v0.18.1 Specification
 
 Updated: 2026-06-10
 Status: Shipped as an on-demand dashboard read layer
@@ -21,7 +21,7 @@ This is the operating model:
 
 ## 2. What Shipped
 
-The v0.18.0 implementation is intentionally lightweight and safe:
+The v0.18.0 implementation was intentionally lightweight and safe:
 - No new database migration
 - No new persistent output type
 - No external agent framework
@@ -94,7 +94,24 @@ Response shape:
         "question": "What is the single most important thing I need to know today?",
         "answer": "Evidence-backed answer...",
         "confidence": 0.82,
-        "evidenceRefs": ["ev_1", "ev_2"]
+        "evidenceRefs": ["ev_1", "ev_2"],
+        "sources": [
+          {
+            "id": "ev_1",
+            "label": "board-pack.pdf",
+            "sourceType": "document",
+            "department": "Finance",
+            "confidence": 0.91
+          }
+        ],
+        "entities": [
+          {
+            "id": "ent_1",
+            "type": "risk",
+            "name": "Enterprise renewal delay",
+            "confidence": 0.84
+          }
+        ]
       }
     ],
     "overallConfidence": 0.82,
@@ -211,14 +228,14 @@ The following were deliberately deferred:
 - learning signal buttons directly on synthesis answers
 - direct decision extraction from synthesis output
 
-These are follow-on polish items, not blockers for v0.18.0.
+Source names and entity chips were added in v0.18.1. The remaining items are follow-on polish, not blockers for pilot demos.
 
 ---
 
 ## 9. Verification
 
 Local verification:
-- `npm run test` passed: 21 files / 102 tests
+- `npm run test` passed: 21 files / 103 tests
 - `npm run build` passed
 - No DB migration required
 

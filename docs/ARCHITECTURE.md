@@ -1,7 +1,7 @@
 # NexusAI Mission Control Architecture
 
 Updated: 2026-06-10
-Current product state: v0.18.0 (verified). Covers U2 Agent Control Profiles, U3 output history/rollback, U4 learning signals, Phase 8A Decision & Action Twin, AI decision proposals, persistent Ask memory, entity extraction, P2 AI trust controls, and the Executive Synthesis Layer.
+Current product state: v0.18.1 (verified). Covers U2 Agent Control Profiles, U3 output history/rollback, U4 learning signals, Phase 8A Decision & Action Twin, AI decision proposals, persistent Ask memory, entity extraction, P2 AI trust controls, the Executive Synthesis Layer, and synthesis source/entity traceability.
 
 ## 1. Purpose
 
@@ -205,10 +205,11 @@ Current behavior:
 - The service builds a single specialist-brief context block, applies workspace company context and archetype language, then answers role-specific leadership questions.
 - CEO gets seven cross-functional questions. COO, CFO, CTO/CDO, CBO/CMO, and CHRO get five role-tuned questions. Other roles use a generic leadership set.
 - Each synthesis answer runs through red-team checks before display.
+- Each synthesis answer includes readable source pills and extracted entity chips when evidence links are available.
 - `GET /api/synthesis/[role]` exposes the synthesis with `read:dashboard` scope.
 - The dashboard renders the synthesis as the primary panel and puts specialist cards in a collapsible drill-down section.
 
-No v0.18.0 migration was added. Synthesis is computed on demand and is not yet persisted to `agent_outputs`; output history, manual refresh, entity backlinks, and synthesis-level learning signals remain follow-on polish items.
+No v0.18.0 or v0.18.1 migration was added. Synthesis is computed on demand and is not yet persisted to `agent_outputs`; output history, manual refresh, and synthesis-level learning signals remain follow-on polish items.
 
 ## 6. Key Data Stores
 
@@ -401,6 +402,7 @@ sequenceDiagram
 | Entity extraction | Complete (v0.16.3) |
 | P2 AI trust layer | Complete (v0.17.0) |
 | Executive Synthesis Layer | Complete (v0.18.0) -- on-demand role-aware synthesis |
+| Executive Synthesis Traceability | Complete (v0.18.1) -- source pills and entity chips |
 | Connectors | Skeleton only (Slack OAuth/events) |
 | Workflow Twin Scorer | Planned Phase 8B |
 | Ops Review Twin | Planned Phase 8C |
@@ -410,7 +412,7 @@ sequenceDiagram
 
 ### Executive Synthesis Polish (next)
 
-The v0.18.0 synthesis layer is shipped as an on-demand dashboard read layer. The next architecture step is to add optional persistence/history, scheduled refresh, entity backlinks/source labels inside answers, and learning signal controls on synthesis questions if pilots show those are needed.
+The v0.18.1 synthesis layer is shipped as an on-demand dashboard read layer with source/entity traceability. The next architecture step is to add optional persistence/history, scheduled refresh, and learning signal controls on synthesis questions if pilots show those are needed.
 
 ### Entity Pages and Backlinks (next Company Memory step)
 

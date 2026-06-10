@@ -69,6 +69,23 @@ describe("ExecutiveSynthesis contract", () => {
           answer: "Revenue is tracking 12% below forecast due to delayed enterprise renewals.",
           confidence: 0.82,
           evidenceRefs: ["ev-001", "ev-002"],
+          sources: [
+            {
+              id: "ev-001",
+              label: "board-pack.pdf",
+              sourceType: "document",
+              department: "Finance",
+              confidence: 0.91,
+            },
+          ],
+          entities: [
+            {
+              id: "ent-001",
+              type: "risk",
+              name: "Enterprise renewal delay",
+              confidence: 0.84,
+            },
+          ],
         },
       ],
       overallConfidence: 0.82,
@@ -76,6 +93,21 @@ describe("ExecutiveSynthesis contract", () => {
       agentCardCount: 3,
     });
     expect(result.success).toBe(true);
+  });
+
+  it("defaults source and entity traceability arrays for older synthesis payloads", () => {
+    const result = executiveSynthesisQuestionSchema.safeParse({
+      question: "What is the risk?",
+      answer: "A decision is pending.",
+      confidence: 0.75,
+      evidenceRefs: ["ev-001"],
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.sources).toEqual([]);
+      expect(result.data.entities).toEqual([]);
+    }
   });
 
   it("rejects synthesis with confidence outside 0-1", () => {

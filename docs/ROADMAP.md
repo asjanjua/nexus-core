@@ -24,9 +24,9 @@ Every document uploaded, every question asked, every decision logged makes Nexus
 
 ---
 
-## Where We Are -- Current State (v0.18.0, verified 2026-06-10)
+## Where We Are -- Current State (v0.18.1, verified 2026-06-10)
 
-The product is demo-ready and pilot-ready. 20 DB migrations, 21 test files / 102 tests passing.
+The product is demo-ready and pilot-ready. 20 DB migrations, 21 test files / 103 tests passing.
 
 **What is built and verified:**
 
@@ -37,7 +37,7 @@ The product is demo-ready and pilot-ready. 20 DB migrations, 21 test files / 102
 - **Ask:** Natural language Q&A with evidence refs, confidence scores, passport filtering, output gates, escalation triggers, and persistent recent-turn conversation memory for follow-up questions.
 - **Governance:** Agent Control Profiles (passports) with evidence scoping, sensitivity ceilings, tool guards, hard-stop blocking, output gates, suspend/resume. Per-agent output log with rollback. Learning signal capture (approve/edit/reject/thumbs) with quality summary.
 - **AI Trust Layer:** Eval harness, prompt registry, red-team output checks, provider allow-list, local-only mode, sensitivity ceiling, and confidence threshold controls.
-- **Executive Synthesis:** On-demand role-aware leadership brief on each dashboard, with specialist agent cards as collapsible drill-down.
+- **Executive Synthesis:** On-demand role-aware leadership brief on each dashboard, with specialist agent cards as collapsible drill-down, plus source pills and entity chips for traceability.
 - **Decision Twin:** Full CRUD for decisions and actions with priority, deadline, blocker flags, status tracking, audit trail, plus AI proposal extraction from recent agent outputs. Interactive `/decisions` page.
 - **Company Memory substrate:** Processed evidence now extracts people, organizations, risks, KPIs, amounts, dates, systems, and processes into `entities`, linked back to source evidence through `evidence_entity_links`.
 - **Exports:** Weekly brief, risk radar CSV, reco register CSV, one-pager. Export hub.
@@ -71,7 +71,7 @@ Nexus now has a 30-case eval harness, red-team output checks, a prompt registry,
 Entity extraction now exists. The next Company Memory step is UI: entity pages with linked evidence, decisions, recommendations, owner/action references, and timeline views.
 
 **Executive Synthesis Polish**
-Add scheduled refresh, optional synthesis output history, entity backlinks/source labels, and learning signal controls on synthesis answers. This turns the v0.18.0 read layer into a recurring executive operating cadence.
+Add scheduled refresh, optional synthesis output history, and learning signal controls on synthesis answers. This turns the v0.18.1 read layer into a recurring executive operating cadence.
 
 ### Later
 

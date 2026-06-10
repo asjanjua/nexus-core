@@ -2,6 +2,27 @@
 
 ---
 
+## 0.18.1 — Executive Synthesis Traceability (2026-06-10)
+
+This release makes the new Executive Synthesis brief more inspectable for demos and pilot users.
+
+**Traceability**
+- Added `sources` and `entities` to each `ExecutiveSynthesisQuestion`.
+- Synthesis now maps evidence refs to readable source labels and evidence links.
+- Synthesis now attaches extracted company-memory entities whose evidence refs overlap with the brief.
+- The dashboard synthesis UI renders clickable source pills and entity chips under each answer.
+
+**Implementation**
+- `synthesiseForRole()` can still reuse dashboard-generated cards to avoid duplicate card generation.
+- No database migration required.
+- Older synthesis payloads remain valid because traceability arrays default to empty.
+
+**Verification**
+- `npm run test` passed: 21 files / 103 tests.
+- `npm run build` passed.
+
+---
+
 ## 0.18.0 — Executive Synthesis Layer (2026-06-10)
 
 This release reframes the dashboard from a set of agent cards into a leadership brief that

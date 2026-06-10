@@ -9,7 +9,7 @@
  * and evidence. Agent cards remain accessible as drill-down detail.
  */
 
-import type { ExecutiveSynthesis, ExecutiveSynthesisQuestion } from "@/lib/contracts";
+import type { Entity, EvidenceRecord, ExecutiveSynthesis, ExecutiveSynthesisQuestion } from "@/lib/contracts";
 import { cardsForRole } from "@/lib/services/dashboard";
 import { ask } from "@/lib/services/llm";
 import { briefLanguageInstruction, buildCompanyContext } from "@/lib/domain/sector-library";
@@ -18,6 +18,9 @@ import { checkOutput } from "@/lib/security/red-team";
 import { getPrompt } from "@/lib/prompts/registry";
 
 type DashboardCards = Awaited<ReturnType<typeof cardsForRole>>;
+
+type SynthesisSource = ExecutiveSynthesisQuestion["sources"][number];
+type SynthesisEntity = ExecutiveSynthesisQuestion["entities"][number];
 
 // ---------------------------------------------------------------------------
 // Role question sets
@@ -102,6 +105,38 @@ export function questionsForRole(role: string): string[] {
 
 const SYNTHESIS_SYSTEM_PROMPT = getPrompt("synthesis.executive");
 
+function fileName(path: string): string {
+  return path.split("/").pop() || path;
+}
+
+function sourcesForEvidence(evidence: EvidenceRecord[], evidenceRefs: string[]): SynthesisSource[] {
+  const wanted = new Set(evidenceRefs);
+  return evidence
+    .filter((record) => wanted.has(record.id))
+    .slice(0, 6)
+    .map((record) => ({
+      id: record.id,
+      label: fileName(record.sourcePath),
+      sourceType: record.sourceType,
+      department: record.department,
+      confidence: record.extractionConfidence,
+    }));
+}
+
+function entitiesForEvidence(entities: Entity[], evidenceRefs: string[]): SynthesisEntity[] {
+  const wanted = new Set(evidenceRefs);
+  return entities
+    .filter((entity) => entity.evidenceRefs.some((ref) => wanted.has(ref)))
+    .sort((a, b) => b.confidence - a.confidence)
+    .slice(0, 8)
+    .map((entity) => ({
+      id: entity.id,
+      type: entity.type,
+      name: entity.name,
+      confidence: entity.confidence,
+    }));
+}
+
 // ---------------------------------------------------------------------------
 // Per-question answer generation
 // ---------------------------------------------------------------------------
@@ -112,6 +147,8 @@ async function answerQuestion(
   companyContext: string,
   languageInstruction: string,
   evidenceRefs: string[],
+  sources: SynthesisSource[],
+  entities: SynthesisEntity[],
   workspaceId: string
 ): Promise<ExecutiveSynthesisQuestion> {
   const contextPrefix = companyContext ? `${companyContext}\n\n` : "";
@@ -150,6 +187,8 @@ async function answerQuestion(
     answer,
     confidence,
     evidenceRefs,
+    sources,
+    entities,
   };
 }
 
@@ -198,6 +237,14 @@ export async function synthesiseForRole(
   // 6. Get role-specific questions
   const questions = questionsForRole(role);
 
+  // 6.5 Add source names and entity backlinks for the brief UI.
+  const [evidence, entities] = await Promise.all([
+    repository.getEvidenceForWorkspace(workspaceId).catch(() => []),
+    repository.listEntities(workspaceId, { limit: 100 }).catch(() => []),
+  ]);
+  const sources = sourcesForEvidence(evidence, allEvidenceRefs);
+  const linkedEntities = entitiesForEvidence(entities, allEvidenceRefs);
+
   // 7. Answer each question (parallel for speed)
   const answeredQuestions = await Promise.all(
     questions.map((question) =>
@@ -207,6 +254,8 @@ export async function synthesiseForRole(
         companyContext,
         languageInstruction,
         allEvidenceRefs,
+        sources,
+        linkedEntities,
         workspaceId
       ).then((q) => ({
         ...q,

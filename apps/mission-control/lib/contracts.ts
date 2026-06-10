@@ -183,7 +183,20 @@ export const executiveSynthesisQuestionSchema = z.object({
   question: z.string(),
   answer: z.string(),
   confidence: z.number().min(0).max(1),
-  evidenceRefs: z.array(z.string())
+  evidenceRefs: z.array(z.string()),
+  sources: z.array(z.object({
+    id: z.string(),
+    label: z.string(),
+    sourceType: z.string(),
+    department: z.string().optional(),
+    confidence: z.number().min(0).max(1)
+  })).default([]),
+  entities: z.array(z.object({
+    id: z.string(),
+    type: entityTypeSchema,
+    name: z.string(),
+    confidence: z.number().min(0).max(1)
+  })).default([])
 });
 export type ExecutiveSynthesisQuestion = z.infer<typeof executiveSynthesisQuestionSchema>;
 
