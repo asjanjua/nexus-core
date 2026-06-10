@@ -1,6 +1,11 @@
-import { describe, expect, it } from "vitest";
-import { questionsForRole } from "@/lib/services/synthesis";
+import { describe, expect, it, vi } from "vitest";
+import { questionsForRole, synthesiseForRole } from "@/lib/services/synthesis";
 import { executiveSynthesisSchema, executiveSynthesisQuestionSchema } from "@/lib/contracts";
+import { repository } from "@/lib/data/repository";
+
+vi.mock("@/lib/services/llm", () => ({
+  ask: vi.fn(async () => "Mock synthesis answer grounded in the specialist brief."),
+}));
 
 describe("questionsForRole", () => {
   it("returns 7 questions for CEO", () => {
@@ -148,5 +153,41 @@ describe("ExecutiveSynthesis contract", () => {
       evidenceRefs: [],
     });
     expect(result.success).toBe(true);
+  });
+});
+
+describe("synthesis persistence", () => {
+  it("can persist refreshed synthesis into agent output history", async () => {
+    const workspaceId = `workspace-synthesis-${Date.now()}`;
+
+    const synthesis = await synthesiseForRole("ceo", workspaceId, {
+      persist: true,
+      cards: [
+        {
+          id: "ceo-test-card",
+          role: "ceo",
+          agentId: "risk_agent",
+          agentName: "Risk Agent",
+          title: "Risk Agent Brief",
+          summary: "KYC handoff risk requires leadership attention.",
+          confidence: 0.82,
+          freshnessHours: 2,
+          evidenceRefs: ["ev-001"],
+        },
+      ],
+    });
+
+    expect(synthesis.agentCardCount).toBe(1);
+
+    const outputs = await repository.listAgentOutputs({
+      workspaceId,
+      agentId: "synthesis_ceo",
+      limit: 5,
+    });
+
+    expect(outputs).toHaveLength(1);
+    expect(outputs[0].roleKey).toBe("ceo");
+    expect(outputs[0].evidenceRefs).toEqual(["ev-001"]);
+    expect(JSON.parse(outputs[0].content).role).toBe("ceo");
   });
 });

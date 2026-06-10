@@ -22,6 +22,12 @@ type DashboardCards = Awaited<ReturnType<typeof cardsForRole>>;
 type SynthesisSource = ExecutiveSynthesisQuestion["sources"][number];
 type SynthesisEntity = ExecutiveSynthesisQuestion["entities"][number];
 
+type SynthesisOptions = {
+  department?: string;
+  cards?: DashboardCards;
+  persist?: boolean;
+};
+
 // ---------------------------------------------------------------------------
 // Role question sets
 // ---------------------------------------------------------------------------
@@ -199,8 +205,9 @@ async function answerQuestion(
 export async function synthesiseForRole(
   role: string,
   workspaceId = process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo",
-  options: { department?: string; cards?: DashboardCards } = {}
+  options: SynthesisOptions = {}
 ): Promise<ExecutiveSynthesis> {
+  const startedAt = Date.now();
   // 1. Dispatch: collect all specialist agent cards for this role
   const cards = options.cards ?? await cardsForRole(role, workspaceId, { department: options.department });
 
@@ -264,7 +271,7 @@ export async function synthesiseForRole(
     )
   );
 
-  return {
+  const synthesis = {
     role,
     workspaceId,
     generatedAt: new Date().toISOString(),
@@ -273,4 +280,20 @@ export async function synthesiseForRole(
     totalEvidenceRefs: allEvidenceRefs,
     agentCardCount: cards.length,
   };
+
+  if (options.persist) {
+    await repository.saveAgentOutput({
+      workspaceId,
+      agentId: `synthesis_${role}`,
+      agentVersion: 1,
+      roleKey: role,
+      content: JSON.stringify(synthesis),
+      inputSummary: `Executive synthesis refresh for ${role}${options.department ? ` / ${options.department}` : ""}`,
+      evidenceRefs: allEvidenceRefs,
+      confidence: overallConfidence,
+      processingMs: Date.now() - startedAt,
+    });
+  }
+
+  return synthesis;
 }

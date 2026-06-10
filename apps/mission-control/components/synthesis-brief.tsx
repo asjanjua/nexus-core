@@ -10,6 +10,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { ExecutiveSynthesis } from "@/lib/contracts";
 
 // ---------------------------------------------------------------------------
@@ -118,10 +119,14 @@ function QuestionCard({
 export function ExecutiveSynthesisBrief({
   synthesis,
   roleLabel,
+  department,
 }: {
   synthesis: ExecutiveSynthesis;
   roleLabel: string;
+  department?: string;
 }) {
+  const router = useRouter();
+  const [refreshing, setRefreshing] = useState(false);
   const answeredCount = synthesis.questions.filter(
     (q) =>
       !q.answer.startsWith("Insufficient evidence") &&
@@ -155,6 +160,25 @@ export function ExecutiveSynthesisBrief({
             {answeredCount}/{synthesis.questions.length} answered
           </span>
           <span className="badge badge-green">Human-approved actions only</span>
+          <button
+            type="button"
+            className="badge badge-muted hover:border-nexus-accent/50 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={refreshing}
+            onClick={async () => {
+              setRefreshing(true);
+              const params = department ? `?department=${encodeURIComponent(department)}` : "";
+              try {
+                await fetch(`/api/synthesis/${encodeURIComponent(synthesis.role)}${params}`, {
+                  method: "POST",
+                });
+                router.refresh();
+              } finally {
+                setRefreshing(false);
+              }
+            }}
+          >
+            {refreshing ? "Refreshing..." : "Refresh brief"}
+          </button>
         </div>
       </div>
 

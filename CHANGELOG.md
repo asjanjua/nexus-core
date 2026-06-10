@@ -2,6 +2,25 @@
 
 ---
 
+## 0.18.2 — Manual Synthesis Refresh and History (2026-06-10)
+
+This release completes the practical synthesis polish loop: users can manually regenerate an executive brief and preserve the refreshed output in the existing U3 output history.
+
+**Refresh**
+- Added `POST /api/synthesis/[role]` to regenerate a role synthesis.
+- The POST path persists refreshed synthesis into `agent_outputs` as `synthesis_<role>`.
+- The dashboard synthesis panel now includes a `Refresh brief` button that calls the POST route and refreshes the page.
+
+**History**
+- Synthesis history reuses existing `agent_outputs` versioning, active-output switching, rollback plumbing, and audit events.
+- No new DB table or migration required.
+
+**Verification**
+- `npm run test` passed: 21 files / 104 tests.
+- `npm run build` passed.
+
+---
+
 ## 0.18.1 — Executive Synthesis Traceability (2026-06-10)
 
 This release makes the new Executive Synthesis brief more inspectable for demos and pilot users.

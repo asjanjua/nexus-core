@@ -17,3 +17,18 @@ export async function GET(request: Request, { params }: { params: Promise<{ role
   const synthesis = await synthesiseForRole(parsed.data, ctx.workspaceId, { department });
   return ok(synthesis);
 }
+
+export async function POST(request: Request, { params }: { params: Promise<{ role: string }> }) {
+  const { ctx, error } = await requireScope(request, "read:dashboard");
+  if (error) return error;
+
+  const { role } = await params;
+  const parsed = roleSchema.safeParse(role);
+  if (!parsed.success) return fail("invalid_role", 400);
+
+  const url = new URL(request.url);
+  const department = url.searchParams.get("department") ?? undefined;
+
+  const synthesis = await synthesiseForRole(parsed.data, ctx.workspaceId, { department, persist: true });
+  return ok({ synthesis, persisted: true }, 201);
+}

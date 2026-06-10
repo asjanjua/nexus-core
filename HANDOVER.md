@@ -6,13 +6,13 @@
 
 ## Session Info
 
-- **Last updated:** 2026-06-10 (v0.18.1 -- Executive Synthesis Traceability shipped)
+- **Last updated:** 2026-06-10 (v0.18.2 -- Executive Synthesis Refresh/History shipped)
 - **Last model:** Codex
 - **Session number:** #18
-- **Current version:** 0.18.1 -- Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. Phase 8A Decision Twin core plus decision auto-extraction complete. Persistent Ask memory, entity extraction, P2 AI trust layer, Executive Synthesis Layer, and synthesis source/entity traceability complete.
+- **Current version:** 0.18.2 -- Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. Phase 8A Decision Twin core plus decision auto-extraction complete. Persistent Ask memory, entity extraction, P2 AI trust layer, Executive Synthesis Layer, synthesis source/entity traceability, and manual synthesis refresh/history complete.
 - **Baseline pushed commit before this handover update:** `9a0c476` -- `feat: complete u2 agent control profiles`
-- **Remote status:** v0.18.1 ready to push/deploy. Migrations 0014-0020 applied. No v0.18.1 DB migration required.
-- **Local verification (2026-06-10):** `npm run test` passed 21 files / 103 tests. `npm run build` passed.
+- **Remote status:** v0.18.2 ready to push/deploy. Migrations 0014-0020 applied. No v0.18.2 DB migration required.
+- **Local verification (2026-06-10):** `npm run test` passed 21 files / 104 tests. `npm run build` passed.
 
 ---
 
@@ -654,6 +654,7 @@ CLOUDFLARE_R2_*            R2 object storage (optional)
 | Phase 2 P2-A/B/C/D AI Trust Layer | Complete | v0.17.0 |
 | Executive Synthesis Layer | Complete | v0.18.0 |
 | Executive Synthesis Traceability | Complete | v0.18.1 |
+| Executive Synthesis Refresh/History | Complete | v0.18.2 |
 | Phase 8B -- Workflow Twin Scorer | Docs done, code not started | -- |
 | Phase 8C -- Ops Review Twin | Not started | -- |
 | Phase 9 -- Team Members | Build when pilot client needs it | -- |
@@ -663,14 +664,14 @@ CLOUDFLARE_R2_*            R2 object storage (optional)
 
 ### Highest leadership impact
 
-1. **Executive Synthesis polish remainder** -- scheduled refresh, optional output history,
-   and learning signal controls on synthesis answers.
+1. **Scheduled synthesis cadence** -- daily/weekly refresh job and delivery policy.
+2. **Synthesis learning controls** -- learning signals on synthesis answers.
 
 ### Foundational (compound memory + orchestration)
 
-2. **Entity pages/backlinks** -- turn extracted entities into navigable Company Memory pages.
-3. **Workflow twin primitives** -- add `workflow_twins` and `workflow_twin_runs` after Decision & Action Twin proposal flow stabilizes.
-4. **Orchestration dispatcher** -- multi-step reasoning, agent-to-agent coordination.
+3. **Entity pages/backlinks** -- turn extracted entities into navigable Company Memory pages.
+4. **Workflow twin primitives** -- add `workflow_twins` and `workflow_twin_runs` after Decision & Action Twin proposal flow stabilizes.
+5. **Orchestration dispatcher** -- multi-step reasoning, agent-to-agent coordination.
 
 ### Operational sign-off (see docs/SECURITY_REVIEW.md)
 
@@ -718,16 +719,16 @@ Before doing anything else, read:
 3. TASKS.md
 4. AGENTS.md
 
-Current version: 0.18.1
-Last audit: 2026-06-10. 152+ source files, 21 test files / 103 tests, build clean.
+Current version: 0.18.2
+Last audit: 2026-06-10. 152+ source files, 21 test files / 104 tests, build clean.
 
-Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. Phase 8A Decision Twin core, decision auto-extraction, persistent Ask memory, entity extraction, P2 trust layer, Executive Synthesis Layer, and synthesis source/entity traceability complete.
+Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. Phase 8A Decision Twin core, decision auto-extraction, persistent Ask memory, entity extraction, P2 trust layer, Executive Synthesis Layer, synthesis source/entity traceability, and manual synthesis refresh/history complete.
 Migrations 0014-0020 applied to Neon production.
 
 Immediate next builds:
-1. Executive Synthesis polish remainder
-2. Entity pages/backlinks
-3. Workflow twin primitives
+1. Scheduled synthesis cadence
+2. Synthesis learning controls
+3. Entity pages/backlinks
 
 Known missing (from 2026-06-10 audit):
 - Orchestration/dispatcher: all LLM calls are single-shot, no agent coordination

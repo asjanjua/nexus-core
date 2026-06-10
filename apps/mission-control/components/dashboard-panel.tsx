@@ -90,7 +90,7 @@ export async function DashboardPanel({
       {/* PRIMARY: Executive Synthesis Brief                                  */}
       {/* ----------------------------------------------------------------- */}
       {synthesis && (
-        <ExecutiveSynthesisBrief synthesis={synthesis} roleLabel={roomLabel} />
+        <ExecutiveSynthesisBrief synthesis={synthesis} roleLabel={roomLabel} department={department} />
       )}
 
       {/* Single-agent view header when filtered */}

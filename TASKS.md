@@ -16,9 +16,9 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 
 ---
 
-## Current Status (verified 2026-06-10) -- v0.18.1
+## Current Status (verified 2026-06-10) -- v0.18.2
 
-**Verified:** 21 test files, 103 tests passing (14 synthesis tests), build clean. 20 DB migrations.
+**Verified:** 21 test files, 104 tests passing (15 synthesis tests), build clean. 20 DB migrations.
 
 **Phases 1-6: Complete.**
 **Pre-7A Technical Prep: Complete.** (v0.9.1)
@@ -34,13 +34,14 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 **Phase 2 AI Trust Layer: Shipped.** (v0.17.0) -- eval harness, red-team checks, prompt registry, and workspace AI policy settings.
 **Executive Synthesis Layer: Shipped.** (v0.18.0) -- on-demand dispatcher/synthesis service, role question sets, API, collapsible UI reframe.
 **Executive Synthesis Traceability: Shipped.** (v0.18.1) -- source pills and entity chips attached to synthesis answers.
+**Executive Synthesis Refresh/History: Shipped.** (v0.18.2) -- manual refresh route/button with history saved to `agent_outputs`.
 **Demo packs: Audited and rewritten.** (v0.15.1) -- All 3 sector packs CEO-grade with pre-tuned Ask questions.
 **Production DB: Migrations 0014-0020 applied.**
 
 **The product is demo-ready and pilot-ready for GCC fintech, professional services, and SaaS buyers.**
 
 **Priority order (updated 2026-06-10):**
-1. Executive Synthesis Layer Session 2 remainder (1 session) -- scheduled refresh and optional synthesis output history. NEXT.
+1. Scheduled synthesis cadence (1 session) -- daily/weekly refresh job and delivery policy. NEXT.
 2. Workflow twin primitives -- foundation for Phase 8B/8C runs.
 3. Orchestration dispatcher -- foundation for multi-agent coordination.
 
@@ -70,6 +71,13 @@ What is built at v0.18.1 (Executive Synthesis Traceability):
 - Older synthesis payloads remain valid because `sources` and `entities` default to empty arrays.
 - No DB migration required.
 - 14 synthesis tests; 103 total tests.
+
+What is built at v0.18.2 (Executive Synthesis Refresh/History):
+- `POST /api/synthesis/[role]` regenerates a synthesis and persists it as `agent_outputs.agent_id = synthesis_<role>`.
+- Dashboard synthesis panel has a `Refresh brief` button.
+- Synthesis history uses existing U3 agent output versioning, active switching, rollback plumbing, and audit events.
+- No DB migration required.
+- 15 synthesis tests; 104 total tests.
 
 What is built locally for v0.16.0 (Phase 8A — Decision & Action Twin):
 - Migration 0017: extended `decisions` table (sourceOutputId FK, deadline, priority, timestamps).
@@ -1297,8 +1305,8 @@ Positioning rule from the 2026-05-31 reassessment:
 - [x] Add confidence badge, evidence source count, answered/total indicator, and loading skeleton.
 - [x] Preserve single-agent filter (`?agent=`) as a direct specialist card view.
 - [x] Update HANDOVER.md, CHANGELOG.md, architecture docs, roadmap, and user flows.
-- [ ] Future: persist synthesis outputs into `agent_outputs` if rollback/history becomes necessary.
-- [ ] Future: add manual refresh endpoint/button for regenerated synthesis.
+- [x] Persist refreshed synthesis outputs into `agent_outputs`.
+- [x] Add manual refresh endpoint/button for regenerated synthesis.
 - [ ] Future: add staleness banner when source evidence or source agent outputs exceed threshold.
 - [x] Add entity backlinks and source names inside synthesis answers.
 - [ ] Future: add learning signal buttons directly on synthesis cards.

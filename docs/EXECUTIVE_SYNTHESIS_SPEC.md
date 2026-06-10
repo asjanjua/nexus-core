@@ -1,4 +1,4 @@
-# Executive Synthesis Layer -- v0.18.1 Specification
+# Executive Synthesis Layer -- v0.18.2 Specification
 
 Updated: 2026-06-10
 Status: Shipped as an on-demand dashboard read layer
@@ -27,6 +27,7 @@ The v0.18.0 implementation was intentionally lightweight and safe:
 - No external agent framework
 - No autonomous refresh or outbound delivery
 - Synthesis is computed on demand from the same governed specialist cards already used by dashboards
+- Manual refresh can persist a synthesis snapshot into existing `agent_outputs`
 
 ### Shipped files
 
@@ -120,6 +121,23 @@ Response shape:
   }
 }
 ```
+
+### `POST /api/synthesis/[role]`
+
+Manual refresh endpoint.
+
+```http
+POST /api/synthesis/ceo
+Authorization: Bearer <token>
+```
+
+Behavior:
+- regenerates synthesis for the role
+- persists the refreshed payload into `agent_outputs`
+- uses `agent_id = synthesis_<role>`
+- returns `{ ok: true, data: { synthesis, persisted: true } }`
+
+This reuses existing U3 output versioning, audit events, active-output switching, and rollback plumbing. No new table is required.
 
 ---
 
@@ -220,22 +238,18 @@ If a red-team check fails, the relevant answer is replaced with a blocked-output
 ## 8. What This Is Not Yet
 
 The following were deliberately deferred:
-- persistent synthesis history in `agent_outputs`
-- rollback for synthesis outputs
-- manual `POST /api/synthesis/refresh`
 - scheduled daily/weekly synthesis jobs
-- source names or entity backlinks inside each answer
 - learning signal buttons directly on synthesis answers
 - direct decision extraction from synthesis output
 
-Source names and entity chips were added in v0.18.1. The remaining items are follow-on polish, not blockers for pilot demos.
+Source names and entity chips were added in v0.18.1. Manual refresh/history was added in v0.18.2. The remaining items are follow-on polish, not blockers for pilot demos.
 
 ---
 
 ## 9. Verification
 
 Local verification:
-- `npm run test` passed: 21 files / 103 tests
+- `npm run test` passed: 21 files / 104 tests
 - `npm run build` passed
 - No DB migration required
 
