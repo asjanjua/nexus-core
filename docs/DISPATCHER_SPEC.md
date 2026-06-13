@@ -1,6 +1,6 @@
 # NexusAI Orchestration Dispatcher — Specification
 
-Status: Building (v0.22.0)
+Status: Shipped (v0.22.0)
 Scoped: 2026-06-10
 
 ---

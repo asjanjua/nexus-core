@@ -2,6 +2,40 @@
 
 ---
 
+## 0.23.0 — Company Memory and Slack Ingestion (2026-06-13)
+
+This release turns the entity extraction substrate into visible Company Memory and adds the first real connector data flow.
+
+**Company Memory UI**
+- Added `/entities` Company Memory index with type/search filters and entity confidence/evidence counts.
+- Added `/entities/[id]` detail pages with linked evidence, decisions, recommendations, actions, and a timeline.
+- Added `GET /api/entities/[id]` for workspace-scoped entity memory retrieval.
+- Added Company Memory to the side navigation.
+
+**Slack connector ingestion**
+- Slack app mentions stay on the Ask path.
+- Allowlisted Slack channel messages can now ingest as governed evidence through the same `ingestEvidence()` pipeline used by uploads.
+- Slack evidence receives source path/URI, timestamp, hash, connector instance, sensitivity, confidence, department hint, and audit events.
+- DMs, multi-person DMs, bot/system subtypes, unsupported events, and non-allowlisted channels are skipped and audited.
+- Added `SLACK_INGEST_CHANNELS` and `NEXUS_SLACK_INGEST_ALL` environment controls.
+
+**Dispatcher hardening**
+- Fixed strict TypeScript issues in dispatch API validation and DB-only queue methods.
+- Decision extraction dispatch jobs now generate proposals and audit them without automatically creating canonical decisions.
+- Synthesis dispatch handler now calls `synthesiseForRole()` with the correct argument shape.
+
+**Production**
+- Applied migrations `0021_synthesis_schedules.sql` through `0024_dispatch_jobs.sql` to the production database.
+- Verified live Render health after push: database, vector search, R2 originals, and DeepSeek LLM all healthy.
+
+**Tests**
+- Added `tests/entity-memory.test.ts`.
+- Added `tests/slack-connector.test.ts`.
+- `npm run build --workspace @nexus/mission-control` passed.
+- `npm test --workspace @nexus/mission-control` passed: 28 test files / 179 tests.
+
+---
+
 ## 0.22.0 — Orchestration Dispatcher (2026-06-10)
 
 Background job queue that decouples job submission from execution. Enables multi-agent fan-out, retry with backoff, priority queuing, job chaining, and a full audit trail of every agent invocation.

@@ -752,20 +752,23 @@ Before doing anything else, read:
 3. TASKS.md
 4. AGENTS.md
 
-Current version: 0.22.0
-Last audit: 2026-06-10. 180+ source files, 26 test files / ~166 tests, 24 DB migrations, build clean (0 TS errors).
+Current version: 0.23.0
+Last audit: 2026-06-13. 180+ source files, 28 test files / 179 tests, 24 DB migrations, build clean.
 
-Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. Billing Tiers + Stripe full integration (v0.20.0-v0.21.0) complete. Orchestration Dispatcher (v0.22.0) complete.
-Migrations 0001-0020 applied to Neon production. Migrations 0021-0024 need to run before next deployment.
+Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. Billing Tiers + Stripe full integration (v0.20.0-v0.21.0), Orchestration Dispatcher (v0.22.0), Company Memory UI, and first Slack connector data flow (v0.23.0) complete.
+Migrations 0001-0024 applied to Neon production.
 
-What is built: onboarding, ingestion, retrieval, 7 agent rooms, 20 role dashboards, Ask, governance (passports, output gates, learning signals), Decision Twin, entity extraction, eval harness, Executive Synthesis, scheduled synthesis, billing tiers, Stripe, orchestration dispatcher (dispatch_jobs queue, atomic claim, priority, retry, fan-out, 4 job type handlers, cron runner).
+What is built: onboarding, ingestion, retrieval, 7 agent rooms, 20 role dashboards, Ask, governance (passports, output gates, learning signals), Decision Twin, entity extraction, Company Memory pages/backlinks, eval harness, Executive Synthesis, scheduled synthesis, billing tiers, Stripe, orchestration dispatcher (dispatch_jobs queue, atomic claim, priority, retry, fan-out, 4 job type handlers, cron runner), and first Slack inbound ingestion path.
 
 Immediate next build:
-1. Entity pages and backlinks -- extraction pipeline exists; product UI does not. This is the first visible layer of Company Memory.
+1. Fix homepage CTA/browser-session navigation if Clerk session behavior still feels broken in Chrome.
+2. Connector Settings UX -- Slack channel allowlist, sync status, last ingested, source sensitivity, and audit trail.
+3. Workflow Twin Scorer -- recommend the client's first workflow twin from company profile and data readiness.
 
-Known missing (from 2026-06-10 audit):
-- Entity pages: entities and evidence_entity_links exist in DB; no entity detail page, timeline, or cross-object backlinks
-- Connectors: Slack OAuth/events skeleton only, no live data sync
+Known missing (from 2026-06-13 audit):
+- Connector admin UX for Slack channel selection and source policy.
+- Additional connector data flows beyond Slack: Drive, Teams, SharePoint, Jira, GitHub, CRM, finance, and social.
+- Workflow Twin Scorer code path.
 
 Start by confirming git status, then read the files above, then proceed.
 ```

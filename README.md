@@ -59,6 +59,7 @@ existing SaaS, ERP, and communications systems without replacing them.
 Core components:
 - Evidence ingestion and confidence routing
 - Specialist agent briefs by role and room
+- Company Memory entity pages and backlinks
 - Human review queue with audit trail
 - Agent Control Profiles (governance passports)
 - Connector layer for documents, comms, and operational data
@@ -80,8 +81,9 @@ npm run db:seed
 npm run dev
 ```
 
-Then open `http://localhost:3000/login` and sign in with your configured `MISSION_CONTROL_DEFAULT_USER` and `MISSION_CONTROL_PASSWORD`.
-In DB mode, login is validated against the `users` + `roles` tables (workspace-scoped), with hashed passwords.
+Then open `http://localhost:3000` and sign in through Clerk. New users are routed through onboarding; signed-in users can open Mission Control from `/dashboard/ceo`.
+
+For a local demo without a configured database, keep `NEXUS_DB_REQUIRED=false` and use the in-memory fallback. For a production-like run, set `DATABASE_URL`, Clerk keys, LLM keys, and run the migrations before starting the app.
 
 Database mode:
 - `NEXUS_DB_REQUIRED=false` (default for local dev): app can fall back to in-memory store if DB is unavailable.

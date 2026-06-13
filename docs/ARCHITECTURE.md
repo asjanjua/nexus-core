@@ -431,9 +431,13 @@ Four-tier billing (Free/Pro/Business/Enterprise). `plan_definitions` table defin
 
 `dispatch_jobs` table is a durable DB queue. `enqueueJob()` inserts a pending row. `claimPendingJob()` atomically claims with `UPDATE...WHERE id=(SELECT...FOR UPDATE SKIP LOCKED)` — prevents double-execution in concurrent cron ticks. `runDispatchCycle()` processes up to `NEXUS_DISPATCH_BATCH_SIZE` jobs sequentially to avoid token burst. Four handlers: `agent_brief` → `cardsForRole()`, `synthesis` → `synthesiseForRole()`, `workflow_run` → `buildWorkflowTwinRunInput()`, `decision_extract` → `proposeDecisionsFromAgentOutputs()`. Fan-out enqueue enables one-call synthesis across all active roles. Retry with exponential backoff (30s / 5m / 30m). Full spec: `docs/DISPATCHER_SPEC.md`.
 
-### Entity Pages and Backlinks (next build)
+### Entity Pages and Backlinks (shipped v0.23.0)
 
-Entity extraction already writes `entities` and `evidence_entity_links` during ingestion for processed evidence. The next architecture step is to add entity pages with timeline views, backlinks from decisions/recommendations/actions, and graph traversal — the first visible layer of Company Memory.
+Entity extraction writes `entities` and `evidence_entity_links` during ingestion for processed evidence. `/entities` provides the Company Memory index with type/search filters. `/entities/[id]` provides the detail view: linked evidence, decisions, recommendations, actions, and a timestamped activity timeline. This is the first visible layer of Company Memory; deeper graph traversal and diff views remain future Phase 12 work.
+
+### Slack Connector Ingestion (first path shipped v0.23.0)
+
+Slack events now split into two governed paths. `app_mention` events remain Ask interactions. Normal channel messages can ingest as evidence only when the channel is explicitly allowlisted through `SLACK_INGEST_CHANNELS` or the development override `NEXUS_SLACK_INGEST_ALL=enabled`. Direct messages, bot/system messages, unsupported event types, and non-allowlisted channels are skipped and audited. Accepted messages flow through `ingestEvidence()` so provenance, sensitivity, confidence, embeddings, entity extraction, and audit behavior stay consistent with uploaded documents.
 
 ### Phase 8B: Workflow Twin Scorer
 
