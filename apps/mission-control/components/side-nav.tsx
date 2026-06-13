@@ -22,6 +22,7 @@ const navSections = [
       { href: "/ask", label: "Ask" },
       { href: "/recommendations", label: "Recommendations" },
       { href: "/decisions", label: "Decisions" },
+      { href: "/entities", label: "Company Memory" },
       { href: "/approvals", label: "Approvals" },
       { href: "/review", label: "Review Queue" }
     ]

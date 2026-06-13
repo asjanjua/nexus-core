@@ -37,7 +37,7 @@ export async function POST(request: Request) {
   }
 
   const parsed = postBodySchema.safeParse(body);
-  if (!parsed.success) return fail("invalid_input", 400, { issues: parsed.error.issues });
+  if (!parsed.success) return fail("invalid_input", 400);
 
   const data = parsed.data;
 
@@ -54,13 +54,14 @@ export async function POST(request: Request) {
   }
 
   // Single job path
+  const singleJob = data as z.infer<typeof dispatchJobInputSchema>;
   const job = await enqueueJob(ctx.workspaceId, {
-    jobType:     data.jobType,
-    payload:     (data.payload ?? {}) as Record<string, unknown>,
-    priority:    data.priority ?? 5,
-    maxAttempts: data.maxAttempts ?? 3,
-    runAfter:    data.runAfter,
-    parentJobId: data.parentJobId,
+    jobType:     singleJob.jobType,
+    payload:     (singleJob.payload ?? {}) as Record<string, unknown>,
+    priority:    singleJob.priority ?? 5,
+    maxAttempts: singleJob.maxAttempts ?? 3,
+    runAfter:    singleJob.runAfter,
+    parentJobId: singleJob.parentJobId,
   });
 
   return ok({ jobId: job.id, jobType: job.jobType, status: job.status }, 202);

@@ -2236,7 +2236,7 @@ export const repository = {
           .where(eq(workspaces.id, workspaceId))
           .limit(1)
       );
-      return rows[0]?.stripeCustomerId ?? null;
+      return rows?.[0]?.stripeCustomerId ?? null;
     } catch {
       return null;
     }
@@ -2396,7 +2396,7 @@ export const repository = {
           .where(eq(workspaces.stripeCustomerId, stripeCustomerId))
           .limit(1)
       );
-      return rows[0] ?? null;
+      return rows?.[0] ?? null;
     } catch {
       return null;
     }
@@ -2764,6 +2764,7 @@ export const repository = {
 
     if (isDbRequired()) {
       const db = getDb();
+      if (!db) throw new Error("database_required");
       const rows = await db.insert(dispatchJobs).values({
         id,
         workspaceId,
@@ -2802,6 +2803,7 @@ export const repository = {
   async claimPendingJob(): Promise<DispatchJob | null> {
     if (isDbRequired()) {
       const db = getDb();
+      if (!db) throw new Error("database_required");
       const rows = await db.execute(sql`
         UPDATE dispatch_jobs
         SET status = 'running', started_at = NOW(), attempts = attempts + 1
@@ -2834,7 +2836,9 @@ export const repository = {
 
   async markJobDone(jobId: string): Promise<void> {
     if (isDbRequired()) {
-      await getDb().update(dispatchJobs)
+      const db = getDb();
+      if (!db) throw new Error("database_required");
+      await db.update(dispatchJobs)
         .set({ status: "done", completedAt: new Date() })
         .where(eq(dispatchJobs.id, jobId));
       return;
@@ -2846,6 +2850,7 @@ export const repository = {
   async markJobFailed(jobId: string, error: string, retryAfterMs?: number): Promise<void> {
     if (isDbRequired()) {
       const db = getDb();
+      if (!db) throw new Error("database_required");
       const rows = await db.select().from(dispatchJobs).where(eq(dispatchJobs.id, jobId)).limit(1);
       if (rows.length === 0) return;
       const row = rows[0];
@@ -2884,6 +2889,7 @@ export const repository = {
 
     if (isDbRequired()) {
       const db = getDb();
+      if (!db) throw new Error("database_required");
       const rows = await db.execute(sql`
         SELECT * FROM dispatch_jobs
         WHERE workspace_id = ${workspaceId}
@@ -2904,7 +2910,9 @@ export const repository = {
 
   async getDispatchJob(jobId: string): Promise<DispatchJob | null> {
     if (isDbRequired()) {
-      const rows = await getDb().select().from(dispatchJobs).where(eq(dispatchJobs.id, jobId)).limit(1);
+      const db = getDb();
+      if (!db) throw new Error("database_required");
+      const rows = await db.select().from(dispatchJobs).where(eq(dispatchJobs.id, jobId)).limit(1);
       if (rows.length === 0) return null;
       return mapDispatchJob(rows[0]);
     }
@@ -2913,7 +2921,9 @@ export const repository = {
 
   async cancelJob(jobId: string): Promise<void> {
     if (isDbRequired()) {
-      await getDb().update(dispatchJobs)
+      const db = getDb();
+      if (!db) throw new Error("database_required");
+      await db.update(dispatchJobs)
         .set({ status: "cancelled", completedAt: new Date() })
         .where(eq(dispatchJobs.id, jobId));
       return;
@@ -2925,6 +2935,7 @@ export const repository = {
   async countPendingJobs(workspaceId?: string): Promise<number> {
     if (isDbRequired()) {
       const db = getDb();
+      if (!db) throw new Error("database_required");
       const rows = await db.execute(sql`
         SELECT COUNT(*) as count FROM dispatch_jobs
         WHERE status = 'pending'

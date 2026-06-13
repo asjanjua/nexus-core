@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { z } from "zod";
 import { fail, ok } from "@/lib/api";
-import { handleSlackAsk } from "@/lib/slack/adapter";
+import { handleSlackConnectorEvent } from "@/lib/slack/adapter";
 
 export const runtime = "nodejs";
 
@@ -11,10 +11,13 @@ const eventSchema = z.object({
   event: z
     .object({
       type: z.string().optional(),
+      subtype: z.string().optional(),
       user: z.string().optional(),
       text: z.string().optional(),
+      ts: z.string().optional(),
       thread_ts: z.string().optional(),
-      channel: z.string().optional()
+      channel: z.string().optional(),
+      channel_type: z.string().optional()
     })
     .optional()
 });
@@ -74,13 +77,19 @@ export async function POST(request: Request) {
     return ok({ challenge: parsed.data.challenge });
   }
 
-  const text = parsed.data.event?.text?.trim();
+  const event = parsed.data.event;
+  const text = event?.text?.trim();
   if (!text) return ok({ accepted: true, ignored: "missing_text" });
 
-  const response = await handleSlackAsk({
+  const response = await handleSlackConnectorEvent({
     workspaceId: process.env.NEXUS_SLACK_WORKSPACE ?? "workspace-demo",
-    userId: parsed.data.event?.user ?? "slack-user",
-    threadId: parsed.data.event?.thread_ts ?? parsed.data.event?.channel ?? "unknown-thread",
+    userId: event?.user ?? "slack-user",
+    threadId: event?.thread_ts ?? event?.ts ?? event?.channel ?? "unknown-thread",
+    type: event?.type,
+    subtype: event?.subtype,
+    channel: event?.channel,
+    channelType: event?.channel_type,
+    timestamp: event?.ts,
     text
   });
 

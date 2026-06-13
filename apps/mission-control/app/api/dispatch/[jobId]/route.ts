@@ -38,7 +38,7 @@ export async function DELETE(
   if (job.workspaceId !== ctx.workspaceId) return fail("job_not_found", 404);
 
   if (job.status !== "pending") {
-    return fail("job_not_cancellable", 409, { status: job.status });
+    return fail(`job_not_cancellable:${job.status}`, 409);
   }
 
   await repository.cancelJob(jobId);

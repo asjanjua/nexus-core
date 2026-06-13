@@ -24,9 +24,9 @@ Every document uploaded, every question asked, every decision logged makes Nexus
 
 ---
 
-## Where We Are -- Current State (v0.19.1, verified 2026-06-10)
+## Where We Are -- Current State (v0.22.0, verified 2026-06-10)
 
-The product is demo-ready and pilot-ready. 22 DB migrations, 23 test files / 110 tests passing.
+The product is demo-ready and pilot-ready. 24 DB migrations, 26 test files / ~166 tests passing.
 
 **What is built and verified:**
 
@@ -42,13 +42,15 @@ The product is demo-ready and pilot-ready. 22 DB migrations, 23 test files / 110
 - **Decision Twin:** Full CRUD for decisions and actions with priority, deadline, blocker flags, status tracking, audit trail, plus AI proposal extraction from recent agent outputs. Interactive `/decisions` page.
 - **Workflow Twin substrate:** Workflow twin and run history tables/APIs for Decision & Action, Workflow Scorer, and Ops Review primitives.
 - **Company Memory substrate:** Processed evidence now extracts people, organizations, risks, KPIs, amounts, dates, systems, and processes into `entities`, linked back to source evidence through `evidence_entity_links`.
+- **Billing Tiers:** Four-tier plan model (Free/Pro/Business/Enterprise) with per-workspace LLM token budgets, feature gating (8 flags), monthly cron reset, plan definitions table, and Plan & Usage settings tab.
+- **Stripe Integration:** Pure-fetch Stripe client (no SDK). Checkout Session for self-serve upgrades, Billing Portal for subscription management, HMAC-SHA256 webhook handler (5 event types: checkout, subscription updated/deleted, invoice paid/failed), trial-to-free cron conversion.
+- **Orchestration Dispatcher:** `dispatch_jobs` DB queue with atomic claim (`FOR UPDATE SKIP LOCKED`), priority 1-10, exponential backoff retry (30s/5m/30m), fan-out enqueue, 4 job type handlers (agent_brief, synthesis, workflow_run, decision_extract), dispatch API (POST/GET/DELETE /api/dispatch), cron runner at `/api/cron/dispatch`.
 - **Exports:** Weekly brief, risk radar CSV, reco register CSV, one-pager. Export hub.
 - **Demo/Sales:** 3 CEO-grade demo sector packs, demo mode with reset, pilot kit, product brief page, readiness assessment (public), SOW templates, demo scripts, ROI calculator.
 - **Auth:** Clerk SSO, scope-based API keys, workspace status (trial/pilot/active/suspended), LLM cost tracking.
 
 **What is confirmed missing (2026-06-10 audit):**
 
-- Orchestration/dispatcher (single-shot LLM calls only)
 - Connectors (Slack skeleton only, no live data flow)
 - Knowledge graph UI / entity pages (initial evidence-to-entity links exist; no graph traversal yet)
 
@@ -56,26 +58,21 @@ The product is demo-ready and pilot-ready. 22 DB migrations, 23 test files / 110
 
 ## Next Priorities
 
-### Recently Shipped -- Highest Pilot Impact
+### Recently Shipped
 
-**Executive Synthesis Layer** (v0.18.0)
-The single highest-differentiation feature. The dashboard now starts with one evidence-backed leadership brief answering the questions that matter: what needs attention, what is at risk, what needs a decision, where execution is blocked, and what to do next. Every role gets a synthesis tuned to its mandate and archetype language. Specialist agent cards remain available as drill-down detail.
+**Orchestration Dispatcher** (v0.22.0)
+Background job queue decoupling submission from execution. Any service can call `enqueueJob()` instead of making a synchronous LLM call. The cron runner claims and executes jobs atomically, enabling fan-out (synthesis for all roles), retry on transient LLM failure, and a full audit trail of every agent invocation. This is the foundation for all multi-agent coordination work going forward.
 
-### Recently Shipped -- Regulated Buyer Confidence
+**Billing Tiers + Stripe** (v0.20.0–v0.21.0)
+Plan-gated token budgets, feature flags, self-serve Stripe checkout, subscription lifecycle webhooks, Billing Portal, and trial-to-free conversion. The commercial layer is fully wired.
 
-**P2 AI Trust Layer** (v0.17.0)
-Nexus now has a 30-case eval harness, red-team output checks, a prompt registry, and workspace-level AI policy controls for provider allow-lists, local-only blocking, sensitivity ceiling, and confidence threshold routing.
+**Executive Synthesis Layer** (v0.18.0–v0.18.2)
+The dashboard starts with one evidence-backed leadership brief per role, with source traceability, manual refresh, and output history persistence.
 
-### Foundational -- Compound Memory and Orchestration
+### Next Build
 
 **Entity Pages and Backlinks**
-Entity extraction now exists. The next Company Memory step is UI: entity pages with linked evidence, decisions, recommendations, owner/action references, and timeline views.
-
-**Scheduled Synthesis Refresh** (scoped, next build)
-Add daily/weekly synthesis refresh jobs with email delivery, workspace-configurable schedule and role selection, and a settings UI. This turns the v0.18.2 read layer into a recurring executive operating cadence. Full spec: `docs/SCHEDULED_SYNTHESIS_SPEC.md`. Target: v0.19.0 in 2 sessions.
-
-**Billing Tiers and Usage Metering** (scoped, after scheduled synthesis)
-Four-tier billing: Free ($0, 1 role, 500K tokens/mo), Pro ($499, 5 roles, 5M tokens), Business ($2,500, 10 roles, 25M tokens, team members), Enterprise (custom, unlimited). LLM token budget enforcement per workspace, feature gating (scheduled synthesis, exports, connectors gated by tier), Stripe checkout, and usage UI in Settings. Trial converts to Free at day 15 instead of suspension. Full spec: `docs/BILLING_TIERS_SPEC.md`. Target: v0.20.0 in 2-3 sessions.
+Entity extraction already writes `entities` and `evidence_entity_links` on every processed document. The next step is UI: entity pages showing linked evidence, decisions, recommendations, actions, and a timeline. This is the first visible layer of Company Memory.
 
 ### Later
 

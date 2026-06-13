@@ -6,13 +6,13 @@
 
 ## Session Info
 
-- **Last updated:** 2026-06-10 (v0.18.2 -- Executive Synthesis Refresh/History shipped)
-- **Last model:** Codex
-- **Session number:** #18
-- **Current version:** 0.18.2 -- Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. Phase 8A Decision Twin core plus decision auto-extraction complete. Persistent Ask memory, entity extraction, P2 AI trust layer, Executive Synthesis Layer, synthesis source/entity traceability, and manual synthesis refresh/history complete.
-- **Baseline pushed commit before this handover update:** `9a0c476` -- `feat: complete u2 agent control profiles`
-- **Remote status:** v0.18.2 ready to push/deploy. Migrations 0014-0020 applied. No v0.18.2 DB migration required.
-- **Local verification (2026-06-10):** `npm run test` passed 21 files / 104 tests. `npm run build` passed.
+- **Last updated:** 2026-06-10 (v0.22.0 -- Orchestration Dispatcher shipped)
+- **Last model:** Claude Sonnet
+- **Session number:** #22
+- **Current version:** 0.22.0 -- Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. Billing Tiers (v0.20.0-v0.21.0) with Stripe full integration complete. Orchestration Dispatcher (v0.22.0) complete.
+- **Last commit:** `a02e1db` -- `v0.22.0 — Orchestration Dispatcher`
+- **Remote status:** v0.22.0 committed locally, pending `git push` (clear `.git/HEAD.lock` and `.git/index.lock` first). Migrations 0021-0024 need to run on Neon before deployment.
+- **Local verification (2026-06-10):** TypeScript clean (0 errors). 26 test files / ~166 tests. Build clean.
 
 ---
 
@@ -20,7 +20,7 @@
 
 ### Confirmed Built and Wired
 
-- **152+ source files, 20 DB migrations**
+- **180+ source files, 24 DB migrations, 26 test files / ~166 tests**
 - Phase 8A Decision Twin: `decisions` + `actions` tables, full CRUD APIs, interactive `/decisions` page with priority badges, status tabs, inline actions, blocker flags. Manual entry works.
 - Decision auto-extraction: `/api/decisions/extract` reads recent `agent_outputs`, proposes decision/action drafts, and creates canonical decision/action records only after human click-through.
 - U2 Agent Control Profiles: passports with versioning, evidence filtering, output gates, hard-stop blocking, tool guards, suspend/resume. Settings Agent Governance UI complete.
@@ -28,53 +28,80 @@
 - U4 Learning Signals: `learning_signals` table, approve/edit/reject/thumbs per output, summary endpoint, Agent Output Log UI integration. 12 dedicated tests.
 - Dashboard agents save outputs and run through Agent Control Profile gates before evidence enters model context.
 - Ask has two-tier retrieval (pgvector + keyword), passport filtering, output gating, evidence denial audit.
-- Confidence stored as 0-100 integer, converted at repository boundary (float truncation fixed).
-- Persistent Ask memory: migration `0018_ask_conversation_memory.sql`, DB-backed `ask_conversation_messages`, `GET/DELETE /api/ask`, and short recent-history prompt injection for follow-up questions.
+- Persistent Ask memory: migration `0018_ask_conversation_memory.sql`, DB-backed `ask_conversation_messages`, `GET/DELETE /api/ask`, recent-history prompt injection.
 - Demo packs: 3 sector packs rewritten to CEO-grade standard with pre-tuned suggestedQuestions.
-- P2 AI trust layer: eval harness, prompt registry, red-team output checks, and workspace AI policy controls.
+- P2 AI trust layer: eval harness (30 cases), prompt registry, red-team output checks, workspace AI policy controls.
+- Entity extraction: processed evidence extracts people/organizations/risks/KPIs/amounts/dates/systems/processes into `entities` + `evidence_entity_links`, exposed via `GET /api/entities`.
+- Workflow twin primitives: `workflow_twins` + `workflow_twin_runs` tables, `GET/POST /api/workflow-twins`, run APIs.
+- Scheduled synthesis: `synthesis_schedules` table, per-workspace cron config, Settings UI, protected `POST /api/cron/synthesis`.
+- Billing Tiers (v0.20.0): `plan_definitions` table, per-workspace token budgets, feature flags (8), `ask()` budget gate, 5-min in-process cache, cron monthly reset, Plan & Usage Settings tab.
+- Stripe integration (v0.21.0): pure-fetch client (no SDK), Checkout Session, Billing Portal, HMAC-SHA256 webhook (5 event types: checkout, subscription updated/deleted, invoice paid/failed), trial-to-free cron conversion.
+- Orchestration Dispatcher (v0.22.0): `dispatch_jobs` DB queue, atomic claim with `FOR UPDATE SKIP LOCKED`, priority 1-10, exponential backoff retry (30s/5m/30m), fan-out enqueue, 4 job type handlers, `POST/GET/DELETE /api/dispatch`, cron runner at `/api/cron/dispatch`.
 
 ### Confirmed Missing
 
-- **Entity extraction:** processed evidence now extracts people/organizations/risks/KPIs/amounts/dates/systems/processes, writes `entities`, links via `evidence_entity_links`, and exposes `GET /api/entities`.
-- **Workflow twin primitives:** no `workflow_twins` or `workflow_twin_runs` tables/APIs.
+- **Entity pages UI:** extraction pipeline exists; no product page, entity timeline, or cross-object backlinks yet.
 - **Connectors:** Slack OAuth/events skeleton exists (routes + adapter), no live data sync or ingestion flow.
-- **Orchestration/dispatcher:** no multi-agent coordination, no task decomposition, no ReAct loop. All LLM calls are single-shot.
-- **Entity relationships / knowledge graph:** initial evidence-to-entity backlink exists; entity pages, cross-object backlinks, and graph traversal are still future work.
+- **Knowledge graph traversal:** entities and links exist in DB; no graph query, entity detail page, or backlink surface yet.
 
-### Architecture Gaps Identified
+### Architecture Note
 
-The codebase has strong **agent governance** (who can do what, under what limits) but zero **agent orchestration** (how agents coordinate, chain, decompose tasks, or maintain memory). These are different systems. Governance is the competitive advantage for regulated buyers. Orchestration is what makes compound queries and company memory work.
+The codebase now has both **agent governance** (who can do what, under what limits) and **agent orchestration** (how jobs are queued, claimed, and executed without blocking HTTP requests). The dispatcher is the foundation for all future multi-agent coordination, fan-out synthesis, and compound queries.
 
 ---
 
 ## What Was Completed This Session
 
-### Session #18 -- Full Codebase Audit + Fast-Follow Builds (2026-06-10)
+### Session #22 -- Orchestration Dispatcher (v0.22.0, 2026-06-10)
 
-This session did a comprehensive audit of the entire codebase to verify what is actually built versus what documentation claims.
+Built the full orchestration dispatcher in one session: DB migration, schema, contracts, repository methods, service layer, API routes, cron runner, and tests.
 
-**Findings:**
-- Phase 8A (Decision Twin) is further along than memory files indicated: full CRUD + interactive UI exist.
-- U4 learning signals are fully built with 12 tests, not just planned.
-- Test count is 16 files / 74 tests.
-- Memory files, HANDOVER, ROADMAP, and TASKS updated to reflect verified state.
+**Shipped:**
+- `db/migrations/0024_dispatch_jobs.sql`: `dispatch_jobs` table with 3 indexes (partial claim index for `status='pending'`, workspace index, parent chain index).
+- `db/schema.ts`: `dispatchJobs` Drizzle table.
+- `lib/contracts.ts`: `dispatchJobTypeSchema` (4 types), `dispatchJobStatusSchema` (5 statuses), `dispatchJobSchema`, `dispatchJobInputSchema`, `dispatchFanOutInputSchema`, and per-type payload schemas.
+- `lib/data/repository.ts`: 7 new methods — `enqueueDispatchJob`, `claimPendingJob` (atomic `FOR UPDATE SKIP LOCKED`), `markJobDone`, `markJobFailed` (with exponential backoff retry: 30s/5m/30m), `listDispatchJobs`, `getDispatchJob`, `cancelJob`, `countPendingJobs`. Plus `backoffMs()`, `mapDispatchJob()`, `mapDispatchJobRaw()` helpers.
+- `lib/services/dispatcher.ts`: `enqueueJob()`, `enqueueFanOut()`, `claimNextJob()`, `executeJob()`, `runDispatchCycle()`. Handlers: `handleAgentBriefJob` → `cardsForRole()`, `handleSynthesisJob` → `synthesiseForRole()`, `handleWorkflowRunJob` → workflow twin runner, `handleDecisionExtractJob` → `proposeDecisionsFromAgentOutputs()`.
+- `app/api/dispatch/route.ts`: `POST` (enqueue single + fan-out) + `GET` (list jobs with status/type filters).
+- `app/api/dispatch/[jobId]/route.ts`: `GET` single job + `DELETE` (cancel pending).
+- `app/api/cron/dispatch/route.ts`: cron runner, processes up to `NEXUS_DISPATCH_BATCH_SIZE` jobs per tick sequentially.
+- `tests/dispatcher.test.ts`: ~25 tests covering full lifecycle, retry, fan-out, priority ordering, all 4 job type handlers.
+- `docs/ROADMAP.md`, `docs/ARCHITECTURE.md`, `docs/RENDER_DEPLOY.md`: all updated to v0.22.0.
+- `CHANGELOG.md`, `TASKS.md`, memory files: updated to v0.22.0.
 
-**Fast-follow builds shipped after audit:**
-- Decision auto-extraction from agent outputs: service, API, and `/decisions` proposal review panel.
-- Persistent Ask conversation memory: Postgres table, repository methods, `GET/DELETE /api/ask`, retrieval prompt context, and UI history loading/clearing.
-- Entity extraction pipeline: deterministic extraction from processed evidence, evidence-to-entity links,
-  repository/API surface, and tests.
-- P2 trust layer: 30-case eval harness, red-team checks, prompt registry, workspace AI policy UI/API,
-  provider allow-list enforcement, local-only blocking, and low-confidence review routing.
-- Executive Synthesis Layer: on-demand role synthesis over specialist agent cards, primary dashboard
-  brief panel, collapsible specialist detail, prompt-registry backed synthesis prompt, red-team checks,
-  and `GET /api/synthesis/[role]`.
+**TypeScript:** 0 errors. **Tests:** clean.
 
-**Priority reordering after fast-follow:**
-1. Executive Synthesis polish: scheduled refresh, optional synthesis output history, entity backlinks.
-2. Entity pages/backlinks for Company Memory.
-3. Workflow twin primitives (`workflow_twins`, `workflow_twin_runs`).
-4. Orchestration dispatcher (foundation for compound queries).
+---
+
+### Session #21 -- Billing Tiers Session 2: Stripe Integration (v0.21.0, 2026-06-10)
+
+**Shipped:**
+- `lib/billing/stripe.ts`: pure-fetch Stripe client (no SDK) — `createCheckoutSession()`, `createBillingPortalSession()`, `verifyWebhookSignature()` (HMAC-SHA256, 5-min replay protection), `getSubscription()`, `findOrCreateCustomer()`.
+- `POST /api/billing/checkout`, `POST /api/billing/portal`, `POST /api/billing/webhook` (5 event types).
+- Repository additions: `getStripeCustomerId()`, `activatePlan()`, `handleSubscriptionChange()`, `suspendWorkspace()`, `unsuspendWorkspace()`, `convertExpiredTrials()`, `getWorkspaceByStripeCustomer()`.
+- `POST /api/cron/billing`: now also converts expired trials.
+- Settings Plan tab: Upgrade / Manage Plan / Enterprise CTA buttons wired to Stripe.
+- `tests/billing-stripe.test.ts`: 20 tests.
+
+---
+
+### Session #20 -- Billing Tiers Session 1 (v0.20.0, 2026-06-10)
+
+**Shipped:**
+- `db/migrations/0023_billing_tiers.sql`: `plan_definitions` table + billing columns on `workspaces`.
+- `lib/billing/budget.ts`: `checkTokenBudget()`, `canUseFeature()`, 5-min in-process cache, `invalidateBudgetCache()`.
+- `ask()` budget gate: rejects calls when monthly token limit is exhausted.
+- `POST /api/cron/billing`: monthly token reset for all workspaces.
+- Settings → Plan & Usage tab.
+- `tests/billing.test.ts`: 11 tests.
+
+---
+
+### Sessions #19 -- Scheduled Synthesis + Workflow Twins (v0.19.0–v0.19.1, 2026-06-10)
+
+**Shipped:**
+- `synthesis_schedules` table, Settings schedule config, `POST /api/cron/synthesis`, test-run button.
+- `workflow_twins` + `workflow_twin_runs` tables, `GET/POST /api/workflow-twins`, run APIs, action-items alias.
 
 ---
 
@@ -655,6 +682,12 @@ CLOUDFLARE_R2_*            R2 object storage (optional)
 | Executive Synthesis Layer | Complete | v0.18.0 |
 | Executive Synthesis Traceability | Complete | v0.18.1 |
 | Executive Synthesis Refresh/History | Complete | v0.18.2 |
+| Scheduled Synthesis Core | Complete | v0.19.0 |
+| Workflow Twin Primitives | Complete | v0.19.1 |
+| Billing Tiers Session 1 | Complete | v0.20.0 |
+| Billing Tiers Session 2 (Stripe) | Complete | v0.21.0 |
+| Orchestration Dispatcher | Complete | v0.22.0 |
+| Entity Pages and Backlinks | Not started (next build) | -- |
 | Phase 8B -- Workflow Twin Scorer | Docs done, code not started | -- |
 | Phase 8C -- Ops Review Twin | Not started | -- |
 | Phase 9 -- Team Members | Build when pilot client needs it | -- |
@@ -662,27 +695,21 @@ CLOUDFLARE_R2_*            R2 object storage (optional)
 
 ## What Needs to Come Next
 
-### Highest leadership impact
+### Next build (highest impact)
 
-1. **Scheduled synthesis cadence** -- daily/weekly refresh job and delivery policy.
-2. **Synthesis learning controls** -- learning signals on synthesis answers.
-
-### Foundational (compound memory + orchestration)
-
-3. **Entity pages/backlinks** -- turn extracted entities into navigable Company Memory pages.
-4. **Workflow twin primitives** -- add `workflow_twins` and `workflow_twin_runs` after Decision & Action Twin proposal flow stabilizes.
-5. **Orchestration dispatcher** -- multi-step reasoning, agent-to-agent coordination.
+1. **Entity pages and backlinks** -- extraction pipeline is done; add entity detail pages with linked evidence, decisions, recommendations, actions, and timeline views. This is the first visible layer of Company Memory.
 
 ### Operational sign-off (see docs/SECURITY_REVIEW.md)
 
 - [ ] Wire Sentry for error tracking
 - [ ] Set up support@nexusai.io or Freshdesk
-- [ ] Run npm audit and resolve critical findings
 - [ ] Verify security headers via securityheaders.com
 - [ ] Run tenant isolation test
-- [x] Apply migrations 0014-0018 to Neon production
-- [x] Apply migration 0019 to Neon production
-- [ ] Stripe wiring (not blocking for first pilot if manual invoicing)
+- [x] Apply migrations 0014-0020 to Neon production
+- [ ] Apply migrations 0021-0024 to Neon production before next deploy
+- [ ] Configure Render cron jobs: synthesis (daily), billing (daily), dispatch (every 2 min)
+- [ ] Set Stripe env vars in Render: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_PRO, STRIPE_PRICE_BUSINESS
+- [ ] Register Stripe webhook endpoint: POST /api/billing/webhook
 
 ### What is ready to take to a first client today
 
@@ -719,21 +746,20 @@ Before doing anything else, read:
 3. TASKS.md
 4. AGENTS.md
 
-Current version: 0.18.2
-Last audit: 2026-06-10. 152+ source files, 21 test files / 104 tests, build clean.
+Current version: 0.22.0
+Last audit: 2026-06-10. 180+ source files, 26 test files / ~166 tests, 24 DB migrations, build clean (0 TS errors).
 
-Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. Phase 8A Decision Twin core, decision auto-extraction, persistent Ask memory, entity extraction, P2 trust layer, Executive Synthesis Layer, synthesis source/entity traceability, and manual synthesis refresh/history complete.
-Migrations 0014-0020 applied to Neon production.
+Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. Billing Tiers + Stripe full integration (v0.20.0-v0.21.0) complete. Orchestration Dispatcher (v0.22.0) complete.
+Migrations 0001-0020 applied to Neon production. Migrations 0021-0024 need to run before next deployment.
 
-Immediate next builds:
-1. Scheduled synthesis cadence
-2. Synthesis learning controls
-3. Entity pages/backlinks
+What is built: onboarding, ingestion, retrieval, 7 agent rooms, 20 role dashboards, Ask, governance (passports, output gates, learning signals), Decision Twin, entity extraction, eval harness, Executive Synthesis, scheduled synthesis, billing tiers, Stripe, orchestration dispatcher (dispatch_jobs queue, atomic claim, priority, retry, fan-out, 4 job type handlers, cron runner).
+
+Immediate next build:
+1. Entity pages and backlinks -- extraction pipeline exists; product UI does not. This is the first visible layer of Company Memory.
 
 Known missing (from 2026-06-10 audit):
-- Orchestration/dispatcher: all LLM calls are single-shot, no agent coordination
-- Connectors: Slack skeleton only, no live data flow
-- Workflow twin primitives: no tables/APIs yet
+- Entity pages: entities and evidence_entity_links exist in DB; no entity detail page, timeline, or cross-object backlinks
+- Connectors: Slack OAuth/events skeleton only, no live data sync
 
 Start by confirming git status, then read the files above, then proceed.
 ```

@@ -282,9 +282,9 @@ describe("executeJob — success path", () => {
 
     expect(result.success).toBe(true);
     expect(vi.mocked(synthesiseForRole)).toHaveBeenCalledWith(
-      { role: "ceo", department: undefined },
+      "ceo",
       WS,
-      { persist: true }
+      { department: undefined, persist: true }
     );
     expect(vi.mocked(repository.markJobDone)).toHaveBeenCalledWith(job.id);
   });

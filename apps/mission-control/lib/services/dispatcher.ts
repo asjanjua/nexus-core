@@ -49,6 +49,7 @@ export async function enqueueFanOut(
         jobType,
         payload: { ...basePayload, [fanOutKey]: value },
         priority,
+        maxAttempts: 3,
       })
     )
   );
@@ -152,11 +153,7 @@ async function handleSynthesisJob(job: DispatchJob): Promise<void> {
 
   if (!role) throw new Error("synthesis job missing required payload field: role");
 
-  await synthesiseForRole(
-    { role, department },
-    job.workspaceId,
-    { persist: persist ?? true }
-  );
+  await synthesiseForRole(role, job.workspaceId, { department, persist: persist ?? true });
 }
 
 async function handleWorkflowRunJob(job: DispatchJob): Promise<void> {
@@ -167,40 +164,23 @@ async function handleWorkflowRunJob(job: DispatchJob): Promise<void> {
   if (!twin) throw new Error(`WorkflowTwin not found: ${workflowTwinId}`);
 
   const runInput = await buildWorkflowTwinRunInput(twin, job.workspaceId);
-  await repository.createWorkflowTwinRun(job.workspaceId, twin.id, runInput, "dispatcher");
+  await repository.createWorkflowTwinRun(job.workspaceId, twin, runInput, "dispatcher");
 }
 
 async function handleDecisionExtractJob(job: DispatchJob): Promise<void> {
-  const { outputIds } = job.payload as { outputIds?: string[] };
-
-  // Fetch recent agent outputs for the workspace
-  const allOutputs = await repository.listAgentOutputs({
+  const proposed = await proposeDecisionsFromAgentOutputs({
     workspaceId: job.workspaceId,
     limit: 20,
   });
 
-  const outputs = outputIds
-    ? allOutputs.filter(o => outputIds.includes(o.id))
-    : allOutputs;
-
-  if (outputs.length === 0) return;
-
-  const proposed = await proposeDecisionsFromAgentOutputs({
+  await repository.pushAudit({
     workspaceId: job.workspaceId,
-    agentOutputs: outputs,
+    type: "decision_extract_proposals_generated",
+    actor: "dispatcher",
+    payload: {
+      jobId: job.id,
+      proposalCount: proposed.length,
+      sourceOutputIds: proposed.map((proposal) => proposal.sourceOutputId).filter(Boolean)
+    }
   });
-
-  // Persist proposed decisions (status = 'proposed', awaiting human acceptance)
-  for (const p of proposed) {
-    await repository.createDecision(job.workspaceId, {
-      title: p.title,
-      owner: p.owner ?? "ai_extracted",
-      rationale: p.rationale,
-      status: "proposed",
-      sourceOutputId: p.sourceOutputId ?? null,
-      deadline: null,
-      priority: p.priority ?? "medium",
-      evidenceRefs: p.evidenceRefs ?? [],
-    }, "dispatcher");
-  }
 }

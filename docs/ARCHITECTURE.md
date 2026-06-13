@@ -1,7 +1,7 @@
 # NexusAI Mission Control Architecture
 
 Updated: 2026-06-10
-Current product state: v0.19.1 (verified). Covers U2 Agent Control Profiles, U3 output history/rollback, U4 learning signals, Phase 8A Decision & Action Twin, AI decision proposals, persistent Ask memory, entity extraction, P2 AI trust controls, the Executive Synthesis Layer, synthesis source/entity traceability, scheduled synthesis core, and workflow twin primitives.
+Current product state: v0.22.0 (verified). Covers U2 Agent Control Profiles, U3 output history/rollback, U4 learning signals, Phase 8A Decision & Action Twin, AI decision proposals, persistent Ask memory, entity extraction, P2 AI trust controls, the Executive Synthesis Layer, synthesis source/entity traceability, scheduled synthesis core, workflow twin primitives, billing tiers with Stripe integration, and the orchestration dispatcher.
 
 ## 1. Purpose
 
@@ -410,28 +410,28 @@ sequenceDiagram
 | Executive Synthesis Refresh/History | Complete (v0.18.2) -- manual refresh saved to output history |
 | Scheduled Synthesis Refresh Core | Complete (v0.19.0) -- schedule config, cron endpoint, in-app history |
 | Workflow Twin Primitives | Complete (v0.19.1) -- workflow twin and run storage/APIs |
+| Billing Tiers Session 1 | Complete (v0.20.0) -- plan-gated token budgets, feature flags (8), cron reset, settings tab |
+| Billing Tiers Session 2 | Complete (v0.21.0) -- Stripe Checkout, webhook lifecycle (5 events), Billing Portal, trial-to-free |
+| Orchestration Dispatcher | Complete (v0.22.0) -- dispatch_jobs queue, atomic claim, priority/retry/fan-out, 4 handlers, cron runner |
 | Connectors | Skeleton only (Slack OAuth/events) |
+| Entity Pages and Backlinks | Extraction pipeline done; product UI planned next |
 | Workflow Twin Scorer | Primitive run payload shipped; product UI/AI scoring planned Phase 8B |
 | Ops Review Twin | Primitive run payload shipped; product UI/AI review planned Phase 8C |
 | Local/on-prem edge client | Later enterprise moat |
 
 ## 11. Near-Term Architecture Roadmap
 
-### Scheduled Synthesis Refresh (core shipped, delivery polish next)
+### Billing Tiers (shipped v0.20.0–v0.21.0)
 
-The v0.19.0 core adds workspace-configurable scheduled refresh through `synthesis_schedules`, Settings UI, protected `POST /api/cron/synthesis`, and in-app persistence to existing `agent_outputs`. Email and Slack digest delivery remain follow-on delivery passes.
+Four-tier billing (Free/Pro/Business/Enterprise). `plan_definitions` table defines token limits and feature flags per plan. Per-workspace token budget enforced with a 5-minute in-process cache before every LLM call. Stripe pure-fetch client (no SDK) handles Checkout Sessions, Billing Portal, and webhook lifecycle (5 event types). Trial converts to Free at day 14. Full spec: `docs/BILLING_TIERS_SPEC.md`.
 
-### Workflow Twin Primitives (shipped)
+### Orchestration Dispatcher (shipped v0.22.0)
 
-v0.19.1 adds `workflow_twins` and `workflow_twin_runs`, plus `GET/POST /api/workflow-twins`, `GET/POST /api/workflow-twins/:id/run`, and `GET /api/action-items`. First-pass deterministic run payloads exist for Decision & Action, Workflow Scorer, and Ops Review. The next step is product UI and LLM-assisted scoring/review on top of the substrate.
+`dispatch_jobs` table is a durable DB queue. `enqueueJob()` inserts a pending row. `claimPendingJob()` atomically claims with `UPDATE...WHERE id=(SELECT...FOR UPDATE SKIP LOCKED)` — prevents double-execution in concurrent cron ticks. `runDispatchCycle()` processes up to `NEXUS_DISPATCH_BATCH_SIZE` jobs sequentially to avoid token burst. Four handlers: `agent_brief` → `cardsForRole()`, `synthesis` → `synthesiseForRole()`, `workflow_run` → `buildWorkflowTwinRunInput()`, `decision_extract` → `proposeDecisionsFromAgentOutputs()`. Fan-out enqueue enables one-call synthesis across all active roles. Retry with exponential backoff (30s / 5m / 30m). Full spec: `docs/DISPATCHER_SPEC.md`.
 
-### Billing Tiers and Usage Metering (scoped, after scheduled synthesis)
+### Entity Pages and Backlinks (next build)
 
-Four-tier billing (Free/Pro/Business/Enterprise) with per-workspace LLM token budgets. New `plan_definitions` table defines limits per tier. New columns on `workspaces` track plan, monthly token usage, and reset date. Token budget enforcement uses an in-process cache (5-min TTL) before each LLM call; `recordLLMUsage()` atomically increments the workspace counter. Feature gating controls access to scheduled synthesis, exports, connectors, custom passports, and data residency by plan. Stripe Checkout handles self-serve upgrades; webhooks drive plan lifecycle. Trial (14 days) converts to Free plan instead of suspension. Full spec: `docs/BILLING_TIERS_SPEC.md`. Target: v0.20.0.
-
-### Entity Pages and Backlinks (next Company Memory step)
-
-Entity extraction now writes `entities` and `evidence_entity_links` during ingestion for processed evidence. The next architecture step is to add entity pages, timeline views, backlinks from decisions/recommendations/actions, and graph traversal for Company Memory.
+Entity extraction already writes `entities` and `evidence_entity_links` during ingestion for processed evidence. The next architecture step is to add entity pages with timeline views, backlinks from decisions/recommendations/actions, and graph traversal — the first visible layer of Company Memory.
 
 ### Phase 8B: Workflow Twin Scorer
 
