@@ -40,8 +40,10 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 **Billing Tiers Session 1: Shipped.** (v0.20.0) -- plan-gated token budgets, feature flags, `ask()` budget gate, cron reset, Plan & Usage settings tab.
 **Billing Tiers Session 2: Shipped.** (v0.21.0) -- Stripe Checkout, webhook lifecycle (5 events), Billing Portal, trial-to-free cron conversion, Settings upgrade CTAs.
 **Orchestration Dispatcher: Shipped.** (v0.22.0) -- `dispatch_jobs` table, atomic claim with `FOR UPDATE SKIP LOCKED`, priority queue, retry/backoff, fan-out, 4 job type handlers, dispatch API, cron runner.
+**Entity Pages and Backlinks: Shipped.** (v0.23.0) -- Company Memory index/detail pages, entity backlinks, timeline, and `GET /api/entities/:id`.
+**Slack Connector Data Flow: Shipped.** (v0.23.0) -- allowlisted Slack channel messages ingest as governed evidence with provenance, sensitivity, confidence, and audit events.
 **Demo packs: Audited and rewritten.** (v0.15.1) -- All 3 sector packs CEO-grade with pre-tuned Ask questions.
-**Production DB: Migrations 0014-0020 applied. Migrations 0021-0024 need to run before deployment.**
+**Production DB: Migrations 0001-0024 applied.**
 
 **The product is demo-ready and pilot-ready for GCC fintech, professional services, and SaaS buyers.**
 
@@ -49,8 +51,8 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 1. [x] Billing tiers Session 1 -- token budgets, feature flags, usage UI. DONE v0.20.0.
 2. [x] Billing tiers Session 2 -- Stripe checkout, webhook lifecycle, portal, trial conversion. DONE v0.21.0.
 3. [x] Orchestration dispatcher -- `dispatch_jobs` queue, atomic claim, fan-out, 4 handlers, cron runner. DONE v0.22.0.
-4. Entity pages and backlinks -- next Company Memory UI layer.
-5. Connector data flow -- Slack/Drive/Teams ingestion beyond skeletons.
+4. [x] Entity pages and backlinks -- Company Memory UI layer. DONE v0.23.0.
+5. [x] Connector data flow -- first Slack inbound ingestion path. DONE v0.23.0.
 
 What is built at v0.18.0 (Executive Synthesis Layer):
 - No new DB migrations. Synthesis is computed on demand from existing agent outputs + evidence.

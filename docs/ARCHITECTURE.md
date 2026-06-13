@@ -1,7 +1,7 @@
 # NexusAI Mission Control Architecture
 
-Updated: 2026-06-10
-Current product state: v0.22.0 (verified). Covers U2 Agent Control Profiles, U3 output history/rollback, U4 learning signals, Phase 8A Decision & Action Twin, AI decision proposals, persistent Ask memory, entity extraction, P2 AI trust controls, the Executive Synthesis Layer, synthesis source/entity traceability, scheduled synthesis core, workflow twin primitives, billing tiers with Stripe integration, and the orchestration dispatcher.
+Updated: 2026-06-13
+Current product state: v0.23.0 (verified). Covers U2 Agent Control Profiles, U3 output history/rollback, U4 learning signals, Phase 8A Decision & Action Twin, AI decision proposals, persistent Ask memory, entity extraction and Company Memory pages, P2 AI trust controls, the Executive Synthesis Layer, synthesis source/entity traceability, scheduled synthesis core, workflow twin primitives, billing tiers with Stripe integration, the orchestration dispatcher, and the first Slack connector ingestion path.
 
 ## 1. Purpose
 
@@ -413,6 +413,8 @@ sequenceDiagram
 | Billing Tiers Session 1 | Complete (v0.20.0) -- plan-gated token budgets, feature flags (8), cron reset, settings tab |
 | Billing Tiers Session 2 | Complete (v0.21.0) -- Stripe Checkout, webhook lifecycle (5 events), Billing Portal, trial-to-free |
 | Orchestration Dispatcher | Complete (v0.22.0) -- dispatch_jobs queue, atomic claim, priority/retry/fan-out, 4 handlers, cron runner |
+| Company Memory UI | Complete (v0.23.0) -- entity index/detail pages, timelines, backlinks to evidence, decisions, recommendations, and actions |
+| Slack Connector Ingestion | First inbound path complete (v0.23.0) -- allowlisted channel messages become governed evidence; DMs and non-allowlisted channels are skipped/audited |
 | Connectors | Skeleton only (Slack OAuth/events) |
 | Entity Pages and Backlinks | Extraction pipeline done; product UI planned next |
 | Workflow Twin Scorer | Primitive run payload shipped; product UI/AI scoring planned Phase 8B |

@@ -24,9 +24,9 @@ Every document uploaded, every question asked, every decision logged makes Nexus
 
 ---
 
-## Where We Are -- Current State (v0.22.0, verified 2026-06-10)
+## Where We Are -- Current State (v0.23.0, verified 2026-06-13)
 
-The product is demo-ready and pilot-ready. 24 DB migrations, 26 test files / ~166 tests passing.
+The product is demo-ready and pilot-ready. 24 DB migrations, 28 test files / 179 tests passing.
 
 **What is built and verified:**
 
@@ -41,18 +41,20 @@ The product is demo-ready and pilot-ready. 24 DB migrations, 26 test files / ~16
 - **Scheduled Synthesis:** Workspace schedule config, protected cron endpoint, test-run button, and in-app output history persistence.
 - **Decision Twin:** Full CRUD for decisions and actions with priority, deadline, blocker flags, status tracking, audit trail, plus AI proposal extraction from recent agent outputs. Interactive `/decisions` page.
 - **Workflow Twin substrate:** Workflow twin and run history tables/APIs for Decision & Action, Workflow Scorer, and Ops Review primitives.
-- **Company Memory substrate:** Processed evidence now extracts people, organizations, risks, KPIs, amounts, dates, systems, and processes into `entities`, linked back to source evidence through `evidence_entity_links`.
+- **Company Memory:** Processed evidence extracts people, organizations, risks, KPIs, amounts, dates, systems, and processes into `entities`, linked back to source evidence through `evidence_entity_links`. `/entities` and `/entities/:id` expose backlinks, timelines, evidence, decisions, recommendations, and actions.
 - **Billing Tiers:** Four-tier plan model (Free/Pro/Business/Enterprise) with per-workspace LLM token budgets, feature gating (8 flags), monthly cron reset, plan definitions table, and Plan & Usage settings tab.
 - **Stripe Integration:** Pure-fetch Stripe client (no SDK). Checkout Session for self-serve upgrades, Billing Portal for subscription management, HMAC-SHA256 webhook handler (5 event types: checkout, subscription updated/deleted, invoice paid/failed), trial-to-free cron conversion.
 - **Orchestration Dispatcher:** `dispatch_jobs` DB queue with atomic claim (`FOR UPDATE SKIP LOCKED`), priority 1-10, exponential backoff retry (30s/5m/30m), fan-out enqueue, 4 job type handlers (agent_brief, synthesis, workflow_run, decision_extract), dispatch API (POST/GET/DELETE /api/dispatch), cron runner at `/api/cron/dispatch`.
+- **Slack Connector Ingestion:** first inbound connector data flow. Allowlisted channel messages become governed evidence with provenance, confidence, sensitivity, source path, connector instance, and audit events. DMs, bot/system subtypes, unsupported events, and non-allowlisted channels are skipped and audited.
 - **Exports:** Weekly brief, risk radar CSV, reco register CSV, one-pager. Export hub.
 - **Demo/Sales:** 3 CEO-grade demo sector packs, demo mode with reset, pilot kit, product brief page, readiness assessment (public), SOW templates, demo scripts, ROI calculator.
 - **Auth:** Clerk SSO, scope-based API keys, workspace status (trial/pilot/active/suspended), LLM cost tracking.
 
-**What is confirmed missing (2026-06-10 audit):**
+**What is confirmed missing (2026-06-13 audit):**
 
-- Connectors (Slack skeleton only, no live data flow)
-- Knowledge graph UI / entity pages (initial evidence-to-entity links exist; no graph traversal yet)
+- Connector Settings UX for Slack channel selection, sync status, and source-level sensitivity controls.
+- Additional live connector data flows beyond Slack: Google Drive, Teams, SharePoint, Jira, GitHub, CRM, finance, and social platforms.
+- Workflow Twin Scorer code path.
 
 ---
 
@@ -63,6 +65,9 @@ The product is demo-ready and pilot-ready. 24 DB migrations, 26 test files / ~16
 **Orchestration Dispatcher** (v0.22.0)
 Background job queue decoupling submission from execution. Any service can call `enqueueJob()` instead of making a synchronous LLM call. The cron runner claims and executes jobs atomically, enabling fan-out (synthesis for all roles), retry on transient LLM failure, and a full audit trail of every agent invocation. This is the foundation for all multi-agent coordination work going forward.
 
+**Company Memory + Slack Ingestion** (v0.23.0)
+Company Memory now has product pages, not just extracted records. Slack now has the first safe inbound connector path: selected channel messages become governed evidence, while private or unapproved sources are skipped and audited.
+
 **Billing Tiers + Stripe** (v0.20.0–v0.21.0)
 Plan-gated token budgets, feature flags, self-serve Stripe checkout, subscription lifecycle webhooks, Billing Portal, and trial-to-free conversion. The commercial layer is fully wired.
 
@@ -71,8 +76,9 @@ The dashboard starts with one evidence-backed leadership brief per role, with so
 
 ### Next Build
 
-**Entity Pages and Backlinks**
-Entity extraction already writes `entities` and `evidence_entity_links` on every processed document. The next step is UI: entity pages showing linked evidence, decisions, recommendations, actions, and a timeline. This is the first visible layer of Company Memory.
+1. **Demo navigation fixes:** verify and patch homepage CTAs such as Start a Pilot and View Workspace on Render.
+2. **Connector Settings UX:** Slack channel allowlist, last ingest status, source sensitivity, and connector audit trail.
+3. **Workflow Twin Scorer:** recommend the client's first workflow twin based on company profile, data readiness, risk, pain, and expected speed benefit.
 
 ### Later
 
@@ -80,9 +86,9 @@ Phase 7A/7B are COMPLETE (20-role registry, 5 archetypes, agent rooms, stage-awa
 
 **Phase 9 -- Team Members** (Q4 2026): workspace invitations, role-based access, CxO lens assignment. Build when a pilot client requests it.
 
-**Phase 10 -- Core Connectors** (Q4 2026 / Q1 2027): Google Drive, SharePoint, Slack, Teams, Gmail, Outlook, Jira, Salesforce, QuickBooks. Each with read-only ingestion, provenance, sensitivity policy, sync schedule. Slack OAuth/events skeleton already exists.
+**Phase 10 -- Core Connectors** (Q4 2026 / Q1 2027): Google Drive, SharePoint, Slack, Teams, Gmail, Outlook, Jira, Salesforce, QuickBooks. Each with read-only ingestion, provenance, sensitivity policy, sync schedule. Slack has the first inbound channel-message ingestion path; admin UX and broader sync remain to build.
 
-**Phase 12 -- Company Memory** (2027): entity pages with backlinks, diff views, the Obsidian-for-companies concept. Requires entity extraction pipeline first.
+**Phase 12 -- Company Memory** (2027): richer graph traversal, diff views, and the Obsidian-for-companies concept. Entity extraction and first entity pages are already in place.
 
 **Phase 13 -- Local Edge Client** (2027): on-premises document processing for regulated clients. Mac Studio appliance, local LLM option. Enterprise moat for financial services, healthcare, and government.
 

@@ -6,13 +6,14 @@
 
 ## Session Info
 
-- **Last updated:** 2026-06-10 (v0.22.0 -- Orchestration Dispatcher shipped)
-- **Last model:** Claude Sonnet
-- **Session number:** #22
-- **Current version:** 0.22.0 -- Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. Billing Tiers (v0.20.0-v0.21.0) with Stripe full integration complete. Orchestration Dispatcher (v0.22.0) complete.
-- **Last commit:** `a02e1db` -- `v0.22.0 — Orchestration Dispatcher`
-- **Remote status:** v0.22.0 committed locally, pending `git push` (clear `.git/HEAD.lock` and `.git/index.lock` first). Migrations 0021-0024 need to run on Neon before deployment.
-- **Local verification (2026-06-10):** TypeScript clean (0 errors). 26 test files / ~166 tests. Build clean.
+- **Last updated:** 2026-06-13 (v0.23.0 -- Company Memory + Slack connector ingestion shipped)
+- **Last model:** Codex
+- **Session number:** #23
+- **Current version:** 0.23.0 -- Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. Billing Tiers (v0.20.0-v0.21.0), Orchestration Dispatcher (v0.22.0), Company Memory UI, and first Slack connector data flow complete.
+- **Last commit:** `b406bf7` -- `v0.23.0 - Company Memory and Slack ingestion`
+- **Remote status:** v0.23.0 pushed to `origin/main`. Render auto-deploy expected from GitHub main.
+- **Production DB:** migrations 0001-0024 applied to Neon/production database on 2026-06-13.
+- **Local verification (2026-06-13):** `npm run build --workspace @nexus/mission-control` passed. `npm test --workspace @nexus/mission-control` passed: 28 test files / 179 tests.
 
 ---
 
@@ -20,7 +21,7 @@
 
 ### Confirmed Built and Wired
 
-- **180+ source files, 24 DB migrations, 26 test files / ~166 tests**
+- **180+ source files, 24 DB migrations, 28 test files / 179 tests**
 - Phase 8A Decision Twin: `decisions` + `actions` tables, full CRUD APIs, interactive `/decisions` page with priority badges, status tabs, inline actions, blocker flags. Manual entry works.
 - Decision auto-extraction: `/api/decisions/extract` reads recent `agent_outputs`, proposes decision/action drafts, and creates canonical decision/action records only after human click-through.
 - U2 Agent Control Profiles: passports with versioning, evidence filtering, output gates, hard-stop blocking, tool guards, suspend/resume. Settings Agent Governance UI complete.
@@ -37,12 +38,14 @@
 - Billing Tiers (v0.20.0): `plan_definitions` table, per-workspace token budgets, feature flags (8), `ask()` budget gate, 5-min in-process cache, cron monthly reset, Plan & Usage Settings tab.
 - Stripe integration (v0.21.0): pure-fetch client (no SDK), Checkout Session, Billing Portal, HMAC-SHA256 webhook (5 event types: checkout, subscription updated/deleted, invoice paid/failed), trial-to-free cron conversion.
 - Orchestration Dispatcher (v0.22.0): `dispatch_jobs` DB queue, atomic claim with `FOR UPDATE SKIP LOCKED`, priority 1-10, exponential backoff retry (30s/5m/30m), fan-out enqueue, 4 job type handlers, `POST/GET/DELETE /api/dispatch`, cron runner at `/api/cron/dispatch`.
+- Company Memory UI (v0.23.0): `/entities`, `/entities/[id]`, `GET /api/entities/[id]`, entity timeline, linked evidence, decisions, recommendations, and actions.
+- Slack connector data flow (v0.23.0): Slack channel messages can ingest as governed evidence when channel allowlist/explicit ingest-all is enabled. DMs, bot/system subtypes, unsupported events, and non-allowlisted channels are skipped and audited.
 
 ### Confirmed Missing
 
-- **Entity pages UI:** extraction pipeline exists; no product page, entity timeline, or cross-object backlinks yet.
-- **Connectors:** Slack OAuth/events skeleton exists (routes + adapter), no live data sync or ingestion flow.
-- **Knowledge graph traversal:** entities and links exist in DB; no graph query, entity detail page, or backlink surface yet.
+- **Connector admin UX:** Slack ingestion works in code, but Settings still needs channel selection, sync status, and source-level sensitivity controls.
+- **Additional connector data flows:** Google Drive, Teams, SharePoint, Jira, GitHub, CRM, finance, and social connectors are not yet ingesting live data.
+- **Workflow Twin Scorer:** roadmap/spec exists, code not started.
 
 ### Architecture Note
 
@@ -687,7 +690,8 @@ CLOUDFLARE_R2_*            R2 object storage (optional)
 | Billing Tiers Session 1 | Complete | v0.20.0 |
 | Billing Tiers Session 2 (Stripe) | Complete | v0.21.0 |
 | Orchestration Dispatcher | Complete | v0.22.0 |
-| Entity Pages and Backlinks | Not started (next build) | -- |
+| Entity Pages and Backlinks | Complete | v0.23.0 |
+| Slack Connector Data Flow | First inbound path complete | v0.23.0 |
 | Phase 8B -- Workflow Twin Scorer | Docs done, code not started | -- |
 | Phase 8C -- Ops Review Twin | Not started | -- |
 | Phase 9 -- Team Members | Build when pilot client needs it | -- |
@@ -697,7 +701,9 @@ CLOUDFLARE_R2_*            R2 object storage (optional)
 
 ### Next build (highest impact)
 
-1. **Entity pages and backlinks** -- extraction pipeline is done; add entity detail pages with linked evidence, decisions, recommendations, actions, and timeline views. This is the first visible layer of Company Memory.
+1. **Fix homepage CTAs and demo navigation** -- verify Start a Pilot and View Workspace routes on Render, then patch any broken links before demos.
+2. **Connector Settings UX** -- add Slack channel allowlist UI, sync status, last ingested, and source-level sensitivity controls.
+3. **Workflow Twin Scorer** -- let clients choose their first workflow twin based on company profile, data readiness, pain, risk, and speed benefit.
 
 ### Operational sign-off (see docs/SECURITY_REVIEW.md)
 
@@ -706,7 +712,7 @@ CLOUDFLARE_R2_*            R2 object storage (optional)
 - [ ] Verify security headers via securityheaders.com
 - [ ] Run tenant isolation test
 - [x] Apply migrations 0014-0020 to Neon production
-- [ ] Apply migrations 0021-0024 to Neon production before next deploy
+- [x] Apply migrations 0021-0024 to Neon production
 - [ ] Configure Render cron jobs: synthesis (daily), billing (daily), dispatch (every 2 min)
 - [ ] Set Stripe env vars in Render: STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET, STRIPE_PRICE_PRO, STRIPE_PRICE_BUSINESS
 - [ ] Register Stripe webhook endpoint: POST /api/billing/webhook
