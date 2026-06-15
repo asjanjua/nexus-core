@@ -16,10 +16,10 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 
 ---
 
-## Current Status (verified 2026-06-15) -- v0.23.1
+## Current Status (verified 2026-06-15) -- v0.24.0
 
 **Last fully verified release:** v0.23.0 on 2026-06-13 -- 28 test files / 179 tests, build clean, 24 DB migrations.
-**Current verification:** v0.23.1 production hardening + demo navigation/auth fixes passed browser CTA checks, TypeScript, 28 test files / 179 tests, and production build.
+**Current verification:** v0.24.0 workflow pilot productization passed TypeScript, 28 test files / 183 tests, and production build. In-app browser authenticated UI smoke is blocked by Clerk-hosted sign-in in that browser session; verify `/workflows` in the logged-in Chrome/Render session after deploy.
 
 **Phases 1-6: Complete.**
 **Pre-7A Technical Prep: Complete.** (v0.9.1)
@@ -43,7 +43,8 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 **Orchestration Dispatcher: Shipped.** (v0.22.0) -- `dispatch_jobs` table, atomic claim with `FOR UPDATE SKIP LOCKED`, priority queue, retry/backoff, fan-out, 4 job type handlers, dispatch API, cron runner.
 **Entity Pages and Backlinks: Shipped.** (v0.23.0) -- Company Memory index/detail pages, entity backlinks, timeline, and `GET /api/entities/:id`.
 **Slack Connector Data Flow: Shipped.** (v0.23.0) -- allowlisted Slack channel messages ingest as governed evidence with provenance, sensitivity, confidence, and audit events.
-**Production Hardening: Shipped locally.** (v0.23.1) -- Stripe webhook idempotency, cron/webhook rate limits, Clerk CSP domain handling, dispatch input typing, and demo navigation/auth shell fixes. Pending commit/deploy.
+**Production Hardening: Shipped.** (v0.23.1) -- Stripe webhook idempotency, cron/webhook rate limits, Clerk CSP domain handling, dispatch input typing, and demo navigation/auth shell fixes.
+**Workflow Pilot Productization: Shipped locally.** (v0.24.0) -- Connector Settings policy UX, Workflow Twin Scorer product page, U6 backcasting API/UI, and U7 shadow ROI instrumentation. Pending commit/deploy.
 **Demo packs: Audited and rewritten.** (v0.15.1) -- All 3 sector packs CEO-grade with pre-tuned Ask questions.
 **Production DB: Migrations 0001-0024 applied.**
 
@@ -51,10 +52,12 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 
 **Priority order (updated 2026-06-15):**
 1. [x] Finish and verify v0.23.1 hardening -- local auth/CTA behavior, TypeScript, tests, and build pass. Commit/deploy next.
-2. [ ] Connector Settings UX -- Slack channel allowlist, sync status, source sensitivity, last ingest, and audit trail.
-3. [ ] Workflow Twin Scorer product path -- UI/API scoring flow from company profile, data readiness, risk, pain, and speed benefit.
-4. [ ] U6 Backcasting onboarding -- guided scope conversation anchored to the chosen workflow.
-5. [ ] U7 Shadow ROI instrumentation -- measured manual-vs-Nexus comparison for the chosen workflow.
+2. [x] Connector Settings UX -- Slack channel allowlist, sync status, source sensitivity, last ingest, and policy audit trail.
+3. [x] Workflow Twin Scorer product path -- UI/API scoring flow from company profile, data readiness, risk, pain, and speed benefit.
+4. [x] U6 Backcasting onboarding/workflow scoping -- guided pilot scope anchored to the chosen workflow.
+5. [x] U7 Shadow ROI instrumentation -- measured manual-vs-Nexus comparison for the chosen workflow.
+6. [ ] Deploy v0.24.0 to Render and run authenticated smoke test in the logged-in browser session.
+7. [ ] Add additional connector data flows beyond Slack: Google Drive, Teams/SharePoint, Jira, GitHub, CRM, finance, and social platforms.
 
 **Design priority order (updated 2026-06-15):**
 1. [x] Figma Pro selected as active design workspace; Penpot parked until MCP/plugin compatibility improves.

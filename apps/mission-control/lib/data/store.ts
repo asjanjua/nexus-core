@@ -331,6 +331,13 @@ export const store = {
     });
     return record;
   },
+  upsertWorkflowTwin(record: WorkflowTwin): void {
+    const idx = workflowTwinStore.findIndex(
+      (twin) => twin.workspaceId === record.workspaceId && twin.id === record.id
+    );
+    if (idx >= 0) workflowTwinStore[idx] = record;
+    else workflowTwinStore.push(record);
+  },
   listWorkflowTwinRuns(workspaceId: string, twinId?: string): WorkflowTwinRun[] {
     return workflowTwinRunStore
       .filter((run) => run.workspaceId === workspaceId)

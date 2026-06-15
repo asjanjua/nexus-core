@@ -28,6 +28,13 @@ const SKIPPED_SUBTYPES = new Set([
   "message_deleted"
 ]);
 
+const SENSITIVITY_RANK: Record<Sensitivity, number> = {
+  public: 0,
+  internal: 1,
+  confidential: 2,
+  restricted: 3,
+};
+
 function allowedSlackChannels(): Set<string> {
   return new Set(
     (process.env.SLACK_INGEST_CHANNELS ?? "")
@@ -39,6 +46,35 @@ function allowedSlackChannels(): Set<string> {
 
 function isIngestAllEnabled(): boolean {
   return process.env.NEXUS_SLACK_INGEST_ALL === "enabled";
+}
+
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.map((item) => String(item).trim()).filter(Boolean)
+    : [];
+}
+
+function asSensitivity(value: unknown): Sensitivity | null {
+  return value === "public" ||
+    value === "internal" ||
+    value === "confidential" ||
+    value === "restricted"
+    ? value
+    : null;
+}
+
+async function slackConnectorPolicy(workspaceId: string) {
+  const connector = (await repository.listConnectors(workspaceId)).find(
+    (item) => item.type === "slack" && item.status === "active"
+  );
+  const config = connector?.config ?? {};
+  return {
+    allowedChannels: asStringArray(config.allowedChannels),
+    ingestAllPublicChannels: config.ingestAllPublicChannels === true,
+    defaultSensitivity: asSensitivity(config.defaultSensitivity),
+    maxSensitivity: asSensitivity(config.maxSensitivity) ?? "confidential",
+    sourcePolicy: typeof config.sourcePolicy === "string" ? config.sourcePolicy : "read_only",
+  };
 }
 
 function slackTimestampToIso(timestamp?: string): string {
@@ -73,6 +109,12 @@ function defaultSensitivityForSlack(text: string): Sensitivity {
     return "confidential";
   }
   return "internal";
+}
+
+function applySensitivityPolicy(detected: Sensitivity, fallback: Sensitivity | null, ceiling: Sensitivity): Sensitivity {
+  const withDefault = detected === "internal" && fallback ? fallback : detected;
+  if (SENSITIVITY_RANK[withDefault] > SENSITIVITY_RANK[ceiling]) return ceiling;
+  return withDefault;
 }
 
 async function auditSlackSkip(
@@ -156,10 +198,20 @@ export async function handleSlackConnectorEvent(event: SlackConnectorEventInput)
     return { ok: true, mode: "ignored", reason: `subtype_${event.subtype}_ignored` };
   }
 
-  const allowed = allowedSlackChannels();
+  const policy = await slackConnectorPolicy(event.workspaceId);
+  if (policy.sourcePolicy === "disabled") {
+    await auditSlackSkip(event.workspaceId, "connector_disabled_by_policy", event);
+    return { ok: true, mode: "ignored", reason: "connector_disabled_by_policy" };
+  }
+
+  const configuredAllowed = policy.allowedChannels.length
+    ? new Set(policy.allowedChannels)
+    : allowedSlackChannels();
+  const envIngestAll = isIngestAllEnabled();
   const channelAllowed =
     Boolean(event.channel) &&
-    (allowed.has(event.channel!) || (allowed.size === 0 && isIngestAllEnabled()));
+    (configuredAllowed.has(event.channel!) ||
+      (configuredAllowed.size === 0 && (policy.ingestAllPublicChannels || envIngestAll)));
   if (!channelAllowed) {
     await auditSlackSkip(event.workspaceId, "channel_not_allowlisted", event);
     return { ok: true, mode: "ignored", reason: "channel_not_allowlisted" };
@@ -182,7 +234,11 @@ export async function handleSlackConnectorEvent(event: SlackConnectorEventInput)
     sourceUri: sourcePath,
     sourceTimestamp,
     hash,
-    sensitivity: defaultSensitivityForSlack(text),
+    sensitivity: applySensitivityPolicy(
+      defaultSensitivityForSlack(text),
+      policy.defaultSensitivity,
+      policy.maxSensitivity
+    ),
     extractionConfidence: confidenceForSlackText(text),
     text
   });

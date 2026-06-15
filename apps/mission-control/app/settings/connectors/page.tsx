@@ -20,6 +20,15 @@ type ConnectorRecord = {
   config: Record<string, unknown>;
 };
 
+type ConnectorPolicyDraft = {
+  allowedChannels: string;
+  ingestAllPublicChannels: boolean;
+  defaultSensitivity: "public" | "internal" | "confidential" | "restricted";
+  maxSensitivity: "public" | "internal" | "confidential" | "restricted";
+  sourcePolicy: "read_only" | "manual_review" | "disabled";
+  notes: string;
+};
+
 // ---------------------------------------------------------------------------
 // Static connector catalogue
 // ---------------------------------------------------------------------------
@@ -142,16 +151,47 @@ function ConnectorRow({
   def,
   record,
   onRevoke,
+  onSavePolicy,
   revoking,
+  saving,
 }: {
   def: ConnectorDef;
   record?: ConnectorRecord;
   onRevoke: (type: string) => void;
+  onSavePolicy: (type: string, draft: ConnectorPolicyDraft) => void;
   revoking: string | null;
+  saving: string | null;
 }) {
   const isActive = record?.status === "active";
   const isRevoked = record?.status === "revoked";
   const isInstalled = !!record && !isRevoked;
+  const config = record?.config ?? {};
+  const [policyOpen, setPolicyOpen] = useState(false);
+  const [draft, setDraft] = useState<ConnectorPolicyDraft>({
+    allowedChannels: Array.isArray(config.allowedChannels)
+      ? config.allowedChannels.join(", ")
+      : "",
+    ingestAllPublicChannels: config.ingestAllPublicChannels === true,
+    defaultSensitivity:
+      config.defaultSensitivity === "public" ||
+      config.defaultSensitivity === "internal" ||
+      config.defaultSensitivity === "confidential" ||
+      config.defaultSensitivity === "restricted"
+        ? config.defaultSensitivity
+        : "internal",
+    maxSensitivity:
+      config.maxSensitivity === "public" ||
+      config.maxSensitivity === "internal" ||
+      config.maxSensitivity === "confidential" ||
+      config.maxSensitivity === "restricted"
+        ? config.maxSensitivity
+        : "confidential",
+    sourcePolicy:
+      config.sourcePolicy === "manual_review" || config.sourcePolicy === "disabled"
+        ? config.sourcePolicy
+        : "read_only",
+    notes: typeof config.notes === "string" ? config.notes : "",
+  });
 
   return (
     <div className="flex items-start gap-4 rounded-xl border border-white/10 bg-white/5 p-4">
@@ -181,15 +221,111 @@ function ConnectorRow({
         <p className="text-xs text-white/50 mt-0.5">{def.description}</p>
 
         {isActive && record && (
-          <div className="mt-2 flex flex-wrap gap-3 text-xs text-white/40">
-            <span>Installed: {new Date(record.installedAt).toLocaleDateString()}</span>
-            {typeof record.config?.teamName === "string" && (
-              <span>Team: {record.config.teamName}</span>
+          <>
+            <div className="mt-2 flex flex-wrap gap-3 text-xs text-white/40">
+              <span>Installed: {new Date(record.installedAt).toLocaleDateString()}</span>
+              {typeof record.config?.teamName === "string" && (
+                <span>Team: {record.config.teamName}</span>
+              )}
+              <span>
+                Last sync: {record.lastSyncAt ? new Date(record.lastSyncAt).toLocaleString() : "Not yet synced"}
+              </span>
+              <span>Max sensitivity: {String(record.config?.maxSensitivity ?? "confidential")}</span>
+              <span>
+                Channels: {Array.isArray(record.config?.allowedChannels) && record.config.allowedChannels.length
+                  ? record.config.allowedChannels.join(", ")
+                  : record.config?.ingestAllPublicChannels ? "All public channels" : "None selected"}
+              </span>
+            </div>
+            <button
+              className="mt-3 text-xs text-nexus-accent hover:underline"
+              onClick={() => setPolicyOpen((value) => !value)}
+            >
+              {policyOpen ? "Hide source policy" : "Configure source policy"}
+            </button>
+            {policyOpen && (
+              <div className="mt-3 grid gap-3 rounded-xl border border-white/10 bg-black/20 p-3 text-xs">
+                {def.type === "slack" && (
+                  <>
+                    <label className="space-y-1">
+                      <span className="text-white/50">Allowed Slack channel IDs</span>
+                      <input
+                        className="input"
+                        value={draft.allowedChannels}
+                        onChange={(event) => setDraft({ ...draft, allowedChannels: event.target.value })}
+                        placeholder="C0123, C0456"
+                      />
+                      <span className="block text-white/30">Only these channels become evidence. DMs are always blocked.</span>
+                    </label>
+                    <label className="flex items-center gap-2 text-white/60">
+                      <input
+                        type="checkbox"
+                        checked={draft.ingestAllPublicChannels}
+                        onChange={(event) => setDraft({ ...draft, ingestAllPublicChannels: event.target.checked })}
+                      />
+                      Ingest all public channels when no allowlist is set
+                    </label>
+                  </>
+                )}
+                <div className="grid gap-3 md:grid-cols-3">
+                  <label className="space-y-1">
+                    <span className="text-white/50">Default sensitivity</span>
+                    <select
+                      className="input"
+                      value={draft.defaultSensitivity}
+                      onChange={(event) => setDraft({ ...draft, defaultSensitivity: event.target.value as ConnectorPolicyDraft["defaultSensitivity"] })}
+                    >
+                      <option value="public">Public</option>
+                      <option value="internal">Internal</option>
+                      <option value="confidential">Confidential</option>
+                      <option value="restricted">Restricted</option>
+                    </select>
+                  </label>
+                  <label className="space-y-1">
+                    <span className="text-white/50">Max sensitivity</span>
+                    <select
+                      className="input"
+                      value={draft.maxSensitivity}
+                      onChange={(event) => setDraft({ ...draft, maxSensitivity: event.target.value as ConnectorPolicyDraft["maxSensitivity"] })}
+                    >
+                      <option value="public">Public</option>
+                      <option value="internal">Internal</option>
+                      <option value="confidential">Confidential</option>
+                      <option value="restricted">Restricted</option>
+                    </select>
+                  </label>
+                  <label className="space-y-1">
+                    <span className="text-white/50">Source policy</span>
+                    <select
+                      className="input"
+                      value={draft.sourcePolicy}
+                      onChange={(event) => setDraft({ ...draft, sourcePolicy: event.target.value as ConnectorPolicyDraft["sourcePolicy"] })}
+                    >
+                      <option value="read_only">Read-only ingest</option>
+                      <option value="manual_review">Manual review preferred</option>
+                      <option value="disabled">Disabled</option>
+                    </select>
+                  </label>
+                </div>
+                <label className="space-y-1">
+                  <span className="text-white/50">Admin notes</span>
+                  <textarea
+                    className="input min-h-20"
+                    value={draft.notes}
+                    onChange={(event) => setDraft({ ...draft, notes: event.target.value })}
+                    placeholder="Example: only ingest #exec-weekly and #ops-review during pilot."
+                  />
+                </label>
+                <button
+                  className="btn-primary w-fit text-xs"
+                  disabled={saving === def.type}
+                  onClick={() => onSavePolicy(def.type, draft)}
+                >
+                  {saving === def.type ? "Saving..." : "Save policy"}
+                </button>
+              </div>
             )}
-            {record.lastSyncAt && (
-              <span>Last sync: {new Date(record.lastSyncAt).toLocaleDateString()}</span>
-            )}
-          </div>
+          </>
         )}
 
         {record?.syncError && (
@@ -245,6 +381,7 @@ export default function ConnectorsPage() {
   const [connectors, setConnectors] = useState<ConnectorRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [revoking, setRevoking] = useState<string | null>(null);
+  const [savingPolicy, setSavingPolicy] = useState<string | null>(null);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   // Handle redirect params from OAuth callback
@@ -296,6 +433,37 @@ export default function ConnectorsPage() {
     }
   }
 
+  async function handleSavePolicy(type: string, draft: ConnectorPolicyDraft) {
+    setSavingPolicy(type);
+    try {
+      const allowedChannels = draft.allowedChannels
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+      const res = await fetch(`/api/connectors/${type}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          allowedChannels,
+          ingestAllPublicChannels: draft.ingestAllPublicChannels,
+          defaultSensitivity: draft.defaultSensitivity,
+          maxSensitivity: draft.maxSensitivity,
+          sourcePolicy: draft.sourcePolicy,
+          notes: draft.notes,
+        }),
+      });
+      const payload = await res.json();
+      if (payload.ok) {
+        setToast({ type: "success", message: `${type} policy saved.` });
+        await fetchConnectors();
+      } else {
+        setToast({ type: "error", message: payload.error ?? "Policy save failed." });
+      }
+    } finally {
+      setSavingPolicy(null);
+    }
+  }
+
   // Build record lookup by type
   const recordByType = Object.fromEntries(connectors.map((c) => [c.type, c]));
 
@@ -342,7 +510,9 @@ export default function ConnectorsPage() {
                       def={def}
                       record={recordByType[def.type]}
                       onRevoke={handleRevoke}
+                      onSavePolicy={handleSavePolicy}
                       revoking={revoking}
+                      saving={savingPolicy}
                     />
                   ))}
                 </div>

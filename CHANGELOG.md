@@ -2,6 +2,39 @@
 
 ---
 
+## 0.24.0 — Workflow Pilot Productization (2026-06-15)
+
+This release turns the workflow-twin roadmap into a visible pilot-selection and ROI workflow.
+
+**Connector Settings policy UX**
+- Added active connector policy controls to Settings → Connectors.
+- Slack connector settings now show install status, team name, last sync state, max sensitivity, and channel policy summary.
+- Added editable Slack channel allowlist, ingest-all-public toggle, default sensitivity, max sensitivity, source policy, and admin notes.
+- Added `PATCH /api/connectors/[type]` for connector policy updates with audit events.
+- Slack event ingestion now honors connector policy before environment defaults, including disabled source policy and sensitivity ceiling.
+
+**Workflow Twin Scorer**
+- Added `/workflows` product page for creating starter twins, running the scorer, and reviewing recommended workflow pilots.
+- Enriched workflow scoring across Decision & Action, Ops Review, Proposal/SOW, Regulatory Response, Agreement Review, and Risk Review candidates.
+- Scoring now considers frequency, pain, data readiness, inverse risk, senior judgment, reusability, monetization, and speed benefit.
+- Workflow scorer output includes a recommended first pilot, scoring weights, metrics, and shadow ROI plan.
+
+**U6 Backcasting**
+- Added `POST /api/workflow-twins/[id]/backcast`.
+- Backcasting stores target state, time horizon, pilot scope, milestones, required evidence, success metrics, and approval boundaries on the workflow twin config.
+
+**U7 Shadow ROI**
+- Added `POST /api/workflow-twins/[id]/shadow-roi`.
+- Captures manual minutes, Nexus minutes, rework counts, runs per month, saved minutes per run, monthly hours saved, speed gain, and rework delta.
+
+**Verification**
+- TypeScript: 0 errors.
+- Tests: 28 files / 183 tests passing.
+- Production build: passed.
+- Browser note: local in-app browser authenticated `/workflows` smoke redirects to Clerk sign-in and could not authenticate in that browser session; verify in logged-in Chrome/Render after deploy.
+
+---
+
 ## 0.23.1 — Production Hardening (2026-06-15)
 
 Security and reliability fixes identified in the post-v0.23.0 audit. No new features.

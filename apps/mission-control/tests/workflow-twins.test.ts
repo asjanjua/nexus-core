@@ -85,4 +85,59 @@ describe("workflow twin primitives", () => {
     expect(decisionRun.payload).toHaveProperty("openDecisions");
     expect(opsRun.payload).toHaveProperty("blockers");
   });
+
+  it("scores candidate workflow twins with a recommended first workflow", async () => {
+    const scorerTwin = {
+      id: "wt-scorer",
+      workspaceId: "workspace-demo",
+      type: "workflow_scorer" as const,
+      name: "Workflow Twin Scorer",
+      status: "active" as const,
+      config: {},
+      owner: "strategy",
+      createdBy: "tester",
+      createdAt: new Date().toISOString(),
+      updatedBy: "tester",
+      updatedAt: new Date().toISOString()
+    };
+
+    const run = await buildWorkflowTwinRunInput(scorerTwin, "workspace-demo");
+    const candidates = run.payload.candidates as Array<{ label: string; score: number; recommended?: boolean }>;
+
+    expect(run.summary).toContain("Workflow scorer recommends");
+    expect(candidates.length).toBeGreaterThanOrEqual(5);
+    expect(candidates.some((candidate) => candidate.recommended)).toBe(true);
+    expect(candidates[0]?.score).toBeGreaterThanOrEqual(candidates[candidates.length - 1]?.score ?? 0);
+    expect(run.payload).toHaveProperty("shadowPlan");
+  });
+
+  it("updates workflow twin config for backcasting and shadow ROI state", async () => {
+    const workspaceId = `workspace-workflow-config-${Date.now()}`;
+    const twin = await repository.createWorkflowTwin(
+      workspaceId,
+      {
+        type: "decision_action",
+        name: "Decision & Action Twin",
+        status: "active",
+        config: {},
+        owner: "ceo"
+      },
+      "tester"
+    );
+
+    const updated = await repository.updateWorkflowTwinConfig(
+      workspaceId,
+      twin.id,
+      {
+        backcast: { targetState: "Leadership gets decisions and owners in one weekly brief." },
+        shadowMeasurements: [{ workflowName: "Weekly review", minutesSavedPerRun: 90 }]
+      },
+      "tester"
+    );
+
+    expect(updated?.config.backcast).toMatchObject({ targetState: expect.stringContaining("Leadership") });
+    expect(updated?.config.shadowMeasurements).toEqual([
+      expect.objectContaining({ workflowName: "Weekly review", minutesSavedPerRun: 90 })
+    ]);
+  });
 });

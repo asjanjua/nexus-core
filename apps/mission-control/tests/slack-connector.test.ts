@@ -89,6 +89,75 @@ describe("Slack connector ingestion", () => {
     expect(evidence[0]?.hash).toMatch(/^sha256:/);
   });
 
+  it("uses connector policy allowlists and sensitivity ceilings before environment defaults", async () => {
+    vi.stubEnv("SLACK_INGEST_CHANNELS", "C-OTHER");
+    const workspaceId = `workspace-slack-policy-${Date.now()}`;
+    await repository.upsertConnector({
+      workspaceId,
+      type: "slack",
+      installedBy: "tester",
+      config: {
+        allowedChannels: ["C-POLICY"],
+        defaultSensitivity: "confidential",
+        maxSensitivity: "internal",
+        sourcePolicy: "read_only"
+      }
+    });
+
+    const response = await handleSlackConnectorEvent({
+      workspaceId,
+      userId: "U123",
+      threadId: "1744.1005",
+      type: "message",
+      channel: "C-POLICY",
+      channelType: "channel",
+      timestamp: "1744.1005",
+      text: "Board risk: budget pressure and vendor contract changes need leadership attention."
+    });
+
+    expect(response).toMatchObject({
+      ok: true,
+      mode: "ingested",
+      ingestionStatus: "processed"
+    });
+    const evidence = await repository.getEvidenceForWorkspace(workspaceId);
+    expect(evidence).toHaveLength(1);
+    expect(evidence[0]?.sensitivity).toBe("internal");
+  });
+
+  it("blocks Slack ingestion when the connector source policy is disabled", async () => {
+    vi.stubEnv("NEXUS_SLACK_INGEST_ALL", "enabled");
+    const workspaceId = `workspace-slack-disabled-${Date.now()}`;
+    await repository.upsertConnector({
+      workspaceId,
+      type: "slack",
+      installedBy: "tester",
+      config: {
+        allowedChannels: ["C-DISABLED"],
+        sourcePolicy: "disabled"
+      }
+    });
+
+    const response = await handleSlackConnectorEvent({
+      workspaceId,
+      userId: "U123",
+      threadId: "1744.1006",
+      type: "message",
+      channel: "C-DISABLED",
+      channelType: "channel",
+      timestamp: "1744.1006",
+      text: "This should be blocked by connector policy."
+    });
+
+    expect(response).toMatchObject({
+      ok: true,
+      mode: "ignored",
+      reason: "connector_disabled_by_policy"
+    });
+    const evidence = await repository.getEvidenceForWorkspace(workspaceId);
+    expect(evidence).toHaveLength(0);
+  });
+
   it("keeps app mentions on the Ask path instead of storing them as source evidence", async () => {
     const workspaceId = "workspace-demo";
     const before = await repository.getEvidenceForWorkspace(workspaceId);

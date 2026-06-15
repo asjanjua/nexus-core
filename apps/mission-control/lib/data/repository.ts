@@ -1563,6 +1563,74 @@ export const repository = {
     return store.createWorkflowTwin(workspaceId, input, actor);
   },
 
+  async updateWorkflowTwinConfig(
+    workspaceId: string,
+    id: string,
+    config: Record<string, unknown>,
+    actor: string
+  ): Promise<WorkflowTwin | null> {
+    const now = new Date();
+    const saved = await runDb(async (db) => {
+      const existing = await db
+        .select()
+        .from(workflowTwins)
+        .where(sql`${workflowTwins.workspaceId} = ${workspaceId} AND ${workflowTwins.id} = ${id}`)
+        .limit(1);
+      if (!existing[0]) return null;
+
+      const nextConfig = {
+        ...(existing[0].config as Record<string, unknown> ?? {}),
+        ...config,
+        updatedAt: now.toISOString(),
+        updatedBy: actor,
+      };
+
+      const [row] = await db
+        .update(workflowTwins)
+        .set({
+          config: nextConfig,
+          updatedBy: actor,
+          updatedAt: now
+        })
+        .where(sql`${workflowTwins.workspaceId} = ${workspaceId} AND ${workflowTwins.id} = ${id}`)
+        .returning();
+
+      await db.insert(auditEvents).values({
+        id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        workspaceId,
+        type: "workflow_twin_config_updated",
+        actor,
+        payload: { twinId: id, config: nextConfig },
+        createdAt: now
+      });
+
+      return row ? toWorkflowTwin(row) : null;
+    });
+    if (saved !== null) return saved;
+
+    const current = store.getWorkflowTwin(workspaceId, id);
+    if (!current) return null;
+    const next: WorkflowTwin = {
+      ...current,
+      config: {
+        ...current.config,
+        ...config,
+        updatedAt: now.toISOString(),
+        updatedBy: actor,
+      },
+      updatedBy: actor,
+      updatedAt: now.toISOString(),
+    };
+    store.upsertWorkflowTwin(next);
+    store.pushAudit({
+      workspaceId,
+      type: "workflow_twin_config_updated",
+      actor,
+      payload: { twinId: id, config: next.config }
+    });
+    return next;
+  },
+
   async listWorkflowTwinRuns(workspaceId: string, twinId?: string): Promise<WorkflowTwinRun[]> {
     const rows = await runDb((db) =>
       db
@@ -2502,6 +2570,69 @@ export const repository = {
         .where(eq(connectors.id, id))
     );
     store.revokeConnector(workspaceId, type);
+  },
+
+  async updateConnectorConfig(
+    workspaceId: string,
+    type: string,
+    config: Record<string, unknown>,
+    actor = "operator"
+  ): Promise<ConnectorRecord | null> {
+    const id = `conn-${workspaceId}-${type}`;
+    const now = new Date();
+    const saved = await runDb(async (db) => {
+      const existing = await db
+        .select()
+        .from(connectors)
+        .where(eq(connectors.id, id))
+        .limit(1);
+      if (!existing[0]) return null;
+
+      const nextConfig = {
+        ...(existing[0].config as Record<string, unknown> ?? {}),
+        ...config,
+        updatedAt: now.toISOString(),
+        updatedBy: actor,
+      };
+
+      const [row] = await db
+        .update(connectors)
+        .set({ config: nextConfig })
+        .where(eq(connectors.id, id))
+        .returning();
+
+      await db.insert(auditEvents).values({
+        id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        workspaceId,
+        type: "connector_policy_updated",
+        actor,
+        payload: { connectorType: type, config: nextConfig },
+        createdAt: now
+      });
+
+      return row ? toConnector(row) : null;
+    });
+
+    if (saved !== null) return saved;
+    const current = store.listConnectors(workspaceId).find((c) => c.type === type);
+    if (!current) return null;
+    const next = {
+      ...current,
+      config: {
+        ...current.config,
+        ...config,
+        updatedAt: now.toISOString(),
+        updatedBy: actor,
+      }
+    };
+    store.upsertConnector(next);
+    store.pushAudit({
+      workspaceId,
+      type: "connector_policy_updated",
+      actor,
+      payload: { connectorType: type, config: next.config }
+    });
+    return next;
   },
 
   // -------------------------------------------------------------------------

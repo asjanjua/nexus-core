@@ -1,7 +1,7 @@
 # NexusAI Mission Control Architecture
 
-Updated: 2026-06-13
-Current product state: v0.23.1 (verified locally 2026-06-15). Covers U2 Agent Control Profiles, U3 output history/rollback, U4 learning signals, Phase 8A Decision & Action Twin, AI decision proposals, persistent Ask memory, entity extraction and Company Memory pages, P2 AI trust controls, the Executive Synthesis Layer, synthesis source/entity traceability, scheduled synthesis core, workflow twin primitives, billing tiers with Stripe integration, the orchestration dispatcher, the first Slack connector ingestion path, and v0.23.1 production hardening/auth-navigation fixes.
+Updated: 2026-06-15
+Current product state: v0.24.0 (verified locally 2026-06-15). Covers U2 Agent Control Profiles, U3 output history/rollback, U4 learning signals, Phase 8A Decision & Action Twin, AI decision proposals, persistent Ask memory, entity extraction and Company Memory pages, P2 AI trust controls, the Executive Synthesis Layer, synthesis source/entity traceability, scheduled synthesis core, workflow twin primitives, billing tiers with Stripe integration, the orchestration dispatcher, the first Slack connector ingestion path, v0.23.1 production hardening/auth-navigation fixes, Connector Settings policy UX, Workflow Twin Scorer, U6 backcasting, and U7 shadow ROI instrumentation.
 
 ## 1. Purpose
 
@@ -410,15 +410,19 @@ sequenceDiagram
 | Executive Synthesis Refresh/History | Complete (v0.18.2) -- manual refresh saved to output history |
 | Scheduled Synthesis Refresh Core | Complete (v0.19.0) -- schedule config, cron endpoint, in-app history |
 | Workflow Twin Primitives | Complete (v0.19.1) -- workflow twin and run storage/APIs |
+| Connector Settings Policy UX | Complete locally (v0.24.0) -- Slack allowlist, source policy, sensitivity controls, status metadata |
+| Workflow Twin Scorer Product Path | Complete locally (v0.24.0) -- `/workflows` page, scoring run, recommended first pilot |
+| U6 Backcasting Scope Capture | Complete locally (v0.24.0) -- backcast API/UI stores target state, milestones, evidence, approval boundaries |
+| U7 Shadow ROI Instrumentation | Complete locally (v0.24.0) -- manual-vs-Nexus measurement stored on workflow twin config |
 | Billing Tiers Session 1 | Complete (v0.20.0) -- plan-gated token budgets, feature flags (8), cron reset, settings tab |
 | Billing Tiers Session 2 | Complete (v0.21.0) -- Stripe Checkout, webhook lifecycle (5 events), Billing Portal, trial-to-free |
 | Orchestration Dispatcher | Complete (v0.22.0) -- dispatch_jobs queue, atomic claim, priority/retry/fan-out, 4 handlers, cron runner |
 | Company Memory UI | Complete (v0.23.0) -- entity index/detail pages, timelines, backlinks to evidence, decisions, recommendations, and actions |
 | Slack Connector Ingestion | First inbound path complete (v0.23.0) -- allowlisted channel messages become governed evidence; DMs and non-allowlisted channels are skipped/audited |
-| Production Hardening | Complete locally (v0.23.1) -- Stripe idempotency, cron/webhook rate limits, Clerk CSP domain, dispatch typing, public/auth shell fixes; commit/deploy next |
-| Connectors | First Slack ingestion path shipped; admin UX and additional connectors remain open |
+| Production Hardening | Complete (v0.23.1) -- Stripe idempotency, cron/webhook rate limits, Clerk CSP domain, dispatch typing, public/auth shell fixes |
+| Connectors | First Slack ingestion path and policy UX shipped; additional connectors and scheduled sync remain open |
 | Entity Pages and Backlinks | Complete (v0.23.0) |
-| Workflow Twin Scorer | Primitive run payload shipped; product UI/AI scoring planned Phase 8B |
+| Workflow Twin Scorer | Complete locally (v0.24.0) -- ranked candidates, recommendation, scoring weights, UI path |
 | Ops Review Twin | Primitive run payload shipped; product UI/AI review planned Phase 8C |
 | Local/on-prem edge client | Later enterprise moat |
 
@@ -440,9 +444,15 @@ Entity extraction writes `entities` and `evidence_entity_links` during ingestion
 
 Slack events now split into two governed paths. `app_mention` events remain Ask interactions. Normal channel messages can ingest as evidence only when the channel is explicitly allowlisted through `SLACK_INGEST_CHANNELS` or the development override `NEXUS_SLACK_INGEST_ALL=enabled`. Direct messages, bot/system messages, unsupported event types, and non-allowlisted channels are skipped and audited. Accepted messages flow through `ingestEvidence()` so provenance, sensitivity, confidence, embeddings, entity extraction, and audit behavior stay consistent with uploaded documents.
 
-### Phase 8B: Workflow Twin Scorer
+### Phase 8B: Workflow Twin Scorer (complete locally v0.24.0)
 
 Score candidate workflows by frequency, pain, data readiness, risk, senior judgment required, reusability, monetization, and speed benefit.
+
+Implemented as the `/workflows` product surface plus `workflow_scorer` run payload. It ranks Decision & Action, Ops Review, Proposal/SOW, Regulatory Response, Agreement Review, and Risk Review candidates and marks the recommended first Parallel Workflow Pilot.
+
+### U6/U7: Backcasting and Shadow ROI (complete locally v0.24.0)
+
+Backcasting and ROI are stored in `workflow_twins.config` for V1 speed, with audit events through the repository update path. This is intentionally not a new reporting table yet. Promote to first-class tables only after pilots create enough measurements to need analytics across accounts.
 
 ### Phase 8C: Ops Review Twin
 

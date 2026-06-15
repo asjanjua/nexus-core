@@ -27,9 +27,9 @@ The UI should feel like a top-tier consulting command layer: restrained, evidenc
 
 ---
 
-## Where We Are -- Current State (v0.23.1, verified locally 2026-06-15)
+## Where We Are -- Current State (v0.24.0, verified locally 2026-06-15)
 
-The product is demo-ready and pilot-ready. v0.23.1 adds production hardening and local demo navigation/auth fixes on top of v0.23.0. Local browser CTA checks, TypeScript, 28 test files / 179 tests, and production build passed on 2026-06-15.
+The product is demo-ready and pilot-ready. v0.24.0 adds connector policy UX, Workflow Twin Scorer productization, backcasting scope capture, and shadow ROI instrumentation on top of v0.23.1 production hardening. TypeScript, 28 test files / 183 tests, and production build passed on 2026-06-15. Authenticated browser smoke for `/workflows` should be run in the logged-in Chrome/Render session after deploy.
 
 **What is built and verified:**
 
@@ -43,22 +43,22 @@ The product is demo-ready and pilot-ready. v0.23.1 adds production hardening and
 - **Executive Synthesis:** On-demand role-aware leadership brief on each dashboard, with specialist agent cards as collapsible drill-down, source pills/entity chips for traceability, and manual refresh saved to output history.
 - **Scheduled Synthesis:** Workspace schedule config, protected cron endpoint, test-run button, and in-app output history persistence.
 - **Decision Twin:** Full CRUD for decisions and actions with priority, deadline, blocker flags, status tracking, audit trail, plus AI proposal extraction from recent agent outputs. Interactive `/decisions` page.
-- **Workflow Twin substrate:** Workflow twin and run history tables/APIs for Decision & Action, Workflow Scorer, and Ops Review primitives.
+- **Workflow Twin product path:** Workflow twin and run history tables/APIs for Decision & Action, Workflow Scorer, and Ops Review. `/workflows` lets operators create starter twins, run the scorer, review recommended workflow candidates, backcast pilot scope, and capture shadow ROI.
 - **Company Memory:** Processed evidence extracts people, organizations, risks, KPIs, amounts, dates, systems, and processes into `entities`, linked back to source evidence through `evidence_entity_links`. `/entities` and `/entities/:id` expose backlinks, timelines, evidence, decisions, recommendations, and actions.
 - **Billing Tiers:** Four-tier plan model (Free/Pro/Business/Enterprise) with per-workspace LLM token budgets, feature gating (8 flags), monthly cron reset, plan definitions table, and Plan & Usage settings tab.
 - **Stripe Integration:** Pure-fetch Stripe client (no SDK). Checkout Session for self-serve upgrades, Billing Portal for subscription management, HMAC-SHA256 webhook handler (5 event types: checkout, subscription updated/deleted, invoice paid/failed), trial-to-free cron conversion.
 - **Orchestration Dispatcher:** `dispatch_jobs` DB queue with atomic claim (`FOR UPDATE SKIP LOCKED`), priority 1-10, exponential backoff retry (30s/5m/30m), fan-out enqueue, 4 job type handlers (agent_brief, synthesis, workflow_run, decision_extract), dispatch API (POST/GET/DELETE /api/dispatch), cron runner at `/api/cron/dispatch`.
-- **Slack Connector Ingestion:** first inbound connector data flow. Allowlisted channel messages become governed evidence with provenance, confidence, sensitivity, source path, connector instance, and audit events. DMs, bot/system subtypes, unsupported events, and non-allowlisted channels are skipped and audited.
+- **Slack Connector Ingestion:** first inbound connector data flow. Allowlisted channel messages become governed evidence with provenance, confidence, sensitivity, source path, connector instance, and audit events. DMs, bot/system subtypes, unsupported events, and non-allowlisted channels are skipped and audited. Settings exposes channel allowlist, ingest-all toggle, source policy, sensitivity defaults/ceilings, and sync/status metadata.
 - **Production Hardening:** Stripe webhook idempotency, cron/webhook rate limits, Clerk CSP domain handling, dispatch input typing, and local demo CTA/auth shell fixes are verified locally in v0.23.1.
 - **Exports:** Weekly brief, risk radar CSV, reco register CSV, one-pager. Export hub.
 - **Demo/Sales:** 3 CEO-grade demo sector packs, demo mode with reset, pilot kit, product brief page, readiness assessment (public), SOW templates, demo scripts, ROI calculator.
 - **Auth:** Clerk SSO, scope-based API keys, workspace status (trial/pilot/active/suspended), LLM cost tracking.
 
-**What is confirmed missing (2026-06-13 audit):**
+**What is confirmed missing (2026-06-15 audit):**
 
-- Connector Settings UX for Slack channel selection, sync status, and source-level sensitivity controls.
 - Additional live connector data flows beyond Slack: Google Drive, Teams, SharePoint, Jira, GitHub, CRM, finance, and social platforms.
-- Workflow Twin Scorer code path.
+- Connector scheduler/sync history for non-event-based sources.
+- Authenticated production smoke for v0.24.0 after Render deploy.
 
 ---
 
@@ -72,6 +72,9 @@ Background job queue decoupling submission from execution. Any service can call 
 **Company Memory + Slack Ingestion** (v0.23.0)
 Company Memory now has product pages, not just extracted records. Slack now has the first safe inbound connector path: selected channel messages become governed evidence, while private or unapproved sources are skipped and audited.
 
+**Connector Settings + Workflow Pilot Productization** (v0.24.0)
+Connector settings now expose Slack source policy and sensitivity controls. `/workflows` provides the pilot product path: score candidate workflow twins, choose a first Parallel Workflow Pilot, backcast the target outcome, and record shadow ROI measurements.
+
 **Billing Tiers + Stripe** (v0.20.0–v0.21.0)
 Plan-gated token budgets, feature flags, self-serve Stripe checkout, subscription lifecycle webhooks, Billing Portal, and trial-to-free conversion. The commercial layer is fully wired.
 
@@ -80,9 +83,9 @@ The dashboard starts with one evidence-backed leadership brief per role, with so
 
 ### Next Build
 
-1. **v0.23.1 commit/deploy:** commit the verified hardening set, push, and confirm Render deploy.
-2. **Connector Settings UX:** Slack channel allowlist, last ingest status, source sensitivity, and connector audit trail.
-3. **Workflow Twin Scorer:** recommend the client's first workflow twin based on company profile, data readiness, risk, pain, and expected speed benefit.
+1. **v0.24.0 commit/deploy:** push the workflow pilot productization set, confirm Render deploy, and smoke `/workflows` plus `/settings/connectors` while logged in.
+2. **Connector Data Flows:** add Google Drive/SharePoint/Teams/Jira/GitHub/CRM/finance/social ingestion paths with read-only provenance and sensitivity policy.
+3. **Workflow Twin Follow-through:** connect scorer selection more deeply into onboarding and create workflow-specific starter packs for Ops Review, Proposal/SOW, and Regulatory Response.
 4. **UI/UX prototype coverage:** complete the Figma v1 flow set: Mission Creation, Mission Run Detail, Evidence Room, Approval Inbox, Risk and Audit, Integration Hub, Governance Settings, and onboarding screens.
 
 ### Later
