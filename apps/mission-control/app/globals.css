@@ -8,6 +8,8 @@
 
 body {
   @apply bg-nexus-bg text-nexus-text antialiased;
+  background:
+    linear-gradient(180deg, rgba(9, 15, 27, 0.98) 0%, rgba(11, 18, 32, 1) 48%, rgba(8, 13, 24, 1) 100%);
 }
 
 a {
@@ -15,31 +17,31 @@ a {
 }
 
 .panel {
-  @apply rounded-xl border border-white/10 bg-white/5 p-4;
+  @apply rounded-lg border border-white/10 bg-white/[0.045] p-4 shadow-[0_1px_0_rgba(255,255,255,0.04)_inset];
 }
 
 .panel-title {
-  @apply text-sm font-semibold uppercase tracking-wide text-white/80;
+  @apply text-sm font-semibold uppercase text-white/80;
 }
 
 .badge {
-  @apply inline-flex items-center rounded-full border border-white/20 px-2 py-0.5 text-xs;
+  @apply inline-flex items-center rounded-md border border-white/20 px-2 py-0.5 text-xs;
 }
 
 .btn-primary {
-  @apply rounded-lg bg-nexus-accent px-3 py-2 text-sm font-medium text-black transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40;
+  @apply inline-flex items-center justify-center rounded-lg bg-nexus-accent px-3 py-2 text-sm font-semibold text-[#04100d] transition hover:bg-[#51e2cc] disabled:cursor-not-allowed disabled:opacity-40;
 }
 
 .btn-subtle {
-  @apply rounded-lg border border-white/20 px-3 py-2 text-sm transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40;
+  @apply inline-flex items-center justify-center rounded-lg border border-white/20 bg-white/[0.03] px-3 py-2 text-sm font-medium text-white/80 transition hover:border-white/35 hover:bg-white/[0.08] hover:text-white disabled:cursor-not-allowed disabled:opacity-40;
 }
 
 .btn-secondary {
-  @apply rounded-lg border border-white/20 px-3 py-1.5 text-sm transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40;
+  @apply inline-flex items-center justify-center rounded-lg border border-white/20 bg-white/[0.03] px-3 py-1.5 text-sm transition hover:border-white/35 hover:bg-white/[0.08] disabled:cursor-not-allowed disabled:opacity-40;
 }
 
 .label {
-  @apply block text-xs font-medium uppercase tracking-wide text-white/50 mb-1;
+  @apply mb-1 block text-xs font-medium uppercase text-white/50;
 }
 
 .input {
@@ -52,4 +54,12 @@ a {
 
 .badge-muted {
   @apply border-white/10 bg-white/5 text-white/40;
+}
+
+.surface-grid {
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.045) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: linear-gradient(180deg, black, rgba(0, 0, 0, 0.25));
 }

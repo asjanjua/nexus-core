@@ -5,6 +5,11 @@ import { verifyPassword } from "@/lib/auth";
 import { store } from "@/lib/data/store";
 import type { Action, ActionInput, ActionStatus, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, DispatchJob, DispatchJobInput, DispatchJobStatus, Entity, EntityInput, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, LearningSignal, LearningSignalInput, LearningSignalSummary, PromptRegistryEntry, Recommendation, RecommendationStatus, Role, SynthesisSchedule, SynthesisScheduleInput, SynthesisScheduleStatus, WorkflowTwin, WorkflowTwinInput, WorkflowTwinRun, WorkflowTwinRunInput, WorkflowTwinRunStatus, WorkflowTwinStatus, WorkflowTwinType, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
 import { assertDbConfigured, isDbRequired } from "@/lib/data/db-policy";
+
+// In-memory idempotency cache for Stripe events (fallback when DB is unavailable).
+// Cleared on process restart — acceptable because Stripe only retries within 3 days
+// and production deployments always have a DB wired.
+const stripeProcessedEventCache = new Set<string>();
 import { normalizeDatabaseUrl } from "@/lib/data/postgres-url";
 import { encryptCredentials, decryptCredentials } from "@/lib/crypto";
 import { buildDefaultAgentControlProfile, buildDefaultAgentControlProfiles } from "@/lib/agents/default-passports";
@@ -37,6 +42,7 @@ import {
   workflowTwins,
   planDefinitions,
   dispatchJobs,
+  stripeProcessedEvents,
   type recommendationStatusEnum,
   type ingestionStatusEnum
 } from "@/db/schema";
@@ -2946,5 +2952,37 @@ export const repository = {
     return ((store.dispatchJobs ?? []) as DispatchJob[]).filter(j =>
       j.status === "pending" && (!workspaceId || j.workspaceId === workspaceId)
     ).length;
+  },
+
+  // ---------------------------------------------------------------------------
+  // Stripe webhook idempotency
+  // ---------------------------------------------------------------------------
+
+  /**
+   * Attempt to record a Stripe event ID as processed.
+   * Returns true if the event is new (insert succeeded) and should be processed.
+   * Returns false if the event was already processed (duplicate — skip it).
+   *
+   * Uses INSERT ... ON CONFLICT DO NOTHING so the operation is always safe
+   * to call without a try/catch on the caller side.
+   */
+  async markStripeEventProcessed(eventId: string, eventType: string): Promise<boolean> {
+    const db = getDb();
+    if (!db) {
+      // No DB — in-memory mode: use a module-level set so restarts clear it
+      // (acceptable: Stripe retries only matter in production where DB is wired)
+      if (!stripeProcessedEventCache.has(eventId)) {
+        stripeProcessedEventCache.add(eventId);
+        return true;
+      }
+      return false;
+    }
+    const result = await db.execute(sql`
+      INSERT INTO stripe_processed_events (event_id, event_type, processed_at)
+      VALUES (${eventId}, ${eventType}, NOW())
+      ON CONFLICT (event_id) DO NOTHING
+    `);
+    // rowCount > 0 means the insert succeeded (event is new)
+    return (result.rowCount ?? 0) > 0;
   },
 };

@@ -489,3 +489,15 @@ export const dispatchJobs = pgTable("dispatch_jobs", {
   parentJobId:  text("parent_job_id"),
   createdAt:    timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+/**
+ * stripe_processed_events — idempotency guard for Stripe webhook delivery.
+ * We insert the event ID before acting; a duplicate insert (unique PK violation)
+ * means the event was already handled and we can skip processing safely.
+ * Stripe's max redelivery window is 3 days; rows older than 30 days can be pruned.
+ */
+export const stripeProcessedEvents = pgTable("stripe_processed_events", {
+  eventId:     varchar("event_id", { length: 255 }).primaryKey(),
+  eventType:   varchar("event_type", { length: 128 }).notNull(),
+  processedAt: timestamp("processed_at", { withTimezone: true }).defaultNow().notNull(),
+});

@@ -22,11 +22,14 @@ The product should know what a fintech CFO cares about and what a manufacturing 
 **5. Company memory compounds.**
 Every document uploaded, every question asked, every decision logged makes Nexus smarter for that company. The goal is a product where users feel the system is learning their business, not just answering ad-hoc queries.
 
+**6. Consulting-grade operating system, not decorative dashboard.**
+The UI should feel like a top-tier consulting command layer: restrained, evidence-first, precise, and built for decisions. Use neutral surfaces, high-trust dark navigation, and status color only when it carries operational meaning. The Figma v1 direction is documented in `docs/UI_UX_FLOW_PLAN.md`.
+
 ---
 
-## Where We Are -- Current State (v0.23.0, verified 2026-06-13)
+## Where We Are -- Current State (v0.23.1, verified locally 2026-06-15)
 
-The product is demo-ready and pilot-ready. 24 DB migrations, 28 test files / 179 tests passing.
+The product is demo-ready and pilot-ready. v0.23.1 adds production hardening and local demo navigation/auth fixes on top of v0.23.0. Local browser CTA checks, TypeScript, 28 test files / 179 tests, and production build passed on 2026-06-15.
 
 **What is built and verified:**
 
@@ -46,6 +49,7 @@ The product is demo-ready and pilot-ready. 24 DB migrations, 28 test files / 179
 - **Stripe Integration:** Pure-fetch Stripe client (no SDK). Checkout Session for self-serve upgrades, Billing Portal for subscription management, HMAC-SHA256 webhook handler (5 event types: checkout, subscription updated/deleted, invoice paid/failed), trial-to-free cron conversion.
 - **Orchestration Dispatcher:** `dispatch_jobs` DB queue with atomic claim (`FOR UPDATE SKIP LOCKED`), priority 1-10, exponential backoff retry (30s/5m/30m), fan-out enqueue, 4 job type handlers (agent_brief, synthesis, workflow_run, decision_extract), dispatch API (POST/GET/DELETE /api/dispatch), cron runner at `/api/cron/dispatch`.
 - **Slack Connector Ingestion:** first inbound connector data flow. Allowlisted channel messages become governed evidence with provenance, confidence, sensitivity, source path, connector instance, and audit events. DMs, bot/system subtypes, unsupported events, and non-allowlisted channels are skipped and audited.
+- **Production Hardening:** Stripe webhook idempotency, cron/webhook rate limits, Clerk CSP domain handling, dispatch input typing, and local demo CTA/auth shell fixes are verified locally in v0.23.1.
 - **Exports:** Weekly brief, risk radar CSV, reco register CSV, one-pager. Export hub.
 - **Demo/Sales:** 3 CEO-grade demo sector packs, demo mode with reset, pilot kit, product brief page, readiness assessment (public), SOW templates, demo scripts, ROI calculator.
 - **Auth:** Clerk SSO, scope-based API keys, workspace status (trial/pilot/active/suspended), LLM cost tracking.
@@ -76,9 +80,10 @@ The dashboard starts with one evidence-backed leadership brief per role, with so
 
 ### Next Build
 
-1. **Demo navigation fixes:** verify and patch homepage CTAs such as Start a Pilot and View Workspace on Render.
+1. **v0.23.1 commit/deploy:** commit the verified hardening set, push, and confirm Render deploy.
 2. **Connector Settings UX:** Slack channel allowlist, last ingest status, source sensitivity, and connector audit trail.
 3. **Workflow Twin Scorer:** recommend the client's first workflow twin based on company profile, data readiness, risk, pain, and expected speed benefit.
+4. **UI/UX prototype coverage:** complete the Figma v1 flow set: Mission Creation, Mission Run Detail, Evidence Room, Approval Inbox, Risk and Audit, Integration Hub, Governance Settings, and onboarding screens.
 
 ### Later
 

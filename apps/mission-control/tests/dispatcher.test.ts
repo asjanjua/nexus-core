@@ -23,10 +23,18 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 
 const jobs: Record<string, ReturnType<typeof makeJob>> = {};
 
+type JobShape = {
+  id: string; workspaceId: string; jobType: "synthesis" | "agent_brief" | "workflow_run" | "decision_extract";
+  payload: Record<string, unknown>; status: "pending" | "running" | "done" | "failed" | "cancelled";
+  priority: number; attempts: number; maxAttempts: number; runAfter: string;
+  startedAt: string | null; completedAt: string | null; error: string | null;
+  parentJobId: string | null; createdAt: string;
+};
+
 function makeJob(
   id: string,
   workspaceId: string,
-  overrides: Partial<ReturnType<typeof makeJob>> = {}
+  overrides: Partial<JobShape> = {}
 ) {
   return {
     id,

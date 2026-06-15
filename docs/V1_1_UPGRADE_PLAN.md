@@ -6,17 +6,46 @@
 > fast-follow, and which are later.
 
 - **Author:** Ali J
-- **Status:** Decision draft, ready for build sequencing
+- **Status:** Historical sequencing decision; superseded for execution by the current TASKS/HANDOVER status
 - **Target version:** v0.14.0
 - **Builds on:** v0.13.0 (Phases 1 to 9D complete, production DB migrated)
 - **Companion to:** TASKS.md, NexusAI_V1_Pilot_Plan.docx, Nexus_Product_Manual.docx
+- **Execution status:** As of 2026-06-15, Tier 1 (U1-U4) is complete and the active next product gap is U5 Workflow Twin Scorer productization.
 - **Reassessment note:** See `docs/NEXUS_WORKFLOW_TWIN_REALIGNMENT.md` for the 2026-05-31
   decision that the first workflow twin should be the universal Decision & Action Twin, followed
   by Workflow Twin Scorer and Ops Review Twin.
 
 ---
 
-## 1. Decision Summary
+## 0. Current Execution Status — 2026-06-15
+
+This document is still the right strategic framing for V1.1, but it is no longer the active
+build sequence. It was written before the governance foundation shipped. Do not restart U1-U4
+from this document; use this section and `TASKS.md` as the current execution truth.
+
+| Upgrade | Current status | Notes |
+| --- | --- | --- |
+| U1 AI-Native Readiness Assessment | Complete | Public readiness flow is shipped and remains the top-of-funnel assessment surface. |
+| U2 Agent Control Profile / passport | Complete | Passports, evidence filtering, output gates, hard-stop blocking, suspend/resume, and Settings UI are shipped. |
+| U3 Searchable per-agent log and rollback | Complete | `agent_outputs`, searchable log, output versioning, and rollback are shipped. |
+| U4 Learning-signal capture | Complete | Agent-output learning signals are shipped. Keep verifying that every new approval/edit/reject surface writes signals. |
+| U5 Workflow Twin Candidate Scorer | Next product build | Worksheet/spec exists; product UI/API scoring flow is still the key gap. |
+| U6 Backcasting onboarding | Open | Should follow the scorer so the backcast can anchor to a chosen workflow. |
+| U7 Shadow-mode parallel-run ROI | Partly documented | Playbook exists; runtime measurement and comparison instrumentation remain open. |
+| U8 Trusted eval harness | Split status | Base eval/red-team harness is shipped; learning-signal-fed per-agent scorecards remain a refinement. |
+| U9 Learning loop and improvement reporting | Deferred | Correctly postponed until enough workflow usage exists to make learning credible. |
+
+Current sequencing recommendation:
+
+1. Finish demo/auth/navigation hardening and commit it.
+2. Build U5 Workflow Twin Scorer as the next product feature.
+3. Add U6 Backcasting once the selected workflow has a scoring context.
+4. Add U7 Shadow ROI instrumentation when a workflow is running in parallel.
+5. Defer U9 learning-loop claims until customer usage produces enough signal.
+
+---
+
+## 1. Original Decision Summary
 
 Three upgrades ship before the first pilot is signed. They are selected on two
 tests only: does it get us in the door, or is it a hard requirement for a
@@ -178,7 +207,7 @@ buyer. They stay out of the product and out of every client-facing document.
 
 ## 7. Recommended Build Order and Immediate Next Step
 
-Build order within Tier 1: U1 in parallel with U2, because they touch different
+Original Tier 1 build order: U1 in parallel with U2, because they touch different
 surfaces and different people can own them. U3 follows U2 since it needs the
 per-agent identity. U4 can be done at any point in the tier because it is small
 and isolated.
@@ -190,9 +219,10 @@ and isolated.
 | 3 | U3 logs and rollback | Engineering | Before security review sign-off |
 | 4 | U4 signal capture | Engineering | Anytime in Tier 1 |
 
-Immediate next step: confirm this Tier 1 set, then move to building U1 in full,
-the seven scoring dimensions and the result-to-pilot routing, written for
-regulated and consulting buyers rather than copied from the ExO scorecard.
+Original next step at the time of writing was to confirm Tier 1 and build U1.
+As of 2026-06-15, that instruction is historical: U1-U4 are complete. The
+current next product build is U5 Workflow Twin Scorer, after v0.23.1 verification
+and commit.
 
 ## 8. Reassessment Addendum — Workflow Twin Sequence
 

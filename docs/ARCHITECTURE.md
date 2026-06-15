@@ -1,7 +1,7 @@
 # NexusAI Mission Control Architecture
 
 Updated: 2026-06-13
-Current product state: v0.23.0 (verified). Covers U2 Agent Control Profiles, U3 output history/rollback, U4 learning signals, Phase 8A Decision & Action Twin, AI decision proposals, persistent Ask memory, entity extraction and Company Memory pages, P2 AI trust controls, the Executive Synthesis Layer, synthesis source/entity traceability, scheduled synthesis core, workflow twin primitives, billing tiers with Stripe integration, the orchestration dispatcher, and the first Slack connector ingestion path.
+Current product state: v0.23.1 (verified locally 2026-06-15). Covers U2 Agent Control Profiles, U3 output history/rollback, U4 learning signals, Phase 8A Decision & Action Twin, AI decision proposals, persistent Ask memory, entity extraction and Company Memory pages, P2 AI trust controls, the Executive Synthesis Layer, synthesis source/entity traceability, scheduled synthesis core, workflow twin primitives, billing tiers with Stripe integration, the orchestration dispatcher, the first Slack connector ingestion path, and v0.23.1 production hardening/auth-navigation fixes.
 
 ## 1. Purpose
 
@@ -388,7 +388,7 @@ sequenceDiagram
 - unrestricted Slack/Teams summaries
 - full ERP/CRM/HRIS replacement
 
-## 10. Current Completion State (verified 2026-06-10)
+## 10. Current Completion State (updated 2026-06-15)
 
 | Area | Status |
 |---|---|
@@ -415,8 +415,9 @@ sequenceDiagram
 | Orchestration Dispatcher | Complete (v0.22.0) -- dispatch_jobs queue, atomic claim, priority/retry/fan-out, 4 handlers, cron runner |
 | Company Memory UI | Complete (v0.23.0) -- entity index/detail pages, timelines, backlinks to evidence, decisions, recommendations, and actions |
 | Slack Connector Ingestion | First inbound path complete (v0.23.0) -- allowlisted channel messages become governed evidence; DMs and non-allowlisted channels are skipped/audited |
-| Connectors | Skeleton only (Slack OAuth/events) |
-| Entity Pages and Backlinks | Extraction pipeline done; product UI planned next |
+| Production Hardening | Complete locally (v0.23.1) -- Stripe idempotency, cron/webhook rate limits, Clerk CSP domain, dispatch typing, public/auth shell fixes; commit/deploy next |
+| Connectors | First Slack ingestion path shipped; admin UX and additional connectors remain open |
+| Entity Pages and Backlinks | Complete (v0.23.0) |
 | Workflow Twin Scorer | Primitive run payload shipped; product UI/AI scoring planned Phase 8B |
 | Ops Review Twin | Primitive run payload shipped; product UI/AI review planned Phase 8C |
 | Local/on-prem edge client | Later enterprise moat |

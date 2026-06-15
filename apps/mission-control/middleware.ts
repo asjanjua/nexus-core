@@ -46,6 +46,9 @@ const isPublicRoute = createRouteMatcher([
   "/api/readiness/submit",              // public readiness lead capture
   "/api/health(.*)",
   "/api/cron/synthesis",                // protected by NEXUS_CRON_SECRET inside route
+  "/api/cron/billing",                  // protected by NEXUS_CRON_SECRET inside route
+  "/api/cron/dispatch",                 // protected by NEXUS_CRON_SECRET inside route
+  "/api/billing/webhook",               // protected by Stripe-Signature HMAC inside route
   "/api/connectors/slack/callback(.*)", // OAuth redirect — Slack hits this without a session
 ]);
 
@@ -89,18 +92,30 @@ const ALLOWED_ORIGINS = new Set(
   ].filter(Boolean)
 );
 
+// Clerk frontend API domain — set NEXT_PUBLIC_CLERK_DOMAIN in Render env vars.
+// Defaults to the standard Clerk accounts CDN; override if using a custom domain.
+const CLERK_DOMAIN = (process.env.NEXT_PUBLIC_CLERK_DOMAIN ?? "clerk.accounts.dev").replace(/\/+$/, "");
+
+function nextWithPath(request: NextRequest): NextResponse {
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-nexus-pathname", request.nextUrl.pathname);
+  return NextResponse.next({ request: { headers: requestHeaders } });
+}
+
 // CSP: strict but pragmatic for a Next.js app with Clerk and inline styles from Tailwind
+// CLERK_DOMAIN is read at module load — Next.js middleware runs in the Edge runtime
+// where process.env is available at build time for static values.
 const CSP_DIRECTIVES = [
   "default-src 'self'",
   // Next.js injects inline scripts; use strict-dynamic to allow them via nonces in future
   // For now allow 'unsafe-inline' only in development; production gets 'strict-dynamic'
   process.env.NODE_ENV === "production"
-    ? "script-src 'self' https://clerk.nexusai.io https://*.clerk.accounts.dev 'strict-dynamic'"
-    : "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    ? `script-src 'self' https://${CLERK_DOMAIN} https://*.clerk.accounts.dev 'strict-dynamic'`
+    : `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://${CLERK_DOMAIN} https://*.clerk.accounts.dev`,
   "style-src 'self' 'unsafe-inline'",   // Tailwind generates inline styles
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  "connect-src 'self' https://api.anthropic.com https://api.deepseek.com https://*.clerk.accounts.dev https://clerk.nexusai.io wss:",
+  `connect-src 'self' https://api.anthropic.com https://api.deepseek.com https://*.clerk.accounts.dev https://${CLERK_DOMAIN} wss:`,
   "frame-ancestors 'none'",
   "object-src 'none'",
   "base-uri 'self'",
@@ -153,6 +168,11 @@ const RATE_LIMIT_RULES: RateLimitRule[] = [
   { pattern: /^\/api\/ingestion/,   maxPerMinute: 20 },
   { pattern: /^\/api\/ask/,         maxPerMinute: 30 },
   { pattern: /^\/api\/dashboard/,   maxPerMinute: 60 },
+  // Cron endpoints are public routes (protected by NEXUS_CRON_SECRET inside the handler).
+  // Secondary rate limit: max 2/min per IP ensures a leaked secret cannot trigger a token burst.
+  { pattern: /^\/api\/cron\//,      maxPerMinute: 2 },
+  // Stripe webhook: Stripe sends at most 1 redelivery per event; allow a small burst.
+  { pattern: /^\/api\/billing\/webhook/, maxPerMinute: 10 },
 ];
 
 function checkRateLimit(request: NextRequest): NextResponse | null {
@@ -199,18 +219,18 @@ export default clerkMiddleware(async (auth, request) => {
   if (rateLimitResponse) return rateLimitResponse;
 
   // Let public routes through unconditionally
-  if (isPublicRoute(request)) return withSecurityHeaders(NextResponse.next(), request);
+  if (isPublicRoute(request)) return withSecurityHeaders(nextWithPath(request), request);
 
   // If the request carries a Bearer token on an agent-compatible route,
   // pass it through — the route handler performs token validation.
   const authHeader = request.headers.get("authorization") ?? "";
   if (authHeader.startsWith("Bearer ") && isAgentApiRoute(request)) {
-    return withSecurityHeaders(NextResponse.next(), request);
+    return withSecurityHeaders(nextWithPath(request), request);
   }
 
   // All other routes require a Clerk session
   await auth.protect();
-  return withSecurityHeaders(NextResponse.next(), request);
+  return withSecurityHeaders(nextWithPath(request), request);
 });
 
 export const config = {

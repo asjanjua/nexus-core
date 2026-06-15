@@ -12,7 +12,8 @@
  */
 
 import { repository } from "@/lib/data/repository";
-import type { DispatchJob, DispatchJobInput, DispatchJobType } from "@/lib/contracts";
+import { dispatchJobInputSchema } from "@/lib/contracts";
+import type { DispatchJob, DispatchJobInput, DispatchJobRawInput, DispatchJobType } from "@/lib/contracts";
 import { cardsForRole } from "@/lib/services/dashboard";
 import { synthesiseForRole } from "@/lib/services/synthesis";
 import { buildWorkflowTwinRunInput } from "@/lib/services/workflow-twins";
@@ -22,12 +23,14 @@ import { proposeDecisionsFromAgentOutputs } from "@/lib/services/decision-extrac
 // Public API
 // ---------------------------------------------------------------------------
 
-/** Enqueue a single job. Returns the created DispatchJob. */
+/** Enqueue a single job. Returns the created DispatchJob.
+ *  Accepts raw input (optional priority/maxAttempts) — Zod fills in defaults. */
 export async function enqueueJob(
   workspaceId: string,
-  input: DispatchJobInput
+  input: DispatchJobRawInput
 ): Promise<DispatchJob> {
-  return repository.enqueueDispatchJob(workspaceId, input);
+  const parsed: DispatchJobInput = dispatchJobInputSchema.parse(input);
+  return repository.enqueueDispatchJob(workspaceId, parsed);
 }
 
 /**

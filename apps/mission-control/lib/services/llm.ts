@@ -189,8 +189,10 @@ function estimateCostMicro(model: string, inputTokens: number, outputTokens: num
   if (m.includes("haiku")) {
     return Math.round(inputTokens * 0.25 + outputTokens * 1.25);
   }
+  // deepseek-chat pricing as of 2026-06: $0.27/M input, $1.10/M output (non-cache)
+  // Verify at https://platform.deepseek.com/docs/pricing if costs look wrong
   if (m.includes("deepseek")) {
-    return Math.round(inputTokens * 0.14 + outputTokens * 0.28);
+    return Math.round(inputTokens * 0.27 + outputTokens * 1.10);
   }
   // Unknown model — use a mid-range conservative estimate
   return Math.round(inputTokens * 3 + outputTokens * 15);

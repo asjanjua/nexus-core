@@ -1,7 +1,7 @@
 # TASKS.md — NexusAI Roadmap and Checklist
 
 > Master task list for the NexusAI relay team. Do not delete tasks; mark them complete with `[x]`.
-> Last reviewed and tightened: 2026-06-10.
+> Last reviewed and tightened: 2026-06-15.
 
 ---
 
@@ -16,9 +16,10 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 
 ---
 
-## Current Status (verified 2026-06-10) -- v0.21.0
+## Current Status (verified 2026-06-15) -- v0.23.1
 
-**Verified:** 26 test files, ~166 tests (~25 new dispatcher tests), build clean. 24 DB migrations.
+**Last fully verified release:** v0.23.0 on 2026-06-13 -- 28 test files / 179 tests, build clean, 24 DB migrations.
+**Current verification:** v0.23.1 production hardening + demo navigation/auth fixes passed browser CTA checks, TypeScript, 28 test files / 179 tests, and production build.
 
 **Phases 1-6: Complete.**
 **Pre-7A Technical Prep: Complete.** (v0.9.1)
@@ -42,17 +43,27 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 **Orchestration Dispatcher: Shipped.** (v0.22.0) -- `dispatch_jobs` table, atomic claim with `FOR UPDATE SKIP LOCKED`, priority queue, retry/backoff, fan-out, 4 job type handlers, dispatch API, cron runner.
 **Entity Pages and Backlinks: Shipped.** (v0.23.0) -- Company Memory index/detail pages, entity backlinks, timeline, and `GET /api/entities/:id`.
 **Slack Connector Data Flow: Shipped.** (v0.23.0) -- allowlisted Slack channel messages ingest as governed evidence with provenance, sensitivity, confidence, and audit events.
+**Production Hardening: Shipped locally.** (v0.23.1) -- Stripe webhook idempotency, cron/webhook rate limits, Clerk CSP domain handling, dispatch input typing, and demo navigation/auth shell fixes. Pending commit/deploy.
 **Demo packs: Audited and rewritten.** (v0.15.1) -- All 3 sector packs CEO-grade with pre-tuned Ask questions.
 **Production DB: Migrations 0001-0024 applied.**
 
 **The product is demo-ready and pilot-ready for GCC fintech, professional services, and SaaS buyers.**
 
-**Priority order (updated 2026-06-10):**
-1. [x] Billing tiers Session 1 -- token budgets, feature flags, usage UI. DONE v0.20.0.
-2. [x] Billing tiers Session 2 -- Stripe checkout, webhook lifecycle, portal, trial conversion. DONE v0.21.0.
-3. [x] Orchestration dispatcher -- `dispatch_jobs` queue, atomic claim, fan-out, 4 handlers, cron runner. DONE v0.22.0.
-4. [x] Entity pages and backlinks -- Company Memory UI layer. DONE v0.23.0.
-5. [x] Connector data flow -- first Slack inbound ingestion path. DONE v0.23.0.
+**Priority order (updated 2026-06-15):**
+1. [x] Finish and verify v0.23.1 hardening -- local auth/CTA behavior, TypeScript, tests, and build pass. Commit/deploy next.
+2. [ ] Connector Settings UX -- Slack channel allowlist, sync status, source sensitivity, last ingest, and audit trail.
+3. [ ] Workflow Twin Scorer product path -- UI/API scoring flow from company profile, data readiness, risk, pain, and speed benefit.
+4. [ ] U6 Backcasting onboarding -- guided scope conversation anchored to the chosen workflow.
+5. [ ] U7 Shadow ROI instrumentation -- measured manual-vs-Nexus comparison for the chosen workflow.
+
+**Design priority order (updated 2026-06-15):**
+1. [x] Figma Pro selected as active design workspace; Penpot parked until MCP/plugin compatibility improves.
+2. [x] Consulting-grade v1 design direction captured in `docs/UI_UX_FLOW_PLAN.md`.
+3. [x] First Figma screens started: Executive Command Center, Agent Control Profile, Workflow Twin Run.
+4. [x] Complete next Figma screen batch: Mission Creation, Mission Run Detail, Evidence Room, Approval Inbox.
+5. [ ] Complete governance/admin screen batch: Risk and Audit, Integration Hub, Integration Detail, Governance Settings.
+6. [ ] Complete onboarding/prototype handoff batch: User and Role Management, Company Setup, First Mission Template, Audit Export / Executive Pack.
+7. [ ] Convert repeated Figma UI patterns into reusable components and implementation tickets.
 
 What is built at v0.18.0 (Executive Synthesis Layer):
 - No new DB migrations. Synthesis is computed on demand from existing agent outputs + evidence.

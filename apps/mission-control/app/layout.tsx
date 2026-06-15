@@ -12,6 +12,7 @@ import {
   SignedOut
 } from "@clerk/nextjs";
 import { auth } from "@clerk/nextjs/server";
+import { headers } from "next/headers";
 import { repository } from "@/lib/data/repository";
 import { isDbRequired } from "@/lib/data/db-policy";
 
@@ -21,12 +22,75 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const pathname = (await headers()).get("x-nexus-pathname") ?? "";
+  const isPublicShell =
+    pathname === "/" ||
+    pathname.startsWith("/sign-in") ||
+    pathname.startsWith("/sign-up") ||
+    pathname === "/start-pilot" ||
+    pathname === "/workspace" ||
+    pathname.startsWith("/readiness") ||
+    pathname.startsWith("/terms") ||
+    pathname.startsWith("/privacy") ||
+    pathname.startsWith("/security") ||
+    pathname.startsWith("/acceptable-use") ||
+    pathname.startsWith("/data-processing") ||
+    pathname.startsWith("/product-brief");
+
+  if (isPublicShell) {
+    return (
+      <html lang="en">
+        <body>
+          <ClerkProvider
+            signInUrl="/sign-in"
+            signUpUrl="/sign-up"
+            signInFallbackRedirectUrl="/dashboard/ceo"
+            signUpFallbackRedirectUrl="/onboarding"
+          >
+            <header className="sticky top-0 z-20 border-b border-white/10 bg-[#090f1b]/88 backdrop-blur">
+              <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
+                <a href="/" className="flex items-center gap-3 text-white">
+                  <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-nexus-accent text-sm font-semibold text-[#04100d]">
+                    N
+                  </span>
+                  <span className="font-semibold">Nexus Core</span>
+                </a>
+                <div className="flex items-center gap-2">
+                  <a href="/product-brief" className="hidden rounded-lg px-3 py-2 text-sm text-white/60 transition hover:bg-white/[0.06] hover:text-white sm:inline-flex">
+                    Product brief
+                  </a>
+                  <a href="/readiness" className="hidden rounded-lg px-3 py-2 text-sm text-white/60 transition hover:bg-white/[0.06] hover:text-white sm:inline-flex">
+                    Readiness
+                  </a>
+                  <SignedOut>
+                    <SignInButton mode="redirect">
+                      <button className="btn-primary text-sm">Sign in</button>
+                    </SignInButton>
+                  </SignedOut>
+                  <SignedIn>
+                    <UserButton appearance={{ elements: { avatarBox: "w-7 h-7" } }} />
+                  </SignedIn>
+                </div>
+              </div>
+            </header>
+            {children}
+          </ClerkProvider>
+        </body>
+      </html>
+    );
+  }
+
   const health = await repository.healthCheck();
   if (!health.ok && isDbRequired()) {
     return (
       <html lang="en">
         <body>
-          <ClerkProvider>
+          <ClerkProvider
+            signInUrl="/sign-in"
+            signUpUrl="/sign-up"
+            signInFallbackRedirectUrl="/dashboard/ceo"
+            signUpFallbackRedirectUrl="/onboarding"
+          >
             <main className="mx-auto min-h-screen max-w-3xl px-6 py-12 text-white">
               <h1 className="mb-3 text-2xl font-semibold">
                 Mission Control is waiting for database connectivity
@@ -51,7 +115,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     return (
       <html lang="en">
         <body>
-          <ClerkProvider>
+          <ClerkProvider
+            signInUrl="/sign-in"
+            signUpUrl="/sign-up"
+            signInFallbackRedirectUrl="/dashboard/ceo"
+            signUpFallbackRedirectUrl="/onboarding"
+          >
             <header className="flex items-center justify-end gap-3 px-6 py-3 border-b border-white/10">
               <SignedOut>
                 <SignInButton mode="redirect">
@@ -78,12 +147,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en">
       <body>
-        <ClerkProvider afterSignOutUrl="/sign-in">
+        <ClerkProvider
+          signInUrl="/sign-in"
+          signUpUrl="/sign-up"
+          signInFallbackRedirectUrl="/dashboard/ceo"
+          signUpFallbackRedirectUrl="/onboarding"
+          afterSignOutUrl="/sign-in"
+        >
           <main className="flex min-h-screen flex-col md:flex-row">
             <SideNav />
-            <div className="w-full min-w-0 p-4 sm:p-6">
+            <div className="w-full min-w-0 p-3 sm:p-5 lg:p-6">
               {/* Top bar */}
-              <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-xs text-white/70">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-4 py-2 text-xs text-white/70 shadow-[0_1px_0_rgba(255,255,255,0.04)_inset]">
                 <div className="flex items-center gap-4">
                   <SignedIn>
                     {orgId ? (

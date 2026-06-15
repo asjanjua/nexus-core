@@ -2,6 +2,44 @@
 
 ---
 
+## 0.23.1 — Production Hardening (2026-06-15)
+
+Security and reliability fixes identified in the post-v0.23.0 audit. No new features.
+
+**Stripe webhook idempotency (critical)**
+- Added `stripe_processed_events` table (migration 0025) with a primary key on `event_id`.
+- Added `repository.markStripeEventProcessed()` using `INSERT ... ON CONFLICT DO NOTHING` — returns `true` for new events, `false` for duplicates.
+- Webhook handler now calls the guard before processing any event. Redelivered events are skipped with a console log; no double-activations or double-suspensions possible.
+- Added in-memory fallback (`stripeProcessedEventCache` Set) for dev/no-DB environments.
+
+**CSP Clerk domain (high)**
+- Removed hardcoded `https://clerk.nexusai.io` from `script-src` and `connect-src` in `middleware.ts`.
+- Replaced with `NEXT_PUBLIC_CLERK_DOMAIN` env var (defaults to `clerk.accounts.dev`).
+- Added env var documentation to `docs/RENDER_DEPLOY.md`.
+
+**Demo navigation and auth shell**
+- `/start-pilot` now redirects directly to Clerk sign-up with `/onboarding` as the post-sign-up target.
+- `/workspace` now redirects directly to Clerk sign-in with `/dashboard/ceo` as the post-sign-in target.
+- Public/auth routes bypass DB health and authenticated workspace layout work so Clerk pages render cleanly before sign-in.
+- Clerk redirect props were updated to the current fallback redirect API, and SignIn/SignUp components now carry explicit fallback targets.
+
+**Cron and webhook rate limiting (high)**
+- Added `/api/cron/*` rate limit rule (2 req/min per IP) as secondary defense if `NEXUS_CRON_SECRET` leaks.
+- Added `/api/billing/webhook` rate limit rule (10 req/min per IP) matching Stripe's redelivery pattern.
+- Added `/api/cron/billing` and `/api/cron/dispatch` to the public route bypass list (they were missing; handlers already validated `NEXUS_CRON_SECRET` internally but Clerk would have redirected them on cold start).
+
+**DeepSeek cost estimates (medium)**
+- Updated `estimateCostMicro()` in `lib/services/llm.ts`: DeepSeek pricing corrected from `$0.14/$0.28` to `$0.27/$1.10` per million tokens (input/output), matching current `deepseek-chat` pricing as of 2026-06.
+
+**TypeScript contracts**
+- Exported `DispatchJobRawInput` (`z.input<>`) alongside `DispatchJobInput` (`z.infer<>`) so callers can pass unparsed input (without `priority`/`maxAttempts`) and let the schema fill defaults.
+- `enqueueJob()` in `lib/services/dispatcher.ts` now accepts `DispatchJobRawInput` and calls `dispatchJobInputSchema.parse()` internally.
+- Fixed `makeJob` self-referential type error in `tests/dispatcher.test.ts`.
+
+**Tests:** 28 test files / 179 tests passing. TypeScript: 0 errors.
+
+---
+
 ## 0.23.0 — Company Memory and Slack Ingestion (2026-06-13)
 
 This release turns the entity extraction substrate into visible Company Memory and adds the first real connector data flow.

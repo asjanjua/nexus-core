@@ -1,7 +1,7 @@
 # NexusAI Mission Control -- User Flows
 
-Updated: 2026-06-10
-Version: v0.18.2
+Updated: 2026-06-15
+Version: v0.18.3-design-flow
 
 > This document describes the end-to-end journeys a user takes through NexusAI Mission Control.
 > It serves three audiences: pilot sponsors (what happens when I use this), developers (how the
@@ -9,6 +9,56 @@ Version: v0.18.2
 >
 > For technical plumbing and data model details, see ARCHITECTURE.md.
 > For the feature checklist, see TASKS.md.
+> For the current Figma-led product experience plan, see UI_UX_FLOW_PLAN.md.
+
+---
+
+## 0. V1 Experience Model -- Consulting-Grade Operating System
+
+The next UI/UX iteration reframes Mission Control as a consulting-grade operating system for governed autonomous work. The core loop is:
+
+```text
+Executive sees mission state
+-> inspects workflow twin
+-> reviews agent passport and evidence
+-> approves or redirects high-impact action
+-> receives audit-ready output
+```
+
+The first Figma pass lives in:
+
+- Figma file: `https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun`
+- Page: `02 Nexus v1 Consulting Screens`
+- Initial screens: `Executive Command Center`, `Agent Control Profile`, `Workflow Twin Run`
+
+### 0.1 Primary Product Flows
+
+| Flow | User goal | Primary screens |
+|---|---|---|
+| Executive Command | Understand mission health, open decisions, risk, and autonomous work status | Command Center, Mission Run Detail |
+| Mission Creation | Turn a business outcome into a governed AI workstream | New Mission, Source Scope, Guardrail Review, Run Plan Preview |
+| Agent Control | Inspect or change what an agent can see and do | Agent Control Profile, Output Log, Passport Version History |
+| Workflow Twin | Simulate and approve a repeatable workflow before automation is published | Workflow Twin Builder, Workflow Twin Run, Simulation Result |
+| Evidence Room | Verify the source trail behind a claim, action, or recommendation | Evidence Room, Evidence Detail, Audit Export |
+| Risk and Audit | Resolve exceptions, policy triggers, and audit issues | Risk Dashboard, Risk Detail, Audit Log |
+| Human Approval | Approve, reject, or redirect high-impact agent work | Approval Inbox, Approval Detail, Approval History |
+| Integrations | Connect sources with scoped permissions and sync visibility | Integration Hub, Integration Detail, Sync Status |
+| Governance Settings | Configure roles, passports, policy, models, budgets, and retention | Governance Settings, Roles, AI Policy |
+| Onboarding | Get from company setup to first credible mission | Company Setup, Source Setup, First Mission Template |
+
+### 0.2 Prototype Narrative
+
+The first clickable prototype should show one complete trust loop:
+
+1. Executive opens the Command Center.
+2. They see an enterprise proposal workflow that needs attention.
+3. They drill into the Workflow Twin Run.
+4. They inspect the Regulatory Response Agent passport.
+5. They open the evidence spine.
+6. They approve a legal escalation.
+7. The workflow completes with an audit-ready package.
+
+This narrative demonstrates autonomy, control, evidence, and governance without requiring the user to understand the full platform.
 
 ---
 

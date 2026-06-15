@@ -1,136 +1,194 @@
 import Link from "next/link";
 
-const proofPoints = [
-  "Evidence-backed specialist agents with source links",
-  "Agent rooms for strategy, operations, growth, technology, data, risk, finance, and people",
-  "Human-approved recommendations and decision memos",
-  "Cloud or local processing path for sensitive files",
+const operatingStats = [
+  { label: "Evidence confidence", value: "82%", tone: "text-emerald-300" },
+  { label: "Open decisions", value: "7", tone: "text-amber-300" },
+  { label: "High-risk items", value: "3", tone: "text-rose-300" },
+  { label: "Agent briefs", value: "16", tone: "text-sky-300" },
 ];
 
-const productCards = [
+const rooms = [
   {
-    title: "CEO Brief",
-    body: "Strategic priorities, top risks, open decisions, and cross-functional bottlenecks.",
+    title: "Executive",
+    body: "Priorities, tradeoffs, decision memos, and board-ready synthesis.",
+    metric: "4 blockers",
+    tone: "border-amber-300/35 text-amber-200",
   },
   {
-    title: "Risk Radar",
-    body: "Weak evidence, stale sources, and emerging risks are separated from trusted signals.",
+    title: "Operations",
+    body: "Owners, bottlenecks, overdue work, and evidence-backed execution status.",
+    metric: "11 owners",
+    tone: "border-sky-300/35 text-sky-200",
   },
   {
-    title: "Decision Memo",
-    body: "Turn scattered documents into source-backed rationale, owners, and next actions.",
+    title: "Risk",
+    body: "Weak evidence, stale sources, regulatory exposure, and controls to review.",
+    metric: "3 critical",
+    tone: "border-rose-300/35 text-rose-200",
   },
   {
-    title: "Evidence Panel",
-    body: "Every insight keeps provenance, freshness, sensitivity, confidence, and source path.",
+    title: "Growth",
+    body: "Pipeline signals, partner asks, market notes, and proposal readiness.",
+    metric: "$1.2M pipe",
+    tone: "border-emerald-300/35 text-emerald-200",
   },
 ];
 
 const steps = [
-  "Describe your company and sector.",
-  "Upload a starter pack of documents.",
-  "Review evidence confidence and approvals.",
-  "Open role dashboards and ask source-backed questions.",
+  { label: "Connect", body: "Add board packs, strategy docs, operating reports, or comms exports." },
+  { label: "Verify", body: "Review provenance, confidence, freshness, sensitivity, and gaps." },
+  { label: "Decide", body: "Approve recommendations, assign owners, and export executive briefs." },
 ];
 
 export default function HomePage() {
   return (
-    <main className="relative overflow-hidden">
-      <div className="pointer-events-none absolute inset-0 -z-10">
-        <div className="absolute left-[-10rem] top-[-8rem] h-80 w-80 rounded-full bg-nexus-accent/20 blur-3xl" />
-        <div className="absolute right-[-8rem] top-40 h-96 w-96 rounded-full bg-blue-500/10 blur-3xl" />
-        <div className="absolute bottom-0 left-1/3 h-64 w-64 rounded-full bg-amber-300/10 blur-3xl" />
-      </div>
+    <main className="relative min-h-screen overflow-hidden">
+      <div className="surface-grid pointer-events-none absolute inset-x-0 top-0 h-[420px]" />
 
-      <section className="mx-auto max-w-6xl px-6 py-20 sm:py-28">
-        <div className="grid items-center gap-12 lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="space-y-8">
-            <div className="inline-flex rounded-full border border-white/15 bg-white/5 px-3 py-1 text-xs uppercase tracking-[0.24em] text-white/60">
-              NexusAI Mission Control
-            </div>
-            <div className="space-y-5">
-              <h1 className="max-w-4xl text-5xl font-semibold tracking-tight text-white sm:text-6xl lg:text-7xl">
-                Your company&apos;s second brain for decisions, risks, and executive action.
-              </h1>
-              <p className="max-w-2xl text-lg leading-8 text-white/70">
-                NexusAI gives every company a team of evidence-backed AI analysts, each focused
-                on a business function, with human approval built in.
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-3">
-              <Link href="/start-pilot" className="btn-primary px-5 py-3" prefetch={false}>
-                Start a Pilot
-              </Link>
-              <Link href="/workspace" className="btn-subtle px-5 py-3" prefetch={false}>
-                View Workspace
-              </Link>
-            </div>
-            <p className="max-w-2xl text-sm text-white/50">
-              Built for human-approved executive intelligence. Every answer links back to evidence.
-            </p>
-          </div>
-
-          <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-4 shadow-2xl shadow-black/30">
-            <div className="rounded-2xl border border-white/10 bg-[#0d1629] p-5">
-              <div className="mb-5 flex items-center justify-between border-b border-white/10 pb-4">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.22em] text-nexus-accent">Executive Command Room</p>
-                  <h2 className="mt-1 text-xl font-semibold text-white">This week&apos;s agent briefs</h2>
-                </div>
-                <span className="rounded-full bg-green-400/10 px-3 py-1 text-xs text-green-300">
-                  Evidence OK
-                </span>
+      <section className="mx-auto max-w-7xl px-4 pb-10 pt-10 sm:px-6 lg:px-8">
+        <div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]">
+          <div className="flex min-h-[560px] flex-col justify-between py-4">
+            <div className="space-y-6">
+              <div className="inline-flex rounded-md border border-white/15 bg-white/[0.04] px-3 py-1 text-xs uppercase text-white/60">
+                Nexus Core
               </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {productCards.map((card) => (
-                  <div key={card.title} className="rounded-xl border border-white/10 bg-white/[0.04] p-4">
-                    <p className="text-sm font-semibold text-white">{card.title}</p>
-                    <p className="mt-2 text-sm leading-6 text-white/60">{card.body}</p>
-                  </div>
-                ))}
-              </div>
-              <div className="mt-4 rounded-xl border border-nexus-accent/30 bg-nexus-accent/10 p-4">
-                <p className="text-sm font-medium text-white">Recommendation</p>
-                <p className="mt-1 text-sm leading-6 text-white/70">
-                  Approve the updated partner pipeline review before next week&apos;s sponsor meeting.
+              <div className="space-y-5">
+                <h1 className="max-w-3xl text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
+                  Executive intelligence with evidence, approval, and memory built in.
+                </h1>
+                <p className="max-w-2xl text-base leading-7 text-white/70 sm:text-lg">
+                  Mission Control turns company documents and communications into governed agent rooms for decisions,
+                  risks, recommendations, and role-aware executive briefs.
                 </p>
-                <p className="mt-3 text-xs text-white/40">Based on 4 sources | Freshness: 18h | Confidence: 82%</p>
+              </div>
+              <div className="flex flex-wrap gap-3">
+                <Link href="/start-pilot" className="btn-primary px-5 py-3" prefetch={false}>
+                  Start pilot
+                </Link>
+                <Link href="/workspace" className="btn-subtle px-5 py-3" prefetch={false}>
+                  Open workspace
+                </Link>
               </div>
             </div>
-          </div>
-        </div>
-      </section>
 
-      <section className="mx-auto max-w-6xl px-6 pb-20">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {proofPoints.map((point) => (
-            <div key={point} className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 text-sm text-white/70">
-              {point}
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-6xl px-6 pb-24">
-        <div className="rounded-3xl border border-white/10 bg-white/[0.05] p-6 sm:p-8">
-          <div className="grid gap-8 lg:grid-cols-[0.85fr_1.15fr]">
-            <div>
-              <p className="text-xs uppercase tracking-[0.22em] text-nexus-accent">Pilot flow</p>
-              <h2 className="mt-3 text-3xl font-semibold text-white">From signup to first brief in one guided path.</h2>
-              <p className="mt-4 text-sm leading-7 text-white/60">
-                NexusAI starts narrow: docs, comms, evidence, approvals, and role dashboards.
-                It does not claim to replace ERP, CRM, HR, finance, or BI systems in V1.
-              </p>
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              {steps.map((step, index) => (
-                <div key={step} className="rounded-2xl border border-white/10 bg-[#0b1220]/70 p-5">
-                  <span className="text-xs text-white/35">0{index + 1}</span>
-                  <p className="mt-3 text-sm font-medium text-white">{step}</p>
+            <dl className="grid gap-3 pt-10 sm:grid-cols-2">
+              {operatingStats.map((stat) => (
+                <div key={stat.label} className="rounded-lg border border-white/10 bg-white/[0.035] p-4">
+                  <dt className="text-xs uppercase text-white/45">{stat.label}</dt>
+                  <dd className={`mt-2 text-2xl font-semibold ${stat.tone}`}>{stat.value}</dd>
                 </div>
               ))}
+            </dl>
+          </div>
+
+          <div className="rounded-lg border border-white/10 bg-[#0c1424]/95 shadow-2xl shadow-black/35">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3">
+              <div>
+                <p className="text-xs uppercase text-white/45">Mission Control</p>
+                <h2 className="text-lg font-semibold text-white">Base command surface</h2>
+              </div>
+              <div className="flex gap-2 text-xs">
+                <span className="rounded-md border border-emerald-300/30 bg-emerald-300/10 px-2 py-1 text-emerald-200">
+                  Evidence OK
+                </span>
+                <span className="rounded-md border border-white/10 bg-white/[0.04] px-2 py-1 text-white/55">
+                  Pilot mode
+                </span>
+              </div>
+            </div>
+
+            <div className="grid min-h-[520px] lg:grid-cols-[180px_1fr]">
+              <aside className="border-b border-white/10 p-3 lg:border-b-0 lg:border-r">
+                <p className="mb-3 px-2 text-xs uppercase text-white/35">Rooms</p>
+                <div className="space-y-1">
+                  {["Executive", "Operations", "Growth", "Risk", "Technology"].map((item, index) => (
+                    <div
+                      key={item}
+                      className={[
+                        "rounded-lg px-3 py-2 text-sm",
+                        index === 0 ? "bg-white/10 text-white" : "text-white/55",
+                      ].join(" ")}
+                    >
+                      {item}
+                    </div>
+                  ))}
+                </div>
+              </aside>
+
+              <div className="space-y-4 p-4">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  {[
+                    ["Priority", "Approve partner risk review", "amber"],
+                    ["Owner", "Strategy office", "sky"],
+                    ["Freshness", "18h", "emerald"],
+                  ].map(([label, value, tone]) => (
+                    <div key={label} className="rounded-lg border border-white/10 bg-white/[0.035] p-3">
+                      <p className="text-xs uppercase text-white/35">{label}</p>
+                      <p
+                        className={[
+                          "mt-2 text-sm font-semibold",
+                          tone === "amber" ? "text-amber-200" : tone === "sky" ? "text-sky-200" : "text-emerald-200",
+                        ].join(" ")}
+                      >
+                        {value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="rounded-lg border border-white/10 bg-white/[0.035] p-4">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs uppercase text-nexus-accent">Executive brief</p>
+                      <h3 className="mt-1 text-xl font-semibold text-white">This week needs three decisions</h3>
+                    </div>
+                    <span className="rounded-md border border-emerald-300/30 bg-emerald-300/10 px-2 py-1 text-xs text-emerald-200">
+                      82% confidence
+                    </span>
+                  </div>
+                  <p className="mt-3 text-sm leading-6 text-white/60">
+                    Revenue expansion is blocked by partner due diligence, compliance sign-off, and unresolved
+                    operating capacity. Evidence comes from the board pack, KPI update, and payments market notes.
+                  </p>
+                  <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                    {["Board pack", "Risk register", "Market brief"].map((source) => (
+                      <div key={source} className="rounded-lg border border-white/10 bg-black/15 px-3 py-2 text-xs text-white/55">
+                        {source}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {rooms.map((room) => (
+                    <div key={room.title} className="rounded-lg border border-white/10 bg-white/[0.025] p-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-semibold text-white">{room.title}</p>
+                        <span className={`rounded-md border px-2 py-1 text-xs ${room.tone}`}>{room.metric}</span>
+                      </div>
+                      <p className="mt-2 text-sm leading-6 text-white/55">{room.body}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
+        <div className="grid gap-4 border-y border-white/10 py-6 md:grid-cols-3">
+          {steps.map((step, index) => (
+            <div key={step.label} className="flex gap-4">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] text-sm text-white/55">
+                {index + 1}
+              </span>
+              <div>
+                <h2 className="font-semibold text-white">{step.label}</h2>
+                <p className="mt-1 text-sm leading-6 text-white/55">{step.body}</p>
+              </div>
+            </div>
+          ))}
         </div>
       </section>
     </main>

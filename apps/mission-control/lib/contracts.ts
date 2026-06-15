@@ -839,7 +839,10 @@ export const dispatchJobInputSchema = z.object({
   runAfter:    z.string().optional(),
   parentJobId: z.string().optional(),
 });
+/** Output type — fields with defaults are required (Zod has filled them in). */
 export type DispatchJobInput = z.infer<typeof dispatchJobInputSchema>;
+/** Input type — fields with defaults are optional (before schema.parse()). */
+export type DispatchJobRawInput = z.input<typeof dispatchJobInputSchema>;
 
 export const dispatchFanOutInputSchema = z.object({
   jobType:  dispatchJobTypeSchema,

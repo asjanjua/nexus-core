@@ -70,6 +70,15 @@ export async function POST(request: Request) {
 // ---------------------------------------------------------------------------
 
 async function processEvent(event: StripeEvent): Promise<void> {
+  // Idempotency guard — Stripe redelivers events on non-2xx and occasionally on 2xx.
+  // markStripeEventProcessed inserts with ON CONFLICT DO NOTHING.
+  // If the event was already processed, skip it silently.
+  const isNew = await repository.markStripeEventProcessed(event.id, event.type);
+  if (!isNew) {
+    console.info("[billing/webhook] Duplicate event skipped:", event.id, event.type);
+    return;
+  }
+
   switch (event.type) {
     case "checkout.session.completed":
       await onCheckoutCompleted(event.data.object as StripeCheckoutSessionCompleted);
