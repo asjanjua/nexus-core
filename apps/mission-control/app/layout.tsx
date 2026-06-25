@@ -3,6 +3,7 @@ import "./globals.css";
 import { SideNav } from "@/components/side-nav";
 import { TrialBanner } from "@/components/trial-banner";
 import { FeedbackButton } from "@/components/feedback-button";
+import { ModeProvider, ModeIndicator } from "@/lib/mode-context";
 import {
   ClerkProvider,
   UserButton,
@@ -155,6 +156,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           afterSignOutUrl="/sign-in"
         >
           <main className="flex min-h-screen flex-col md:flex-row">
+            <ModeProvider>
             <SideNav />
             <div className="w-full min-w-0 p-3 sm:p-5 lg:p-6">
               {/* Top bar */}
@@ -190,6 +192,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     {workspaceId.length > 20 ? `${workspaceId.slice(0, 16)}…` : workspaceId}
                   </span>
                   <span className="text-white/30">mode: {process.env.NEXUS_ENV ?? "pilot"}</span>
+                  <ModeIndicator />
                   {settings?.demoMode && (
                     <span className="rounded bg-purple-500/20 px-2 py-0.5 text-xs font-semibold text-purple-300">
                       DEMO
@@ -229,6 +232,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
               {children}
             </div>
+            </ModeProvider>
           </main>
           <FeedbackButton />
         </ClerkProvider>

@@ -67,7 +67,7 @@ const CONNECTOR_CATALOGUE: ConnectorDef[] = [
       </svg>
     ),
     installHref: "/api/connectors/google-drive/install",
-    available: false,
+    available: true,
     lane: "saas",
   },
   {
@@ -80,7 +80,7 @@ const CONNECTOR_CATALOGUE: ConnectorDef[] = [
       </svg>
     ),
     installHref: "/api/connectors/sharepoint/install",
-    available: false,
+    available: true,
     lane: "saas",
   },
   {
@@ -392,11 +392,15 @@ export default function ConnectorsPage() {
       setToast({ type: "success", message: `${installed} connected successfully.` });
     } else if (error) {
       const messages: Record<string, string> = {
-        access_denied: "You declined the Slack install request.",
+        access_denied: "You declined the install request.",
         invalid_state: "OAuth state mismatch — please try again.",
-        token_exchange_failed: "Slack token exchange failed. Check your Slack app credentials.",
+        token_exchange_failed: "Token exchange failed. Check your app credentials.",
         connector_store_failed: "Connector installed but failed to save credentials. Contact support.",
         slack_not_configured: "Slack OAuth is not configured on this instance.",
+        google_not_configured: "Google OAuth is not configured on this instance.",
+        google_client_id_not_configured: "Google OAuth is not configured on this instance.",
+        microsoft_not_configured: "Microsoft OAuth is not configured on this instance.",
+        microsoft_client_id_not_configured: "Microsoft OAuth is not configured on this instance.",
       };
       setToast({ type: "error", message: messages[error] ?? `Install failed: ${error}` });
     }
@@ -527,6 +531,12 @@ export default function ConnectorsPage() {
         <p className="font-medium text-white/60">To enable Slack:</p>
         <p>Set <code className="text-nexus-accent/70">SLACK_CLIENT_ID</code>, <code className="text-nexus-accent/70">SLACK_CLIENT_SECRET</code>, and <code className="text-nexus-accent/70">NEXT_PUBLIC_APP_URL</code> in your environment, then add your redirect URI to the Slack app manifest.</p>
         <p className="mt-1">Redirect URI: <code className="text-white/50">{"{NEXT_PUBLIC_APP_URL}"}/api/connectors/slack/callback</code></p>
+        <p className="font-medium text-white/60 mt-4">To enable Google Drive:</p>
+        <p>Set <code className="text-nexus-accent/70">GOOGLE_CLIENT_ID</code>, <code className="text-nexus-accent/70">GOOGLE_CLIENT_SECRET</code>, and <code className="text-nexus-accent/70">NEXT_PUBLIC_APP_URL</code> in your environment, then add your redirect URI in the Google Cloud Console.</p>
+        <p className="mt-1">Redirect URI: <code className="text-white/50">{"{NEXT_PUBLIC_APP_URL}"}/api/connectors/google-drive/callback</code></p>
+        <p className="font-medium text-white/60 mt-4">To enable SharePoint / Teams:</p>
+        <p>Register an app in Azure AD, then set <code className="text-nexus-accent/70">MICROSOFT_CLIENT_ID</code>, <code className="text-nexus-accent/70">MICROSOFT_CLIENT_SECRET</code>, and optionally <code className="text-nexus-accent/70">MICROSOFT_TENANT_ID</code> (defaults to "common") in your environment.</p>
+        <p className="mt-1">Redirect URI: <code className="text-white/50">{"{NEXT_PUBLIC_APP_URL}"}/api/connectors/sharepoint/callback</code></p>
       </div>
     </PageShell>
   );

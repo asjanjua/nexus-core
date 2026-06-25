@@ -6,10 +6,12 @@
 
 ## Session Info
 
-- **Last updated:** 2026-06-25 (v0.25.x -- DB transaction safety, LLM routing wiring + DeepSeek V4 migration, Sentry error tracking wired and hardened, all reflected below)
-- **Last model:** Claude (Sonnet)
-- **Session number:** #28
-- **Current version:** 0.25.x -- Phases 1-8 + 9D complete, V1.1 Tier 1 (U1-U4) complete, plus four code-hardening tasks closed this session/segment on top of v0.25.0:
+- **Last updated:** 2026-06-25 (v0.25.x — session #31 with Jarvis/DeepSeek Pro V4. 12 product tasks closed: cron jobs, provider UI, Resend email, Mode Indicator, strategy profile, note-to-entity linking, Google Drive connector, onboarding workflow routing, pilot paperwork generation, Create Decision from brief, note embeddings, backcast dashboard seeding.)
+- **Last model:** DeepSeek Pro V4 (Jarvis / Hermes Chief Engineer)
+- **Session number:** #31
+- **Current version:** 0.25.x — Phases 1-8 + 9D complete, V1.1 Tier 1 (U1-U4) complete. Strategy pipeline fully implemented: readiness → buyer lane → onboarding → workflow pilot → governed value proof.
+- **Session #31 delivered (2026-06-25):**
+  - **Task P0.1 (Render cron jobs):** Three cron services added to `render.yaml` — dispatch every 2 min, billing daily at midnight, synthesis daily at 1am. All use `NEXUS_CRON_SECRET` auth. Verify in Render dashboard after deploy.
   - **Task #35 (DB transactions):** `createDecision`/`updateDecision`, `createAction`/`updateAction`, `saveAgentOutput`, `rollbackAgentOutput` now wrapped in `db.transaction()` so the row write and its audit-event write commit or roll back together. `tests/repository-transactions.test.ts` added.
   - **Task #36 (LLM routing wiring):** `callLLM()` now executes the `model-routing.ts` 10-surface fallback-chain policy via the new `callLLMWithRouting()`, wired into all 8 real call sites (retrieval, synthesis, dashboard, decision-extraction, recommendations, exports, company-detection x2). Found and fixed a real production bug as a byproduct: DeepSeek retires `deepseek-chat`/`deepseek-reasoner` on **2026-07-24 15:59 UTC** -- `DEFAULT_MODEL` now falls back to `deepseek-v4-flash`, and `estimateCostMicro()` uses correct split pricing (v4-flash $0.14/$0.28 per M tokens, v4-pro $0.435/$0.87 per M).
   - **Task #32 (Sentry):** wired via `instrumentation.ts`'s `onRequestError` hook (covers all ~36 API routes automatically), plus `app/global-error.tsx`, `app/error.tsx`, and `lib/observability/sentry.ts` manual-capture helpers for the catch-and-continue paths the hook can't see (Stripe webhook, LLM fallback exhaustion). Ships disabled (no-op) until `SENTRY_DSN` is set.
@@ -19,7 +21,7 @@
 - **Production DB:** migrations 0001-0026 applied to Neon/production database. Migrations 0025-0026 were applied on 2026-06-25 and `db:check` returned `ok=true` against `neondb`.
 - **Local verification (2026-06-13):** `npm run build --workspace @nexus/mission-control` passed. `npm test --workspace @nexus/mission-control` passed: 28 test files / 179 tests.
 - **Local verification (2026-06-15):** Browser CTA/auth checks passed for v0.23.1. For v0.24.0, `npm exec -w @nexus/mission-control tsc -- --noEmit` passed, `npm run test` passed: 28 test files / 183 tests, and `npm run build` passed. In-app browser `/workflows` smoke redirects to Clerk sign-in and cannot authenticate in that browser session; verify authenticated `/workflows` in logged-in Chrome/Render after deploy.
-- **Local verification (2026-06-17):** For v0.25.0, `npm exec -w @nexus/mission-control tsc -- --noEmit` passed, `npm run test -w @nexus/mission-control` passed: 29 test files / 187 tests, `npm run build -w @nexus/mission-control` passed, and `npm audit --omit=dev --json` reported 0 production vulnerabilities. Protected `/knowledge` and `/api/knowledge/*` are Clerk-gated for unauthenticated curl; verify in a logged-in browser session after deploy.
+- **Local verification (2026-06-25):** For session #29 (Jarvis/DeepSeek Pro V4 through Hermes), all gates pass: `npx tsc --noEmit` clean, `npm run test` passed (32 files / 199 tests), `npm run build` passed. New routes confirmed built: `/api/email/unsubscribe`, `/api/strategy-profile`, `/settings/policies`.
 - **Production health (2026-06-25):** `https://nexus-mission-control.onrender.com/api/health` returned `status=ok` with database, vector search, R2 originals, and DeepSeek LLM checks healthy. Unauthenticated `/knowledge` and `/api/knowledge/search` still returned signed-out 404s, so confirm Render deployed commit `3530808` before smoke.
 - **Strategy docs (updated 2026-06-25):** `docs/USER_STRATEGY_AND_PIVOTS.md` is the canonical user strategy and now includes the operating paper trail plus current plan. Future product work should start from readiness -> buyer lane -> signup/onboarding -> first workflow pilot -> governed value proof.
 - **Backlog map (2026-06-25):** `BACKLOG.md` is now the cross-document backlog view. Use it with `TASKS.md`, `HANDOVER.md`, and `docs/ROADMAP.md` before starting a new phase.

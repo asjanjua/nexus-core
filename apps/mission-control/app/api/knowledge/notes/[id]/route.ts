@@ -3,6 +3,7 @@ import { requireScope } from "@/lib/api-auth";
 import { knowledgeNoteInputSchema } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
 import { writeNoteToVault } from "@/lib/services/vault-sync";
+import { generateEmbedding } from "@/lib/services/embeddings";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { ctx, error } = await requireScope(request, "read:knowledge");
@@ -47,6 +48,12 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     id
   );
   await writeNoteToVault(note);
+  // Fire-and-forget embedding generation for semantic search
+  void generateEmbedding(`${note.title}\n\n${note.body}`).then((embedding) => {
+    if (embedding) {
+      void repository.storeKnowledgeEmbedding(note.id, embedding);
+    }
+  });
   return ok({ note });
 }
 

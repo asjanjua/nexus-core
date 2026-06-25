@@ -63,6 +63,9 @@ export function KnowledgeWorkspace() {
   const [sync, setSync] = useState<SyncStatus | null>(null);
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
+  const [entitySearch, setEntitySearch] = useState("");
+  const [entityResults, setEntityResults] = useState<Array<{ id: string; name: string; type: string }>>([]);
+  const [entitySearching, setEntitySearching] = useState(false);
 
   async function refresh() {
     const res = await fetch(`/api/knowledge/notes${query ? `?q=${encodeURIComponent(query)}` : ""}`);
@@ -217,6 +220,35 @@ export function KnowledgeWorkspace() {
     }
   }
 
+  async function searchEntities(q: string) {
+    if (!q.trim()) { setEntityResults([]); return; }
+    setEntitySearching(true);
+    try {
+      const res = await fetch(`/api/entities?search=${encodeURIComponent(q)}&limit=6`);
+      const json = await res.json();
+      if (json.ok) {
+        setEntityResults((json.data?.entities ?? []).map((e: { id: string; name: string; type: string }) => ({
+          id: e.id, name: e.name, type: e.type
+        })));
+      }
+    } catch { /* search failure is non-fatal */ }
+    finally { setEntitySearching(false); }
+  }
+
+  function linkEntity(entity: { id: string; name: string; type: string }) {
+    if (!draft) return;
+    if (draft.entityRefs.includes(entity.id)) return;
+    setDraft({ ...draft, entityRefs: [...draft.entityRefs, entity.id] });
+    setEntitySearch("");
+    setEntityResults([]);
+    setMessage(`Linked to ${entity.name}. Save to persist.`);
+  }
+
+  function unlinkEntity(id: string) {
+    if (!draft) return;
+    setDraft({ ...draft, entityRefs: draft.entityRefs.filter((ref) => ref !== id) });
+  }
+
   return (
     <div className="grid min-h-[74vh] gap-4 xl:grid-cols-[18rem_minmax(0,1fr)_20rem]">
       <aside className="panel flex min-h-[20rem] flex-col gap-4">
@@ -337,12 +369,65 @@ export function KnowledgeWorkspace() {
           <p className="panel-title">Nexus Links</p>
           <div className="mt-2 space-y-2">
             {draft && extRefs(draft).length ? extRefs(draft).map((ref) => (
-              <a key={`${ref.type}:${ref.id}`} className="block rounded-md border border-white/10 px-3 py-2 text-xs text-white/65 hover:text-white" href={ref.href}>
-                {ref.type}: {ref.id}
-              </a>
+              <div key={`${ref.type}:${ref.id}`} className="flex items-center gap-1 rounded-md border border-white/10 px-3 py-2 text-xs">
+                <a className="flex-1 text-white/65 hover:text-white truncate" href={ref.href}>
+                  {ref.type}: {ref.id}
+                </a>
+                {ref.type === "entity" && (
+                  <button
+                    className="text-white/30 hover:text-red-400 text-xs px-1"
+                    title="Unlink entity"
+                    onClick={() => unlinkEntity(ref.id)}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
             )) : <p className="text-sm text-white/45">Use refs like evidence:ev-001 or workflow:wt-123.</p>}
           </div>
         </div>
+        {draft && (
+          <div>
+            <p className="panel-title">Link Entity</p>
+            <div className="mt-2 space-y-2">
+              <form
+                className="flex gap-2"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void searchEntities(entitySearch);
+                }}
+              >
+                <input
+                  className="input min-w-0"
+                  value={entitySearch}
+                  onChange={(event) => {
+                    setEntitySearch(event.target.value);
+                    void searchEntities(event.target.value);
+                  }}
+                  placeholder="Search entities..."
+                />
+              </form>
+              {entitySearching && <p className="text-xs text-white/30">Searching…</p>}
+              {entityResults.length > 0 && (
+                <div className="space-y-1 max-h-40 overflow-y-auto">
+                  {entityResults.map((entity) => (
+                    <button
+                      key={entity.id}
+                      className="block w-full rounded-md border border-white/10 px-3 py-2 text-left text-xs text-white/65 hover:text-white hover:border-nexus-accent/40"
+                      onClick={() => linkEntity(entity)}
+                    >
+                      <span className="block truncate font-medium">{entity.name}</span>
+                      <span className="block text-white/35">{entity.type}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {entitySearch && !entitySearching && entityResults.length === 0 && (
+                <p className="text-xs text-white/40">No entities found. Try a different name.</p>
+              )}
+            </div>
+          </div>
+        )}
         <div className="space-y-2">
           <p className="panel-title">Portability</p>
           <button className="btn-subtle w-full" onClick={() => void exportVault()}>Export ZIP</button>

@@ -5,6 +5,7 @@ import { repository } from "@/lib/data/repository";
 import { DashboardCharts } from "@/components/dashboard-charts";
 import { EvidenceSourceList } from "@/components/evidence-source-list";
 import { ExecutiveSynthesisBrief, AgentDetailSection } from "@/components/synthesis-brief";
+import { KnowledgeRoomGraph } from "@/components/knowledge-room-graph";
 import { AGENT_ROOMS, agentBriefIdsForRoleContext, agentForId, roomForRole } from "@/lib/agents/agent-library";
 import { labelForRole } from "@/lib/domain/role-registry";
 
@@ -212,6 +213,9 @@ export async function DashboardPanel({
         <p className="text-xs uppercase tracking-wide text-white/40 mb-4">Analytics</p>
         <DashboardCharts role={role} workspaceId={workspaceId} />
       </section>
+
+      {/* Room wiki map */}
+      <KnowledgeRoomGraph role={role} workspaceId={workspaceId} />
     </div>
   );
 }

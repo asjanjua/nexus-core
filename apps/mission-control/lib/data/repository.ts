@@ -4,7 +4,7 @@ import { Pool } from "pg";
 import { verifyPassword } from "@/lib/auth";
 import { store } from "@/lib/data/store";
 import { evidenceSourceTypeSchema } from "@/lib/contracts";
-import type { Action, ActionInput, ActionStatus, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, DispatchJob, DispatchJobInput, DispatchJobStatus, Entity, EntityInput, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, KnowledgeLink, KnowledgeNote, KnowledgeNoteInput, KnowledgeSearchResult, KnowledgeSyncEvent, LearningSignal, LearningSignalInput, LearningSignalSummary, PromptRegistryEntry, Recommendation, RecommendationStatus, Role, SynthesisSchedule, SynthesisScheduleInput, SynthesisScheduleStatus, WorkflowTwin, WorkflowTwinInput, WorkflowTwinRun, WorkflowTwinRunInput, WorkflowTwinRunStatus, WorkflowTwinStatus, WorkflowTwinType, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
+import type { Action, ActionInput, ActionStatus, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, DispatchJob, DispatchJobInput, DispatchJobStatus, Entity, EntityInput, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, KnowledgeLink, KnowledgeNote, KnowledgeNoteInput, KnowledgeSearchResult, KnowledgeSyncEvent, LearningSignal, LearningSignalInput, LearningSignalSummary, PromptRegistryEntry, Recommendation, RecommendationStatus, Role, StrategyProfile, StrategyProfileInput, SynthesisSchedule, SynthesisScheduleInput, SynthesisScheduleStatus, WorkflowTwin, WorkflowTwinInput, WorkflowTwinRun, WorkflowTwinRunInput, WorkflowTwinRunStatus, WorkflowTwinStatus, WorkflowTwinType, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
 import { assertDbConfigured, isDbRequired } from "@/lib/data/db-policy";
 
 // In-memory idempotency cache for Stripe events (fallback when DB is unavailable).
@@ -47,6 +47,7 @@ import {
   planDefinitions,
   dispatchJobs,
   stripeProcessedEvents,
+  strategyProfiles,
   type recommendationStatusEnum,
   type ingestionStatusEnum
 } from "@/db/schema";
@@ -3394,5 +3395,154 @@ export const repository = {
     `);
     // rowCount > 0 means the insert succeeded (event is new)
     return (result.rowCount ?? 0) > 0;
+  },
+
+  // -------------------------------------------------------------------------
+  // Strategy profile (migration 0027)
+  // -------------------------------------------------------------------------
+
+  async getStrategyProfile(workspaceId: string): Promise<StrategyProfile | null> {
+    const rows = await runDb((db) =>
+      db.select().from(strategyProfiles).where(eq(strategyProfiles.workspaceId, workspaceId)).limit(1)
+    );
+    if (rows && rows.length > 0) {
+      const r = rows[0];
+      return {
+        id: r.id,
+        workspaceId: r.workspaceId,
+        buyerLane: (r.buyerLane ?? "evaluator") as StrategyProfile["buyerLane"],
+        role: r.role ?? null,
+        sector: r.sector ?? null,
+        companySize: r.companySize ?? null,
+        priority: (r.priority ?? "medium") as StrategyProfile["priority"],
+        sponsorName: r.sponsorName ?? null,
+        sponsorEmail: r.sponsorEmail ?? null,
+        reviewerName: r.reviewerName ?? null,
+        reviewerEmail: r.reviewerEmail ?? null,
+        governancePosture: (r.governancePosture ?? "standard") as StrategyProfile["governancePosture"],
+        selectedWorkflow: r.selectedWorkflow ?? null,
+        readinessScores: (r.readinessScores ?? {}) as StrategyProfile["readinessScores"],
+        readinessBand: r.readinessBand ?? null,
+        externalRef: r.externalRef ?? null,
+        createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+        updatedAt: r.updatedAt instanceof Date ? r.updatedAt.toISOString() : String(r.updatedAt),
+      };
+    }
+    return null;
+  },
+
+  async upsertStrategyProfile(
+    workspaceId: string,
+    input: StrategyProfileInput
+  ): Promise<StrategyProfile> {
+    const existing = await repository.getStrategyProfile(workspaceId);
+    const now = new Date();
+    const id = existing?.id ?? `sp_${workspaceId}`;
+
+    const profile: StrategyProfile = {
+      id,
+      workspaceId,
+      buyerLane: (input.buyerLane ?? existing?.buyerLane ?? "evaluator") as StrategyProfile["buyerLane"],
+      role: input.role ?? existing?.role ?? null,
+      sector: input.sector ?? existing?.sector ?? null,
+      companySize: input.companySize ?? existing?.companySize ?? null,
+      priority: (input.priority ?? existing?.priority ?? "medium") as StrategyProfile["priority"],
+      sponsorName: input.sponsorName ?? existing?.sponsorName ?? null,
+      sponsorEmail: input.sponsorEmail ?? existing?.sponsorEmail ?? null,
+      reviewerName: input.reviewerName ?? existing?.reviewerName ?? null,
+      reviewerEmail: input.reviewerEmail ?? existing?.reviewerEmail ?? null,
+      governancePosture: (input.governancePosture ?? existing?.governancePosture ?? "standard") as StrategyProfile["governancePosture"],
+      selectedWorkflow: input.selectedWorkflow ?? existing?.selectedWorkflow ?? null,
+      readinessScores: input.readinessScores ?? existing?.readinessScores ?? {},
+      readinessBand: input.readinessBand ?? existing?.readinessBand ?? null,
+      externalRef: input.externalRef ?? existing?.externalRef ?? null,
+      createdAt: existing?.createdAt ?? now.toISOString(),
+      updatedAt: now.toISOString(),
+    };
+
+    await runDb(async (db) => {
+      await db
+        .insert(strategyProfiles)
+        .values({
+          id: profile.id,
+          workspaceId: profile.workspaceId,
+          buyerLane: profile.buyerLane,
+          role: profile.role,
+          sector: profile.sector,
+          companySize: profile.companySize,
+          priority: profile.priority,
+          sponsorName: profile.sponsorName,
+          sponsorEmail: profile.sponsorEmail,
+          reviewerName: profile.reviewerName,
+          reviewerEmail: profile.reviewerEmail,
+          governancePosture: profile.governancePosture,
+          selectedWorkflow: profile.selectedWorkflow,
+          readinessScores: profile.readinessScores,
+          readinessBand: profile.readinessBand,
+          externalRef: profile.externalRef,
+          createdAt: new Date(profile.createdAt),
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: strategyProfiles.workspaceId,
+          set: {
+            buyerLane: profile.buyerLane,
+            role: profile.role,
+            sector: profile.sector,
+            companySize: profile.companySize,
+            priority: profile.priority,
+            sponsorName: profile.sponsorName,
+            sponsorEmail: profile.sponsorEmail,
+            reviewerName: profile.reviewerName,
+            reviewerEmail: profile.reviewerEmail,
+            governancePosture: profile.governancePosture,
+            selectedWorkflow: profile.selectedWorkflow,
+            readinessScores: profile.readinessScores,
+            readinessBand: profile.readinessBand,
+            externalRef: profile.externalRef,
+            updatedAt: now,
+          },
+        });
+    });
+
+    void repository.pushAudit({
+      workspaceId,
+      type: "strategy_profile_updated",
+      actor: "system",
+      payload: {
+        buyerLane: profile.buyerLane,
+        role: profile.role,
+        sector: profile.sector,
+        selectedWorkflow: profile.selectedWorkflow,
+        readinessBand: profile.readinessBand,
+      },
+    }).catch(() => {});
+
+    return profile;
+  },
+
+  async storeKnowledgeEmbedding(noteId: string, embedding: number[]): Promise<void> {
+    await runDb((db) =>
+      db.update(knowledgeNotes)
+        .set({ embedding: sql`${JSON.stringify(embedding)}::vector` as unknown as number[] })
+        .where(eq(knowledgeNotes.id, noteId))
+    ).catch(() => {});
+  },
+
+  async searchKnowledgeVector(workspaceId: string, queryVector: number[], limit = 10): Promise<KnowledgeNote[]> {
+    const rows = await runDb(async (db) => {
+      const results = await db.execute(sql`
+        SELECT kn.*
+        FROM knowledge_notes kn
+        WHERE kn.workspace_id = ${workspaceId}
+          AND kn.status = 'active'
+          AND kn.embedding IS NOT NULL
+        ORDER BY kn.embedding <=> ${JSON.stringify(queryVector)}::vector
+        LIMIT ${limit}
+      `);
+      return (results?.rows ?? []) as Array<Record<string, unknown>>;
+    });
+    if (!rows || !rows.length) return [];
+    return rows.map((r) => toKnowledgeNote(r as typeof knowledgeNotes.$inferSelect));
   },
 };

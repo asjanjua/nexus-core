@@ -2,6 +2,14 @@
 
 ---
 
+## Unreleased — Agent Room Knowledge Graph Preview (2026-06-25)
+
+**Added**
+- Added `KnowledgeRoomGraph`, a lightweight room-bottom Knowledge Workspace graph preview for role dashboards.
+- Reuses the existing workspace knowledge graph data and links users back to `/knowledge` for full editing, backlinks, import/export, and sync.
+
+---
+
 ## Unreleased — Queen's Review Fixes: Sentry + DeepSeek Cleanup (2026-06-25)
 
 Follow-up to Task #32, from an external automated review ("Queen's Review"). Four of five findings were confirmed and fixed; one (claimed missing `app/error.tsx`) was a false positive — the file already existed with Sentry wiring from the original Task #32 work.

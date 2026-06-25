@@ -548,3 +548,28 @@ export const stripeProcessedEvents = pgTable("stripe_processed_events", {
   eventType:   varchar("event_type", { length: 128 }).notNull(),
   processedAt: timestamp("processed_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+/**
+ * Strategy profile — persisted readiness and buyer-lane context per workspace.
+ * Migration 0027. Connected to public /readiness assessment and onboarding routing.
+ */
+export const strategyProfiles = pgTable("strategy_profiles", {
+  id:                text("id").primaryKey(),
+  workspaceId:       text("workspace_id").notNull(),
+  buyerLane:         varchar("buyer_lane", { length: 32 }).notNull().default("evaluator"),
+  role:              varchar("role", { length: 64 }),
+  sector:            varchar("sector", { length: 64 }),
+  companySize:       varchar("company_size", { length: 32 }),
+  priority:          varchar("priority", { length: 16 }).default("medium"),
+  sponsorName:       varchar("sponsor_name", { length: 128 }),
+  sponsorEmail:      varchar("sponsor_email", { length: 255 }),
+  reviewerName:      varchar("reviewer_name", { length: 128 }),
+  reviewerEmail:     varchar("reviewer_email", { length: 255 }),
+  governancePosture: varchar("governance_posture", { length: 32 }).default("standard"),
+  selectedWorkflow:  varchar("selected_workflow", { length: 64 }),
+  readinessScores:   jsonb("readiness_scores").$type<Record<string, number>>().default({}),
+  readinessBand:     varchar("readiness_band", { length: 16 }),
+  externalRef:       varchar("external_ref", { length: 255 }),
+  createdAt:         timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:         timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});

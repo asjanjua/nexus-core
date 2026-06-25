@@ -84,12 +84,25 @@ function isOverdue(iso?: string | null) {
 // New Decision form
 // ---------------------------------------------------------------------------
 
-function NewDecisionForm({ onCreated }: { onCreated: (d: Decision) => void }) {
-  const [open, setOpen] = useState(false);
+function NewDecisionForm({
+  onCreated,
+  prefillTitle = "",
+  prefillRationale = "",
+}: {
+  onCreated: (d: Decision) => void;
+  prefillTitle?: string;
+  prefillRationale?: string;
+}) {
+  const hasPrefill = !!(prefillTitle || prefillRationale);
+  const [open, setOpen] = useState(hasPrefill);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
-    title: "", owner: "", rationale: "", priority: "medium" as DecisionPriority,
-    deadline: "", status: "open" as DecisionStatus
+    title: prefillTitle,
+    owner: "",
+    rationale: prefillRationale,
+    priority: "medium" as DecisionPriority,
+    deadline: "",
+    status: "open" as DecisionStatus
   });
 
   async function submit(e: React.FormEvent) {
@@ -503,6 +516,18 @@ export default function DecisionsPage() {
   const [proposalMessage, setProposalMessage] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<DecisionStatus | "all">("all");
+  const [prefillTitle, setPrefillTitle] = useState("");
+  const [prefillRationale, setPrefillRationale] = useState("");
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      const t = params.get("prefill");
+      const r = params.get("rationale");
+      if (t) setPrefillTitle(decodeURIComponent(t));
+      if (r) setPrefillRationale(decodeURIComponent(r));
+    }
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -632,7 +657,7 @@ export default function DecisionsPage() {
           <button onClick={extractProposals} disabled={extracting} className="btn-secondary text-sm">
             {extracting ? "Scanning outputs..." : "Propose from agent outputs"}
           </button>
-          <NewDecisionForm onCreated={handleDecisionCreated} />
+          <NewDecisionForm onCreated={handleDecisionCreated} prefillTitle={prefillTitle} prefillRationale={prefillRationale} />
         </div>
       </div>
 

@@ -70,6 +70,16 @@ services:
         sync: false
       - key: SLACK_SIGNING_SECRET
         sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: MICROSOFT_CLIENT_ID
+        sync: false
+      - key: MICROSOFT_CLIENT_SECRET
+        sync: false
+      - key: MICROSOFT_TENANT_ID
+        sync: false
       - key: SENTRY_DSN
         sync: false
       - key: NEXT_PUBLIC_SENTRY_DSN
@@ -79,4 +89,47 @@ services:
       - key: SENTRY_PROJECT
         sync: false
       - key: SENTRY_AUTH_TOKEN
+        sync: false
+      - key: NEXUS_RESEND_API_KEY
+        sync: false
+      - key: NEXUS_FROM_EMAIL
+        sync: false
+  - type: cron
+    name: nexus-dispatch-cron
+    runtime: node
+    plan: free
+    region: oregon
+    schedule: "*/2 * * * *"
+    buildCommand: npm ci --production
+    startCommand: node -e "fetch(process.env.NEXT_PUBLIC_APP_URL+'/api/cron/dispatch',{method:'POST',headers:{Authorization:'Bearer '+process.env.NEXUS_CRON_SECRET,'Content-Type':'application/json'}}).then(r=>{if(!r.ok){console.error(r.status);process.exit(1)}r.json().then(d=>{console.log(JSON.stringify(d));process.exit(0)})}).catch(e=>{console.error(e);process.exit(1)})"
+    envVars:
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+      - key: NEXUS_CRON_SECRET
+        sync: false
+  - type: cron
+    name: nexus-billing-cron
+    runtime: node
+    plan: free
+    region: oregon
+    schedule: "0 0 * * *"
+    buildCommand: npm ci --production
+    startCommand: node -e "fetch(process.env.NEXT_PUBLIC_APP_URL+'/api/cron/billing',{method:'POST',headers:{Authorization:'Bearer '+process.env.NEXUS_CRON_SECRET,'Content-Type':'application/json'}}).then(r=>{if(!r.ok){console.error(r.status);process.exit(1)}r.json().then(d=>{console.log(JSON.stringify(d));process.exit(0)})}).catch(e=>{console.error(e);process.exit(1)})"
+    envVars:
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+      - key: NEXUS_CRON_SECRET
+        sync: false
+  - type: cron
+    name: nexus-synthesis-cron
+    runtime: node
+    plan: free
+    region: oregon
+    schedule: "0 1 * * *"
+    buildCommand: npm ci --production
+    startCommand: node -e "fetch(process.env.NEXT_PUBLIC_APP_URL+'/api/cron/synthesis',{method:'POST',headers:{Authorization:'Bearer '+process.env.NEXUS_CRON_SECRET,'Content-Type':'application/json'}}).then(r=>{if(!r.ok){console.error(r.status);process.exit(1)}r.json().then(d=>{console.log(JSON.stringify(d));process.exit(0)})}).catch(e=>{console.error(e);process.exit(1)})"
+    envVars:
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+      - key: NEXUS_CRON_SECRET
         sync: false

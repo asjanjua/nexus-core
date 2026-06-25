@@ -17,6 +17,9 @@ It is not a separate notes app beside Nexus. It is a knowledge layer over the sa
   - left pane: vault tree, quick search, recent/inbox-style folders
   - center pane: markdown editor, preview, graph tab
   - right pane: backlinks, Nexus links, import/export, inbox triage, local sync controls
+- Embedded room preview:
+  - Agent Rooms render a bottom Knowledge Workspace graph preview using the same graph data
+  - the preview links back to `/knowledge` for full editing, backlinks, import/export, and vault sync
 
 Supported note syntax:
 

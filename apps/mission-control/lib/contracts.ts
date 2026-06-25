@@ -990,3 +990,62 @@ export const dispatchFanOutInputSchema = z.object({
   priority: z.number().int().min(1).max(10).optional().default(5),
 });
 export type DispatchFanOutInput = z.infer<typeof dispatchFanOutInputSchema>;
+
+// ---------------------------------------------------------------------------
+// Strategy profile (migration 0027)
+// ---------------------------------------------------------------------------
+
+export const buyerLaneSchema = z.enum([
+  "evaluator",
+  "sme_self_serve",
+  "business_advisory",
+  "regulated_enterprise",
+]);
+export type BuyerLane = z.infer<typeof buyerLaneSchema>;
+
+export const governancePostureSchema = z.enum([
+  "standard",
+  "regulated",
+  "high_trust",
+]);
+export type GovernancePosture = z.infer<typeof governancePostureSchema>;
+
+export const strategyProfileSchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  buyerLane: buyerLaneSchema.default("evaluator"),
+  role: z.string().nullable().optional(),
+  sector: z.string().nullable().optional(),
+  companySize: z.string().nullable().optional(),
+  priority: z.enum(["low", "medium", "high", "critical"]).default("medium"),
+  sponsorName: z.string().nullable().optional(),
+  sponsorEmail: z.string().email().nullable().optional(),
+  reviewerName: z.string().nullable().optional(),
+  reviewerEmail: z.string().email().nullable().optional(),
+  governancePosture: governancePostureSchema.default("standard"),
+  selectedWorkflow: z.string().nullable().optional(),
+  readinessScores: z.record(z.number().min(1).max(7)).default({}),
+  readinessBand: z.string().nullable().optional(),
+  externalRef: z.string().nullable().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type StrategyProfile = z.infer<typeof strategyProfileSchema>;
+
+export const strategyProfileInputSchema = strategyProfileSchema.pick({
+  buyerLane: true,
+  role: true,
+  sector: true,
+  companySize: true,
+  priority: true,
+  sponsorName: true,
+  sponsorEmail: true,
+  reviewerName: true,
+  reviewerEmail: true,
+  governancePosture: true,
+  selectedWorkflow: true,
+  readinessScores: true,
+  readinessBand: true,
+  externalRef: true,
+}).partial();
+export type StrategyProfileInput = z.infer<typeof strategyProfileInputSchema>;

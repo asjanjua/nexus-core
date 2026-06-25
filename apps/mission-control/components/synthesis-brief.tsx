@@ -104,6 +104,17 @@ function QuestionCard({
                   ))}
                 </div>
               )}
+
+              {!isInsufficient && (
+                <div className="mt-3">
+                  <Link
+                    href={`/decisions?prefill=${encodeURIComponent(question.slice(0, 80))}&rationale=${encodeURIComponent(answer.slice(0, 500))}&evidenceRefs=${encodeURIComponent(sources.map((s) => s.id).join(","))}`}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-nexus-accent/30 bg-nexus-accent/10 px-3 py-1 text-xs text-nexus-accent hover:bg-nexus-accent/20 transition-colors"
+                  >
+                    <span>+</span> Create Decision
+                  </Link>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -52,6 +52,11 @@ R2_BUCKET=
 SLACK_CLIENT_ID=
 SLACK_CLIENT_SECRET=
 SLACK_SIGNING_SECRET=
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+MICROSOFT_CLIENT_ID=
+MICROSOFT_CLIENT_SECRET=
+MICROSOFT_TENANT_ID=
 SENTRY_DSN=
 NEXT_PUBLIC_SENTRY_DSN=
 SENTRY_ORG=
@@ -59,7 +64,7 @@ SENTRY_PROJECT=
 SENTRY_AUTH_TOKEN=
 ```
 
-Only set Slack variables when the Slack connector is active.
+Only set Slack variables when the Slack connector is active. Same applies to Google (`GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`) and Microsoft (`MICROSOFT_CLIENT_ID`/`MICROSOFT_CLIENT_SECRET`/`MICROSOFT_TENANT_ID`) — only set these once you've registered an OAuth app with the respective provider and want that connector available. `MICROSOFT_TENANT_ID` defaults to `"common"` (multi-tenant) when left blank, which is fine for most pilots.
 
 Sentry variables are optional — the app runs identically with no Sentry account configured (`enabled: !!process.env.SENTRY_DSN` gates initialization to a no-op). Set them once a Sentry project exists; leave them blank otherwise. `NEXUS_LLM_MODEL` should be `deepseek-v4-flash` or `deepseek-v4-pro`, not the legacy `deepseek-chat`/`deepseek-reasoner` names — DeepSeek retires those on 2026-07-24 15:59 UTC.
 

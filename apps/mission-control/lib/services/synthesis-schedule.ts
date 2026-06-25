@@ -1,6 +1,7 @@
 import type { Role, SynthesisSchedule, SynthesisScheduleInput, SynthesisScheduleStatus } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
 import { synthesiseForRole } from "@/lib/services/synthesis";
+import { sendEmail, buildSynthesisBriefHtml, buildUnsubscribeToken, resendConfigured } from "@/lib/email/resend";
 
 export const DEFAULT_SYNTHESIS_SCHEDULE: SynthesisScheduleInput = {
   enabled: true,
@@ -126,6 +127,67 @@ export function defaultScheduleForWorkspace(
   };
 }
 
+/**
+ * Send synthesis brief via email to configured recipients.
+ * Catches all errors silently — email failure should not break the synthesis run.
+ */
+async function sendSynthesisEmails(
+  schedule: SynthesisSchedule,
+  role: string,
+  synthesis: Awaited<ReturnType<typeof synthesiseForRole>>
+): Promise<void> {
+  if (!schedule.delivery.includes("email" as SynthesisSchedule["delivery"][number])) return;
+  if (!schedule.emailTargets || schedule.emailTargets.length === 0) return;
+  if (!resendConfigured()) return;
+
+  const workspaceSettings = await repository.getWorkspaceSettings(schedule.workspaceId);
+  const baseUrl = (process.env.NEXT_PUBLIC_APP_URL?.trim() ?? "").replace(/\/$/, "");
+
+  for (const email of schedule.emailTargets) {
+    try {
+      const token = buildUnsubscribeToken(schedule.workspaceId, email);
+      const html = buildSynthesisBriefHtml({
+        role,
+        workspaceName: workspaceSettings.name,
+        generatedAt: synthesis.generatedAt,
+        questions: synthesis.questions.slice(0, 5).map((q) => ({
+          question: q.question,
+          answer: q.answer,
+          confidence: q.confidence,
+          evidenceCount: q.sources?.length ?? 0,
+        })),
+        briefUrl: `${baseUrl}/dashboard/${role}`,
+        unsubscribeToken: token,
+      });
+
+      await sendEmail({
+        to: email,
+        subject: `${workspaceSettings.name} — ${role} Brief — ${new Date(synthesis.generatedAt).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`,
+        html,
+      });
+
+      await repository.pushAudit({
+        workspaceId: schedule.workspaceId,
+        type: "synthesis_email_sent",
+        actor: "synthesis_cron",
+        payload: { role, email, generatedAt: synthesis.generatedAt },
+      });
+    } catch (emailError) {
+      // Log but don't fail the synthesis run for email errors
+      await repository.pushAudit({
+        workspaceId: schedule.workspaceId,
+        type: "synthesis_email_failed",
+        actor: "synthesis_cron",
+        payload: {
+          role,
+          email,
+          error: emailError instanceof Error ? emailError.message : String(emailError),
+        },
+      }).catch(() => {});
+    }
+  }
+}
+
 async function runOneSchedule(
   schedule: SynthesisSchedule,
   actor: string
@@ -155,6 +217,9 @@ async function runOneSchedule(
           confidence: synthesis.overallConfidence
         }
       });
+
+      // Send email if configured on this schedule
+      await sendSynthesisEmails(schedule, role, synthesis);
     } catch (error) {
       result.failed += 1;
       result.errors.push(error instanceof Error ? error.message : String(error));

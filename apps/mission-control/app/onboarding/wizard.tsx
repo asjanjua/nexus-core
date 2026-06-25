@@ -1670,6 +1670,24 @@ function Step7({ selectedRoles }: { selectedRoles: WizardRole[] }) {
 
       {/* Role cards */}
       <div className="grid grid-cols-2 gap-4">
+        {/* Workflow-first card — route to workflow scorer instead of a role dashboard */}
+        <button
+          onClick={() => router.push("/workflows")}
+          disabled={!!navigating}
+          className="col-span-2 rounded-xl border border-nexus-accent/40 bg-nexus-accent/10 p-5 text-left transition-all hover:border-nexus-accent/60 cursor-pointer"
+        >
+          <div className="flex items-start justify-between mb-3">
+            <span className="text-2xl text-white/60">⚙️</span>
+            <span className="rounded-full border border-nexus-accent/40 bg-nexus-accent/15 px-2 py-0.5 text-xs text-nexus-accent">
+              Recommended
+            </span>
+          </div>
+          <p className="font-semibold text-white text-sm mb-1">Start with a Workflow Pilot</p>
+          <p className="text-xs text-white/50 leading-relaxed">
+            Score your workflows, pick your first pilot, and backcast target outcomes before diving into dashboards.
+          </p>
+        </button>
+
         {displayRoles.map((role) => {
           const isRecommended = recommendedKeys.has(role.key);
           // First suggested question for this dashboard (if AI mapped it here)

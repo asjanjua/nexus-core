@@ -45,7 +45,7 @@ These are the highest-priority operational items because they determine whether 
 | Commit/push/deploy v0.25.0 | production pending | `HANDOVER.md`, `docs/ROADMAP.md` | v0.25.0 and audit fix are pushed to `origin/main`; Render dashboard login is needed to confirm/deploy commit `3530808`. |
 | Authenticated Render smoke for `/knowledge`, `/workflows`, `/settings/connectors`, and Ask note citations | open | `TASKS.md`, `HANDOVER.md`, `docs/PRODUCTION_HEALTH_CHECKLIST.md` | Must be done in a logged-in browser session because Clerk blocks unauthenticated curl. |
 | Confirm Render deployed intended commit | open | `docs/PRODUCTION_HEALTH_CHECKLIST.md` | Verify service commit SHA and env before customer demo. Current unauthenticated `/knowledge` probe still returns 404, so v0.25 routes are not confirmed live. |
-| Add cron job entries to `render.yaml` | open | `TASKS.md`, architecture review | Dispatch runner, billing reset, trial-to-free conversion. Cron handlers exist in code but are not declared in Render blueprint. Without these: no auto-synthesis, no token budget reset, no trial conversion. |
+| Add cron job entries to `render.yaml` | done | `TASKS.md`, architecture review | Three cron services added 2026-06-25: dispatch every 2 min, billing daily at midnight, synthesis daily at 1am. All use `NEXUS_CRON_SECRET` auth. Must verify in Render dashboard after deploy. |
 | `/api/health` returns `status=ok` in production | done | `docs/PRODUCTION_HEALTH_CHECKLIST.md` | Verified 2026-06-25: DB, vector search, R2 originals, and DeepSeek LLM config are healthy. |
 
 ---
@@ -60,11 +60,9 @@ These are the minimum trust and operations items before a paid pilot contract sh
 | Security headers production scan | open | `TASKS.md`, `docs/SECURITY_REVIEW.md` | Run securityheaders.com against live app; target A rating. |
 | Manual API auth-bypass review | open | `docs/SECURITY_REVIEW.md` | Confirm every sensitive API route uses `requireScope()` or a signed internal secret. |
 | PII / restricted-evidence red-team pass | open | `docs/SECURITY_REVIEW.md` | Upload fictitious PII/account data and verify safe Ask/dashboard behavior. |
-| Sentry or equivalent error tracking | open | `TASKS.md`, architecture review | Tag errors by workspace, route, and error type. Free tier covers pilot volume. |
-| Resend email delivery for synthesis briefs | open | `TASKS.md`, architecture review | Pro/Business tiers promise email delivery of synthesis briefs. Pure-fetch integration. ~2 hours. |
-| Wire LLM routing table into execution path | open | `TASKS.md`, architecture review | `model-routing.ts` policy exists (10 surfaces, fallback chains, tiers). `llm.ts` ignores it. Each call site needs a `SurfaceId` to select correct provider/tier/fallback. |
-| Workspace provider allow-list UI | open | `TASKS.md`, architecture review | Extend AI Policy settings so GCC buyers can exclude Chinese providers. `isProviderAllowed()` enforcement exists; needs UI + stored allow-list. |
-| Mode Indicator React context | open | `TASKS.md`, architecture review, Design Philosophy §3.6 | Cross-cutting data-locality signal on every screen. Four states matching AuthMode contracts. |
+| Sentry or equivalent error tracking | done | `TASKS.md`, architecture review | Task #32 + #37 closed 2026-06-25. Wired via `instrumentation.ts` + `global-error.tsx` + manual-capture helpers. Ships disabled (no-op) until `SENTRY_DSN` is set. |\n| Resend email delivery for synthesis briefs | done | `TASKS.md`, architecture review | `lib/email/resend.ts` pure-fetch client (Resend API), `sendSynthesisEmails()` wired into synthesis cron runner, HTML email template with brief URL and unsubscribe link, `GET /api/email/unsubscribe` public route, `NEXUS_RESEND_API_KEY` + `NEXUS_FROM_EMAIL` added to `render.yaml`. Ships silently (no-op until Resend API key is set). |\n| Wire LLM routing table into execution path | done | `TASKS.md`, architecture review | Task #36 closed 2026-06-25. `callLLM()` now executes `model-routing.ts` 10-surface fallback-chain policy via `callLLMWithRouting()`, wired into all 8 call sites. |
+| Workspace provider allow-list UI | done | `TASKS.md`, architecture review | Settings > AI Policy page now shows multi-select of 6 providers with jurisdiction flags, local-only mode toggle, and live save via existing `PATCH /api/settings/workspace`. `isProviderAllowed()` enforcement already existed. GCC buyers can exclude Chinese providers. |
+| Mode Indicator React context | done | `TASKS.md`, architecture review, Design Philosophy §3.6 | `lib/mode-context.tsx` with AuthMode discriminated union (clerk_cloud, local_license, offline_local, hybrid_sync_pending), `ModeProvider` wrapping authenticated layout, `ModeIndicator` badge in top bar beside user button. Detects mode from `NEXT_PUBLIC_NEXUS_DEPLOY_MODE` env var. |
 | Uptime monitoring | open | `TASKS.md` | Monitor `/api/health`, dashboard, and ingestion route. |
 | Automated dependency scanning in CI/deploy | open | `TASKS.md`, `docs/SECURITY_REVIEW.md` | At minimum block critical advisories. |
 | Neon daily backups and restore test | open | `TASKS.md`, `docs/PRODUCTION_HEALTH_CHECKLIST.md` | 30-day retention target. |
@@ -80,17 +78,17 @@ These are the next product moves after release/cutover and paid-pilot safety gat
 
 | Item | Status | Source | Notes |
 |---|---|---|---|
-| Persist user strategy in product | open | `TASKS.md`, `docs/USER_STRATEGY_AND_PIVOTS.md` | Readiness lead, buyer lane, workspace profile context, and first workflow routing. |
-| Route onboarding into first workflow selection | open | `TASKS.md`, `docs/USER_STRATEGY_AND_PIVOTS.md` | Tie backcasting/workflow scorer into the first workspace journey. |
-| Strategy profile data model | open | `TASKS.md`, `docs/USER_STRATEGY_AND_PIVOTS.md` | Store readiness result, buyer lane, role, sector, company size, priority, sponsor, reviewer, governance posture, and selected workflow. |
-| Pilot paperwork generation from strategy profile | open | `TASKS.md`, pilot paperwork docs | Prefill SOW, onboarding checklist, success scorecard, billing trigger checklist, and value proof pack from lane plus workflow. |
-| Seed dashboards and suggested questions from backcast result | open | `TASKS.md` | Current backcast persists scope but does not fully seed first-value surfaces. |
-| Knowledge Workspace note embeddings | open | `TASKS.md`, `docs/KNOWLEDGE_WORKSPACE.md` | Enables semantic note search beyond text matching. |
-| Note-to-entity linking UI | open | `TASKS.md`, `docs/KNOWLEDGE_WORKSPACE.md` | Bridge markdown notes into Company Memory entities. |
+| Persist user strategy in product | done | `TASKS.md`, `docs/USER_STRATEGY_AND_PIVOTS.md` | Migration 0027 `strategy_profiles`, Drizzle schema, Zod contracts (buyer lane, governance posture, full profile), repository (`getStrategyProfile`, `upsertStrategyProfile`), API (`GET/PATCH /api/strategy-profile`). Ready for readiness page integration and onboarding routing. |
+| Route onboarding into first workflow selection | done | `TASKS.md`, `docs/USER_STRATEGY_AND_PIVOTS.md` | Onboarding Step 7 now shows "Start with a Workflow Pilot" card (Recommended badge, col-span-2) that routes to `/workflows` for Workflow Twin Scorer. Users can still pick a role dashboard directly. |
+| Strategy profile data model | done | `TASKS.md`, `docs/USER_STRATEGY_AND_PIVOTS.md` | Built as part of P2.1 — migration 0027, schema, contracts, repository, API. Readiness result, buyer lane, role, sector, company size, priority, sponsor, reviewer, governance posture, and selected workflow all stored. |
+| Pilot paperwork generation from strategy profile | done | `TASKS.md`, pilot paperwork docs | `GET /api/pilot/paperwork` — pre-fills SOW (sponsor, reviewer, workflow, governance), onboarding checklist (5 steps with done status), success scorecard (7 outcomes, buyer-lane weighting), billing trigger checklist (5 triggers), and value proof pack from strategy profile data. |
+| Seed dashboards and suggested questions from backcast result | done | `TASKS.md` | `GET /api/dashboard/[role]/suggested` reads selected workflow from strategy profile, extracts backcast milestones/success metrics, and returns role-tuned suggested questions for the Ask panel. |
+| Knowledge Workspace note embeddings | done | `TASKS.md`, `docs/KNOWLEDGE_WORKSPACE.md` | Migration 0028 adds vector(1536) column to `knowledge_notes`. `storeKnowledgeEmbedding()` and `searchKnowledgeVector()` in repository. Embedding generated fire-and-forget on note save. Search API tries vector first, falls back to text. |
+| Note-to-entity linking UI | done | `TASKS.md`, `docs/KNOWLEDGE_WORKSPACE.md` | Entity search picker in Knowledge sidebar: live search from `/api/entities`, click to link entity to note, × to unlink. `entityRefs` already supported in PATCH API. |
 | Richer Knowledge graph filters | open | `TASKS.md`, `docs/KNOWLEDGE_WORKSPACE.md` | Filter by tag, ref type, entity, source, freshness, and workflow. |
 | Duplicate / contradiction audit | open | `TASKS.md`, `docs/KNOWLEDGE_WORKSPACE.md` | Identify conflicting notes/evidence and stale claims. |
 | Daily/project/workflow brief automation from notes | open | `TASKS.md` | Turns Knowledge Workspace into proactive operating memory. |
-| Direct “Create Decision from this brief” action | open | `TASKS.md` | Prefill decision/action draft from dashboard or synthesis card. |
+| Direct "Create Decision from this brief" action | done | `TASKS.md` | Each synthesis question now has a "+ Create Decision" link that routes to `/decisions?prefill=...` with the question as title and answer as rationale. Decisions page auto-opens the New Decision form pre-filled. |
 | Ops Review Twin richer UI | open | `TASKS.md`, `docs/NEXUS_WORKFLOW_TWIN_REALIGNMENT.md` | Weekly execution summary, blockers, overdue owners, KPI signals. |
 | Trusted eval scorecards from U3/U4 data | open | `TASKS.md`, `docs/V1_1_UPGRADE_PLAN.md` | Agent quality, groundedness, acceptance/edit rates. |
 | Type-safe runtime state and effect boundaries | open | `TASKS.md`, `docs/ENGINEERING_GUARDRAILS.md` | Before autonomous runners or local/on-prem sync, add discriminated state contracts, append-only run events, visible async result contracts, and verifier error taxonomies. |
@@ -118,7 +116,7 @@ This is the operating plan that keeps the strategy in the paperwork rather than 
 | Keep changelog current | done | `CHANGELOG.md` | Added the 2026-06-25 strategy paper-trail alignment note. |
 | Keep markdown estate review current | done | `docs/MARKDOWN_ESTATE_REVIEW_2026-06-25.md` | Classifies all 63 Markdown files and lists targeted cleanup work. |
 | Keep engineering guardrails current | done | `docs/ENGINEERING_GUARDRAILS.md` | Added 2026-06-25 from the FP review: typed states, auth modes, append-only events, visible async effects, and exhaustive failure categories. |
-| Translate strategy into product tickets | open | `TASKS.md` | Break readiness profile, buyer lane routing, onboarding handoff, and paperwork generation into implementation tasks. |
+| Translate strategy into product tickets | done | `TASKS.md` | Strategy profile (migration 0027), onboarding workflow routing, pilot paperwork API, backcast dashboard seeding all implemented. |
 
 ## P2b — Documentation Cleanup Backlog
 
@@ -139,7 +137,7 @@ Slack has the first inbound channel-message ingestion path and Connector Setting
 
 | Connector / Area | Status | Priority | Notes |
 |---|---|---|---|
-| Google Drive | open | highest | Best next connector for docs-first pilots. |
+| Google Drive | done | highest | OAuth 2.0 web server flow: `lib/connectors/google-drive.ts` (pure fetch), install/token exchange/refresh, file listing, download+ingest pipeline. 4 API routes in `api/connectors/google-drive/`. Settings UI updated. Env vars: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`. |
 | SharePoint / OneDrive | open | high | Required for Microsoft-heavy enterprise buyers. |
 | Microsoft Teams | open | high | Comms equivalent to Slack for enterprise. |
 | Gmail / Outlook | open | medium | Useful for proposals, customer context, and exec comms. |

@@ -50,6 +50,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/cron/dispatch",                 // protected by NEXUS_CRON_SECRET inside route
   "/api/billing/webhook",               // protected by Stripe-Signature HMAC inside route
   "/api/connectors/slack/callback(.*)", // OAuth redirect — Slack hits this without a session
+  "/api/email/unsubscribe(.*)",         // public unsubscribe page — no auth required
 ]);
 
 // API routes that accept Bearer tokens — Clerk should NOT redirect these
