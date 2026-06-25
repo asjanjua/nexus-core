@@ -326,6 +326,11 @@ async function callOpenAICompatible(
       model,
       max_tokens: maxTokens,
       temperature: opts.temperature ?? 0.2,
+      // DeepSeek V4 defaults to thinking mode, which can return reasoning_content
+      // while leaving message.content empty. Nexus quick surfaces need a concise
+      // final answer, so disable thinking unless a future call site explicitly
+      // supports reasoning traces.
+      ...(provider === "deepseek" ? { thinking: { type: "disabled" } } : {}),
       messages: requestMessages
     })
   });
@@ -337,7 +342,13 @@ async function callOpenAICompatible(
 
   const json = (await res.json()) as {
     model?: string;
-    choices?: Array<{ message?: { content?: string } }>;
+    choices?: Array<{
+      message?: {
+        content?: string | Array<{ type?: string; text?: string }>;
+        reasoning_content?: string;
+      };
+      finish_reason?: string;
+    }>;
     usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
 
@@ -347,8 +358,25 @@ async function callOpenAICompatible(
   reconcileUsage(estimatedMaxTokens, inputTok, outputTok, opts.workspaceId ?? "_global_");
   persistUsage(resolvedModel, inputTok, outputTok, opts.workspaceId ?? "_global_", opts.route ?? "unknown");
 
+  const message = json.choices?.[0]?.message;
+  const content = message?.content;
+  const text = Array.isArray(content)
+    ? content
+        .map((part) => part.text ?? "")
+        .join("\n")
+        .trim()
+    : (content ?? "").trim();
+
+  if (!text) {
+    const finishReason = json.choices?.[0]?.finish_reason ?? "unknown";
+    const hasReasoning = Boolean(message?.reasoning_content?.trim());
+    throw new Error(
+      `${provider} API returned empty message.content (model=${resolvedModel}, finish_reason=${finishReason}, reasoning_content=${hasReasoning ? "present" : "absent"})`
+    );
+  }
+
   return {
-    text: (json.choices?.[0]?.message?.content ?? "").trim(),
+    text,
     model: resolvedModel,
     inputTokens: inputTok,
     outputTokens: outputTok,
