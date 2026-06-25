@@ -42,7 +42,7 @@ These are the highest-priority operational items because they determine whether 
 | Item | Status | Source | Notes |
 |---|---|---|---|
 | Confirm/apply migrations `0025-0026` in production database | done | `TASKS.md`, `HANDOVER.md`, `docs/PRODUCTION_HEALTH_CHECKLIST.md` | Applied successfully on 2026-06-25; `db:check` returned `ok=true` against `neondb`. |
-| Commit/push/deploy v0.25.0 | production pending | `HANDOVER.md`, `docs/ROADMAP.md` | v0.25.0 and audit fix are pushed to `origin/main`; Render dashboard login is needed to confirm/deploy commit `3530808`. |
+| Commit/push/deploy | production pending | `HANDOVER.md`, `docs/ROADMAP.md` | `origin/main` is now at commit `9da3411` (SharePoint/Teams connector, engineering guardrails, pilot paperwork page — supersedes the earlier v0.25.0 commit `3530808`). Render dashboard login is needed to confirm/deploy `9da3411`. |
 | Authenticated Render smoke for `/knowledge`, `/workflows`, `/settings/connectors`, and Ask note citations | open | `TASKS.md`, `HANDOVER.md`, `docs/PRODUCTION_HEALTH_CHECKLIST.md` | Must be done in a logged-in browser session because Clerk blocks unauthenticated curl. |
 | Confirm Render deployed intended commit | open | `docs/PRODUCTION_HEALTH_CHECKLIST.md` | Verify service commit SHA and env before customer demo. Current unauthenticated `/knowledge` probe still returns 404, so v0.25 routes are not confirmed live. |
 | Add cron job entries to `render.yaml` | done | `TASKS.md`, architecture review | Three cron services added 2026-06-25: dispatch every 2 min, billing daily at midnight, synthesis daily at 1am. All use `NEXUS_CRON_SECRET` auth. Must verify in Render dashboard after deploy. |
@@ -91,7 +91,7 @@ These are the next product moves after release/cutover and paid-pilot safety gat
 | Direct "Create Decision from this brief" action | done | `TASKS.md` | Each synthesis question now has a "+ Create Decision" link that routes to `/decisions?prefill=...` with the question as title and answer as rationale. Decisions page auto-opens the New Decision form pre-filled. |
 | Ops Review Twin richer UI | open | `TASKS.md`, `docs/NEXUS_WORKFLOW_TWIN_REALIGNMENT.md` | Weekly execution summary, blockers, overdue owners, KPI signals. |
 | Trusted eval scorecards from U3/U4 data | open | `TASKS.md`, `docs/V1_1_UPGRADE_PLAN.md` | Agent quality, groundedness, acceptance/edit rates. |
-| Type-safe runtime state and effect boundaries | open | `TASKS.md`, `docs/ENGINEERING_GUARDRAILS.md` | Before autonomous runners or local/on-prem sync, add discriminated state contracts, append-only run events, visible async result contracts, and verifier error taxonomies. |
+| Type-safe runtime state and effect boundaries | done | `TASKS.md` #19, `lib/guardrails.ts`, `docs/ENGINEERING_GUARDRAILS.md` | Closed 2026-06-25 — `RunnerState`, `AuthMode`, `EffectResult<T>`, `VerifierOutcome`, `RunnerEvent`, `assertNever` contracts landed with `tests/guardrails.test.ts` (16 assertions). This is the contract layer only; no runner has adopted it yet — apply when building the first autonomous/local runner. |
 
 ### Architecture Review Notes (context, not tasks)
 
@@ -138,8 +138,7 @@ Slack has the first inbound channel-message ingestion path and Connector Setting
 | Connector / Area | Status | Priority | Notes |
 |---|---|---|---|
 | Google Drive | done | highest | OAuth 2.0 web server flow: `lib/connectors/google-drive.ts` (pure fetch), install/token exchange/refresh, file listing, download+ingest pipeline. 4 API routes in `api/connectors/google-drive/`. Settings UI updated. Env vars: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`. |
-| SharePoint / OneDrive | open | high | Required for Microsoft-heavy enterprise buyers. |
-| Microsoft Teams | open | high | Comms equivalent to Slack for enterprise. |
+| SharePoint / Teams | done | high | Task #40, closed 2026-06-25 — Microsoft identity platform OAuth 2.0 + Graph API: `lib/connectors/sharepoint.ts` (pure fetch), install/callback/files/ingest routes, Settings UI. Env vars: `MICROSOFT_CLIENT_ID`, `MICROSOFT_CLIENT_SECRET`, `MICROSOFT_TENANT_ID`. Code-complete; pending real Azure AD app registration and an end-to-end OAuth round-trip test. |
 | Gmail / Outlook | open | medium | Useful for proposals, customer context, and exec comms. |
 | Jira / Linear | open | medium | Execution and product/engineering status. |
 | GitHub | open | medium | Product/technology evidence and delivery signals. |

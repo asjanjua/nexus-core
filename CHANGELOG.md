@@ -2,6 +2,27 @@
 
 ---
 
+## Unreleased — Engineering Guardrails Implementation, Pilot Paperwork Page, Prompt Registry Migration (2026-06-25)
+
+Closes Task #19 (guardrails contract layer) and adds the rendered version of the existing pilot paperwork API. Committed as `9da3411`, on top of `2ff4c26` (SharePoint/Teams connector).
+
+**Engineering guardrails (Task #19, closed)**
+- Added `lib/guardrails.ts` (331 lines) — the typed contract layer called for in `docs/ENGINEERING_GUARDRAILS.md`: `RunnerState` discriminated union, `AuthMode` (clerk_cloud / local_license / offline_local / hybrid_sync_pending), `EffectResult<T>` for disk/network/LLM/storage/source-system effects, `VerifierOutcome` taxonomy (passed, user-fixable failed, system error, timeout, OOM, permission denied, policy denied, provider unavailable, cancelled), `RunnerEvent` append-only event shape, and an `assertNever` exhaustiveness helper.
+- Added `tests/guardrails.test.ts` (168 lines) — 16 runtime assertions covering each state/outcome variant and exhaustive-handling behavior.
+- This is the contract layer only; no autonomous/local runner has adopted it yet. Runners should import these primitives when built rather than inventing parallel ad hoc state shapes.
+
+**Pilot Paperwork Pack page**
+- Added `app/pilot/paperwork/page.tsx` (343 lines) — a print-ready, client-rendered view of the existing `GET /api/pilot/paperwork` response (SOW pre-fill, onboarding checklist, success scorecard, billing trigger checklist, value-proof pack). "Save as PDF" (browser print) and "Copy as Markdown" actions match the consulting send workflow. Linked from `app/export/page.tsx`'s Export Hub as a new "Pilot Paperwork Pack" card.
+
+**Prompt registry migration**
+- Migrated the two LLM system prompts in `lib/services/company-detection.ts` (company detection, focus-to-dashboard mapping) into `lib/prompts/registry.ts` as versioned entries `onboarding.company-detect` (1.1.0) and `onboarding.focus-map` (1.0.0), so prompt changes are tracked, owned, and audited via `prompt_rendered` events instead of living as untracked string constants.
+- `detectCompanyProfile()` and `mapFocusToDashboard()` now accept an optional `{ workspaceId }` audit context; the two callers in `app/api/workspace/detect-profile/route.ts` and `app/api/workspace/first-focus/route.ts` now pass `ctx.workspaceId` through for attribution.
+
+**Docs**
+- Corrected `HANDOVER.md` and `TASKS.md`, which had drifted from actual repo state after the prior session's commit/push was done by Ali outside the sandbox (a stale `.git/index.lock` plus a fuse-mount permission restriction blocked direct sandbox commits both times this session).
+
+---
+
 ## Unreleased — Agent Room Knowledge Graph Preview (2026-06-25)
 
 **Added**
