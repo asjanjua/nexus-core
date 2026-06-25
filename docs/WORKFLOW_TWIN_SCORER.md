@@ -5,6 +5,8 @@ The workflow scorer helps a sponsor choose the first workflow to twin in NexusAI
 
 The best first workflow is not always the most painful workflow. It is the workflow with enough frequency, evidence, governance fit, and measurable value to prove NexusAI safely.
 
+The scorer is the bridge in the user strategy documented in `docs/USER_STRATEGY_AND_PIVOTS.md`: readiness assessment -> buyer lane -> signup/onboarding -> first workflow pilot -> governed value proof.
+
 ## When To Use It
 - During pilot scoping
 - During onboarding after company profile and role selection
@@ -100,6 +102,11 @@ AI must not:
 - Project delay and blocker report
 - Supplier risk summary
 - Marketing campaign performance digest
+
+Buyer-lane fit:
+- Evaluator / SME and SME self-serve: owner brief, cash/runway review, customer issue review, ops blocker report.
+- Business / advisory: proposal pipeline review, project delay report, board-pack variance summary, executive risk brief.
+- Regulated enterprise: regulatory issue tracker summary, supplier risk review, control evidence pack, board risk brief.
 
 ## Acceptance Checklist
 - At least five workflows can be scored.

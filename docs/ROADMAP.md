@@ -7,6 +7,8 @@
 
 ## Design Principles
 
+See `docs/USER_STRATEGY_AND_PIVOTS.md` for the canonical user strategy and pivot map. Roadmap decisions should preserve the flow: readiness assessment -> buyer lane -> signup/onboarding -> first workflow pilot -> governed value proof. See `BACKLOG.md` for the cross-document operating backlog and release-gate view.
+
 **1. AI as analyst, not assistant.**
 NexusAI should feel like a senior analyst embedded in the executive team. Every AI touch-point should demonstrate the system understands the business — sector, stage, risks, goals — before a question is asked.
 
@@ -27,9 +29,9 @@ The UI should feel like a top-tier consulting command layer: restrained, evidenc
 
 ---
 
-## Where We Are -- Current State (v0.24.0, verified locally 2026-06-15)
+## Where We Are -- Current State (v0.25.0, verified locally 2026-06-17)
 
-The product is demo-ready and pilot-ready. v0.24.0 adds connector policy UX, Workflow Twin Scorer productization, backcasting scope capture, and shadow ROI instrumentation on top of v0.23.1 production hardening. TypeScript, 28 test files / 183 tests, and production build passed on 2026-06-15. Authenticated browser smoke for `/workflows` should be run in the logged-in Chrome/Render session after deploy.
+The product is demo-ready and pilot-ready. v0.25.0 adds the Nexus Knowledge Workspace: an Obsidian-like company second brain with markdown notes, wikilinks, backlinks, graph view, import/export, optional local vault sync, MCP access, and Ask note citations. TypeScript, 29 test files / 187 tests, production build, and production dependency audit passed on 2026-06-17. Authenticated browser smoke for protected routes should be run in the logged-in Chrome/Render session after deploy.
 
 **What is built and verified:**
 
@@ -38,6 +40,7 @@ The product is demo-ready and pilot-ready. v0.24.0 adds connector policy UX, Wor
 - **Retrieval:** Two-tier search (pgvector + keyword fallback). Company context injected on every LLM call. Agent Control Profile passport filtering before evidence enters model context.
 - **Dashboards:** 7 Agent Rooms with named specialist agents. 20 role dashboards with archetype-aware brief language. Agent briefs saved as versioned outputs with rollback.
 - **Ask:** Natural language Q&A with evidence refs, confidence scores, passport filtering, output gates, escalation triggers, and persistent recent-turn conversation memory for follow-up questions.
+- **Knowledge Workspace:** `/knowledge` adds markdown notes, wikilinks, backlinks, graph view, typed Nexus refs, Obsidian-compatible ZIP import/export, optional local vault sync, and MCP memory tools. Ask returns separate `noteRefs` alongside evidence refs.
 - **Governance:** Agent Control Profiles (passports) with evidence scoping, sensitivity ceilings, tool guards, hard-stop blocking, output gates, suspend/resume. Per-agent output log with rollback. Learning signal capture (approve/edit/reject/thumbs) with quality summary.
 - **AI Trust Layer:** Eval harness, prompt registry, red-team output checks, provider allow-list, local-only mode, sensitivity ceiling, and confidence threshold controls.
 - **Executive Synthesis:** On-demand role-aware leadership brief on each dashboard, with specialist agent cards as collapsible drill-down, source pills/entity chips for traceability, and manual refresh saved to output history.
@@ -54,11 +57,11 @@ The product is demo-ready and pilot-ready. v0.24.0 adds connector policy UX, Wor
 - **Demo/Sales:** 3 CEO-grade demo sector packs, demo mode with reset, pilot kit, product brief page, readiness assessment (public), SOW templates, demo scripts, ROI calculator.
 - **Auth:** Clerk SSO, scope-based API keys, workspace status (trial/pilot/active/suspended), LLM cost tracking.
 
-**What is confirmed missing (2026-06-15 audit):**
+**What is confirmed missing (2026-06-17 audit):**
 
 - Additional live connector data flows beyond Slack: Google Drive, Teams, SharePoint, Jira, GitHub, CRM, finance, and social platforms.
 - Connector scheduler/sync history for non-event-based sources.
-- Authenticated production smoke for v0.24.0 after Render deploy.
+- Authenticated production smoke for v0.25.0 after Render deploy, including `/knowledge`, `/workflows`, `/settings/connectors`, and Ask note citations.
 
 ---
 
@@ -72,8 +75,14 @@ Background job queue decoupling submission from execution. Any service can call 
 **Company Memory + Slack Ingestion** (v0.23.0)
 Company Memory now has product pages, not just extracted records. Slack now has the first safe inbound connector path: selected channel messages become governed evidence, while private or unapproved sources are skipped and audited.
 
+**Knowledge Workspace + Live Vault Sync** (v0.25.0)
+Mission Control now includes an Obsidian-like company second brain at `/knowledge`: markdown editor, notebook tree, backlinks, graph view, typed refs to Nexus objects, ZIP import/export, optional local folder sync, and an MCP-compatible memory surface. See `docs/KNOWLEDGE_WORKSPACE.md`.
+
 **Connector Settings + Workflow Pilot Productization** (v0.24.0)
 Connector settings now expose Slack source policy and sensitivity controls. `/workflows` provides the pilot product path: score candidate workflow twins, choose a first Parallel Workflow Pilot, backcast the target outcome, and record shadow ROI measurements.
+
+**User Strategy and Pivot Docs** (documentation alignment)
+The product strategy is now documented as readiness-first buyer routing, not generic signup. Each buyer lane gets a distinct path through readiness, onboarding, workflow selection, pilot paperwork, and governed value proof. The canonical strategy lives in `docs/USER_STRATEGY_AND_PIVOTS.md`.
 
 **Billing Tiers + Stripe** (v0.20.0–v0.21.0)
 Plan-gated token budgets, feature flags, self-serve Stripe checkout, subscription lifecycle webhooks, Billing Portal, and trial-to-free conversion. The commercial layer is fully wired.
@@ -83,10 +92,12 @@ The dashboard starts with one evidence-backed leadership brief per role, with so
 
 ### Next Build
 
-1. **v0.24.0 commit/deploy:** push the workflow pilot productization set, confirm Render deploy, and smoke `/workflows` plus `/settings/connectors` while logged in.
-2. **Connector Data Flows:** add Google Drive/SharePoint/Teams/Jira/GitHub/CRM/finance/social ingestion paths with read-only provenance and sensitivity policy.
-3. **Workflow Twin Follow-through:** connect scorer selection more deeply into onboarding and create workflow-specific starter packs for Ops Review, Proposal/SOW, and Regulatory Response.
-4. **UI/UX prototype coverage:** complete the Figma v1 flow set: Mission Creation, Mission Run Detail, Evidence Room, Approval Inbox, Risk and Audit, Integration Hub, Governance Settings, and onboarding screens.
+1. **v0.25.0 deploy/smoke:** apply migration 0026, deploy, and smoke `/knowledge`, `/workflows`, `/settings/connectors`, and Ask note citations in a logged-in browser session.
+2. **User Strategy Implementation:** connect readiness submissions to buyer lane, signup/onboarding context, workspace profile, and first workflow selection.
+3. **Knowledge Workspace follow-through:** add richer graph filters, note-to-entity linking UI, note embedding storage, scheduled daily/project/workflow briefs, duplicate/contradiction audits, and resurfacing.
+4. **Connector Data Flows:** add Google Drive/SharePoint/Teams/Jira/GitHub/CRM/finance/social ingestion paths with read-only provenance and sensitivity policy.
+5. **Workflow Twin Follow-through:** connect scorer selection more deeply into onboarding and create workflow-specific starter packs for Ops Review, Proposal/SOW, and Regulatory Response.
+6. **UI/UX prototype coverage:** complete the Figma v1 flow set: Mission Creation, Mission Run Detail, Evidence Room, Approval Inbox, Risk and Audit, Integration Hub, Governance Settings, and onboarding screens.
 
 ### Later
 
@@ -94,15 +105,23 @@ Phase 7A/7B are COMPLETE (20-role registry, 5 archetypes, agent rooms, stage-awa
 
 **Phase 9 -- Team Members** (Q4 2026): workspace invitations, role-based access, CxO lens assignment. Build when a pilot client requests it.
 
-**Phase 10 -- Core Connectors** (Q4 2026 / Q1 2027): Google Drive, SharePoint, Slack, Teams, Gmail, Outlook, Jira, Salesforce, QuickBooks. Each with read-only ingestion, provenance, sensitivity policy, sync schedule. Slack has the first inbound channel-message ingestion path; admin UX and broader sync remain to build.
+**Phase 10 -- Core Connectors** (Q4 2026 / Q1 2027): Google Drive, SharePoint, Slack, Teams, Gmail, Outlook, Jira, Salesforce, QuickBooks. Each with read-only ingestion, provenance, sensitivity policy, sync schedule. Slack has the first inbound channel-message ingestion path and Connector Settings policy UX; broader scheduled sync, sync history, and additional connector data flows remain to build.
 
-**Phase 12 -- Company Memory** (2027): richer graph traversal, diff views, and the Obsidian-for-companies concept. Entity extraction and first entity pages are already in place.
+**Phase 12 -- Company Memory** (2027): richer graph traversal, diff views, and the Obsidian-for-companies concept. Entity extraction, entity pages, and the first Knowledge Workspace are already in place.
 
 **Phase 13 -- Local Edge Client** (2027): on-premises document processing for regulated clients. Mac Studio appliance, local LLM option. Enterprise moat for financial services, healthcare, and government.
 
 ---
 
 ## Revenue and Market Thinking
+
+**Buyer lanes:**
+- Evaluator / SME: Free readiness-led exploration and one guided owner/CEO value moment.
+- SME self-serve: Pro path for owner-led businesses and startups that can upload sources and pay by card.
+- Business / advisory: Business path for growth companies, advisory clients, and transformation sponsors running paid workflow pilots.
+- Regulated enterprise: Enterprise path for banks, fintechs, healthcare, government-linked, and institution-facing buyers that need governance, audit, and procurement.
+
+See `docs/USER_STRATEGY_AND_PIVOTS.md` for lane definitions, CTAs, first value moments, and success metrics.
 
 **Target early customers:**
 - Fintech companies (GCC, Pakistan, South Asia)

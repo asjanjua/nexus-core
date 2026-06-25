@@ -3,6 +3,7 @@
 > Last updated: 2026-05-30
 > Owner: Leap Associates FZCO / NexusAI commercial team
 > Pricing anchor: $3,000–$8,000/month per workspace, 90-day pilot commitment.
+> Buyer-lane strategy: `docs/USER_STRATEGY_AND_PIVOTS.md`
 
 ---
 
@@ -16,6 +17,7 @@ The triggers exist so:
 - The commercial team has a consistent, documented basis for billing conversations.
 - Pilot sponsors understand the conditions at kickoff (included in the Pilot Sponsor Kit).
 - Future automation has a clear specification to implement against.
+- Billing conversations stay tied to buyer lane, first workflow target, sponsor/reviewer readiness, and measured value proof.
 
 ---
 
@@ -42,7 +44,9 @@ A workspace should be moved from `trial` to `pilot` when **all three** of the fo
 
 **Trigger 2 — Engagement confirmation:**
 - Pilot sponsor has attended at least one demo or kickoff call with the NexusAI team, AND
-- Pilot Sponsor Onboarding Checklist (from `/pilot-kit`) has been signed or acknowledged
+- Pilot Sponsor Onboarding Checklist (from `/pilot-kit`) has been signed or acknowledged, AND
+- Buyer lane and first workflow target are recorded, AND
+- Sponsor and reviewer are named
 
 **Trigger 3 — Commercial agreement:**
 - Pilot proposal signed (see `docs/PILOT_PROPOSAL_TEMPLATE.md` when created), OR
@@ -58,6 +62,7 @@ to null. Set `stripe_customer_id` and `stripe_subscription_id` once Stripe is in
 A workspace is moved from `pilot` to `active` when:
 - The 90-day pilot period has completed
 - Pilot Success Scorecard shows 5+/7 outcomes met
+- Shadow ROI has been captured for the first workflow
 - Renewal proposal accepted and new subscription signed
 - Stripe subscription renewed or upgraded to annual
 
@@ -116,6 +121,15 @@ VALUES (
 Pilot pricing is anchored at $3,000/month for organisations under 100 staff and
 $8,000/month for regulated entities or organisations over 200 staff.
 The anchor is a starting point — adjust based on client size, sector, and strategic value.
+
+## 7.1 Buyer-Lane Billing Notes
+
+| Buyer lane | Billing posture | Trigger emphasis |
+| --- | --- | --- |
+| Evaluator / SME | Free or advisory follow-up. | Readiness completion and one guided proof before payment. |
+| SME self-serve | Pro self-serve where possible. | Evidence usage, Ask usage, weekly synthesis, and owner workflow value. |
+| Business / advisory | Business or paid pilot. | Signed sponsor, named reviewer, workflow scorer output, exports, and shadow ROI. |
+| Regulated enterprise | Enterprise contract. | Governance review, procurement, data boundary, security language, and no autonomous writeback. |
 
 ---
 

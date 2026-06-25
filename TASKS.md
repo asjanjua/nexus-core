@@ -1,7 +1,8 @@
 # TASKS.md — NexusAI Roadmap and Checklist
 
 > Master task list for the NexusAI relay team. Do not delete tasks; mark them complete with `[x]`.
-> Last reviewed and tightened: 2026-06-15.
+> For the cross-document backlog map and prioritization view, see `BACKLOG.md`.
+> Last reviewed and tightened: 2026-06-17.
 
 ---
 
@@ -16,10 +17,10 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 
 ---
 
-## Current Status (verified 2026-06-15) -- v0.24.0
+## Current Status (verified 2026-06-17) -- v0.25.0
 
 **Last fully verified release:** v0.23.0 on 2026-06-13 -- 28 test files / 179 tests, build clean, 24 DB migrations.
-**Current verification:** v0.24.0 workflow pilot productization passed TypeScript, 28 test files / 183 tests, and production build. In-app browser authenticated UI smoke is blocked by Clerk-hosted sign-in in that browser session; verify `/workflows` in the logged-in Chrome/Render session after deploy.
+**Current verification:** v0.25.0 Knowledge Workspace passed TypeScript, 29 test files / 187 tests, production build, and production dependency audit. In-app/unauthenticated browser smoke is blocked by Clerk-hosted sign-in for protected routes; verify `/knowledge`, `/workflows`, and Ask note citations in the logged-in Chrome/Render session after deploy.
 
 **Phases 1-6: Complete.**
 **Pre-7A Technical Prep: Complete.** (v0.9.1)
@@ -44,20 +45,26 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 **Entity Pages and Backlinks: Shipped.** (v0.23.0) -- Company Memory index/detail pages, entity backlinks, timeline, and `GET /api/entities/:id`.
 **Slack Connector Data Flow: Shipped.** (v0.23.0) -- allowlisted Slack channel messages ingest as governed evidence with provenance, sensitivity, confidence, and audit events.
 **Production Hardening: Shipped.** (v0.23.1) -- Stripe webhook idempotency, cron/webhook rate limits, Clerk CSP domain handling, dispatch input typing, and demo navigation/auth shell fixes.
-**Workflow Pilot Productization: Shipped locally.** (v0.24.0) -- Connector Settings policy UX, Workflow Twin Scorer product page, U6 backcasting API/UI, and U7 shadow ROI instrumentation. Pending commit/deploy.
+**Workflow Pilot Productization: Shipped.** (v0.24.0) -- Connector Settings policy UX, Workflow Twin Scorer product page, U6 backcasting API/UI, and U7 shadow ROI instrumentation. Committed and pushed to `origin/main`; Render deploy/authenticated smoke should be confirmed.
+**Knowledge Workspace and Live Vault Sync: Shipped locally.** (v0.25.0) -- `/knowledge`, markdown editor, wikilinks, backlinks, graph, import/export, optional live local folder sync, MCP memory wrapper, and Ask `noteRefs`. Pending migration/deploy/authenticated smoke.
+**User Strategy and Pivot Docs: Documentation complete.** (2026-06-17) -- `docs/USER_STRATEGY_AND_PIVOTS.md` is the canonical strategy. Paperwork now aligns around readiness -> buyer lane -> signup/onboarding -> first workflow pilot -> governed value proof.
 **Demo packs: Audited and rewritten.** (v0.15.1) -- All 3 sector packs CEO-grade with pre-tuned Ask questions.
-**Production DB: Migrations 0001-0024 applied.**
+**Production DB: Migrations 0001-0024 applied. Migrations 0025-0026 need confirmation in the target production environment before v0.25.0 deploy.**
 
-**The product is demo-ready and pilot-ready for GCC fintech, professional services, and SaaS buyers.**
+**The product is demo-ready and pilot-design-ready for GCC fintech, professional services, and SaaS buyers. First paid pilot production readiness still requires the open operations, monitoring, backup, support, and authenticated-smoke items below.**
 
-**Priority order (updated 2026-06-15):**
+**Priority order (updated 2026-06-17):**
 1. [x] Finish and verify v0.23.1 hardening -- local auth/CTA behavior, TypeScript, tests, and build pass. Commit/deploy next.
 2. [x] Connector Settings UX -- Slack channel allowlist, sync status, source sensitivity, last ingest, and policy audit trail.
 3. [x] Workflow Twin Scorer product path -- UI/API scoring flow from company profile, data readiness, risk, pain, and speed benefit.
 4. [x] U6 Backcasting onboarding/workflow scoping -- guided pilot scope anchored to the chosen workflow.
 5. [x] U7 Shadow ROI instrumentation -- measured manual-vs-Nexus comparison for the chosen workflow.
-6. [ ] Deploy v0.24.0 to Render and run authenticated smoke test in the logged-in browser session.
-7. [ ] Add additional connector data flows beyond Slack: Google Drive, Teams/SharePoint, Jira, GitHub, CRM, finance, and social platforms.
+6. [x] Build Knowledge Workspace v0.25.0 -- markdown editor, backlinks, graph, import/export, live local vault sync, MCP wrapper, and Ask `noteRefs`.
+7. [x] Align user strategy and paperwork docs -- readiness-first buyer lanes, workflow scorer bridge, sponsor/reviewer requirements, and governed value proof.
+8. [ ] Implement user strategy in product -- persist readiness leads, buyer lane, workspace member/profile context, and route onboarding into first workflow selection.
+9. [ ] Apply migrations 0025-0026 in the target production database, deploy v0.25.0, and run authenticated smoke tests in the logged-in browser session.
+10. [ ] Add Knowledge Workspace follow-through: note embeddings, richer graph filters, note-to-entity linking UI, daily/project/workflow brief automation, duplicate/contradiction audit, and resurfacing.
+11. [ ] Add additional connector data flows beyond Slack: Google Drive, Teams/SharePoint, Jira, GitHub, CRM, finance, and social platforms.
 
 **Design priority order (updated 2026-06-15):**
 1. [x] Figma Pro selected as active design workspace; Penpot parked until MCP/plugin compatibility improves.
@@ -86,6 +93,18 @@ What is built at v0.18.0 (Executive Synthesis Layer):
 - `ExecutiveSynthesis` and `ExecutiveSynthesisQuestion` types in `lib/contracts.ts`.
 - `docs/EXECUTIVE_SYNTHESIS_SPEC.md` committed.
 - 13 tests in `tests/synthesis.test.ts`.
+
+What is built locally for v0.25.0 (Knowledge Workspace and Live Vault Sync):
+- Migration 0026 adds `knowledge_notes`, `knowledge_links`, and `knowledge_sync_events`.
+- Contracts cover knowledge note status/source kind/link type, note input, links, search results, graph shape, sync mode, and sync events.
+- `/knowledge` provides a three-pane workspace: vault tree/search, markdown editor/preview/graph, backlinks/Nexus refs/import/export/triage/sync controls.
+- Markdown support includes frontmatter parse/write, `[[wikilinks]]`, `#tags`, headings, typed refs, search scoring, and graph projection.
+- APIs: notes CRUD, search, graph, import, export, triage, and sync under `/api/knowledge/*`.
+- Optional local vault sync: `NEXUS_VAULT_SYNC=disabled|readonly|bidirectional` and `NEXUS_LOCAL_VAULT_PATH=/absolute/path/to/vault`.
+- MCP wrapper: `npm run mcp:knowledge -w @nexus/mission-control` exposing memory/search/read/write/status/sync/graph tools.
+- Ask now returns `noteRefs` separately from `evidenceRefs`.
+- Verification: TypeScript clean, 29 test files / 187 tests passing, production build passed, production audit clean.
+- Spec: `docs/KNOWLEDGE_WORKSPACE.md`.
 
 What is built at v0.18.1 (Executive Synthesis Traceability):
 - Each synthesis question now carries readable `sources` and extracted `entities`.
@@ -982,13 +1001,12 @@ Positioning rule from the 2026-05-31 reassessment:
 - [x] Workspace status field: `trial | pilot | active | suspended | cancelled` — schema + migration 0012 done.
 - [x] Trial banner: persistent in-app banner showing days remaining (v0.11.0)
 - [x] Suspension banner: shown when workspace is suspended with support contact link (v0.11.0)
-- [ ] Integrate Stripe for workspace subscriptions. Implement three tiers:
-  Pilot ($3k–$8k/month, 90-day term), Growth (per-seat, monthly), Enterprise (custom, annual).
-  Stripe fields (`stripe_customer_id`, `stripe_subscription_id`) are in schema — wire Stripe SDK.
-- [ ] Add usage limits enforcement per tier: max evidence records, max monthly LLM calls,
+- [x] Integrate Stripe for workspace subscriptions. Current implementation uses Free / Pro /
+  Business / Enterprise with pure-fetch Stripe Checkout, Portal, webhooks, and Stripe IDs on workspaces.
+- [x] Add usage limits enforcement per tier: max evidence records, max monthly LLM calls,
   max connector count, max workspace members. Hard limits at tier ceiling with a clear
   in-app message when approaching or hitting the limit.
-- [ ] Add billing portal in Settings: current plan, next billing date, usage vs. limit gauges,
+- [x] Add billing portal in Settings: current plan, next billing date, usage vs. limit gauges,
   upgrade/downgrade path, invoice history download. Powered by Stripe Billing Portal.
 - [ ] Add workspace suspension flow: when payment fails, send warning email at 3 days,
   restrict dashboard access (read-only) at 7 days, full suspension at 14 days.
@@ -1347,15 +1365,15 @@ Positioning rule from the 2026-05-31 reassessment:
 
 ### Session 1 — Core Scheduled Synthesis
 
-- [ ] Migration `0021_synthesis_schedules.sql` and Drizzle schema for `synthesis_schedules` table.
-- [ ] Repository methods: `getSynthesisSchedule`, `upsertSynthesisSchedule`, `getDueSchedules`, `updateScheduleLastRun`.
-- [ ] Cron runner script: `scripts/run-scheduled-synthesis.ts` (evaluates per-workspace cron expressions).
-- [ ] Internal cron API route `POST /api/cron/synthesis` with shared-secret auth (`NEXUS_CRON_SECRET`).
-- [ ] Settings API routes: `GET/PUT /api/synthesis-schedule`, `POST /api/synthesis-schedule/test`.
-- [ ] Settings UI section: enable/disable toggle, schedule picker, role checkboxes, delivery channel config.
-- [ ] Add "Last refreshed" timestamp on synthesis brief panel from `agent_outputs.createdAt`.
-- [ ] Tests: schedule CRUD, cron window matching, runner dispatch logic.
-- [ ] Audit events: `synthesis_scheduled_run` and `synthesis_delivery_sent`.
+- [x] Migration `0021_synthesis_schedules.sql` and Drizzle schema for `synthesis_schedules` table.
+- [x] Repository methods: `getSynthesisSchedule`, `upsertSynthesisSchedule`, `getDueSchedules`, `updateScheduleLastRun`.
+- [x] Cron runner script: `scripts/run-scheduled-synthesis.mjs` (calls protected synthesis cron route).
+- [x] Internal cron API route `POST /api/cron/synthesis` with shared-secret auth (`NEXUS_CRON_SECRET`).
+- [x] Settings API routes: `GET/PUT /api/synthesis-schedule`, `POST /api/synthesis-schedule/test`.
+- [x] Settings UI section: enable/disable toggle, schedule picker, role checkboxes, delivery channel config.
+- [x] Add "Last refreshed" timestamp on synthesis brief panel from `agent_outputs.createdAt`.
+- [x] Tests: schedule CRUD, cron window matching, runner dispatch logic.
+- [x] Audit events: `synthesis_scheduled_run` and delivery/run status events.
 
 ### Session 2 — Email Delivery and Polish
 
@@ -1363,8 +1381,8 @@ Positioning rule from the 2026-05-31 reassessment:
 - [ ] Email delivery dispatch in cron runner (subject, role brief, CTA to dashboard).
 - [ ] Render cron job config in `render.yaml`.
 - [ ] End-to-end test: scheduled synthesis with email delivery.
-- [ ] Update ARCHITECTURE.md, ROADMAP.md, CHANGELOG.md.
-- [ ] Bump version to v0.19.0.
+- [x] Update ARCHITECTURE.md, ROADMAP.md, CHANGELOG.md for scheduled synthesis core.
+- [x] Bump version to v0.19.0 for scheduled synthesis core.
 
 ---
 
@@ -1375,29 +1393,29 @@ Positioning rule from the 2026-05-31 reassessment:
 
 ### Session 1 — Schema, Enforcement, and Settings UI
 
-- [ ] Migration `0022_billing_tiers.sql`: plan columns on workspaces, `plan_definitions` table with seed data.
-- [ ] Drizzle schema updates for plan fields and plan_definitions.
-- [ ] `checkTokenBudget(workspaceId)` with in-process cache (5-min TTL).
-- [ ] Extend `recordLLMUsage()` to atomically increment `workspaces.monthly_token_used`.
-- [ ] Feature gate function `canUseFeature()` for scheduled synthesis, exports, extraction, etc.
-- [ ] Enforce token budget at all LLM call points (Ask, dashboard, synthesis, extraction, ingestion).
-- [ ] Enforce resource limits: max roles, max evidence, max API keys, ask daily limit.
-- [ ] Plan and Usage section in Settings UI: plan display, usage percentage bar, resource limits, breakdown.
-- [ ] Warning banners at 80%/95%/100% of token budget.
-- [ ] Monthly token reset in cron runner.
-- [ ] Tests: budget check, feature gating, enforcement, reset logic.
-- [ ] Audit events: `plan_upgraded`, `plan_downgraded`, `token_budget_exceeded`.
+- [x] Migration `0022_billing_tiers.sql`: plan columns on workspaces, `plan_definitions` table with seed data.
+- [x] Drizzle schema updates for plan fields and plan_definitions.
+- [x] `checkTokenBudget(workspaceId)` with in-process cache (5-min TTL).
+- [x] Extend `recordLLMUsage()` to atomically increment `workspaces.monthly_token_used`.
+- [x] Feature gate function `canUseFeature()` for scheduled synthesis, exports, extraction, etc.
+- [x] Enforce token budget at all LLM call points (Ask, dashboard, synthesis, extraction, ingestion).
+- [x] Enforce resource limits: max roles, max evidence, max API keys, ask daily limit.
+- [x] Plan and Usage section in Settings UI: plan display, usage percentage bar, resource limits, breakdown.
+- [x] Warning banners at 80%/95%/100% of token budget.
+- [x] Monthly token reset in cron runner.
+- [x] Tests: budget check, feature gating, enforcement, reset logic.
+- [x] Audit events: `plan_upgraded`, `plan_downgraded`, `token_budget_exceeded`.
 
 ### Session 2 — Stripe Integration and Checkout
 
-- [ ] Install Stripe SDK, configure Products and Prices for Pro and Business.
-- [ ] Checkout session creation endpoint `POST /api/billing/checkout`.
-- [ ] Webhook handler `POST /api/billing/webhook` for subscription lifecycle events.
-- [ ] Upgrade flow in Settings: "Upgrade to Pro/Business" buttons with Stripe Checkout redirect.
-- [ ] Downgrade logic: adjust limits at next billing cycle, "resolve limits" banner.
-- [ ] Trial-to-Free conversion (day 15 drops to Free instead of suspension).
-- [ ] Invoice portal link in Settings.
-- [ ] End-to-end test: trial expiry, upgrade, downgrade, payment failure.
+- [x] Configure Products and Prices for Pro and Business using pure-fetch Stripe client (no Stripe SDK dependency).
+- [x] Checkout session creation endpoint `POST /api/billing/checkout`.
+- [x] Webhook handler `POST /api/billing/webhook` for subscription lifecycle events.
+- [x] Upgrade flow in Settings: "Upgrade to Pro/Business" buttons with Stripe Checkout redirect.
+- [x] Downgrade logic: adjust limits at next billing cycle, "resolve limits" banner.
+- [x] Trial-to-Free conversion (day 15 drops to Free instead of suspension).
+- [x] Invoice portal link in Settings.
+- [x] End-to-end test: trial expiry, upgrade, downgrade, payment failure.
 
 ### Session 3 (optional) — Polish and Analytics
 
@@ -1405,8 +1423,8 @@ Positioning rule from the 2026-05-31 reassessment:
 - [ ] Internal admin revenue dashboard: MRR, active plans, usage per workspace.
 - [ ] Upgrade CTA components across all gated features (lock icons, tooltips).
 - [ ] Annual pricing option (2 months free).
-- [ ] Update ARCHITECTURE.md, ROADMAP.md, CHANGELOG.md.
-- [ ] Bump version to v0.20.0.
+- [x] Update ARCHITECTURE.md, ROADMAP.md, CHANGELOG.md for core billing and Stripe releases.
+- [x] Bump version to v0.20.0/v0.21.0 for core billing and Stripe releases.
 
 ---
 
@@ -1421,49 +1439,49 @@ Positioning rule from the 2026-05-31 reassessment:
 - [x] Create a facilitated workflow scoring worksheet in `/pilot-kit` or docs. Score at least
   five candidate workflows on frequency, pain, data readiness, automation risk, reusability
   across clients, and expected speed gain.
-- [ ] Add a productized `/workflow-scorer` page once a pilot workflow exists. Inputs:
-  workflow name, owner, current manual process, frequency, average cycle time, evidence sources,
-  risk level, data readiness, expected speed gain, and reusability.
-- [ ] Return a ranked list of candidate workflows with a defensible score and recommended first
+- [x] Add a productized `/workflows` page once a pilot workflow exists. Inputs are inferred from
+  workspace context, current decisions/actions/recommendations, evidence coverage, and sponsor-entered
+  workflow scope/ROI fields.
+- [x] Return a ranked list of candidate workflows with a defensible score and recommended first
   workflow twin candidate.
-- [ ] Acceptance test: a client can score at least five workflows and receives one recommended
+- [x] Acceptance test: a client can score at least five workflows and receives one recommended
   first candidate with a clear reason.
-- [ ] AI responsibility note: AI can suggest scoring rationale, but the sponsor confirms the
+- [x] AI responsibility note: AI can suggest scoring rationale, but the sponsor confirms the
   workflow selected for pilot scope.
 
 ### Client workflow selection flow
-- [ ] Add a workflow-candidate library that includes universal candidates first:
-  Decision & Action Twin, Ops Review Twin, Customer/Revenue Review Twin, Risk Review Twin,
-  and Knowledge/Memory Review Twin.
-- [ ] Keep industry-specific candidates as optional templates: Proposal/SOW, Regulatory Response,
+- [x] Add a workflow-candidate library that includes universal candidates first:
+  Decision & Action Twin, Ops Review Twin, Risk Review Twin, Proposal/SOW Twin,
+  Regulatory Response Twin, and Agreement Review Twin.
+- [x] Keep industry-specific candidates as optional templates: Proposal/SOW, Regulatory Response,
   Agreement Review, Due Diligence, Board Memo Preparation, and PMO Tracking.
-- [ ] Use the company profile to suggest relevant candidates, but let the sponsor override.
-- [ ] Acceptance test: a client can score at least five workflows and receives one recommended
+- [x] Use the company profile to suggest relevant candidates, but let the sponsor override.
+- [x] Acceptance test: a client can score at least five workflows and receives one recommended
   first Parallel Workflow Pilot with a clear reason.
 
 ### U6 — Backcasting Onboarding Step
-- [ ] Add an optional backcasting step to onboarding after company profile and role selection:
+- [x] Add an optional backcasting step through `/workflows` after company profile and role selection:
   "What would this function look like if it were AI-native in 12 months?"
-- [ ] Use an LLM-guided conversation to define the desired end state, then work backward into a
+- [x] Use a guided scope capture to define the desired end state, then work backward into a
   6-8 week pilot scope.
-- [ ] Persist the backcast summary to the workspace profile or pilot metadata: function,
+- [x] Persist the backcast summary to workflow twin config / pilot metadata: function,
   end-state description, success criteria, constraints, and first workflow candidate.
-- [ ] Seed first dashboards and suggested questions from the backcast result.
-- [ ] Acceptance test: sponsor completes a backcasting session and the output appears in the
+- [ ] Seed first dashboards and suggested questions from the backcast result. (Onboarding linkage remains part of priority item 8.)
+- [x] Acceptance test: sponsor completes a backcasting session and the output appears in the
   pilot scope / kickoff materials.
-- [ ] AI responsibility note: backcasting is a planning aid, not a commitment that NexusAI can
+- [x] AI responsibility note: backcasting is a planning aid, not a commitment that NexusAI can
   autonomously transform the function.
 
 ### U7 — Shadow-Mode Parallel-Run ROI
 - [x] Draft shadow-mode ROI measurement playbook: `docs/SHADOW_MODE_ROI_PLAYBOOK.md`.
 - [x] Add shadow-mode pilot measurement template: manual process output vs NexusAI output,
   reviewer, timestamp, cycle time, rework count, quality notes, and decision impact.
-- [ ] Extend the ROI calculator to accept measured Day 30 data rather than only assumed hours saved.
-- [ ] Add a Day 30 review section showing measured comparison for at least one workflow:
+- [x] Extend the workflow ROI instrumentation to accept measured Day 30 data rather than only assumed hours saved.
+- [x] Add a Day 30 review section showing measured comparison for at least one workflow:
   time saved, rework reduced, evidence coverage, recommendations accepted, and sponsor notes.
-- [ ] Acceptance test: pilot review can show one measured workflow comparison, not just
+- [x] Acceptance test: pilot review can show one measured workflow comparison, not just
   self-reported productivity estimates.
-- [ ] AI responsibility note: AI does not claim ROI; it reports measured process deltas confirmed
+- [x] AI responsibility note: AI does not claim ROI; it reports measured process deltas confirmed
   by the sponsor or reviewer.
 
 ### U8 — Trusted Eval Harness

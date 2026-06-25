@@ -24,6 +24,7 @@ const navSections = [
       { href: "/decisions", label: "Decisions" },
       { href: "/workflows", label: "Workflow Twins" },
       { href: "/entities", label: "Company Memory" },
+      { href: "/knowledge", label: "Knowledge Workspace" },
       { href: "/approvals", label: "Approvals" },
       { href: "/review", label: "Review Queue" }
     ]

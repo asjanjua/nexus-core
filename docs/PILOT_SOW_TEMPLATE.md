@@ -5,6 +5,9 @@ This Statement of Work defines a paid pilot for NexusAI Executive Intelligence P
 
 - Client: `<Client Name>`
 - Sponsor: `<Executive Sponsor>`
+- Reviewer / Approver: `<Named Reviewer>`
+- Buyer Lane: `<Evaluator/SME | SME Self-Serve | Business/Advisory | Regulated Enterprise>`
+- First Workflow Target: `<Workflow Name>`
 - Pilot Duration: `<6-8 weeks>`
 - Start Date: `<YYYY-MM-DD>`
 - End Date: `<YYYY-MM-DD>`
@@ -14,13 +17,20 @@ The pilot will:
 1. Ingest agreed document and communication sources.
 2. Generate evidence-backed executive outputs for selected roles.
 3. Establish a recommendation and decision workflow with human approvals.
-4. Demonstrate measurable reduction in time-to-brief and decision ambiguity.
+4. Select and run one first workflow pilot with named sponsor, reviewer, evidence bundle, governance boundary, and shadow ROI metric.
+5. Demonstrate measurable reduction in time-to-brief, decision ambiguity, cycle time, or rework.
 
 ## 3. In-Scope
 - Source ingestion (docs + comms only):
   - `<Drive/SharePoint folders>`
   - `<Slack/Teams channels>`
   - `<uploaded files>`
+- First workflow pilot:
+  - Workflow: `<Workflow Name>`
+  - Sponsor: `<Sponsor>`
+  - Reviewer: `<Reviewer>`
+  - Evidence bundle: `<Approved Sources>`
+  - Shadow ROI metric: `<Time saved / rework reduced / decision cycle reduced>`
 - Role dashboards:
   - CEO
   - COO
@@ -33,6 +43,7 @@ The pilot will:
 
 ## 4. Out-of-Scope
 - Autonomous writeback to critical enterprise systems
+- External posting, payments, filings, HR actions, legal commitments, or financial commitments
 - Full ERP/CRM/HRIS integration replacement
 - Enterprise-wide production SSO/RBAC rollout
 - Multi-tenant SaaS deployment
@@ -42,18 +53,19 @@ The pilot will:
 2. Evidence-gated ingestion with confidence and provenance metadata.
 3. Role-aware executive output pack.
 4. Recommendation approval queue workflow.
-5. Final pilot report:
+5. First workflow score, target-state backcast, and shadow ROI measurement.
+6. Final pilot report:
    - value delivered
    - gaps
    - production hardening roadmap
 
 ## 6. Work Plan
 - Week 1:
-  - onboarding, source access setup, pilot baseline
+  - readiness review, buyer-lane confirmation, onboarding, source access setup, first workflow baseline
 - Week 2-3:
-  - ingestion stabilization, first executive outputs
+  - ingestion stabilization, workflow scoring, first executive outputs
 - Week 4-5:
-  - recommendation/decision operating loop, calibration
+  - recommendation/decision operating loop, reviewer calibration, shadow-mode measurement
 - Week 6-8:
   - KPI review, executive final pack, production plan
 
@@ -82,7 +94,9 @@ Pilot is considered successful when:
 1. At least 3 executive briefs are delivered.
 2. At least 20 recommendations are generated with >=80% evidence coverage.
 3. At least 10 decisions are captured with owner + rationale + references.
-4. Sponsor confirms measurable improvement in executive situational awareness.
+4. First workflow has named sponsor, reviewer, evidence bundle, and approval boundary.
+5. Shadow ROI is captured before any ROI claim is made.
+6. Sponsor confirms measurable improvement in executive situational awareness.
 
 ## 10. Commercials
 - Pilot Fee: `<Amount + Currency>`
@@ -94,13 +108,14 @@ Pilot is considered successful when:
 - Access is limited to approved users and sources.
 - Confidentiality and retention terms follow master agreement/NDA.
 - No public disclosure without written consent.
+- Regulated or restricted outputs remain human-approved and evidence-backed.
 
 ## 12. Assumptions
 - Required source access is provisioned on time.
 - Executive sponsor availability is maintained.
 - Pilot scope remains within agreed data and role boundaries.
+- Buyer-lane strategy follows `docs/USER_STRATEGY_AND_PIVOTS.md`.
 
 ## 13. Sign-Off
 - Client Representative: `<Name / Title / Date>`
 - Nexus Representative: `<Name / Title / Date>`
-

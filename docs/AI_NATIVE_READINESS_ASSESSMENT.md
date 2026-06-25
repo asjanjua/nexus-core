@@ -5,6 +5,8 @@ The readiness assessment is the public on-ramp into NexusAI. It should help a pr
 
 It is a business development tool, not a regulatory, legal, financial, or operational opinion.
 
+Readiness is also the first step in the user strategy documented in `docs/USER_STRATEGY_AND_PIVOTS.md`: readiness assessment -> buyer lane -> signup/onboarding -> first workflow pilot -> governed value proof.
+
 ## Target User
 - CEO, COO, Managing Director, founder, transformation sponsor, or strategy lead
 - Regulated and institution-facing buyers in financial services, healthcare, professional services, and complex operating businesses
@@ -51,6 +53,17 @@ Each dimension is scored from 1 to 7.
 | 35-42 | Advanced | Good fit for a 6-8 week paid pilot over documents, comms, and one priority workflow. | Start pilot proposal |
 | 43-49 | AI-Native Ready | Candidate for accelerated NexusAI deployment with governance, agent passports, and shadow-mode ROI. | Prepare deployment roadmap |
 
+## Buyer-Lane Routing
+
+| Signal | Buyer lane | Route |
+| --- | --- | --- |
+| Emerging score, small team, unclear owner | Evaluator / SME | Send foundations checklist, product brief, and optional advisory session before signup. |
+| Developing score, owner-led or startup, clear source bundle | SME self-serve | Route to signup with a Pro-oriented onboarding path and one owner workflow. |
+| Advanced score, transformation sponsor, advisory or growth company | Business / advisory | Route to signup or scoping call with workflow scorer and pilot paperwork. |
+| Regulated sector, large organization, procurement/security concern | Regulated enterprise | Route to governed scoping with agent passports, approval gates, and security review language. |
+
+The lane is directional, not an eligibility decision. A human can override it during scoping.
+
 ## Lead Record Contract
 Every submission should capture:
 - `submitted_at`
@@ -62,10 +75,12 @@ Every submission should capture:
 - `dimension_scores`
 - `total_score`
 - `band`
+- `buyer_lane`
 - `triggered_cta`
 - `free_text_priority`
 - `utm_source`
 - `workspace_or_lead_id`
+- `first_workflow_hint`
 
 ## AI Role
 AI may:

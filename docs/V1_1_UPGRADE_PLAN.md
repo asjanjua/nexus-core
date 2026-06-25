@@ -10,14 +10,14 @@
 - **Target version:** v0.14.0
 - **Builds on:** v0.13.0 (Phases 1 to 9D complete, production DB migrated)
 - **Companion to:** TASKS.md, NexusAI_V1_Pilot_Plan.docx, Nexus_Product_Manual.docx
-- **Execution status:** As of 2026-06-15, Tier 1 (U1-U4) is complete. U5 Workflow Twin Scorer, U6 backcasting scope capture, and U7 shadow ROI instrumentation are complete locally in v0.24.0 and need Render deploy + authenticated smoke.
+- **Execution status:** As of 2026-06-17, Tier 1 (U1-U4) is complete. U5 Workflow Twin Scorer, U6 backcasting scope capture, and U7 shadow ROI instrumentation are complete locally in v0.24.0. v0.25.0 adds the Knowledge Workspace and needs migration/deploy plus authenticated smoke.
 - **Reassessment note:** See `docs/NEXUS_WORKFLOW_TWIN_REALIGNMENT.md` for the 2026-05-31
   decision that the first workflow twin should be the universal Decision & Action Twin, followed
   by Workflow Twin Scorer and Ops Review Twin.
 
 ---
 
-## 0. Current Execution Status — 2026-06-15
+## 0. Current Execution Status — 2026-06-17
 
 This document is still the right strategic framing for V1.1, but it is no longer the active
 build sequence. It was written before the governance foundation shipped. Do not restart U1-U4
@@ -32,16 +32,18 @@ from this document; use this section and `TASKS.md` as the current execution tru
 | U5 Workflow Twin Candidate Scorer | Complete locally | `/workflows` page and scorer run payload rank candidate workflows and recommend a first pilot. |
 | U6 Backcasting onboarding | Complete locally | Backcast API/UI stores target state, pilot scope, milestones, evidence needs, success metrics, and approval boundaries. |
 | U7 Shadow-mode parallel-run ROI | Complete locally | Shadow ROI API/UI stores manual-vs-Nexus minutes, rework delta, monthly hours saved, and speed gain. |
+| Knowledge Workspace | Complete locally | v0.25.0 adds `/knowledge`, markdown notes, backlinks, graph, import/export, optional local vault sync, MCP memory tools, and Ask `noteRefs`. |
 | U8 Trusted eval harness | Split status | Base eval/red-team harness is shipped; learning-signal-fed per-agent scorecards remain a refinement. |
 | U9 Learning loop and improvement reporting | Deferred | Correctly postponed until enough workflow usage exists to make learning credible. |
 
 Current sequencing recommendation:
 
-1. Finish demo/auth/navigation hardening and commit it.
-2. Deploy and smoke v0.24.0 in Render.
+1. Apply migrations 0025-0026 in the target database.
+2. Deploy and smoke v0.25.0 in Render, including `/knowledge`, `/workflows`, `/settings/connectors`, and Ask note citations.
 3. Add deeper onboarding linkage from the chosen workflow into the first upload/approval path.
-4. Add additional connector data flows beyond Slack.
-5. Defer U9 learning-loop claims until customer usage produces enough signal.
+4. Add Knowledge Workspace follow-through: note embeddings, richer graph filters, daily/project/workflow briefs, duplicate/contradiction audits, and resurfacing.
+5. Add additional connector data flows beyond Slack.
+6. Defer U9 learning-loop claims until customer usage produces enough signal.
 
 ---
 
@@ -220,10 +222,12 @@ and isolated.
 | 4 | U4 signal capture | Engineering | Anytime in Tier 1 |
 
 Original next step at the time of writing was to confirm Tier 1 and build U1.
-As of 2026-06-15, that instruction is historical: U1-U4 are complete, and U5-U7
-are complete locally in v0.24.0. The current next step is Render deploy plus an
-authenticated smoke of `/workflows` and `/settings/connectors`, followed by
-additional connector data flows and deeper onboarding linkage.
+As of 2026-06-17, that instruction is historical: U1-U4 are complete, U5-U7
+are complete locally in v0.24.0, and the Knowledge Workspace is complete locally
+in v0.25.0. The current next step is migration/deploy plus an authenticated
+smoke of `/knowledge`, `/workflows`, `/settings/connectors`, and Ask note
+citations, followed by additional connector data flows and deeper onboarding
+linkage.
 
 ## 8. Reassessment Addendum — Workflow Twin Sequence
 

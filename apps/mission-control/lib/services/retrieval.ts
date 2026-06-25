@@ -18,7 +18,7 @@
  * Falls back to a bullet summary when ANTHROPIC_API_KEY is absent (dev / demo).
  */
 
-import type { AskResponse, ConversationMessage, EvidenceRecord } from "@/lib/contracts";
+import type { AskResponse, ConversationMessage, EvidenceRecord, KnowledgeNote } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
 import { ask } from "@/lib/services/llm";
 import { generateEmbedding, isVectorSearchEnabled } from "@/lib/services/embeddings";
@@ -157,6 +157,15 @@ function buildEvidenceContext(records: EvidenceRecord[]): string {
     .join("\n\n");
 }
 
+function buildNoteContext(notes: KnowledgeNote[]): string {
+  return notes
+    .map(
+      (note, i) =>
+        `[Note ${i + 1}] Title: ${note.title} | Path: ${note.path} | Sensitivity: ${note.sensitivity}\n${note.body.slice(0, 1800)}`
+    )
+    .join("\n\n");
+}
+
 function buildConversationContext(history: ConversationMessage[] = []): string {
   const recent = history.slice(-8);
   if (!recent.length) return "";
@@ -180,6 +189,8 @@ export async function answerWithEvidence(
     options.agentKey ? repository.getActiveAgentControlProfile(workspaceId, options.agentKey) : Promise.resolve(null)
   ]);
   const results = ranked.records;
+  const noteResults = await repository.searchKnowledge(workspaceId, query, 4).catch(() => []);
+  const notes = noteResults.map((result) => result.note).filter((note) => note.sensitivity !== "restricted");
 
   if (options.agentKey && !passport) {
     return {
@@ -189,6 +200,7 @@ export async function answerWithEvidence(
       refused: true,
       refusalReason: "agent_passport_missing",
       evidenceRefs: [],
+      noteRefs: [],
       agentKey: options.agentKey
     };
   }
@@ -201,6 +213,7 @@ export async function answerWithEvidence(
       refused: true,
       refusalReason: "agent_not_active",
       evidenceRefs: [],
+      noteRefs: [],
       agentKey: options.agentKey
     };
   }
@@ -213,11 +226,12 @@ export async function answerWithEvidence(
       refused: true,
       refusalReason: "passport_denied_evidence",
       evidenceRefs: [],
+      noteRefs: notes.map((note) => note.id),
       agentKey: options.agentKey
     };
   }
 
-  if (!results.length) {
+  if (!results.length && !notes.length) {
     return {
       answer:
         options.department
@@ -228,16 +242,17 @@ export async function answerWithEvidence(
       refused: true,
       refusalReason: "insufficient_evidence",
       evidenceRefs: [],
+      noteRefs: [],
       agentKey: options.agentKey
     };
   }
 
   const avgConfidence = Number(
-    (results.reduce((s, r) => s + r.extractionConfidence, 0) / results.length).toFixed(2)
+    (results.length ? results.reduce((s, r) => s + r.extractionConfidence, 0) / results.length : 0.72).toFixed(2)
   );
-  const minFreshness = Math.min(...results.map((r) => r.freshnessHours));
+  const minFreshness = results.length ? Math.min(...results.map((r) => r.freshnessHours)) : 0;
 
-  if (avgConfidence < 0.55) {
+  if (results.length && avgConfidence < 0.55) {
     return {
       answer:
         "Evidence quality is currently too weak for a reliable executive answer. Please review quarantined documents in the Ingestion queue.",
@@ -246,18 +261,22 @@ export async function answerWithEvidence(
       refused: true,
       refusalReason: "low_confidence_evidence",
       evidenceRefs: results.map((r) => r.id),
+      noteRefs: notes.map((note) => note.id),
       agentKey: options.agentKey
     };
   }
 
   const context = buildEvidenceContext(results);
+  const noteContext = buildNoteContext(notes);
   const conversationContext = buildConversationContext(options.conversationHistory);
   const companyContext = profile ? buildCompanyContext(profile) : "";
   const contextPrefix = companyContext ? `${companyContext}\n\n` : "";
   const historyPrefix = conversationContext
     ? `Recent conversation:\n${conversationContext}\n\nUse this only to interpret follow-up wording. Evidence remains the source of truth.\n\n`
     : "";
-  const userPrompt = `${contextPrefix}${historyPrefix}Evidence:\n\n${context}\n\nQuestion: ${query}`;
+  const evidenceSection = context ? `Evidence:\n\n${context}\n\n` : "";
+  const noteSection = noteContext ? `Knowledge notes:\n\n${noteContext}\n\n` : "";
+  const userPrompt = `${contextPrefix}${historyPrefix}${evidenceSection}${noteSection}Question: ${query}`;
 
   try {
     const answer = await ask(userPrompt, ASK_SYSTEM_PROMPT, {
@@ -284,6 +303,7 @@ export async function answerWithEvidence(
         refused: true,
         refusalReason: gate.reason,
         evidenceRefs: results.map((r) => r.id),
+        noteRefs: notes.map((note) => note.id),
         agentKey: options.agentKey,
         escalationRequired: true,
         escalationReason: gate.reason
@@ -319,6 +339,7 @@ export async function answerWithEvidence(
         refused: true,
         refusalReason: "red_team_violation",
         evidenceRefs: results.map((r) => r.id),
+        noteRefs: notes.map((note) => note.id),
         agentKey: options.agentKey,
         escalationRequired: true,
         escalationReason: "red_team_violation"
@@ -345,6 +366,7 @@ export async function answerWithEvidence(
         refused: true,
         refusalReason: "approval_threshold",
         evidenceRefs: results.map((r) => r.id),
+        noteRefs: notes.map((note) => note.id),
         agentKey: options.agentKey,
         escalationRequired: true,
         escalationReason: "approval_threshold"
@@ -357,19 +379,24 @@ export async function answerWithEvidence(
       freshnessHours: minFreshness,
       refused: false,
       evidenceRefs: results.map((r) => r.id),
+      noteRefs: notes.map((note) => note.id),
       agentKey: options.agentKey,
       escalationRequired: gate.escalationRequired,
       escalationReason: gate.escalationRequired ? gate.reason : undefined
     };
   } catch {
     // LLM call failed - fallback to bullet summary so the app still works
-    const fallback = results.map((r) => `- ${r.text}`).join("\n");
+    const fallback = [
+      ...results.map((r) => `- ${r.text}`),
+      ...notes.map((note) => `- ${note.title}: ${note.body.slice(0, 260)}`)
+    ].join("\n");
     return {
       answer: `Evidence summary (AI synthesis unavailable):\n${fallback}`,
       confidence: avgConfidence,
       freshnessHours: minFreshness,
       refused: false,
       evidenceRefs: results.map((r) => r.id),
+      noteRefs: notes.map((note) => note.id),
       agentKey: options.agentKey
     };
   }

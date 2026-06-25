@@ -12,6 +12,8 @@ NexusAI's largest variable cost is LLM token consumption. Without tier-based usa
 
 The pricing must also serve two very different buyer profiles: an SME owner who pays with a credit card and a regulated bank that goes through procurement. The tier structure handles both without splitting the product.
 
+The buyer-lane strategy is documented in `docs/USER_STRATEGY_AND_PIVOTS.md`. Pricing should reinforce that route: readiness assessment -> buyer lane -> signup/onboarding -> first workflow pilot -> governed value proof.
+
 ---
 
 ## 2. Tier Structure
@@ -34,6 +36,19 @@ The pricing must also serve two very different buyer profiles: an SME owner who 
 | **Support** | Self-serve (docs only) | Email (48hr SLA) | Email (4hr SLA) | Dedicated CSM |
 | **Branding** | NexusAI watermark on exports | Clean exports | Clean exports | White-label option |
 | **API access** | No | 3 API keys | 10 API keys | Unlimited |
+
+---
+
+## 2.1 Buyer-Lane Mapping
+
+| Plan | Buyer lane | Upgrade moment | Product posture |
+| --- | --- | --- | --- |
+| Free | Evaluator / SME | User wants more evidence, more Ask capacity, exports, or scheduled synthesis. | Lead capture and guided proof, not a freemium trap. |
+| Pro | SME self-serve | Owner-led team wants weekly operating intelligence from uploaded sources. | Plain-language value, low setup, credit-card purchase. |
+| Business | Business / advisory | Sponsor wants a paid workflow pilot, exports, decision twin, and multiple roles. | Pilot operating layer with measurable workflow ROI. |
+| Enterprise | Regulated enterprise | Buyer needs procurement, security review, data residency, SLA, or multi-workspace governance. | Governed deployment path, not self-serve checkout. |
+
+Every paid conversion should connect to a first workflow target and one measurable value proof, even when the transaction happens through Stripe.
 
 ---
 

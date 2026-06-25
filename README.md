@@ -6,7 +6,7 @@
 
 Nexus Core is a source-available executive intelligence command layer that turns documents and communications into evidence-backed specialist-agent briefs, decisions, and recommendations.
 
-If you want a faster way to understand what matters across your company, Nexus gives you a team of evidence-backed AI analysts, each focused on a business function, with human approval built in.
+If you want a faster way to understand what matters across your company, Nexus gives you a team of evidence-backed AI analysts, each focused on a business function, with human approval and a governed company knowledge workspace built in.
 
 ![Nexus preview](demo/preview.svg)
 
@@ -36,10 +36,13 @@ nexus doctor
 - Extracts structured signals (risks, opportunities, tasks, decisions, KPIs).
 - Maps findings to a lightweight enterprise ontology.
 - Produces specialist-agent briefs across strategy, risk, execution, growth, technology, data, security, and AI governance.
+- Provides an Obsidian-like Knowledge Workspace for markdown notes, backlinks, graph view, import/export, local vault sync, and MCP memory access.
 - Preserves provenance so each insight links back to source evidence.
 
 ## V1 Product Scope
-Nexus Core V1 is designed for paid enterprise pilots (6-8 weeks), not broad self-serve production rollout.
+Nexus Core V1 is designed for paid pilots and readiness-led onboarding, not broad self-serve production rollout. The user strategy is readiness-first: assess the buyer lane, choose a first workflow, then prove value through governed evidence and human review. See [docs/USER_STRATEGY_AND_PIVOTS.md](docs/USER_STRATEGY_AND_PIVOTS.md).
+
+For the cross-document planning view, see [BACKLOG.md](BACKLOG.md). It separates shipped code, production-readiness gates, product backlog, connector backlog, design backlog, and deferred scale items.
 
 Included in V1:
 - Mission control data contracts and templates
@@ -60,6 +63,7 @@ Core components:
 - Evidence ingestion and confidence routing
 - Specialist agent briefs by role and room
 - Company Memory entity pages and backlinks
+- Knowledge Workspace notes, backlinks, graph, and vault portability
 - Human review queue with audit trail
 - Agent Control Profiles (governance passports)
 - Connector layer for documents, comms, and operational data
@@ -85,6 +89,19 @@ Then open `http://localhost:3000` and sign in through Clerk. New users are route
 
 For a local demo without a configured database, keep `NEXUS_DB_REQUIRED=false` and use the in-memory fallback. For a production-like run, set `DATABASE_URL`, Clerk keys, LLM keys, and run the migrations before starting the app.
 
+Knowledge Workspace:
+- route: `/knowledge`
+- docs: [docs/KNOWLEDGE_WORKSPACE.md](docs/KNOWLEDGE_WORKSPACE.md)
+- MCP wrapper: `npm run mcp:knowledge -w @nexus/mission-control`
+- optional local sync:
+
+```bash
+NEXUS_VAULT_SYNC=disabled # disabled | readonly | bidirectional
+NEXUS_LOCAL_VAULT_PATH=/absolute/path/to/vault
+```
+
+Hosted deployments should keep live local sync disabled and use ZIP import/export for Markdown portability.
+
 Database mode:
 - `NEXUS_DB_REQUIRED=false` (default for local dev): app can fall back to in-memory store if DB is unavailable.
 - `NEXUS_DB_REQUIRED=true` (recommended for staging/prod): startup fails fast unless `DATABASE_URL` is valid and reachable.
@@ -97,6 +114,8 @@ npm run db:seed
 ```
 
 Pilot operations docs:
+- [docs/USER_STRATEGY_AND_PIVOTS.md](docs/USER_STRATEGY_AND_PIVOTS.md)
+- [docs/KNOWLEDGE_WORKSPACE.md](docs/KNOWLEDGE_WORKSPACE.md)
 - [docs/PILOT_ONBOARDING_CHECKLIST.md](docs/PILOT_ONBOARDING_CHECKLIST.md)
 - [docs/SECURITY_DATA_HANDLING.md](docs/SECURITY_DATA_HANDLING.md)
 - [docs/PILOT_SUCCESS_SCORECARD.md](docs/PILOT_SUCCESS_SCORECARD.md)
@@ -150,8 +169,10 @@ See [docs/PRODUCTION_READINESS.md](docs/PRODUCTION_READINESS.md) for:
 - hardening priorities before production
 
 ## Ideal Pilot Buyer
-- CEO / COO / Chief Strategy Officer / Managing Director
-- Transformation office sponsors who need faster, trusted situational awareness
+- Evaluator / SME owners who need one guided proof of value.
+- SME self-serve buyers who want plain-language operating intelligence from their own sources.
+- Business / advisory sponsors who can run a paid workflow pilot with a named reviewer.
+- Regulated enterprise sponsors who need governance, auditability, and no-autonomous-writeback controls.
 
 ## Why People Star This Repo
 - It is practical, not hype-driven.

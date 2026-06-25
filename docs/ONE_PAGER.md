@@ -27,10 +27,20 @@ It helps leadership answer:
 Most teams already have data and documents, but decision context is scattered.
 NexusAI consolidates that context into role-aware outputs with provenance, confidence, and freshness so leaders can act faster with less ambiguity.
 
+## How Engagement Starts
+NexusAI starts with an AI-native readiness assessment, then routes the client into the right path:
+- Evaluator / SME: guided proof with one owner/CEO operating view.
+- SME self-serve: uploaded source bundle, plain-language briefs, and a narrow owner workflow.
+- Business / advisory: paid workflow pilot with sponsor, reviewer, exports, and measured value.
+- Regulated enterprise: governance-first pilot with agent passports, approval gates, sensitivity controls, and procurement/security review.
+
+The engagement path follows the strategy in `docs/USER_STRATEGY_AND_PIVOTS.md`: readiness -> buyer lane -> onboarding -> first workflow pilot -> governed value proof.
+
 ## V1 Pilot Scope (6-8 Weeks)
 - Source bundle: docs + comms
 - Inputs: Drive/SharePoint folders, Slack/Teams channels, uploaded files, meeting notes
-- Outputs: executive briefs, risk/recommendation pipeline, decision logs
+- First workflow: selected through readiness and workflow scoring, with sponsor and reviewer named
+- Outputs: executive briefs, risk/recommendation pipeline, decision logs, workflow score, and shadow ROI evidence
 - Governance: human approval required for consequential recommendations
 
 ## What Makes It Credible
@@ -56,10 +66,14 @@ The V1.1 governance hardening path adds Agent Control Profiles ("passports"), se
 - Reduction in time-to-brief for executive reviews
 - Improved clarity on active risks and decision ownership
 - Increased recommendation adoption with traceable rationale
+- First workflow selected, measured, and reviewed with sponsor sign-off
+- Shadow ROI captured before renewal or expansion claims
 
 ## Ideal Buyer
 - CEO / COO / CSO / Managing Director
 - Transformation sponsor needing fast, reliable strategic visibility
+- Owner/operator who needs plain-language operating intelligence
+- Regulated or institution-facing sponsor who needs governance before automation
 
 ## Engagement Model
 - Paid pilot with defined scope and success criteria

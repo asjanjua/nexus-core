@@ -3,7 +3,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { verifyPassword } from "@/lib/auth";
 import { store } from "@/lib/data/store";
-import type { Action, ActionInput, ActionStatus, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, DispatchJob, DispatchJobInput, DispatchJobStatus, Entity, EntityInput, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, LearningSignal, LearningSignalInput, LearningSignalSummary, PromptRegistryEntry, Recommendation, RecommendationStatus, Role, SynthesisSchedule, SynthesisScheduleInput, SynthesisScheduleStatus, WorkflowTwin, WorkflowTwinInput, WorkflowTwinRun, WorkflowTwinRunInput, WorkflowTwinRunStatus, WorkflowTwinStatus, WorkflowTwinType, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
+import type { Action, ActionInput, ActionStatus, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, DispatchJob, DispatchJobInput, DispatchJobStatus, Entity, EntityInput, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, KnowledgeLink, KnowledgeNote, KnowledgeNoteInput, KnowledgeSearchResult, KnowledgeSyncEvent, LearningSignal, LearningSignalInput, LearningSignalSummary, PromptRegistryEntry, Recommendation, RecommendationStatus, Role, SynthesisSchedule, SynthesisScheduleInput, SynthesisScheduleStatus, WorkflowTwin, WorkflowTwinInput, WorkflowTwinRun, WorkflowTwinRunInput, WorkflowTwinRunStatus, WorkflowTwinStatus, WorkflowTwinType, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
 import { assertDbConfigured, isDbRequired } from "@/lib/data/db-policy";
 
 // In-memory idempotency cache for Stripe events (fallback when DB is unavailable).
@@ -27,6 +27,9 @@ import {
   evalRuns,
   evidenceEntityLinks,
   evidenceRecords,
+  knowledgeLinks,
+  knowledgeNotes,
+  knowledgeSyncEvents,
   learningSignals,
   llmUsage,
   promptRegistry,
@@ -46,6 +49,7 @@ import {
   type recommendationStatusEnum,
   type ingestionStatusEnum
 } from "@/db/schema";
+import { buildKnowledgeGraph, buildKnowledgeLinks, defaultKnowledgePath, extractKnowledge, searchKnowledgeNotes } from "@/lib/knowledge/markdown";
 
 export type WorkspaceStatus = "trial" | "pilot" | "active" | "suspended" | "cancelled";
 
@@ -94,6 +98,55 @@ function toConnector(row: typeof connectors.$inferSelect): ConnectorRecord {
     lastSyncAt: row.lastSyncAt?.toISOString(),
     syncError: row.syncError ?? undefined,
     config: (row.config as Record<string, unknown>) ?? {}
+  };
+}
+
+function toKnowledgeNote(row: typeof knowledgeNotes.$inferSelect): KnowledgeNote {
+  return {
+    id: row.id,
+    workspaceId: row.workspaceId,
+    title: row.title,
+    path: row.path,
+    body: row.body,
+    tags: Array.isArray(row.tags) ? row.tags : [],
+    sensitivity: row.sensitivity,
+    status: row.status,
+    sourceKind: row.sourceKind,
+    frontmatter: row.frontmatter && typeof row.frontmatter === "object" ? row.frontmatter as Record<string, unknown> : {},
+    evidenceRefs: Array.isArray(row.evidenceRefs) ? row.evidenceRefs : [],
+    entityRefs: Array.isArray(row.entityRefs) ? row.entityRefs : [],
+    workflowRefs: Array.isArray(row.workflowRefs) ? row.workflowRefs : [],
+    decisionRefs: Array.isArray(row.decisionRefs) ? row.decisionRefs : [],
+    recommendationRefs: Array.isArray(row.recommendationRefs) ? row.recommendationRefs : [],
+    createdBy: row.createdBy,
+    updatedBy: row.updatedBy ?? null,
+    createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt),
+    updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : String(row.updatedAt)
+  };
+}
+
+function toKnowledgeLink(row: typeof knowledgeLinks.$inferSelect): KnowledgeLink {
+  return {
+    id: row.id,
+    workspaceId: row.workspaceId,
+    sourceNoteId: row.sourceNoteId,
+    targetType: row.targetType,
+    targetId: row.targetId,
+    label: row.label,
+    createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt)
+  };
+}
+
+function toKnowledgeSyncEvent(row: typeof knowledgeSyncEvents.$inferSelect): KnowledgeSyncEvent {
+  return {
+    id: row.id,
+    workspaceId: row.workspaceId,
+    type: row.type,
+    path: row.path ?? null,
+    noteId: row.noteId ?? null,
+    status: row.status,
+    message: row.message ?? null,
+    createdAt: row.createdAt instanceof Date ? row.createdAt.toISOString() : String(row.createdAt)
   };
 }
 
@@ -583,6 +636,225 @@ export const repository = {
       });
     }
     return saved;
+  },
+
+  async listKnowledgeNotes(workspaceId: string, options: { query?: string; limit?: number } = {}): Promise<KnowledgeNote[]> {
+    const limit = Math.min(500, Math.max(1, options.limit ?? 100));
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(knowledgeNotes)
+        .where(sql`${knowledgeNotes.workspaceId} = ${workspaceId} AND ${knowledgeNotes.status} <> 'deleted'`)
+        .orderBy(desc(knowledgeNotes.updatedAt))
+        .limit(limit)
+    );
+    if (!rows) return store.listKnowledgeNotes(workspaceId, options);
+    const notes = rows.map(toKnowledgeNote);
+    if (options.query) return searchKnowledgeNotes(notes, options.query, limit).map((result) => result.note);
+    return notes;
+  },
+
+  async getKnowledgeNote(workspaceId: string, id: string): Promise<KnowledgeNote | null> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(knowledgeNotes)
+        .where(sql`${knowledgeNotes.workspaceId} = ${workspaceId} AND ${knowledgeNotes.id} = ${id} AND ${knowledgeNotes.status} <> 'deleted'`)
+        .limit(1)
+    );
+    if (!rows) return store.getKnowledgeNote(workspaceId, id);
+    return rows[0] ? toKnowledgeNote(rows[0]) : null;
+  },
+
+  async getKnowledgeNoteByPath(workspaceId: string, path: string): Promise<KnowledgeNote | null> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(knowledgeNotes)
+        .where(sql`${knowledgeNotes.workspaceId} = ${workspaceId} AND lower(${knowledgeNotes.path}) = ${path.toLowerCase()} AND ${knowledgeNotes.status} <> 'deleted'`)
+        .limit(1)
+    );
+    if (!rows) return store.getKnowledgeNoteByPath(workspaceId, path);
+    return rows[0] ? toKnowledgeNote(rows[0]) : null;
+  },
+
+  async upsertKnowledgeNote(workspaceId: string, input: KnowledgeNoteInput, actor: string, id?: string): Promise<KnowledgeNote> {
+    const now = new Date();
+    const path = input.path ?? defaultKnowledgePath(input.title);
+    const extracted = extractKnowledge(input.body, input.frontmatter);
+    const tags = Array.from(new Set([...(input.tags ?? []), ...extracted.tags]));
+    const evidenceRefs = Array.from(new Set([...(input.evidenceRefs ?? []), ...extracted.evidenceRefs]));
+    const entityRefs = Array.from(new Set([...(input.entityRefs ?? []), ...extracted.entityRefs]));
+    const workflowRefs = Array.from(new Set([...(input.workflowRefs ?? []), ...extracted.workflowRefs]));
+    const decisionRefs = Array.from(new Set([...(input.decisionRefs ?? []), ...extracted.decisionRefs]));
+    const recommendationRefs = Array.from(new Set([...(input.recommendationRefs ?? []), ...extracted.recommendationRefs]));
+    const noteId = id ?? `kn-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+
+    const saved = await runDb(async (db) => {
+      const existing = id
+        ? await db.select().from(knowledgeNotes).where(sql`${knowledgeNotes.workspaceId} = ${workspaceId} AND ${knowledgeNotes.id} = ${id}`).limit(1)
+        : await db.select().from(knowledgeNotes).where(sql`${knowledgeNotes.workspaceId} = ${workspaceId} AND lower(${knowledgeNotes.path}) = ${path.toLowerCase()}`).limit(1);
+      const existingRow = existing[0];
+      const finalId = existingRow?.id ?? noteId;
+      const values = {
+        id: finalId,
+        workspaceId,
+        title: input.title,
+        path,
+        body: input.body,
+        tags,
+        sensitivity: input.sensitivity,
+        status: input.status,
+        sourceKind: input.sourceKind,
+        frontmatter: input.frontmatter,
+        evidenceRefs,
+        entityRefs,
+        workflowRefs,
+        decisionRefs,
+        recommendationRefs,
+        createdBy: existingRow?.createdBy ?? actor,
+        updatedBy: actor,
+        createdAt: existingRow?.createdAt ?? now,
+        updatedAt: now
+      };
+
+      let row: typeof knowledgeNotes.$inferSelect | undefined;
+      if (existingRow) {
+        [row] = await db
+          .update(knowledgeNotes)
+          .set({
+            title: values.title,
+            path: values.path,
+            body: values.body,
+            tags: values.tags,
+            sensitivity: values.sensitivity,
+            status: values.status,
+            sourceKind: values.sourceKind,
+            frontmatter: values.frontmatter,
+            evidenceRefs: values.evidenceRefs,
+            entityRefs: values.entityRefs,
+            workflowRefs: values.workflowRefs,
+            decisionRefs: values.decisionRefs,
+            recommendationRefs: values.recommendationRefs,
+            updatedBy: actor,
+            updatedAt: now
+          })
+          .where(eq(knowledgeNotes.id, finalId))
+          .returning();
+      } else {
+        [row] = await db.insert(knowledgeNotes).values(values).returning();
+      }
+
+      const note = row ? toKnowledgeNote(row) : null;
+      if (!note) return null;
+      await db.delete(knowledgeLinks).where(sql`${knowledgeLinks.workspaceId} = ${workspaceId} AND ${knowledgeLinks.sourceNoteId} = ${note.id}`);
+      const links = buildKnowledgeLinks(note);
+      if (links.length) {
+        await db.insert(knowledgeLinks).values(
+          links.map((link, index) => ({
+            id: `kl-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 6)}`,
+            workspaceId,
+            sourceNoteId: note.id,
+            targetType: link.targetType,
+            targetId: link.targetId,
+            label: link.label,
+            createdAt: now
+          }))
+        );
+      }
+      await db.insert(auditEvents).values({
+        id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        workspaceId,
+        type: existingRow ? "knowledge_note_updated" : "knowledge_note_created",
+        actor,
+        payload: { noteId: note.id, path: note.path, sourceKind: note.sourceKind },
+        createdAt: now
+      });
+      return note;
+    });
+
+    if (saved) return saved;
+    const note = store.upsertKnowledgeNote(workspaceId, { ...input, path }, actor, id);
+    store.pushAudit({
+      workspaceId,
+      type: id ? "knowledge_note_updated" : "knowledge_note_created",
+      actor,
+      payload: { noteId: note.id, path: note.path, sourceKind: note.sourceKind }
+    });
+    return note;
+  },
+
+  async deleteKnowledgeNote(workspaceId: string, id: string, actor: string): Promise<boolean> {
+    const deleted = await runDb(async (db) => {
+      const rows = await db
+        .update(knowledgeNotes)
+        .set({ status: "deleted", updatedBy: actor, updatedAt: new Date() })
+        .where(sql`${knowledgeNotes.workspaceId} = ${workspaceId} AND ${knowledgeNotes.id} = ${id}`)
+        .returning();
+      await db.delete(knowledgeLinks).where(sql`${knowledgeLinks.workspaceId} = ${workspaceId} AND ${knowledgeLinks.sourceNoteId} = ${id}`);
+      return rows.length > 0;
+    });
+    if (deleted !== null) return deleted;
+    return store.deleteKnowledgeNote(workspaceId, id, actor);
+  },
+
+  async listKnowledgeLinks(workspaceId: string, sourceNoteId?: string): Promise<KnowledgeLink[]> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(knowledgeLinks)
+        .where(sql`${knowledgeLinks.workspaceId} = ${workspaceId} ${sourceNoteId ? sql`AND ${knowledgeLinks.sourceNoteId} = ${sourceNoteId}` : sql``}`)
+    );
+    if (!rows) return store.listKnowledgeLinks(workspaceId, sourceNoteId);
+    return rows.map(toKnowledgeLink);
+  },
+
+  async searchKnowledge(workspaceId: string, query: string, limit = 20): Promise<KnowledgeSearchResult[]> {
+    const notes = await repository.listKnowledgeNotes(workspaceId, { limit: 500 });
+    return searchKnowledgeNotes(notes, query, limit);
+  },
+
+  async getKnowledgeGraph(workspaceId: string) {
+    const [notes, links] = await Promise.all([
+      repository.listKnowledgeNotes(workspaceId, { limit: 500 }),
+      repository.listKnowledgeLinks(workspaceId)
+    ]);
+    return buildKnowledgeGraph(notes, links);
+  },
+
+  async recordKnowledgeSyncEvent(input: Omit<KnowledgeSyncEvent, "id" | "createdAt">): Promise<KnowledgeSyncEvent> {
+    const now = new Date();
+    const saved = await runDb(async (db) => {
+      const [row] = await db
+        .insert(knowledgeSyncEvents)
+        .values({
+          id: `kse-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          workspaceId: input.workspaceId,
+          type: input.type,
+          path: input.path ?? null,
+          noteId: input.noteId ?? null,
+          status: input.status,
+          message: input.message ?? null,
+          createdAt: now
+        })
+        .returning();
+      return toKnowledgeSyncEvent(row);
+    });
+    if (saved) return saved;
+    return store.recordKnowledgeSyncEvent(input);
+  },
+
+  async listKnowledgeSyncEvents(workspaceId: string, limit = 20): Promise<KnowledgeSyncEvent[]> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(knowledgeSyncEvents)
+        .where(eq(knowledgeSyncEvents.workspaceId, workspaceId))
+        .orderBy(desc(knowledgeSyncEvents.createdAt))
+        .limit(limit)
+    );
+    if (!rows) return store.listKnowledgeSyncEvents(workspaceId, limit);
+    return rows.map(toKnowledgeSyncEvent);
   },
 
   async addRecommendation(rec: Omit<Recommendation, "createdAt" | "updatedAt">): Promise<Recommendation> {

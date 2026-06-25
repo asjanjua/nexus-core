@@ -54,6 +54,9 @@ export const workspaceStatusEnum = pgEnum("workspace_status", ["trial", "pilot",
 export const ingestionStatusEnum = pgEnum("ingestion_status", ["queued", "triaged", "pending_approval", "quarantined", "processed", "failed"]);
 export const recommendationStatusEnum = pgEnum("recommendation_status", ["draft", "in_review", "approved", "rejected", "promoted"]);
 export const decisionStatusEnum = pgEnum("decision_status", ["open", "decided", "superseded"]);
+export const knowledgeNoteStatusEnum = pgEnum("knowledge_note_status", ["active", "archived", "deleted"]);
+export const knowledgeSourceKindEnum = pgEnum("knowledge_source_kind", ["manual", "import", "sync", "automation", "mcp"]);
+export const knowledgeLinkTypeEnum = pgEnum("knowledge_link_type", ["note", "evidence", "entity", "workflow_twin", "decision", "recommendation"]);
 export const agentControlStatusEnum = pgEnum("agent_control_status", ["draft", "active", "suspended"]);
 export const actionRightEnum = pgEnum("action_right", ["retrieve", "summarize", "draft", "recommend", "prepare_for_approval"]);
 export const riskRatingEnum = pgEnum("agent_risk_rating", ["low", "medium", "high", "regulated"]);
@@ -171,6 +174,50 @@ export const evidenceEntityLinks = pgTable("evidence_entity_links", {
   evidenceId: text("evidence_id").notNull().references(() => evidenceRecords.id, { onDelete: "cascade" }),
   entityId: text("entity_id").notNull().references(() => entities.id, { onDelete: "cascade" }),
   confidence: integer("confidence").notNull().default(70),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+});
+
+export const knowledgeNotes = pgTable("knowledge_notes", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull(),
+  title: varchar("title", { length: 200 }).notNull(),
+  path: text("path").notNull(),
+  body: text("body").notNull(),
+  tags: jsonb("tags").$type<string[]>().default([]).notNull(),
+  sensitivity: sensitivityEnum("sensitivity").notNull().default("internal"),
+  status: knowledgeNoteStatusEnum("status").notNull().default("active"),
+  sourceKind: knowledgeSourceKindEnum("source_kind").notNull().default("manual"),
+  frontmatter: jsonb("frontmatter").$type<Record<string, unknown>>().default({}).notNull(),
+  evidenceRefs: jsonb("evidence_refs").$type<string[]>().default([]).notNull(),
+  entityRefs: jsonb("entity_refs").$type<string[]>().default([]).notNull(),
+  workflowRefs: jsonb("workflow_refs").$type<string[]>().default([]).notNull(),
+  decisionRefs: jsonb("decision_refs").$type<string[]>().default([]).notNull(),
+  recommendationRefs: jsonb("recommendation_refs").$type<string[]>().default([]).notNull(),
+  embedding: vector("embedding"),
+  createdBy: text("created_by").notNull(),
+  updatedBy: text("updated_by"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+});
+
+export const knowledgeLinks = pgTable("knowledge_links", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull(),
+  sourceNoteId: text("source_note_id").notNull().references(() => knowledgeNotes.id, { onDelete: "cascade" }),
+  targetType: knowledgeLinkTypeEnum("target_type").notNull(),
+  targetId: text("target_id").notNull(),
+  label: text("label").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+});
+
+export const knowledgeSyncEvents = pgTable("knowledge_sync_events", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull(),
+  type: varchar("type", { length: 80 }).notNull(),
+  path: text("path"),
+  noteId: text("note_id"),
+  status: varchar("status", { length: 40 }).notNull(),
+  message: text("message"),
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
 });
 

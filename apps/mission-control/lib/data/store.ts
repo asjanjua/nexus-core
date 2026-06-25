@@ -13,6 +13,10 @@ import {
   type EntityInput,
   type EvidenceRecord,
   type IngestionStatus,
+  type KnowledgeLink,
+  type KnowledgeNote,
+  type KnowledgeNoteInput,
+  type KnowledgeSyncEvent,
   type LearningSignal,
   type Recommendation,
   type RecommendationStatus,
@@ -29,6 +33,7 @@ import {
   type WorkspaceSettings
 } from "@/lib/contracts";
 import type { ConnectorRecord } from "@/lib/data/repository";
+import { buildKnowledgeLinks, defaultKnowledgePath, extractKnowledge, searchKnowledgeNotes } from "@/lib/knowledge/markdown";
 
 type AuditEvent = {
   id: string;
@@ -150,6 +155,9 @@ const entityStore: Entity[] = [];
 const synthesisScheduleStore: SynthesisSchedule[] = [];
 const workflowTwinStore: WorkflowTwin[] = [];
 const workflowTwinRunStore: WorkflowTwinRun[] = [];
+const knowledgeNoteStore: KnowledgeNote[] = [];
+const knowledgeLinkStore: KnowledgeLink[] = [];
+const knowledgeSyncEventStore: KnowledgeSyncEvent[] = [];
 
 // Agent keys in-memory store (keyed by workspaceId)
 type StoredAgentKey = AgentKey & { keyHash: string };
@@ -205,6 +213,8 @@ export const store = {
   entities: entityStore,
   workflowTwins: workflowTwinStore,
   workflowTwinRuns: workflowTwinRunStore,
+  knowledgeNotes: knowledgeNoteStore,
+  knowledgeLinks: knowledgeLinkStore,
   dispatchJobs: dispatchJobStore,
   getEvidenceById(id: string): EvidenceRecord | undefined {
     return evidence.find((item) => item.id === id);
@@ -249,6 +259,105 @@ export const store = {
     };
     entityStore.push(record);
     return record;
+  },
+  listKnowledgeNotes(workspaceId: string, options: { query?: string; limit?: number } = {}): KnowledgeNote[] {
+    const notes = knowledgeNoteStore
+      .filter((note) => note.workspaceId === workspaceId && note.status !== "deleted")
+      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    if (options.query) return searchKnowledgeNotes(notes, options.query, options.limit ?? 50).map((result) => result.note);
+    return notes.slice(0, options.limit ?? 100);
+  },
+  getKnowledgeNote(workspaceId: string, id: string): KnowledgeNote | null {
+    return knowledgeNoteStore.find((note) => note.workspaceId === workspaceId && note.id === id && note.status !== "deleted") ?? null;
+  },
+  getKnowledgeNoteByPath(workspaceId: string, path: string): KnowledgeNote | null {
+    return knowledgeNoteStore.find((note) => note.workspaceId === workspaceId && note.path.toLowerCase() === path.toLowerCase() && note.status !== "deleted") ?? null;
+  },
+  upsertKnowledgeNote(workspaceId: string, input: KnowledgeNoteInput, actor: string, id?: string): KnowledgeNote {
+    const now = nowIso();
+    const existing = id
+      ? knowledgeNoteStore.find((note) => note.workspaceId === workspaceId && note.id === id)
+      : input.path
+        ? knowledgeNoteStore.find((note) => note.workspaceId === workspaceId && note.path.toLowerCase() === input.path?.toLowerCase())
+        : undefined;
+    const extracted = extractKnowledge(input.body, input.frontmatter);
+    const record: KnowledgeNote = {
+      id: existing?.id ?? `kn-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      workspaceId,
+      title: input.title,
+      path: input.path ?? existing?.path ?? defaultKnowledgePath(input.title),
+      body: input.body,
+      tags: Array.from(new Set([...(input.tags ?? []), ...extracted.tags])),
+      sensitivity: input.sensitivity ?? "internal",
+      status: input.status ?? "active",
+      sourceKind: input.sourceKind ?? "manual",
+      frontmatter: input.frontmatter ?? {},
+      evidenceRefs: Array.from(new Set([...(input.evidenceRefs ?? []), ...extracted.evidenceRefs])),
+      entityRefs: Array.from(new Set([...(input.entityRefs ?? []), ...extracted.entityRefs])),
+      workflowRefs: Array.from(new Set([...(input.workflowRefs ?? []), ...extracted.workflowRefs])),
+      decisionRefs: Array.from(new Set([...(input.decisionRefs ?? []), ...extracted.decisionRefs])),
+      recommendationRefs: Array.from(new Set([...(input.recommendationRefs ?? []), ...extracted.recommendationRefs])),
+      createdBy: existing?.createdBy ?? actor,
+      updatedBy: actor,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now
+    };
+    const idx = knowledgeNoteStore.findIndex((note) => note.id === record.id);
+    if (idx >= 0) knowledgeNoteStore[idx] = record;
+    else knowledgeNoteStore.push(record);
+    this.replaceKnowledgeLinks(workspaceId, record.id, buildKnowledgeLinks(record));
+    return record;
+  },
+  deleteKnowledgeNote(workspaceId: string, id: string, actor = "system"): boolean {
+    const note = knowledgeNoteStore.find((item) => item.workspaceId === workspaceId && item.id === id);
+    if (!note) return false;
+    note.status = "deleted";
+    note.updatedAt = nowIso();
+    note.updatedBy = actor;
+    knowledgeLinkStore.splice(0, knowledgeLinkStore.length, ...knowledgeLinkStore.filter((link) => link.sourceNoteId !== id));
+    return true;
+  },
+  replaceKnowledgeLinks(
+    workspaceId: string,
+    sourceNoteId: string,
+    links: Array<Omit<KnowledgeLink, "id" | "workspaceId" | "sourceNoteId" | "createdAt">>
+  ): KnowledgeLink[] {
+    const now = nowIso();
+    for (let i = knowledgeLinkStore.length - 1; i >= 0; i--) {
+      if (knowledgeLinkStore[i].workspaceId === workspaceId && knowledgeLinkStore[i].sourceNoteId === sourceNoteId) {
+        knowledgeLinkStore.splice(i, 1);
+      }
+    }
+    const records = links.map((link, index) => ({
+      id: `kl-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 6)}`,
+      workspaceId,
+      sourceNoteId,
+      ...link,
+      createdAt: now
+    }));
+    knowledgeLinkStore.push(...records);
+    return records;
+  },
+  listKnowledgeLinks(workspaceId: string, sourceNoteId?: string): KnowledgeLink[] {
+    return knowledgeLinkStore.filter((link) => link.workspaceId === workspaceId && (!sourceNoteId || link.sourceNoteId === sourceNoteId));
+  },
+  searchKnowledge(workspaceId: string, query: string, limit = 20) {
+    return searchKnowledgeNotes(this.listKnowledgeNotes(workspaceId, { limit: 500 }), query, limit);
+  },
+  recordKnowledgeSyncEvent(input: Omit<KnowledgeSyncEvent, "id" | "createdAt">): KnowledgeSyncEvent {
+    const event: KnowledgeSyncEvent = {
+      id: `kse-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      createdAt: nowIso(),
+      ...input
+    };
+    knowledgeSyncEventStore.push(event);
+    return event;
+  },
+  listKnowledgeSyncEvents(workspaceId: string, limit = 20): KnowledgeSyncEvent[] {
+    return knowledgeSyncEventStore
+      .filter((event) => event.workspaceId === workspaceId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, limit);
   },
   addRecommendation(rec: Recommendation): Recommendation {
     recommendations.push(rec);

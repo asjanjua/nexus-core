@@ -5,6 +5,8 @@ This document gives client-facing language for NexusAI's governance layer. It sh
 
 The goal is to describe oversight clearly without overclaiming autonomy.
 
+The broader buyer-lane strategy is documented in `docs/USER_STRATEGY_AND_PIVOTS.md`. This document supplies the trust language for each lane while preserving the human-approval boundary.
+
 ## Core Message
 NexusAI is designed as an evidence-backed executive intelligence layer with human accountability built in. Agents can retrieve, summarize, draft, and recommend, but consequential actions remain behind approval gates. Every output should be traceable to source evidence, policy controls, and review history.
 
@@ -43,6 +45,20 @@ NexusAI does not make binding compliance, legal, or regulatory commitments. It c
 
 ### Consulting Sponsor
 NexusAI creates a repeatable transformation on-ramp: readiness assessment, workflow scoring, pilot scope, shadow-mode measurement, and governance hardening.
+
+## Buyer-Lane Messaging
+
+### Evaluator / SME
+Use simple confidence and source language. Say: "NexusAI shows what it used, how confident it is, and what needs your review." Avoid enterprise governance jargon unless the user asks.
+
+### SME Self-Serve
+Lead with plain-language operating clarity. Say: "Start with one owner workflow, upload the sources you already use, and get a weekly brief with evidence links and human review."
+
+### Business / Advisory
+Lead with repeatable pilot structure. Say: "NexusAI helps turn a readiness result into a scored workflow pilot with a named sponsor, reviewer, evidence bundle, and measurable shadow ROI."
+
+### Regulated Enterprise
+Lead with controls before intelligence. Say: "NexusAI runs in decision-support mode with agent passports, approval gates, sensitivity controls, audit logs, and no autonomous source-system writeback."
 
 ## Security Review Language
 For V1.1, NexusAI's governance hardening centers on Agent Control Profiles, searchable per-agent logs, rollback-ready output history, and learning-signal capture. These controls are designed so a reviewer can answer four questions for each agent:

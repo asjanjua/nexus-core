@@ -1,7 +1,7 @@
 # NexusAI Mission Control -- User Flows
 
-Updated: 2026-06-15
-Version: v0.18.3-design-flow
+Updated: 2026-06-17
+Version: v0.25.0-knowledge-workspace
 
 > This document describes the end-to-end journeys a user takes through NexusAI Mission Control.
 > It serves three audiences: pilot sponsors (what happens when I use this), developers (how the
@@ -64,6 +64,8 @@ This narrative demonstrates autonomy, control, evidence, and governance without 
 
 ## 1. First Contact -- Public Pages (No Login Required)
 
+The canonical user strategy is documented in `docs/USER_STRATEGY_AND_PIVOTS.md`. Public entry points should route users through readiness assessment -> buyer lane -> signup/onboarding -> first workflow pilot -> governed value proof.
+
 ### 1.1 AI-Native Readiness Assessment
 
 **Entry:** `/readiness` (public, no auth)
@@ -73,8 +75,9 @@ This narrative demonstrates autonomy, control, evidence, and governance without 
 2. Seven-dimension scoring questionnaire: AI maturity, data readiness, governance posture, executive alignment, technology stack, change readiness, and risk appetite.
 3. User submits answers.
 4. System scores each dimension, produces a readiness profile with strengths and gaps.
-5. `POST /api/readiness/submit` captures the lead (name, email, company) and audit-logs the assessment.
-6. User sees results immediately. Leap Associates receives the lead for follow-up.
+5. System assigns a directional buyer lane: evaluator/SME, SME self-serve, business/advisory, or regulated enterprise.
+6. `POST /api/readiness/submit` captures the lead (name, email, company, sector, size, role, scores, band, buyer lane, priority) and audit-logs the assessment.
+7. User sees results immediately. Leap Associates receives the lead for follow-up.
 
 **Why this matters:** This is the top-of-funnel entry point. A prospect who completes this is pre-qualified and has already self-assessed their AI readiness. The sales conversation starts from their score, not from zero.
 
@@ -94,9 +97,10 @@ This narrative demonstrates autonomy, control, evidence, and governance without 
 
 **Flow:**
 1. Clerk-hosted sign-up form. Email or SSO.
-2. On success, Clerk creates user and organization.
-3. System checks for an existing workspace. If none, redirects to `/onboarding`.
-4. If workspace exists, redirects to the user's default dashboard.
+2. If the user arrived from readiness, the lead context should be preserved through signup.
+3. On success, Clerk creates user and organization.
+4. System checks for an existing workspace. If none, redirects to `/onboarding`.
+5. If workspace exists, redirects to the user's default dashboard or active workflow.
 
 ### 2.2 Returning User Login
 
@@ -117,7 +121,7 @@ This is a 7-step wizard (`app/onboarding/wizard.tsx`). Each step must complete b
 
 ### Step 1 -- Workspace Provision
 
-System creates the workspace record. User sees a loading state while the backend provisions workspace settings, default policies, and initial audit event.
+System creates the workspace record. User sees a loading state while the backend provisions workspace settings, default policies, and initial audit event. If a readiness lead exists, the workspace profile should inherit company, sector, size, priority, readiness band, and buyer lane.
 
 ### Step 2 -- AI Discovery
 
@@ -130,6 +134,11 @@ The system uses `detectCompanyProfile()` to identify sector, sub-sector, stage, 
 System shows the detected company profile: name, sector, sub-sector, business model, stage, headcount band, and archetype (corporate, startup_scaleup, sme_physical, digital_native, professional_practice).
 
 User confirms or corrects. The archetype selection determines which roles are suggested, what brief language agents use, and which evidence types are expected.
+
+Buyer lane adjusts tone and defaults:
+- Evaluator / SME and SME self-serve get owner/operator language and a narrow first workflow.
+- Business / advisory gets sponsor-ready scope language and exportable pilot artifacts.
+- Regulated enterprise gets governance-first language, agent passports, sensitivity boundaries, and procurement/security prompts.
 
 ### Step 4 -- Role Selection
 
@@ -164,13 +173,13 @@ User sets a focus intent (free text, e.g., "What's blocking our growth and what 
 
 User selects a role dashboard to enter. The wizard passes the first suggested question as a query parameter so the Ask panel can pre-populate.
 
-**End state:** User lands in their first Agent Room with evidence already ingested and a question ready to ask.
+**End state:** User lands in their first Agent Room or `/workflows` with evidence already ingested and a first workflow candidate ready to score.
 
 ---
 
 ## 4. Daily Operation -- The Core Loop
 
-Once onboarded, the daily product loop has four surfaces: Dashboards (Agent Rooms), Ask, Decisions, and Approvals.
+Once onboarded, the daily product loop has five surfaces: Dashboards (Agent Rooms), Ask, Knowledge Workspace, Decisions, and Approvals.
 
 ### 4.1 Agent Room Dashboards
 
@@ -223,17 +232,54 @@ Once onboarded, the daily product loop has four surfaces: Dashboards (Agent Room
 4. `answerWithEvidence()` in `retrieval.ts`:
    a. If agentKey provided, load the agent's passport and apply `filterEvidenceByPassport()` before any search.
    b. Load all processed, non-restricted evidence for the workspace.
-   c. **Tier 1 (vector):** If `NEXUS_VECTOR_SEARCH=enabled`, embed the query via OpenAI text-embedding-3-small and run cosine similarity search against evidence embeddings.
-   d. **Tier 2 (keyword):** TF-style term matching with confidence bonus. Used when vector search is disabled, returns nothing, or fails.
-   e. Recent conversation turns are added only as interpretive context for follow-up wording.
-   f. Top-ranked candidates are sent to LLM with company context prefix.
-   g. LLM generates an evidence-backed answer with confidence and source references.
-   h. Output gate evaluation: escalation triggers route to human review, hard-stop patterns block.
-   i. If evidence is insufficient, system refuses to answer rather than speculate.
+   c. Search active, non-restricted Knowledge Workspace notes for related note context.
+   d. **Tier 1 (vector):** If `NEXUS_VECTOR_SEARCH=enabled`, embed the query via OpenAI text-embedding-3-small and run cosine similarity search against evidence embeddings.
+   e. **Tier 2 (keyword):** TF-style term matching with confidence bonus. Used when vector search is disabled, returns nothing, or fails.
+   f. Recent conversation turns are added only as interpretive context for follow-up wording.
+   g. Top-ranked evidence and notes are sent to LLM with company context prefix.
+   h. LLM generates a grounded answer with confidence and source references.
+   i. Output gate evaluation: escalation triggers route to human review, hard-stop patterns block.
+   j. If evidence and notes are both insufficient, system refuses to answer rather than speculate.
 5. User and assistant turns are persisted in `ask_conversation_messages`.
-6. Response returned with: answer text, confidence score, evidence references (with source path, type, timestamp), freshness signal, and any escalation flags.
+6. Response returned with: answer text, confidence score, `evidenceRefs`, `noteRefs`, freshness signal, and any escalation flags.
 
 **Clear history:** The Ask UI `Clear` button calls `DELETE /api/ask`, removing the current user's workspace-scoped conversation history.
+
+### 4.2a Knowledge Workspace
+
+**Entry:** `/knowledge`
+
+**Flow:**
+1. User opens the Knowledge Workspace from the Intelligence navigation group.
+2. The left pane loads the vault tree: `_Inbox`, `Daily`, `Projects`, `Workflows`, `Entities`, and `Sources`.
+3. User creates or selects a markdown note.
+4. The center pane supports edit, preview, and graph modes.
+5. User can write:
+   - `[[wikilinks]]` for note-to-note links
+   - `#tags` for searchable categories
+   - typed Nexus refs such as `evidence:ev-001`, `entity:<id>`, `workflow:<id>`, `decision:<id>`, or `recommendation:<id>`
+6. Saving a note calls `PATCH /api/knowledge/notes/[id]` or `POST /api/knowledge/notes`.
+7. The server parses frontmatter, tags, headings, wikilinks, and typed refs.
+8. Nexus upserts `knowledge_notes`, replaces `knowledge_links`, and refreshes backlinks/graph data.
+9. If bidirectional local sync is enabled, the server writes the Markdown representation to the configured local vault path.
+10. The right pane shows backlinks, typed Nexus links, portability controls, triage, and local sync status.
+
+**Import/export:**
+1. Export ZIP calls `POST /api/knowledge/export` and returns an Obsidian-compatible Markdown vault.
+2. Import ZIP calls `POST /api/knowledge/import`, parses Markdown/frontmatter/wikilinks/tags, and upserts notes by workspace/path.
+
+**Inbox triage:**
+1. User clicks `Triage Inbox`.
+2. `POST /api/knowledge/triage` moves `_Inbox` notes toward `Workflows`, `Entities`, `Sources`, `Projects`, or `Daily` based on typed refs and note content.
+
+**Local sync:**
+1. User sets `NEXUS_VAULT_SYNC=readonly` or `bidirectional` and `NEXUS_LOCAL_VAULT_PATH=/absolute/path/to/vault`.
+2. `GET /api/knowledge/sync` shows status.
+3. `POST /api/knowledge/sync` runs a sync now.
+4. `POST /api/knowledge/sync` with `{ "watch": true }` starts the watcher in that local process.
+5. Hosted deployments leave sync disabled and use import/export only.
+
+**Why this matters:** The Knowledge Workspace is the bridge between evidence-backed executive intelligence and a living company memory. It gives Nexus the familiar Obsidian interaction model while keeping workspace scoping, sensitivity, provenance, and API/MCP access inside the Nexus governance layer.
 
 ### 4.3 Decisions and Actions
 
@@ -282,7 +328,7 @@ Once onboarded, the daily product loop has four surfaces: Dashboards (Agent Room
 5. Each entity is linked back to the source evidence through `evidence_entity_links` with confidence metadata.
 6. Agent/API clients can query `GET /api/entities` with optional type/search filters to inspect the workspace memory index.
 
-**Why this matters:** Nexus now begins to remember the nouns of the company, not just the documents. This is the first substrate for future entity pages, backlinks, graph views, and the Obsidian-like Company Memory layer.
+**Why this matters:** Nexus now begins to remember the nouns of the company, not just the documents. Entity pages and the Knowledge Workspace together form the first visible company-memory graph.
 
 ### 4.5 Evidence Review and Approvals
 
@@ -321,6 +367,8 @@ Ten tabs, each serving a distinct governance function:
 | Roles | View and manage activated roles |
 | Audit Log | Searchable append-only event log |
 | Demo Tools | Demo mode toggle, sector pack reset, suggested questions |
+
+Knowledge-specific settings are currently env-driven for local sync. Hosted deployments should keep local sync disabled and rely on import/export.
 
 ### 5.2 Agent Governance Flow
 
@@ -388,6 +436,8 @@ Each export uses the same governed evidence base as dashboards. Evidence that wa
 **Entry:** `/pilot-kit`
 
 Pre-packaged materials for pilot sponsors: onboarding checklist, success scorecard, SOW template structure, and demo scripts. Used by the sales team during pilot delivery.
+
+Pilot paperwork should now start from the chosen buyer lane and first workflow target: sponsor, reviewer, evidence bundle, governance boundary, and shadow ROI metric.
 
 ---
 
@@ -488,9 +538,9 @@ P2 adds a visible trust layer for regulated buyers:
 
 | Flow | Entry Point | Auth Required | Key Services | Writes To |
 |---|---|---|---|---|
-| Readiness Assessment | `/readiness` | No | readiness scoring | audit_events |
-| Sign-up/Login | `/sign-up`, `/sign-in` | Clerk | Clerk auth | workspaces |
-| Onboarding | `/onboarding` | Yes | company-detection, role-suggestion, ingestion | workspaces, workspace_profiles, evidence_records, audit_events |
+| Readiness Assessment | `/readiness` | No | readiness scoring, buyer-lane routing | audit_events |
+| Sign-up/Login | `/sign-up`, `/sign-in` | Clerk | Clerk auth, readiness context | workspaces |
+| Onboarding | `/onboarding` | Yes | company-detection, role-suggestion, buyer-lane routing, ingestion | workspaces, workspace_profiles, evidence_records, audit_events |
 | Dashboard | `/dashboard/[role]` | Yes | dashboard.ts, synthesis.ts, passport-policy, output-gate, llm | agent_outputs, audit_events |
 | Ask | `/ask` | Yes | retrieval.ts, passport-policy, output-gate, llm | audit_events |
 | Decisions | `/decisions` | Yes | repository CRUD | decisions, actions, audit_events |

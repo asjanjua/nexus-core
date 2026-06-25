@@ -9,6 +9,33 @@ describe("ask retrieval", () => {
     expect(response.evidenceRefs.length).toBeGreaterThan(0);
   });
 
+  it("includes matching knowledge notes as Ask citations", async () => {
+    const workspaceId = `workspace-ask-notes-${Date.now()}`;
+    const note = await repository.upsertKnowledgeNote(
+      workspaceId,
+      {
+        title: "Expansion Risk Memo",
+        path: "_Inbox/expansion-risk-memo.md",
+        body: "# Expansion Risk Memo\n\nThe Saudi expansion risk is partner readiness and approvals.",
+        tags: ["risk"],
+        sensitivity: "internal",
+        status: "active",
+        sourceKind: "manual",
+        frontmatter: {},
+        evidenceRefs: [],
+        entityRefs: [],
+        workflowRefs: [],
+        decisionRefs: [],
+        recommendationRefs: []
+      },
+      "tester"
+    );
+
+    const response = await answerWithEvidence("Saudi expansion risk", workspaceId);
+    expect(response.refused).toBe(false);
+    expect(response.noteRefs).toContain(note.id);
+  });
+
   it("refuses when evidence is weak", async () => {
     const response = await answerWithEvidence("unknown-unmatched-topic-zzz", "workspace-demo");
     expect(response.refused).toBe(true);

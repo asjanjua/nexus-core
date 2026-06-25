@@ -3,6 +3,7 @@
 Updated: 2026-06-15  
 Design status: Figma v1 started  
 Figma file: https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun
+Expert review: UI_UX_EXPERT_REVIEW_2026-06-16.md
 
 ## Product Experience Thesis
 

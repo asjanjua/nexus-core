@@ -2,6 +2,64 @@
 
 ---
 
+## Unreleased — User Strategy and Paperwork Alignment
+
+This documentation pass aligns NexusAI's paperwork and strategic docs around a readiness-first user strategy.
+
+**User strategy**
+- Added `docs/USER_STRATEGY_AND_PIVOTS.md` as the canonical source for buyer lanes and the core pivot from generic signup/dashboard to market-aware pilot conversion.
+- Defined the flow: readiness assessment -> buyer lane -> signup/onboarding -> first workflow pilot -> governed value proof.
+- Documented four buyer lanes: evaluator/SME, SME self-serve, business/advisory, and regulated enterprise.
+
+**Paperwork and strategy docs**
+- Updated roadmap, user flows, readiness, billing, workflow realignment, one-pager, pilot onboarding checklist, SOW template, success scorecard, billing triggers, and governance messaging.
+- Pilot paperwork now requires first workflow target, sponsor, reviewer, evidence bundle, governance boundary, and shadow ROI metric.
+- Regulated-buyer materials preserve the no-autonomous-writeback and human-approval boundary.
+
+---
+
+## 0.25.0 — Knowledge Workspace and Live Vault Sync (2026-06-17)
+
+This release adds the Nexus Knowledge Workspace: an Obsidian-like company second-brain surface built into Mission Control.
+
+**Knowledge Workspace UI**
+- Added `/knowledge` and a side-nav entry under Intelligence.
+- Added a three-pane vault workspace with notebook tree, quick search, markdown editor, preview mode, graph mode, backlinks, Nexus object refs, import/export controls, inbox triage, and local sync status/actions.
+- Added CodeMirror markdown editing and a lightweight force graph visualization.
+- Notes support `[[wikilinks]]`, `#tags`, headings, frontmatter metadata, and typed Nexus refs such as `evidence:ev-001`, `entity:...`, `workflow:...`, `decision:...`, and `recommendation:...`.
+
+**Knowledge storage and APIs**
+- Added migration `0026_knowledge_workspace.sql`.
+- Added `knowledge_notes`, `knowledge_links`, and `knowledge_sync_events`.
+- Added contracts for knowledge notes, links, graph, search results, sync events, source kind, link type, and sync mode.
+- Added Postgres-first repository methods with in-memory fallback for local/demo mode.
+- Added authenticated APIs under `/api/knowledge/*`: notes CRUD, search, graph, import, export, triage, and sync status/run.
+- Added `read:knowledge` and `write:knowledge` bearer scopes, and added `/api/knowledge/*` to middleware bearer-token bypass for MCP/API clients.
+
+**Markdown portability and local sync**
+- Added Markdown frontmatter parse/write helpers, wikilink/tag/ref extraction, lexical search ranking, and graph projection.
+- Added Obsidian-compatible ZIP export/import using existing `jszip`.
+- Added optional local vault sync through:
+  - `NEXUS_VAULT_SYNC=disabled|readonly|bidirectional`
+  - `NEXUS_LOCAL_VAULT_PATH=/absolute/path/to/vault`
+- Sync is disabled by default for hosted deployments. Local/dev/desktop/self-hosted users can opt in.
+- Sync safety rejects traversal, unsupported extensions, hidden system paths, oversize files, and symlinks outside the vault.
+- Bidirectional writes create `.conflicts/` copies when preserving local file versions.
+
+**Ask and MCP**
+- Ask retrieval now searches knowledge notes alongside governed evidence and returns `noteRefs` separately from `evidenceRefs`.
+- Added `scripts/knowledge-mcp.mjs` and `npm run mcp:knowledge -w @nexus/mission-control`.
+- MCP tools wrap the same internal APIs: `save_memory`, `search_memory`, `read_note`, `write_note`, `list_recent_notes`, `vault_status`, `sync_vault`, and `knowledge_graph`.
+
+**Verification**
+- TypeScript: 0 errors.
+- Tests: 29 files / 187 tests passing.
+- Production build: passed.
+- Audit: `npm audit --omit=dev --json` reported 0 production vulnerabilities.
+- Browser/API smoke note: unauthenticated local curl to protected `/knowledge` and `/api/knowledge/*` is Clerk-gated as expected; verify the UI in a logged-in browser session.
+
+---
+
 ## 0.24.0 — Workflow Pilot Productization (2026-06-15)
 
 This release turns the workflow-twin roadmap into a visible pilot-selection and ROI workflow.

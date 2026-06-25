@@ -74,6 +74,15 @@ NEXUS_SLACK_INGEST_ALL=disabled
 CLERK_WEBHOOK_SECRET
 ```
 
+Knowledge Workspace local sync variables:
+
+```text
+NEXUS_VAULT_SYNC=disabled
+NEXUS_LOCAL_VAULT_PATH=
+```
+
+Hosted deployments should keep `NEXUS_VAULT_SYNC=disabled`. Set `NEXUS_LOCAL_VAULT_PATH` only for trusted local, desktop, or self-hosted deployments.
+
 ---
 
 ## 3. Health Endpoint
@@ -129,6 +138,7 @@ Expected:
 - Postgres connection succeeds.
 - `workspace_profiles` exists.
 - `evidence_records.embedding` is a `vector` column.
+- `knowledge_notes`, `knowledge_links`, and `knowledge_sync_events` exist after migration 0026.
 - HNSW/vector and workspace/status indexes exist.
 
 ---
@@ -145,6 +155,10 @@ Expected:
 - [ ] Open CEO/COO/CBO/CTO dashboards.
 - [ ] Ask: `What are the top risks right now?`
 - [ ] Confirm answer includes evidence refs and does not invent sources.
+- [ ] Open `/knowledge`.
+- [ ] Create and save a markdown note with a `[[wikilink]]`, a `#tag`, and an `evidence:...` ref.
+- [ ] Confirm preview and graph modes render without layout breakage.
+- [ ] Ask about note content and confirm note references are returned separately from evidence references.
 
 ---
 
@@ -160,6 +174,8 @@ Expected:
 - [ ] OAuth callback state is HMAC-signed with `AUTH_SECRET`.
 - [ ] Security headers are present: `x-content-type-options`, `x-frame-options`, `referrer-policy`, and `permissions-policy`.
 - [ ] Restricted or unprovenanced evidence does not appear in Slack summaries.
+- [ ] Hosted deployments keep `NEXUS_VAULT_SYNC=disabled`.
+- [ ] If local sync is enabled in a self-hosted/local deployment, the vault path is absolute and controlled by the workspace owner.
 
 Current residual dependency notes:
 

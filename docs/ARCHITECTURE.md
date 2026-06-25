@@ -1,7 +1,7 @@
 # NexusAI Mission Control Architecture
 
-Updated: 2026-06-15
-Current product state: v0.24.0 (verified locally 2026-06-15). Covers U2 Agent Control Profiles, U3 output history/rollback, U4 learning signals, Phase 8A Decision & Action Twin, AI decision proposals, persistent Ask memory, entity extraction and Company Memory pages, P2 AI trust controls, the Executive Synthesis Layer, synthesis source/entity traceability, scheduled synthesis core, workflow twin primitives, billing tiers with Stripe integration, the orchestration dispatcher, the first Slack connector ingestion path, v0.23.1 production hardening/auth-navigation fixes, Connector Settings policy UX, Workflow Twin Scorer, U6 backcasting, and U7 shadow ROI instrumentation.
+Updated: 2026-06-17
+Current product state: v0.25.0 (verified locally 2026-06-17). Covers U2 Agent Control Profiles, U3 output history/rollback, U4 learning signals, Phase 8A Decision & Action Twin, AI decision proposals, persistent Ask memory, entity extraction and Company Memory pages, P2 AI trust controls, the Executive Synthesis Layer, synthesis source/entity traceability, scheduled synthesis core, workflow twin primitives, billing tiers with Stripe integration, the orchestration dispatcher, the first Slack connector ingestion path, v0.23.1 production hardening/auth-navigation fixes, Connector Settings policy UX, Workflow Twin Scorer, U6 backcasting, U7 shadow ROI instrumentation, and v0.25.0 Knowledge Workspace with Markdown import/export, optional local vault sync, MCP memory tools, and Ask note refs.
 
 ## 1. Purpose
 
@@ -31,6 +31,8 @@ The product is not designed to replace ERP, CRM, HRIS, core banking, BI, legal r
 | Database | Postgres via Drizzle ORM | Primary system of record |
 | Vector retrieval | `pgvector` | Optional semantic retrieval path, filtered before ranking |
 | Object storage | Cloudflare R2 | Original-file retention path when enabled |
+| Knowledge vault | Postgres + Markdown import/export | Postgres is canonical for hosted governance; Markdown is the portability/sync layer |
+| Local sync | Optional filesystem watcher | Enabled only with `NEXUS_VAULT_SYNC` and an absolute `NEXUS_LOCAL_VAULT_PATH` |
 | LLM providers | DeepSeek/OpenAI/Anthropic-style routing | Centralized LLM service with route policy |
 | Edge/security | Cloudflare selective services | DNS/CDN/WAF/AI Gateway/R2; no full Workers migration in V1 |
 
@@ -65,7 +67,11 @@ flowchart TB
   Outputs --> Synthesis["Executive Synthesis<br/>on-demand leadership brief"]
   Synthesis --> UI
 
-  MC --> UI["Dashboards, Ask, Approvals,<br/>Settings, Exports"]
+  MC --> Knowledge["Knowledge Workspace<br/>notes, backlinks, graph, sync"]
+  Knowledge --> DB
+  Knowledge --> Vault["Local Markdown Vault<br/>optional"]
+
+  MC --> UI["Dashboards, Ask, Approvals,<br/>Knowledge, Settings, Exports"]
   UI --> Audit["Audit Events + Rollback"]
   Audit --> DB
 ```
@@ -196,6 +202,32 @@ Actions carry: decisionId (FK cascade), actionText, owner, dueDate, isBlocker fl
 
 Current state: full CRUD via API and interactive `/decisions` page. AI proposal extraction from recent `agent_outputs` is built through `/api/decisions/extract`; proposed decisions/actions remain drafts until a user explicitly creates them.
 
+### 5.9a Knowledge Workspace Layer
+
+v0.25.0 introduced the Nexus Knowledge Workspace at `/knowledge`.
+
+The layer adds:
+- markdown notes with title, path, body, tags, sensitivity, status, source kind, and frontmatter
+- parsed `[[wikilinks]]`, `#tags`, headings, and typed Nexus refs
+- graph projection across notes, evidence, entities, workflow twins, decisions, and recommendations
+- Obsidian-compatible ZIP import/export
+- optional local filesystem sync for local/dev/desktop/self-hosted environments
+- MCP-compatible memory tools through `scripts/knowledge-mcp.mjs`
+
+Postgres remains canonical for hosted governance. Markdown is the portability and optional sync representation. Hosted deployments should leave live sync disabled.
+
+Live sync controls:
+- `NEXUS_VAULT_SYNC=disabled|readonly|bidirectional`
+- `NEXUS_LOCAL_VAULT_PATH=/absolute/path/to/vault`
+
+Safety boundaries:
+- only `.md` files are processed
+- traversal and unsupported extensions are rejected
+- hidden system files are rejected except `.nexus` and `.conflicts`
+- symlinks outside the vault are rejected
+- oversized files are rejected
+- conflicts are preserved under `.conflicts/`
+
 ### 5.10 Executive Synthesis Layer
 
 v0.18.0 introduced an on-demand synthesis layer that reframes leadership dashboards from "several agent cards" into one role-aware brief first, with specialist agent detail underneath.
@@ -233,6 +265,9 @@ No v0.18.0-v0.18.2 migration was added. Normal dashboard synthesis is computed o
 | `workflow_twin_runs` | run history with evidence refs, output refs, confidence, and review status |
 | `entities` | extracted people, organizations, risks, KPIs, amounts, dates, systems, processes |
 | `evidence_entity_links` | evidence-to-entity backlinks with confidence |
+| `knowledge_notes` | workspace markdown notes with frontmatter, tags, sensitivity, typed refs, and optional embeddings |
+| `knowledge_links` | parsed note backlinks and typed links to notes/evidence/entities/workflows/decisions/recommendations |
+| `knowledge_sync_events` | import/export/local sync/watch event history |
 | `prompt_registry` | versioned prompt manifest entries |
 | `eval_runs` | persisted eval summaries and per-case results |
 | `agent_keys` | scoped API key access |
@@ -275,14 +310,34 @@ sequenceDiagram
 
   User->>Ask: POST /api/ask with query and optional agentKey
   Ask->>DB: Load processed evidence
+  Ask->>DB: Search active knowledge notes
   Ask->>ACP: Apply passport filters
   ACP-->>Audit: Log denied evidence
   Ask->>DB: Vector/keyword retrieval over allowed candidates
-  Ask->>LLM: Send allowed evidence context
+  Ask->>LLM: Send allowed evidence + note context
   LLM-->>Ask: Draft answer
   Ask->>Ask: Output gate
   Ask-->>Audit: Escalate/block if needed
-  Ask-->>User: Evidence-backed answer or refusal
+  Ask-->>User: Evidence-backed answer or refusal with evidenceRefs and noteRefs
+```
+
+### 7.2a Knowledge Workspace Flow
+
+```mermaid
+sequenceDiagram
+  participant User
+  participant UI as Knowledge UI
+  participant API as Knowledge API
+  participant DB as Postgres
+  participant Vault as Local Markdown Vault
+
+  User->>UI: Create or edit markdown note
+  UI->>API: POST/PATCH /api/knowledge/notes
+  API->>API: Parse frontmatter, tags, wikilinks, typed refs
+  API->>DB: Upsert knowledge_notes
+  API->>DB: Replace knowledge_links
+  API-->>Vault: Write markdown when bidirectional sync enabled
+  API-->>UI: Note, backlinks, graph refresh
 ```
 
 ### 7.3 Dashboard Agent Brief Flow
@@ -333,6 +388,7 @@ sequenceDiagram
 - `/approvals`
 - `/recommendations`
 - `/decisions`
+- `/knowledge`
 - `/evidence/[id]`
 - `/settings`
 - `/settings/connectors`
@@ -348,6 +404,14 @@ sequenceDiagram
 - `GET /api/evidence`
 - `GET /api/evidence/[id]`
 - `POST /api/evidence/[id]/review`
+- `GET/POST /api/knowledge/notes`
+- `GET/PATCH/DELETE /api/knowledge/notes/[id]`
+- `GET /api/knowledge/search`
+- `GET /api/knowledge/graph`
+- `POST /api/knowledge/import`
+- `POST /api/knowledge/export`
+- `POST /api/knowledge/triage`
+- `GET/POST /api/knowledge/sync`
 - `GET /api/agent-control-profiles`
 - `POST /api/agent-control-profiles`
 - `POST /api/agent-control-profiles/[agentKey]/suspend`
@@ -377,6 +441,9 @@ sequenceDiagram
 - hard-stop action blocking
 - audit events for denied evidence, blocked outputs, tool denial, profile changes, output creation, and rollback
 - versioned agent outputs
+- workspace-scoped knowledge notes and links
+- local vault sync disabled by default on hosted deployments
+- vault sync path validation, extension checks, hidden-file checks, symlink checks, size checks, and conflict preservation
 
 ### Deliberately Not Enabled in V1
 
@@ -388,7 +455,7 @@ sequenceDiagram
 - unrestricted Slack/Teams summaries
 - full ERP/CRM/HRIS replacement
 
-## 10. Current Completion State (updated 2026-06-15)
+## 10. Current Completion State (updated 2026-06-17)
 
 | Area | Status |
 |---|---|
@@ -414,6 +481,7 @@ sequenceDiagram
 | Workflow Twin Scorer Product Path | Complete locally (v0.24.0) -- `/workflows` page, scoring run, recommended first pilot |
 | U6 Backcasting Scope Capture | Complete locally (v0.24.0) -- backcast API/UI stores target state, milestones, evidence, approval boundaries |
 | U7 Shadow ROI Instrumentation | Complete locally (v0.24.0) -- manual-vs-Nexus measurement stored on workflow twin config |
+| Knowledge Workspace | Complete locally (v0.25.0) -- markdown notes, wikilinks, graph, import/export, optional live local vault sync, MCP wrapper, Ask note refs |
 | Billing Tiers Session 1 | Complete (v0.20.0) -- plan-gated token budgets, feature flags (8), cron reset, settings tab |
 | Billing Tiers Session 2 | Complete (v0.21.0) -- Stripe Checkout, webhook lifecycle (5 events), Billing Portal, trial-to-free |
 | Orchestration Dispatcher | Complete (v0.22.0) -- dispatch_jobs queue, atomic claim, priority/retry/fan-out, 4 handlers, cron runner |

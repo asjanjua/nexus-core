@@ -6,15 +6,18 @@
 
 ## Session Info
 
-- **Last updated:** 2026-06-15 (v0.24.0 -- workflow pilot productization verified locally)
+- **Last updated:** 2026-06-17 (v0.25.0 -- Knowledge Workspace verified locally)
 - **Last model:** Codex
-- **Session number:** #25
-- **Current version:** 0.24.0 -- Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. Billing Tiers, Orchestration Dispatcher, Company Memory UI, first Slack connector data flow, production hardening, Connector Settings policy UX, Workflow Twin Scorer, U6 backcasting, and U7 shadow ROI are complete and verified locally.
-- **Last commit:** `e398869` -- `v0.23.1 - harden production and auth navigation`
-- **Remote status:** v0.23.1 pushed to `origin/main`; v0.24.0 verified locally and ready to commit/push.
-- **Production DB:** migrations 0001-0024 applied to Neon/production database on 2026-06-13.
+- **Session number:** #27
+- **Current version:** 0.25.0 -- Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. Billing Tiers, Orchestration Dispatcher, Company Memory UI, first Slack connector data flow, production hardening, Connector Settings policy UX, Workflow Twin Scorer, U6 backcasting, U7 shadow ROI, and Knowledge Workspace are complete and verified locally.
+- **Last commit:** `45fef21` -- `v0.24.0 - productize workflow pilot path`
+- **Remote status:** v0.24.0 pushed to `origin/main`; v0.25.0 verified locally and pending commit/push/deploy.
+- **Production DB:** migrations 0001-0024 applied to Neon/production database on 2026-06-13. Confirm/apply migrations 0025-0026 before v0.25.0 deploy.
 - **Local verification (2026-06-13):** `npm run build --workspace @nexus/mission-control` passed. `npm test --workspace @nexus/mission-control` passed: 28 test files / 179 tests.
 - **Local verification (2026-06-15):** Browser CTA/auth checks passed for v0.23.1. For v0.24.0, `npm exec -w @nexus/mission-control tsc -- --noEmit` passed, `npm run test` passed: 28 test files / 183 tests, and `npm run build` passed. In-app browser `/workflows` smoke redirects to Clerk sign-in and cannot authenticate in that browser session; verify authenticated `/workflows` in logged-in Chrome/Render after deploy.
+- **Local verification (2026-06-17):** For v0.25.0, `npm exec -w @nexus/mission-control tsc -- --noEmit` passed, `npm run test -w @nexus/mission-control` passed: 29 test files / 187 tests, `npm run build -w @nexus/mission-control` passed, and `npm audit --omit=dev --json` reported 0 production vulnerabilities. Protected `/knowledge` and `/api/knowledge/*` are Clerk-gated for unauthenticated curl; verify in a logged-in browser session after deploy.
+- **Strategy docs (2026-06-17):** `docs/USER_STRATEGY_AND_PIVOTS.md` is now the canonical user strategy. Future product work should start from readiness -> buyer lane -> signup/onboarding -> first workflow pilot -> governed value proof.
+- **Backlog map (2026-06-25):** `BACKLOG.md` is now the cross-document backlog view. Use it with `TASKS.md`, `HANDOVER.md`, and `docs/ROADMAP.md` before starting a new phase.
 
 ---
 
@@ -22,7 +25,7 @@
 
 ### Confirmed Built and Wired
 
-- **180+ source files, 24 DB migrations, 28 test files / 183 tests**
+- **180+ source files, 26 DB migrations, 29 test files / 187 tests**
 - Phase 8A Decision Twin: `decisions` + `actions` tables, full CRUD APIs, interactive `/decisions` page with priority badges, status tabs, inline actions, blocker flags. Manual entry works.
 - Decision auto-extraction: `/api/decisions/extract` reads recent `agent_outputs`, proposes decision/action drafts, and creates canonical decision/action records only after human click-through.
 - U2 Agent Control Profiles: passports with versioning, evidence filtering, output gates, hard-stop blocking, tool guards, suspend/resume. Settings Agent Governance UI complete.
@@ -41,12 +44,14 @@
 - Orchestration Dispatcher (v0.22.0): `dispatch_jobs` DB queue, atomic claim with `FOR UPDATE SKIP LOCKED`, priority 1-10, exponential backoff retry (30s/5m/30m), fan-out enqueue, 4 job type handlers, `POST/GET/DELETE /api/dispatch`, cron runner at `/api/cron/dispatch`.
 - Company Memory UI (v0.23.0): `/entities`, `/entities/[id]`, `GET /api/entities/[id]`, entity timeline, linked evidence, decisions, recommendations, and actions.
 - Slack connector data flow (v0.23.0-v0.24.0): Slack channel messages can ingest as governed evidence when channel allowlist/explicit ingest-all is enabled. DMs, bot/system subtypes, unsupported events, and non-allowlisted channels are skipped and audited. Settings now exposes connector policy: channel allowlist, ingest-all toggle, source policy, sensitivity defaults/ceilings, last sync, and notes.
+- Knowledge Workspace (v0.25.0): `/knowledge` provides markdown notes, `[[wikilinks]]`, tags, backlinks, graph view, typed Nexus refs, import/export, optional local vault sync, MCP memory tools, and Ask `noteRefs`. Spec: `docs/KNOWLEDGE_WORKSPACE.md`.
 
 ### Confirmed Missing
 
-- **Authenticated production smoke:** v0.24.0 needs Render deploy plus logged-in browser verification for `/workflows` and Connector Settings policy save.
+- **Authenticated production smoke:** v0.25.0 needs Render deploy plus logged-in browser verification for `/knowledge`, `/workflows`, Connector Settings policy save, and Ask note citations.
 - **Additional connector data flows:** Google Drive, Teams, SharePoint, Jira, GitHub, CRM, finance, and social connectors are not yet ingesting live data.
 - **Connector scheduler/sync jobs:** Slack event ingestion is live, but broader scheduled sync and per-source sync history remain future connector work.
+- **Knowledge follow-through:** note embeddings, richer graph filters, note-to-entity linking UI, daily/project/workflow brief automation, duplicate/contradiction audits, and resurfacing remain future work.
 
 ### Architecture Note
 
@@ -56,9 +61,47 @@ The codebase now has both **agent governance** (who can do what, under what limi
 
 ## What Was Completed This Session
 
-### Session #25 -- Connector Settings + Workflow Pilot Productization (v0.24.0, 2026-06-15)
+### Session #27 -- User Strategy and Paperwork Alignment (2026-06-17)
+
+**Docs-only implementation:**
+- Created `docs/USER_STRATEGY_AND_PIVOTS.md` as the canonical buyer-lane and pivot map.
+- Updated roadmap, user flows, readiness, billing, workflow realignment, one-pager, pilot onboarding, SOW, scorecard, billing triggers, governance messaging, README, TASKS, HANDOVER, and CHANGELOG references.
+- Buyer lanes are now explicit: evaluator/SME, SME self-serve, business/advisory, and regulated enterprise.
+- Pilot paperwork now requires first workflow target, sponsor, reviewer, evidence bundle, governance boundary, and shadow ROI metric.
+
+**Implementation implication:**
+- Next product work should persist readiness leads and buyer-lane context, then route onboarding into first workflow selection.
+
+### Session #26 -- Knowledge Workspace + Live Vault Sync (v0.25.0, 2026-06-17)
 
 **Shipped and verified locally, pending commit/push/deploy:**
+- `/knowledge` page with three-pane vault workspace: note tree/search, markdown editor, preview, graph, backlinks, Nexus refs, import/export, triage, and sync controls.
+- Migration 0026 with `knowledge_notes`, `knowledge_links`, and `knowledge_sync_events`.
+- Contracts and repository methods for knowledge notes, links, search results, graph, sync events, and sync modes.
+- Markdown utilities for frontmatter, wikilinks, tags, headings, typed refs, search scoring, and graph projection.
+- APIs under `/api/knowledge/*`: notes CRUD, search, graph, import, export, triage, sync status/run.
+- Optional local vault sync through `NEXUS_VAULT_SYNC=disabled|readonly|bidirectional` and `NEXUS_LOCAL_VAULT_PATH=/absolute/path/to/vault`.
+- Sync safety: absolute vault path, `.md` only, traversal rejection, hidden path rejection, external symlink rejection, size cap, and `.conflicts/` preservation.
+- Ask now searches knowledge notes and returns `noteRefs` separately from `evidenceRefs`.
+- MCP wrapper: `npm run mcp:knowledge -w @nexus/mission-control`.
+- Paper trail updated: `CHANGELOG.md`, `TASKS.md`, `README.md`, `docs/KNOWLEDGE_WORKSPACE.md`, `docs/ROADMAP.md`, `docs/ARCHITECTURE.md`, `docs/USER_FLOWS.md`, `docs/SECURITY_DATA_HANDLING.md`, `docs/PRODUCTION_READINESS.md`, `docs/RENDER_DEPLOY.md`, `docs/PRODUCTION_HEALTH_CHECKLIST.md`, and `docs/V1_1_UPGRADE_PLAN.md`.
+
+**Verification:**
+- TypeScript: clean.
+- Tests: 29 files / 187 tests passing.
+- Build: production build passing.
+- Production dependency audit: 0 vulnerabilities with `npm audit --omit=dev --json`.
+- Browser/API note: protected `/knowledge` and `/api/knowledge/*` block unauthenticated curl via Clerk; verify in logged-in Chrome/Render after deploy.
+
+**Immediate next step:**
+1. Confirm/apply migrations 0025-0026 in the target production database.
+2. Commit and push v0.25.0.
+3. Confirm Render deploy.
+4. Smoke `/knowledge`, `/workflows`, `/settings/connectors`, and Ask note citations while logged in.
+
+### Session #25 -- Connector Settings + Workflow Pilot Productization (v0.24.0, 2026-06-15)
+
+**Shipped, committed, and pushed; pending Render deploy confirmation and authenticated smoke:**
 - Connector Settings policy UX: active connector status, installed date, team name, last sync, allowlisted Slack channels, ingest-all-public toggle, source policy, default sensitivity, max sensitivity, notes, and policy save route.
 - Slack ingestion now honors connector config before env defaults, including disabled source policy and sensitivity ceiling.
 - Workflow Twin Scorer now ranks candidate workflow pilots by frequency, pain, data readiness, risk, senior judgment, reusability, monetization, and speed benefit.
@@ -73,9 +116,8 @@ The codebase now has both **agent governance** (who can do what, under what limi
 - Browser: local `/workflows` authenticated smoke is blocked in the in-app browser by Clerk-hosted sign-in; verify on logged-in Chrome/Render after deploy.
 
 **Immediate next step:**
-1. Commit and push v0.24.0.
-2. Confirm Render deploy.
-3. Smoke `/workflows` and `/settings/connectors` while logged in.
+1. Confirm Render deploy picked up `45fef21`.
+2. Smoke `/workflows` and `/settings/connectors` while logged in.
 
 ### Session #24 -- Production Hardening + Demo Navigation/Auth Fixes (v0.23.1, 2026-06-15)
 
@@ -748,8 +790,8 @@ CLOUDFLARE_R2_*            R2 object storage (optional)
 
 ### Next build (highest impact)
 
-1. **Commit/push v0.24.0 and confirm Render deploy.**
-2. **Authenticated smoke:** verify `/workflows` and `/settings/connectors` in the logged-in Chrome/Render session.
+1. **Confirm Render deploy for v0.24.0 (`45fef21`) and complete authenticated smoke.**
+2. **Commit/push/deploy v0.25.0 after confirming migrations 0025-0026.**
 3. **Connector data flows:** add Google Drive/SharePoint/Teams/Jira/GitHub/CRM/finance/social ingestion paths.
 
 ### Operational sign-off (see docs/SECURITY_REVIEW.md)
@@ -797,25 +839,26 @@ Before doing anything else, read:
 1. CLAUDE.md
 2. HANDOVER.md  (you are reading this)
 3. TASKS.md
-4. AGENTS.md
+4. BACKLOG.md
+5. AGENTS.md
 
-Current version: 0.24.0
-Last full verification: 2026-06-15. TypeScript clean, 28 test files / 183 tests passing, production build clean. In-app browser authenticated `/workflows` smoke redirects to Clerk and cannot authenticate there; use logged-in Chrome/Render for UI smoke.
+Current version: 0.25.0 local / v0.24.0 on origin/main
+Last full verification: 2026-06-17. For v0.25.0, TypeScript clean, 29 test files / 187 tests passing, production build clean, and production dependency audit clean. Protected `/knowledge` and `/api/knowledge/*` block unauthenticated curl via Clerk; use logged-in Chrome/Render for UI smoke after deploy.
 
-Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. U5 Workflow Twin Scorer, U6 backcasting, and U7 shadow ROI complete locally in v0.24.0. Billing Tiers + Stripe full integration (v0.20.0-v0.21.0), Orchestration Dispatcher (v0.22.0), Company Memory UI, first Slack connector data flow (v0.23.0), and Connector Settings policy UX (v0.24.0) complete.
-Migrations 0001-0024 applied to Neon production. v0.23.1 added migration 0025 for Stripe idempotency; confirm it is applied before/with deploy.
+Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. U5 Workflow Twin Scorer, U6 backcasting, and U7 shadow ROI are committed in v0.24.0. Billing Tiers + Stripe full integration (v0.20.0-v0.21.0), Orchestration Dispatcher (v0.22.0), Company Memory UI, first Slack connector data flow (v0.23.0), and Connector Settings policy UX (v0.24.0) complete.
+Migrations 0001-0024 applied to Neon production. Confirm/apply migrations 0025-0026 before v0.25.0 deploy.
 
-What is built: onboarding, ingestion, retrieval, 7 agent rooms, 20 role dashboards, Ask, governance (passports, output gates, learning signals), Decision Twin, entity extraction, Company Memory pages/backlinks, eval harness, Executive Synthesis, scheduled synthesis, billing tiers, Stripe, orchestration dispatcher (dispatch_jobs queue, atomic claim, priority, retry, fan-out, 4 job type handlers, cron runner), first Slack inbound ingestion path, Connector Settings policy UX, Workflow Twin Scorer, backcasting, and shadow ROI.
+What is built: onboarding, ingestion, retrieval, 7 agent rooms, 20 role dashboards, Ask, governance (passports, output gates, learning signals), Decision Twin, entity extraction, Company Memory pages/backlinks, eval harness, Executive Synthesis, scheduled synthesis, billing tiers, Stripe, orchestration dispatcher (dispatch_jobs queue, atomic claim, priority, retry, fan-out, 4 job type handlers, cron runner), first Slack inbound ingestion path, Connector Settings policy UX, Workflow Twin Scorer, backcasting, shadow ROI, and the v0.25.0 Knowledge Workspace locally.
 
 Immediate next build:
-1. Commit/push v0.24.0 and confirm Render deploy.
-2. Smoke `/workflows` and `/settings/connectors` while logged in.
+1. Confirm Render deploy for v0.24.0 and smoke `/workflows` plus `/settings/connectors` while logged in.
+2. Confirm/apply migrations 0025-0026, then commit/push/deploy v0.25.0.
 3. Add additional connector data flows beyond Slack.
 
 Known missing:
 - Additional connector data flows beyond Slack.
 - Additional connector data flows beyond Slack: Drive, Teams, SharePoint, Jira, GitHub, CRM, finance, and social.
-- Workflow Twin Scorer product UI/API scoring flow.
+- v0.25.0 authenticated production smoke for `/knowledge`, `/workflows`, `/settings/connectors`, and Ask note citations.
 
 Start by confirming git status, then read the files above, then proceed.
 ```

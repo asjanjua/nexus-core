@@ -87,6 +87,11 @@ NEXUS_CRON_SECRET=
 # Dispatcher (v0.22.0+, optional — default 5)
 NEXUS_DISPATCH_BATCH_SIZE=5
 
+# Knowledge Workspace local sync (v0.25.0+)
+# Hosted Render deployments should keep this disabled and use ZIP import/export.
+NEXUS_VAULT_SYNC=disabled
+# Do not set NEXUS_LOCAL_VAULT_PATH on hosted Render unless running a controlled self-hosted/local deployment.
+
 # Clerk CSP domain (v0.23.0+, optional — default clerk.accounts.dev)
 # Set to your custom Clerk frontend API domain if you use a vanity domain (e.g. clerk.nexusai.io)
 # Used to build Content-Security-Policy script-src and connect-src. Wrong value breaks Clerk UI silently.
@@ -155,8 +160,22 @@ Then test in browser:
 5. Approve if needed.
 6. Open a dashboard.
 7. Ask: `What are the top risks?`
+8. Open `/knowledge`, create a note, save it, switch to preview/graph, and confirm the note appears in the vault tree.
+9. Ask about a term from that note and confirm the response includes `noteRefs` in the network/API response or rendered source trail.
 
-## 7. Production Note
+## 7. Knowledge Workspace Notes
+
+v0.25.0 adds migration `0026_knowledge_workspace.sql`. Apply migrations before deploying this feature to a database-backed environment.
+
+Render/hosted deployments should leave live local sync disabled:
+
+```text
+NEXUS_VAULT_SYNC=disabled
+```
+
+Use `/knowledge` ZIP import/export for Markdown portability on hosted deployments. Only enable `readonly` or `bidirectional` sync for local, desktop, or self-hosted deployments where the filesystem path is controlled by the workspace owner.
+
+## 8. Production Note
 
 Render's free web service can sleep when idle. That is fine for a free demo or early pilot, but not for a production SLA. Use a paid Render instance when a pilot client expects instant first-load response.
 

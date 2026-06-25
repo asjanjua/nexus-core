@@ -72,6 +72,112 @@ export const evidenceRecordSchema = z.object({
 });
 export type EvidenceRecord = z.infer<typeof evidenceRecordSchema>;
 
+export const knowledgeNoteStatusSchema = z.enum(["active", "archived", "deleted"]);
+export type KnowledgeNoteStatus = z.infer<typeof knowledgeNoteStatusSchema>;
+
+export const knowledgeSourceKindSchema = z.enum(["manual", "import", "sync", "automation", "mcp"]);
+export type KnowledgeSourceKind = z.infer<typeof knowledgeSourceKindSchema>;
+
+export const knowledgeLinkTypeSchema = z.enum([
+  "note",
+  "evidence",
+  "entity",
+  "workflow_twin",
+  "decision",
+  "recommendation"
+]);
+export type KnowledgeLinkType = z.infer<typeof knowledgeLinkTypeSchema>;
+
+export const knowledgeNoteSchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  title: z.string(),
+  path: z.string(),
+  body: z.string(),
+  tags: z.array(z.string()).default([]),
+  sensitivity: sensitivitySchema.default("internal"),
+  status: knowledgeNoteStatusSchema.default("active"),
+  sourceKind: knowledgeSourceKindSchema.default("manual"),
+  frontmatter: z.record(z.unknown()).default({}),
+  evidenceRefs: z.array(z.string()).default([]),
+  entityRefs: z.array(z.string()).default([]),
+  workflowRefs: z.array(z.string()).default([]),
+  decisionRefs: z.array(z.string()).default([]),
+  recommendationRefs: z.array(z.string()).default([]),
+  createdBy: z.string(),
+  updatedBy: z.string().optional().nullable(),
+  createdAt: z.string(),
+  updatedAt: z.string()
+});
+export type KnowledgeNote = z.infer<typeof knowledgeNoteSchema>;
+
+export const knowledgeNoteInputSchema = z.object({
+  title: z.string().min(1).max(200),
+  path: z.string().min(1).max(500).optional(),
+  body: z.string().max(500000).default(""),
+  tags: z.array(z.string().min(1).max(80)).default([]),
+  sensitivity: sensitivitySchema.default("internal"),
+  status: knowledgeNoteStatusSchema.default("active"),
+  sourceKind: knowledgeSourceKindSchema.default("manual"),
+  frontmatter: z.record(z.unknown()).default({}),
+  evidenceRefs: z.array(z.string()).default([]),
+  entityRefs: z.array(z.string()).default([]),
+  workflowRefs: z.array(z.string()).default([]),
+  decisionRefs: z.array(z.string()).default([]),
+  recommendationRefs: z.array(z.string()).default([])
+});
+export type KnowledgeNoteInput = z.infer<typeof knowledgeNoteInputSchema>;
+
+export const knowledgeLinkSchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  sourceNoteId: z.string(),
+  targetType: knowledgeLinkTypeSchema,
+  targetId: z.string(),
+  label: z.string(),
+  createdAt: z.string()
+});
+export type KnowledgeLink = z.infer<typeof knowledgeLinkSchema>;
+
+export const knowledgeSearchResultSchema = z.object({
+  note: knowledgeNoteSchema,
+  score: z.number(),
+  matchedFields: z.array(z.string()),
+  snippet: z.string()
+});
+export type KnowledgeSearchResult = z.infer<typeof knowledgeSearchResultSchema>;
+
+export const knowledgeGraphSchema = z.object({
+  nodes: z.array(z.object({
+    id: z.string(),
+    label: z.string(),
+    type: z.string()
+  })),
+  edges: z.array(z.object({
+    id: z.string(),
+    source: z.string(),
+    target: z.string(),
+    type: z.string(),
+    label: z.string().optional()
+  }))
+});
+export type KnowledgeGraph = z.infer<typeof knowledgeGraphSchema>;
+
+export const knowledgeSyncModeSchema = z.enum(["disabled", "readonly", "bidirectional"]);
+export type KnowledgeSyncMode = z.infer<typeof knowledgeSyncModeSchema>;
+
+export const knowledgeSyncEventSchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  type: z.string(),
+  path: z.string().optional().nullable(),
+  noteId: z.string().optional().nullable(),
+  status: z.string(),
+  message: z.string().optional().nullable(),
+  createdAt: z.string()
+});
+export type KnowledgeSyncEvent = z.infer<typeof knowledgeSyncEventSchema>;
+
 export const entityTypeSchema = z.enum([
   "person",
   "organization",
@@ -560,6 +666,7 @@ export const askResponseSchema = z.object({
   refused: z.boolean(),
   refusalReason: z.string().optional(),
   evidenceRefs: z.array(z.string()),
+  noteRefs: z.array(z.string()).default([]),
   agentKey: z.string().optional(),
   escalationRequired: z.boolean().optional(),
   escalationReason: z.string().optional()
@@ -594,10 +701,12 @@ export const agentScopeSchema = z.enum([
   "read:recommendations",
   "read:settings",
   "read:workflows",
+  "read:knowledge",
   "write:ingest",
   "write:approvals",
   "write:settings",
   "write:workflows",
+  "write:knowledge",
   "admin"
 ]);
 export type AgentScope = z.infer<typeof agentScopeSchema>;
