@@ -1996,11 +1996,15 @@ Positioning rule from the 2026-05-31 reassessment:
   CSV upload template per connector type. Manual upload triggers the same ingestion pipeline.
 
 ### Docs and Communications bundle
-- [ ] **Google Drive** — OAuth2. Sync: Google Docs, Sheets, Slides, PDFs from specified folders.
+- [x] **Google Drive** — OAuth2. Sync: Google Docs, Sheets, Slides, PDFs from specified folders.
   Respect Google Drive sharing permissions — only ingest files the connected account can read.
   Exclude personal Drive; connect only shared drives or specified team folders.
-- [ ] **Microsoft SharePoint / OneDrive** — OAuth2 via Microsoft Graph API. Sync document
+  Closed 2026-06-25, commit `2ff4c26`. `lib/connectors/google-drive.ts` + install/callback/files/ingest
+  routes. Code-complete; pending real-OAuth-app verification (no folder-scoping yet — lists all
+  Drive files the token can see).
+- [x] **Microsoft SharePoint / OneDrive** — OAuth2 via Microsoft Graph API. Sync document
   libraries from specified sites. Respect SharePoint permission inheritance.
+  Closed 2026-06-25 (Task #40), commit `9da3411`. Code-complete; pending real-OAuth-app verification.
 - [ ] **Dropbox Business** — OAuth2. Sync specified team folders. Paper documents included.
 - [ ] **Box** — OAuth2. Sync specified Box folders. Enterprise content management use case.
 - [ ] **Slack** — already partially built (event listener). Extend to: channel message ingestion
@@ -2020,8 +2024,13 @@ Positioning rule from the 2026-05-31 reassessment:
 - [ ] **Fireflies.ai** — API key. Ingest meeting notes, action items, and sentiment signals.
 
 ### Project and Work Management bundle
-- [ ] **Jira** — OAuth2. Ingest: project status summaries, sprint reports, open issues by
+- [~] **Jira** — OAuth2. Ingest: project status summaries, sprint reports, open issues by
   priority, overdue items, epic completion rates. Not individual ticket text — aggregate signals.
+  Partially closed 2026-06-25. `lib/connectors/jira.ts` (Atlassian OAuth 2.0 3LO + cloudId
+  resolution) + install/callback/files/ingest routes built and code-complete, pending
+  real-OAuth-app verification. Current ingest is per-issue (JQL search + single-issue fetch),
+  not yet the aggregate sprint/epic-rollup summaries this line originally specced — that
+  aggregation layer is still open and should be scoped as a follow-up on top of `searchIssues()`.
 - [ ] **Linear** — API key or OAuth2. Same as Jira: project status, cycle summaries, blockers.
 - [ ] **Asana** — OAuth2. Project status, milestones, overdue tasks, portfolio health.
 - [ ] **Monday.com** — OAuth2. Board summaries, project status, overdue items.
@@ -2032,8 +2041,12 @@ Positioning rule from the 2026-05-31 reassessment:
 - [ ] **Salesforce** — OAuth2. Ingest: pipeline summary by stage, forecast vs target,
   opportunity win/loss signals, deal velocity, account health scores. Not individual contact
   records — aggregate sales intelligence. Sensitivity: confidential.
-- [ ] **HubSpot** — OAuth2. Pipeline summary, deal stages, contact activity signals, email
+- [~] **HubSpot** — OAuth2. Pipeline summary, deal stages, contact activity signals, email
   sequence performance, forecast report.
+  Partially closed 2026-06-25. `lib/connectors/hubspot.ts` + install/callback/files/ingest routes
+  built and code-complete, pending real-OAuth-app verification. Current scope is deals only
+  (list + single-deal ingest as `sourceType: "crm"`); contact activity signals and email
+  sequence performance are not yet built — still open.
 - [ ] **Zoho CRM** — OAuth2. Pipeline, forecast, activity summary.
 - [ ] **Pipedrive** — API key. Pipeline summary, deal age, stalled deals.
 
@@ -2042,8 +2055,14 @@ Positioning rule from the 2026-05-31 reassessment:
 > are in Phase 10B. Phase 10 connects to the standard report and summary exports via their
 > SaaS APIs — appropriate for most companies. Phase 10B is for companies that need the
 > full accounting data at ledger level.
-- [ ] **QuickBooks Online** — OAuth2. Profit and loss summary, cash flow statement, accounts
+- [~] **QuickBooks Online** — OAuth2. Profit and loss summary, cash flow statement, accounts
   receivable aging summary, accounts payable aging summary, balance sheet snapshot.
+  Partially closed 2026-06-25. `lib/connectors/quickbooks.ts` (Intuit OAuth2 + realmId
+  resolution from callback) + install/callback/files/ingest routes built and code-complete,
+  pending real-OAuth-app verification. Current scope is invoices only (list + single-invoice
+  ingest as `sourceType: "finance_export"`); P&L/cash flow/AR/AP aging/balance-sheet report
+  pulls are not yet built — still open as a follow-up on the Accounting API's `/reports/`
+  endpoints.
 - [ ] **Xero** — OAuth2. Same report set as QBO above.
 - [ ] **NetSuite** — RESTlet or SuiteQL. Financial summary reports, project billing status,
   multi-entity consolidation summary. Enterprise-tier connector.
@@ -2070,8 +2089,12 @@ Positioning rule from the 2026-05-31 reassessment:
 - [ ] **Gainsight** — API key. Customer health scores, churn risk signals, NPS, renewal pipeline.
 
 ### Engineering and Product bundle
-- [ ] **GitHub** — OAuth2 App or personal token. Repository summary: open PRs, CI pass rate,
+- [~] **GitHub** — OAuth2 App or personal token. Repository summary: open PRs, CI pass rate,
   deployment frequency, open issues by label. Not code content — engineering health signals.
+  Partially closed 2026-06-25. `lib/connectors/github.ts` (classic OAuth web app flow) +
+  install/callback/files/ingest routes built and code-complete, pending real-OAuth-app
+  verification. Current scope is repo listing + per-issue/PR ingest as `sourceType: "github"`;
+  CI pass rate, deployment frequency, and label-based rollups are not yet built — still open.
 - [ ] **GitLab** — OAuth2. Same engineering health signals as GitHub.
 - [ ] **Sentry** — API key. Error rate trends, top errors by frequency, new regressions,
   performance degradation signals.
@@ -2095,6 +2118,15 @@ Positioning rule from the 2026-05-31 reassessment:
   rates, coverage issues.
 - [ ] **HubSpot Marketing** — OAuth2. Campaign performance, email metrics, landing page conversion.
 - [ ] **Mailchimp** — OAuth2. Campaign open rates, click rates, unsubscribe rate, list health.
+- [~] **LinkedIn (company page / social signals)** — OAuth2. Company-page posts and engagement
+  as social/brand evidence. Built ahead of this section's original sequencing, per Ali's
+  2026-06-25 explicit decision to build now rather than defer.
+  Partially closed 2026-06-25. `lib/connectors/linkedin.ts` + install/callback/files/ingest
+  routes built and code-complete, pending real-OAuth-app verification. Reading company-page
+  posts additionally requires LinkedIn's Community Management API product (separate partner
+  review/approval, not just OAuth client registration) — the install/callback flow works
+  without it, but `files`/`ingest` will 502 with a 403 from LinkedIn until that product is
+  approved for the registered app. Engagement-metric rollups are not yet built — still open.
 - [ ] Add webhook ingestion path for tools that support real-time updates
 - [ ] Add department-specific connector bundles
 - [ ] Add Docs + Comms bundle: Google Drive, SharePoint, OneDrive, Dropbox, Box, Slack, Microsoft Teams, Gmail, Outlook

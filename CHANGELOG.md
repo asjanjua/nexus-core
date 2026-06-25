@@ -2,6 +2,31 @@
 
 ---
 
+## Unreleased — Five New OAuth Connectors: GitHub, Jira, HubSpot, QuickBooks, LinkedIn (2026-06-25)
+
+Built per Ali's explicit instruction to build all five rather than defer LinkedIn/social. All five follow the pure-fetch, no-SDK pattern established by Google Drive/SharePoint: `lib/connectors/{type}.ts` client + 4 API routes (`install`, `callback`, `files`, `ingest`) per connector, each using the shared HMAC-signed OAuth `state` pattern from `lib/security.ts`. Not yet committed/pushed or build-verified — see Immediate Next Steps in `HANDOVER.md`.
+
+**GitHub** — classic OAuth web app flow (tokens don't expire). `lib/connectors/github.ts`: `listRepos()`, `listIssues()`, `getIssue()`. Ingest serializes issue title/state/author/labels/body to text, `sourceType: "github"`. Scope is per-repo issue/PR list + single-issue ingest — not yet the CI-pass-rate/deployment-frequency/label-rollup engineering health signals originally specced in `TASKS.md`.
+
+**Jira** — Atlassian OAuth 2.0 (3LO). `lib/connectors/jira.ts`: resolves `cloudId` via `accessible-resources` after token exchange, `searchIssues()` (JQL), `getIssue()`, `extractAdfText()` to flatten Atlassian Document Format descriptions. Ingest as `sourceType: "jira"`. Scope is per-issue, not yet the aggregate sprint/epic-rollup signals originally specced.
+
+**HubSpot** — standard OAuth2. `lib/connectors/hubspot.ts`: `listDeals()`, `getDeal()`. Ingest serializes dealname/amount/dealstage/pipeline/closedate, `sourceType: "crm"`. Scope is deals only — contact activity and email sequence performance not yet built.
+
+**QuickBooks Online** — Intuit OAuth2 with HTTP Basic token exchange/refresh and `realmId` capture from the callback redirect (every Accounting API call is scoped by company file). `lib/connectors/quickbooks.ts`: `getApiBase()` (sandbox/production switch via new `QUICKBOOKS_ENVIRONMENT` env var), `listInvoices()`, `getInvoice()`. Ingest as `sourceType: "finance_export"`, default sensitivity `confidential`. Scope is invoices only — P&L/cash-flow/AR-AP-aging/balance-sheet report pulls not yet built.
+
+**LinkedIn** — standard OAuth2 with `LinkedIn-Version`/`X-Restli-Protocol-Version` REST headers. `lib/connectors/linkedin.ts`: `listAdministeredOrgs()`, `listOrgPosts()`, `getPost()`. Ingest as `sourceType: "social_export"`, default sensitivity `public`. Install/callback work standalone; `files`/`ingest` additionally require LinkedIn's Community Management API product, which needs separate partner review/approval — will 502 with an underlying 403 until approved.
+
+**Shared plumbing**
+- `app/api/connectors/[type]/route.ts` — `ALLOWED_TYPES` expanded with all 5 new types.
+- `app/settings/connectors/page.tsx` — 5 new `CONNECTOR_CATALOGUE` entries (lane: `saas`, `available: true`), 12 new OAuth-callback error messages, 5 new "To enable {Connector}" instructional blocks (LinkedIn's explicitly flags the Community Management API gate).
+- `render.yaml` — 10 new env vars (`GITHUB_CLIENT_ID/SECRET`, `JIRA_CLIENT_ID/SECRET`, `HUBSPOT_CLIENT_ID/SECRET`, `QUICKBOOKS_CLIENT_ID/SECRET/ENVIRONMENT`, `LINKEDIN_CLIENT_ID/SECRET`), all `sync: false`.
+- `CUTOVER.md` — same 10 env vars added to the `.env` template, plus a new explanatory paragraph with registration URLs and the shared redirect URI pattern.
+- `TASKS.md` — Jira, HubSpot, GitHub, QuickBooks wishlist lines marked `[~]` (partially closed) with explicit notes on what's built vs. what the original line specced; new LinkedIn line added under "Marketing and Growth bundle" also marked `[~]`.
+
+**Docs accuracy note:** Jira/HubSpot/GitHub/QuickBooks are marked partial (`[~]`), not complete (`[x]`), because the actual built scope (single-record list + ingest) is narrower than what the original `TASKS.md` wishlist lines specified (aggregate/rollup signals only). LinkedIn is additionally gated on a LinkedIn partner-approval step outside this codebase's control.
+
+---
+
 ## Unreleased — Engineering Guardrails Implementation, Pilot Paperwork Page, Prompt Registry Migration (2026-06-25)
 
 Closes Task #19 (guardrails contract layer) and adds the rendered version of the existing pilot paperwork API. Committed as `9da3411`, on top of `2ff4c26` (SharePoint/Teams connector).

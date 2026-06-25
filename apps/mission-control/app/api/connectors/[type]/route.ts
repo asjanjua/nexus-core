@@ -12,7 +12,19 @@ import { repository } from "@/lib/data/repository";
 import { sensitivitySchema } from "@/lib/contracts";
 import { z } from "zod";
 
-const ALLOWED_TYPES = new Set(["slack", "google-drive", "sharepoint", "snowflake", "bigquery", "private"]);
+const ALLOWED_TYPES = new Set([
+  "slack",
+  "google-drive",
+  "sharepoint",
+  "snowflake",
+  "bigquery",
+  "private",
+  "github",
+  "jira",
+  "hubspot",
+  "quickbooks",
+  "linkedin",
+]);
 
 const connectorPolicySchema = z.object({
   allowedChannels: z.array(z.string().min(1)).max(100).optional(),

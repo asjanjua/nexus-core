@@ -6,10 +6,20 @@
 
 ## Session Info
 
-- **Last updated:** 2026-06-25 (v0.25.x — session #32 with Claude. Built and shipped the Microsoft Teams/SharePoint connector (Task #40), reconciled HANDOVER/TASKS/CUTOVER paperwork, confirmed/committed the full uncommitted batch from session #31, and shipped a second batch in the same session: engineering guardrails module, pilot paperwork page, prompt registry and company-detection updates.)
+- **Last updated:** 2026-06-25 (v0.25.x — session #33 with Claude. Built 5 new OAuth connectors — GitHub, Jira, HubSpot, QuickBooks, LinkedIn — per Ali's explicit instruction to build all five now rather than defer LinkedIn/social. Each is `lib/connectors/{type}.ts` + 4 API routes, wired into shared plumbing. Code-complete, NOT yet committed/pushed or build-verified.)
 - **Last model:** Claude (Sonnet 4.6, Cowork)
-- **Session number:** #32
+- **Session number:** #33
 - **Current version:** 0.25.x — Phases 1-8 + 9D complete, V1.1 Tier 1 (U1-U4) complete. Strategy pipeline fully implemented: readiness → buyer lane → onboarding → workflow pilot → governed value proof.
+- **Session #33 delivered (2026-06-25):**
+  - **5 new connectors (Tasks #55-59), all code-complete, all pending real-OAuth-app verification:**
+    - **GitHub** — `lib/connectors/github.ts` (classic OAuth web app flow, tokens don't expire) + install/callback/files/ingest routes. Scope: repo listing + per-issue/PR ingest as `sourceType: "github"`. Not yet built: CI-pass-rate/deployment-frequency/label rollups.
+    - **Jira** — `lib/connectors/jira.ts` (Atlassian OAuth 2.0 3LO, resolves `cloudId` via accessible-resources, `extractAdfText()` for ADF descriptions) + install/callback/files/ingest routes. Scope: per-issue (JQL search + single-issue) ingest as `sourceType: "jira"`. Not yet built: aggregate sprint/epic rollups.
+    - **HubSpot** — `lib/connectors/hubspot.ts` (standard OAuth2) + install/callback/files/ingest routes. Scope: deals only, ingest as `sourceType: "crm"`. Not yet built: contact activity, email sequence performance.
+    - **QuickBooks Online** — `lib/connectors/quickbooks.ts` (Intuit OAuth2 with HTTP Basic token exchange, `realmId` captured from callback, new `QUICKBOOKS_ENVIRONMENT` env var for sandbox/production) + install/callback/files/ingest routes. Scope: invoices only, ingest as `sourceType: "finance_export"`. Not yet built: P&L/cash-flow/AR-AP-aging/balance-sheet reports.
+    - **LinkedIn** — `lib/connectors/linkedin.ts` (standard OAuth2, LinkedIn REST headers) + install/callback/files/ingest routes. Scope: org post listing, ingest as `sourceType: "social_export"`. Install/callback work standalone; `files`/`ingest` additionally require LinkedIn's Community Management API product (separate partner review) — will 502 with a 403 until approved.
+  - **Shared plumbing (Task #60):** `ALLOWED_TYPES` in `app/api/connectors/[type]/route.ts` expanded; `app/settings/connectors/page.tsx` got 5 new catalogue entries + 12 new error messages + 5 enablement instruction blocks; `render.yaml` got 10 new env vars (`sync: false`); `CUTOVER.md` got the same 10 env vars plus a new registration-instructions paragraph.
+  - **Paperwork reconciled (Task #61):** `TASKS.md` (Jira/HubSpot/GitHub/QuickBooks wishlist lines marked `[~]` partial with explicit built-vs-specced gap notes; new LinkedIn line added under Marketing/Growth bundle, also `[~]`), `BACKLOG.md` (P3 connector table rows updated to `local verified`), `CHANGELOG.md` (new dated entry).
+  - **NOT yet done:** commit/push (still in the sandbox's working tree — `.git/index.lock` fuse-mount restriction means Ali must run the commit himself, same as every prior session), `npm install`/`tsc --noEmit`/`npm test`/`npm run build` verification, Render deploy, and OAuth app registration for all 5 new providers (plus Google/Microsoft still pending from session #32).
 - **Session #32 delivered (2026-06-25):**
   - **Task #40 (SharePoint/Teams connector):** `lib/connectors/sharepoint.ts` — pure-fetch Microsoft identity platform OAuth 2.0 client (authorization-code flow, tenant configurable via `MICROSOFT_TENANT_ID`, default `"common"`) plus Microsoft Graph API `listFiles()`/`downloadFile()` against `/me/drive`. Mirrors `lib/connectors/google-drive.ts` structurally. Four API routes under `app/api/connectors/sharepoint/` (install, callback, files, ingest) — line-for-line structural parity with the Google Drive routes, reusing the same `requireScope`, `repository.upsertConnector`, and `ingestEvidence` calls. Settings UI: the pre-existing `sharepoint` catalogue entry in `app/settings/connectors/page.tsx` flipped from `available: false` to `true`, plus Microsoft-specific error messages and an env-var hint block. `MICROSOFT_CLIENT_ID`/`MICROSOFT_CLIENT_SECRET`/`MICROSOFT_TENANT_ID` added to `render.yaml` (sync: false) and `CUTOVER.md` Step 2 (also backfilled the previously-missing `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` lines in `CUTOVER.md`, which render.yaml already had but the cutover checklist had silently dropped).
   - **Committed and pushed:** the entire uncommitted batch from session #31 (cron jobs, provider UI, Resend email, Mode Indicator, strategy profile, Google Drive connector, knowledge embeddings, etc.) plus the new SharePoint connector landed in a single commit `2ff4c26` ("Add Microsoft SharePoint/Teams connector (OAuth + Graph API)") and pushed to `origin/main`. Ali ran the commit/push himself on his own machine after a stale `.git/index.lock` blocked write access from the sandbox's mounted view of the repo (confirmed via `ps aux` that no live process held the lock — it was a leftover from an earlier interrupted git operation, combined with a fuse-mount permission quirk that prevented the sandbox from unlinking it directly).
@@ -65,7 +75,7 @@
 ### Confirmed Missing
 
 - **Authenticated production smoke:** v0.25.0 needs Render deploy plus logged-in browser verification for `/knowledge`, `/workflows`, Connector Settings policy save, and Ask note citations.
-- **Additional connector data flows:** Google Drive and SharePoint/Teams now have full OAuth connector implementations (Task #40, 2026-06-25) but neither has been verified against a real Microsoft/Google OAuth app yet -- registering an Azure AD app (single-tenant vs multi-tenant `common` is Ali's call per pilot client) and a Google Cloud OAuth client, then running the install flow end-to-end, is the remaining verification step. Jira, GitHub, CRM, finance, and social connectors remain unbuilt.
+- **Additional connector data flows:** Google Drive, SharePoint/Teams, GitHub, Jira, HubSpot, QuickBooks, and LinkedIn now all have OAuth connector implementations (Tasks #40, #55-59, 2026-06-25) but NONE has been verified against a real OAuth app yet -- registering an app with each of the 7 providers (Google, Microsoft/Azure AD, GitHub, Atlassian, HubSpot, Intuit, LinkedIn) and running each install flow end-to-end is the remaining verification step for all of them. Jira/HubSpot/QuickBooks/GitHub additionally have narrower scope than originally specced in `TASKS.md` (single-record list+ingest, not aggregate/rollup signals -- see `TASKS.md` connector wishlist and `CHANGELOG.md` 2026-06-25 entry for exact gaps). LinkedIn additionally requires separate LinkedIn Community Management API partner approval before `files`/`ingest` will return real data. Salesforce, Xero, Meta, and Gmail/Outlook remain unbuilt.
 - **Connector scheduler/sync jobs:** Slack event ingestion is live, but broader scheduled sync and per-source sync history remain future connector work.
 - **Knowledge follow-through:** note embeddings, richer graph filters, note-to-entity linking UI, daily/project/workflow brief automation, duplicate/contradiction audits, and resurfacing remain future work.
 
@@ -801,6 +811,11 @@ CLOUDFLARE_R2_*            R2 object storage (optional)
 | Phase 9 -- Team Members | Build when pilot client needs it | -- |
 | Google Drive Connector | Complete, committed and pushed (`2ff4c26`); needs real-OAuth-app verification | v0.25.x |
 | SharePoint/Teams Connector | Complete, committed and pushed (`2ff4c26`); needs real-OAuth-app verification | v0.25.x |
+| GitHub Connector | Code-complete, partial scope (per-issue, not aggregate health signals); NOT yet committed/pushed | v0.25.x |
+| Jira Connector | Code-complete, partial scope (per-issue, not aggregate sprint/epic rollups); NOT yet committed/pushed | v0.25.x |
+| HubSpot Connector | Code-complete, partial scope (deals only); NOT yet committed/pushed | v0.25.x |
+| QuickBooks Connector | Code-complete, partial scope (invoices only, not P&L/AR/AP/balance-sheet reports); NOT yet committed/pushed | v0.25.x |
+| LinkedIn Connector | Code-complete; gated on LinkedIn Community Management API partner approval; NOT yet committed/pushed | v0.25.x |
 | Phase 10+ | Future | -- |
 
 ## What Needs to Come Next
@@ -859,26 +874,58 @@ Before doing anything else, read:
 4. BACKLOG.md
 5. AGENTS.md
 
-Current version: everything is committed and pushed to `origin/main` at commit `9da3411` -- "Add engineering guardrails module, pilot paperwork page, prompt registry updates; correct HANDOVER/TASKS docs". This sits on top of `2ff4c26` -- "Add Microsoft SharePoint/Teams connector (OAuth + Graph API)", which itself bundled the full session #31 batch (Task #35 DB transactions, Task #36 LLM routing wiring + DeepSeek V4 migration, Task #32 Sentry, Task #37 Queen's Review fixes, cron jobs, provider UI, Resend email, Mode Indicator, strategy profile, Google Drive connector, knowledge embeddings, onboarding routing, pilot paperwork generation) plus the SharePoint/Teams connector (Task #40). `9da3411` adds an engineering guardrails module (`lib/guardrails.ts` + tests, Task #19), a pilot paperwork page, and updates to prompt registry/company-detection/export/workspace-detection routes. Both commits made and pushed by Ali himself on 2026-06-25 after a sandbox `.git/index.lock` fuse-mount permission issue blocked direct sandbox commits both times -- confirmed `origin/main` matches local `HEAD` at `9da3411`. There is nothing uncommitted or unpushed as of this writing.
-Last full verification: 2026-06-17, for v0.25.0 only. TypeScript clean, 29 test files / 187 tests passing, production build clean, production dependency audit clean at that time. Everything committed since then (Tasks #35/#36/#32/#37/#19, the Google Drive + SharePoint/Teams connectors, and the guardrails/pilot-paperwork batch) has NOT been verified with `npm install`/`npx tsc --noEmit`/`npm test`/`npm run build` -- run that full cycle next, on a machine with npm registry access (this sandbox's registry access returns 403). Protected `/knowledge` and `/api/knowledge/*` block unauthenticated curl via Clerk; use logged-in Chrome/Render for UI smoke after deploy.
+Current version: `origin/main` is at commit `9da3411` -- "Add engineering guardrails module, pilot paperwork page, prompt registry updates; correct HANDOVER/TASKS docs", on top of `2ff4c26` -- "Add Microsoft SharePoint/Teams connector (OAuth + Graph API)" (which bundled the full session #31 batch: Task #35 DB transactions, Task #36 LLM routing + DeepSeek V4 migration, Task #32 Sentry, Task #37 Queen's Review fixes, cron jobs, provider UI, Resend email, Mode Indicator, strategy profile, Google Drive connector, knowledge embeddings, onboarding routing, pilot paperwork generation, plus SharePoint/Teams itself, Task #40).
+
+NOT YET COMMITTED OR PUSHED as of this writing: 5 new OAuth connectors built in session #33 (2026-06-25) -- GitHub, Jira, HubSpot, QuickBooks, LinkedIn (Tasks #55-59), each `lib/connectors/{type}.ts` + install/callback/files/ingest routes, plus shared plumbing edits (`ALLOWED_TYPES`, `app/settings/connectors/page.tsx` catalogue/errors/instructions, `render.yaml` env vars, `CUTOVER.md` env vars/instructions) and paperwork reconciliation (`TASKS.md`, `BACKLOG.md`, `CHANGELOG.md`, this file). This is 25 new files plus 6+ modified files sitting in the sandbox's working tree. Same sandbox constraint as every prior session: `.git/index.lock` cannot be created/removed from the sandbox due to a fuse-mount permission restriction, so Ali must run the commit/push from his own machine. Exact commands:
+
+```bash
+cd /Users/alijanjua/Documents/Playground/nexus-core
+rm -f .git/index.lock
+git add -A
+git commit -m "Add 5 OAuth connectors (GitHub, Jira, HubSpot, QuickBooks, LinkedIn) + shared plumbing"
+git push origin main
+```
+
+Last full verification: 2026-06-17, for v0.25.0 only. TypeScript clean, 29 test files / 187 tests passing, production build clean, production dependency audit clean at that time. Everything committed since then (Tasks #35/#36/#32/#37/#19, Google Drive + SharePoint/Teams, guardrails/pilot-paperwork) plus everything built THIS session (5 new connectors, uncommitted) has NOT been verified with `npm install`/`npx tsc --noEmit`/`npm test`/`npm run build` -- run that full cycle next, on a machine with npm registry access (this sandbox's registry access returns 403):
+
+```bash
+cd /Users/alijanjua/Documents/Playground/nexus-core
+npm install
+npx tsc --noEmit
+npm run test
+npm run build
+```
+
+Protected `/knowledge` and `/api/knowledge/*` block unauthenticated curl via Clerk; use logged-in Chrome/Render for UI smoke after deploy.
 
 Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. U5 Workflow Twin Scorer, U6 backcasting, and U7 shadow ROI are committed in v0.24.0. Billing Tiers + Stripe full integration (v0.20.0-v0.21.0), Orchestration Dispatcher (v0.22.0), Company Memory UI, first Slack connector data flow (v0.23.0), and Connector Settings policy UX (v0.24.0) complete.
 Migrations 0001-0026 applied to Neon production. `db:check` passed on 2026-06-25.
 
-What is built: onboarding, ingestion, retrieval, 7 agent rooms, 20 role dashboards, Ask, governance (passports, output gates, learning signals), Decision Twin, entity extraction, Company Memory pages/backlinks, eval harness, Executive Synthesis, scheduled synthesis, billing tiers, Stripe, orchestration dispatcher (dispatch_jobs queue, atomic claim, priority, retry, fan-out, 4 job type handlers, cron runner), first Slack inbound ingestion path, Connector Settings policy UX, Workflow Twin Scorer, backcasting, shadow ROI, the v0.25.0 Knowledge Workspace, transaction-safe multi-table repository writes (Task #35), policy-driven LLM routing with fallback chains (Task #36), Sentry error tracking wired but disabled pending a DSN (Task #32/#37), a full Google Drive OAuth connector (install/callback/files/ingest), a full Microsoft SharePoint/Teams OAuth connector via Graph API (install/callback/files/ingest, Task #40), an engineering guardrails module (typed state machines, append-only events, visible async effects, auth-mode contracts, verifier error taxonomy -- `lib/guardrails.ts` + tests, Task #19), and a pilot paperwork page -- all committed and pushed at `9da3411` (on top of `2ff4c26`), none yet verified with a build/test cycle, and the two connectors are also pending a real-OAuth-app round-trip test.
+What is built: onboarding, ingestion, retrieval, 7 agent rooms, 20 role dashboards, Ask, governance (passports, output gates, learning signals), Decision Twin, entity extraction, Company Memory pages/backlinks, eval harness, Executive Synthesis, scheduled synthesis, billing tiers, Stripe, orchestration dispatcher, first Slack inbound ingestion path, Connector Settings policy UX, Workflow Twin Scorer, backcasting, shadow ROI, the v0.25.0 Knowledge Workspace, transaction-safe multi-table repository writes (Task #35), policy-driven LLM routing with fallback chains (Task #36), Sentry error tracking wired but disabled pending a DSN (Task #32/#37), a full Google Drive OAuth connector, a full Microsoft SharePoint/Teams OAuth connector via Graph API (Task #40), an engineering guardrails module (Task #19), a pilot paperwork page -- all committed and pushed at `9da3411`. PLUS, built this session but NOT yet committed: GitHub, Jira, HubSpot, QuickBooks, and LinkedIn OAuth connectors (Tasks #55-59) -- each code-complete with narrower scope than originally specced for Jira/HubSpot/GitHub/QuickBooks (per-record list+ingest, not aggregate/rollup signals -- exact gaps documented in `TASKS.md` and `CHANGELOG.md`), and LinkedIn additionally gated on a separate LinkedIn Community Management API partner-approval step.
 
 Immediate next build:
-1. On a machine with npm registry access: run `npm install`, `npx tsc --noEmit`, `npm test`, `npm run build` against `9da3411` to verify everything above. Nothing further to commit at this step -- it is already pushed.
-2. Create a Sentry project, set the 5 Sentry env vars in Render (listed in `CUTOVER.md` Step 2), trigger a test error, confirm it lands in the dashboard.
-3. Log in to Render and confirm `nexus-mission-control` deployed commit is `9da3411`; trigger manual deploy from `main` if stale, then run authenticated smoke.
-4. Register a Google Cloud OAuth client and an Azure AD app, set `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` and `MICROSOFT_CLIENT_ID`/`MICROSOFT_CLIENT_SECRET`/`MICROSOFT_TENANT_ID` in Render (already listed in `render.yaml` and `CUTOVER.md` Step 2), then run each connector's install flow end-to-end to confirm the OAuth round trip and a real file ingest.
-5. Add remaining connector data flows: Jira, GitHub, CRM, finance, social.
+1. Ali commits/pushes the 5-connector batch using the commands above.
+2. On a machine with npm registry access: run `npm install`, `npx tsc --noEmit`, `npm test`, `npm run build` against the new commit to verify everything, including the prior unverified `9da3411` batch.
+3. Create a Sentry project, set the 5 Sentry env vars in Render (listed in `CUTOVER.md` Step 2), trigger a test error, confirm it lands in the dashboard.
+4. Log in to Render and confirm `nexus-mission-control` deployed commit matches the new `origin/main` HEAD; trigger manual deploy from `main` if stale, then run authenticated smoke.
+5. Register OAuth apps with all 7 providers now in play and set their env vars in Render (all already listed in `render.yaml` and `CUTOVER.md` Step 2), then run each connector's install flow end-to-end:
+   - Google Cloud OAuth client -- `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`
+   - Azure AD app -- `MICROSOFT_CLIENT_ID`/`MICROSOFT_CLIENT_SECRET`/`MICROSOFT_TENANT_ID`
+   - GitHub OAuth app (github.com/settings/developers) -- `GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET`
+   - Atlassian OAuth 2.0 (3LO) app (developer.atlassian.com) -- `JIRA_CLIENT_ID`/`JIRA_CLIENT_SECRET`
+   - HubSpot public app (developers.hubspot.com) -- `HUBSPOT_CLIENT_ID`/`HUBSPOT_CLIENT_SECRET`
+   - Intuit app (developer.intuit.com) -- `QUICKBOOKS_CLIENT_ID`/`QUICKBOOKS_CLIENT_SECRET`/`QUICKBOOKS_ENVIRONMENT`
+   - LinkedIn app (developer.linkedin.com) -- `LINKEDIN_CLIENT_ID`/`LINKEDIN_CLIENT_SECRET`, plus apply for the Community Management API product separately before expecting real post data
+   - Each redirect URI: `{NEXT_PUBLIC_APP_URL}/api/connectors/{type}/callback`.
+6. Scope and build the aggregate/rollup follow-up work flagged as open in `TASKS.md`/`CHANGELOG.md` for Jira (sprint/epic rollups), HubSpot (contact activity, email sequences), GitHub (CI/deployment-frequency signals), and QuickBooks (P&L/cash-flow/AR-AP-aging/balance-sheet reports).
 
 Open design question (not yet implemented, analysis delivered to Ali, awaiting his decision): dynamic per-job model switching between deepseek-v4-pro and deepseek-v4-flash (draft-then-refine recommended) and a typed `AgentSkill` enum for ingestion-type-to-skill mapping. See Task #38.
 
 Known missing:
-- Connector data flows beyond Slack/Drive/SharePoint: Jira, GitHub, CRM, finance, and social.
-- Real-OAuth-app verification for the Google Drive and SharePoint/Teams connectors (code-complete, untested against live credentials).
+- Aggregate/rollup signals for Jira, HubSpot, GitHub, QuickBooks (current scope is per-record, not the originally-specced summary signals -- see `TASKS.md`).
+- Real-OAuth-app verification for all 7 connectors (Google Drive, SharePoint/Teams, GitHub, Jira, HubSpot, QuickBooks, LinkedIn) -- none tested against live credentials yet.
+- LinkedIn Community Management API partner approval -- separate from OAuth client registration, required before `files`/`ingest` return real post data.
+- Salesforce, Xero, Meta, and Gmail/Outlook connectors remain entirely unbuilt.
 - v0.25.0 authenticated production smoke for `/knowledge`, `/workflows`, `/settings/connectors`, and Ask note citations.
 - Cron job entries in `render.yaml` (dispatch, billing, trial conversion) -- handlers exist in code, just not declared in the blueprint.
 

@@ -84,6 +84,71 @@ const CONNECTOR_CATALOGUE: ConnectorDef[] = [
     lane: "saas",
   },
   {
+    type: "github",
+    name: "GitHub",
+    description: "Ingest issues and pull requests from your repositories.",
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
+        <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58 0-.29-.01-1.04-.02-2.04-3.34.72-4.04-1.61-4.04-1.61-.55-1.39-1.34-1.76-1.34-1.76-1.09-.75.08-.73.08-.73 1.21.08 1.84 1.24 1.84 1.24 1.07 1.84 2.81 1.31 3.49 1 .11-.78.42-1.31.76-1.61-2.66-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.12-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23.96-.27 1.98-.4 3-.4s2.04.13 3 .4c2.29-1.55 3.3-1.23 3.3-1.23.66 1.66.24 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.81 5.63-5.48 5.92.43.37.81 1.1.81 2.22 0 1.6-.01 2.89-.01 3.29 0 .32.22.7.83.58C20.56 21.8 24 17.3 24 12c0-6.63-5.37-12-12-12z" />
+      </svg>
+    ),
+    installHref: "/api/connectors/github/install",
+    available: true,
+    lane: "saas",
+  },
+  {
+    type: "jira",
+    name: "Jira",
+    description: "Pull issues and project metadata from Atlassian Jira Cloud.",
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
+        <path d="M11.53 2L2 11.53a1.5 1.5 0 0 0 0 2.12l3.18 3.18 6.35-6.35L18 4.12 14.82.94a1.5 1.5 0 0 0-2.12 0L11.53 2zM5.18 11.53l6.35 6.35-3.18 3.18a1.5 1.5 0 0 1-2.12 0L2.85 17.7a1.5 1.5 0 0 1 0-2.12l2.33-2.05zm12.7-3.18L11.53 14.7l3.18 3.18a1.5 1.5 0 0 0 2.12 0l3.38-3.38a1.5 1.5 0 0 0 0-2.12l-2.33-2.03z" />
+      </svg>
+    ),
+    installHref: "/api/connectors/jira/install",
+    available: true,
+    lane: "saas",
+  },
+  {
+    type: "hubspot",
+    name: "HubSpot",
+    description: "Ingest deals, contacts, and companies from your CRM pipeline.",
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
+        <path d="M18.164 7.93V5.084a2.198 2.198 0 0 0 1.265-1.978v-.066A2.2 2.2 0 0 0 17.23.84h-.067a2.2 2.2 0 0 0-2.199 2.2v.066a2.198 2.198 0 0 0 1.266 1.978V7.93a6.235 6.235 0 0 0-2.969 1.31L7.04 4.6A2.474 2.474 0 0 0 7.1 4.07a2.49 2.49 0 1 0-2.49 2.49c.193 0 .378-.027.555-.066l6.103 4.59a6.24 6.24 0 0 0 .054 6.984l-1.857 1.857a2.01 2.01 0 0 0-.585-.094 2.024 2.024 0 1 0 2.024 2.024c0-.207-.034-.404-.094-.586l1.84-1.84a6.236 6.236 0 1 0 5.07-11.498zm-1.034 9.367a3.135 3.135 0 1 1 0-6.27 3.135 3.135 0 0 1 0 6.27z" />
+      </svg>
+    ),
+    installHref: "/api/connectors/hubspot/install",
+    available: true,
+    lane: "saas",
+  },
+  {
+    type: "quickbooks",
+    name: "QuickBooks",
+    description: "Ingest invoices, P&L, and accounting records for finance evidence.",
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
+        <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zM7.5 16.5a4.5 4.5 0 1 1 0-9 4.508 4.508 0 0 1 1.5.258V12a3 3 0 1 0 3 3v3.75a4.5 4.5 0 0 1-4.5-2.25zm9-4.5a4.5 4.5 0 1 1-4.5-4.5V4.5A4.5 4.5 0 0 1 16.5 9v3z" />
+      </svg>
+    ),
+    installHref: "/api/connectors/quickbooks/install",
+    available: true,
+    lane: "saas",
+  },
+  {
+    type: "linkedin",
+    name: "LinkedIn",
+    description: "Ingest company-page posts and social signals (requires LinkedIn partner approval).",
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
+        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 1 1 0-4.124 2.062 2.062 0 0 1 0 4.124zM7.114 20.452H3.558V9h3.556v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z" />
+      </svg>
+    ),
+    installHref: "/api/connectors/linkedin/install",
+    available: true,
+    lane: "saas",
+  },
+  {
     type: "snowflake",
     name: "Snowflake",
     description: "Query tables directly via warehouse connector for structured data ingest.",
@@ -401,6 +466,18 @@ export default function ConnectorsPage() {
         google_client_id_not_configured: "Google OAuth is not configured on this instance.",
         microsoft_not_configured: "Microsoft OAuth is not configured on this instance.",
         microsoft_client_id_not_configured: "Microsoft OAuth is not configured on this instance.",
+        github_not_configured: "GitHub OAuth is not configured on this instance.",
+        github_client_id_not_configured: "GitHub OAuth is not configured on this instance.",
+        jira_not_configured: "Jira OAuth is not configured on this instance.",
+        jira_client_id_not_configured: "Jira OAuth is not configured on this instance.",
+        jira_site_resolution_failed: "Could not resolve a Jira Cloud site for this account.",
+        jira_no_accessible_site: "This Atlassian account has no accessible Jira Cloud site.",
+        hubspot_not_configured: "HubSpot OAuth is not configured on this instance.",
+        hubspot_client_id_not_configured: "HubSpot OAuth is not configured on this instance.",
+        quickbooks_not_configured: "QuickBooks OAuth is not configured on this instance.",
+        quickbooks_client_id_not_configured: "QuickBooks OAuth is not configured on this instance.",
+        linkedin_not_configured: "LinkedIn OAuth is not configured on this instance.",
+        linkedin_client_id_not_configured: "LinkedIn OAuth is not configured on this instance.",
       };
       setToast({ type: "error", message: messages[error] ?? `Install failed: ${error}` });
     }
@@ -537,6 +614,21 @@ export default function ConnectorsPage() {
         <p className="font-medium text-white/60 mt-4">To enable SharePoint / Teams:</p>
         <p>Register an app in Azure AD, then set <code className="text-nexus-accent/70">MICROSOFT_CLIENT_ID</code>, <code className="text-nexus-accent/70">MICROSOFT_CLIENT_SECRET</code>, and optionally <code className="text-nexus-accent/70">MICROSOFT_TENANT_ID</code> (defaults to "common") in your environment.</p>
         <p className="mt-1">Redirect URI: <code className="text-white/50">{"{NEXT_PUBLIC_APP_URL}"}/api/connectors/sharepoint/callback</code></p>
+        <p className="font-medium text-white/60 mt-4">To enable GitHub:</p>
+        <p>Register an OAuth app at github.com/settings/developers, then set <code className="text-nexus-accent/70">GITHUB_CLIENT_ID</code> and <code className="text-nexus-accent/70">GITHUB_CLIENT_SECRET</code> in your environment.</p>
+        <p className="mt-1">Redirect URI: <code className="text-white/50">{"{NEXT_PUBLIC_APP_URL}"}/api/connectors/github/callback</code></p>
+        <p className="font-medium text-white/60 mt-4">To enable Jira:</p>
+        <p>Register an OAuth 2.0 (3LO) app at developer.atlassian.com, then set <code className="text-nexus-accent/70">JIRA_CLIENT_ID</code> and <code className="text-nexus-accent/70">JIRA_CLIENT_SECRET</code> in your environment.</p>
+        <p className="mt-1">Redirect URI: <code className="text-white/50">{"{NEXT_PUBLIC_APP_URL}"}/api/connectors/jira/callback</code></p>
+        <p className="font-medium text-white/60 mt-4">To enable HubSpot:</p>
+        <p>Create a public app at developers.hubspot.com, then set <code className="text-nexus-accent/70">HUBSPOT_CLIENT_ID</code> and <code className="text-nexus-accent/70">HUBSPOT_CLIENT_SECRET</code> in your environment.</p>
+        <p className="mt-1">Redirect URI: <code className="text-white/50">{"{NEXT_PUBLIC_APP_URL}"}/api/connectors/hubspot/callback</code></p>
+        <p className="font-medium text-white/60 mt-4">To enable QuickBooks:</p>
+        <p>Register an app at developer.intuit.com, then set <code className="text-nexus-accent/70">QUICKBOOKS_CLIENT_ID</code>, <code className="text-nexus-accent/70">QUICKBOOKS_CLIENT_SECRET</code>, and optionally <code className="text-nexus-accent/70">QUICKBOOKS_ENVIRONMENT</code> ("sandbox" or "production", defaults to "production") in your environment.</p>
+        <p className="mt-1">Redirect URI: <code className="text-white/50">{"{NEXT_PUBLIC_APP_URL}"}/api/connectors/quickbooks/callback</code></p>
+        <p className="font-medium text-white/60 mt-4">To enable LinkedIn:</p>
+        <p>Create an app at developer.linkedin.com, then set <code className="text-nexus-accent/70">LINKEDIN_CLIENT_ID</code> and <code className="text-nexus-accent/70">LINKEDIN_CLIENT_SECRET</code> in your environment. Posting/reading company-page data also requires LinkedIn's Community Management API product, which needs separate partner approval.</p>
+        <p className="mt-1">Redirect URI: <code className="text-white/50">{"{NEXT_PUBLIC_APP_URL}"}/api/connectors/linkedin/callback</code></p>
       </div>
     </PageShell>
   );

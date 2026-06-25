@@ -57,6 +57,17 @@ GOOGLE_CLIENT_SECRET=
 MICROSOFT_CLIENT_ID=
 MICROSOFT_CLIENT_SECRET=
 MICROSOFT_TENANT_ID=
+GITHUB_CLIENT_ID=
+GITHUB_CLIENT_SECRET=
+JIRA_CLIENT_ID=
+JIRA_CLIENT_SECRET=
+HUBSPOT_CLIENT_ID=
+HUBSPOT_CLIENT_SECRET=
+QUICKBOOKS_CLIENT_ID=
+QUICKBOOKS_CLIENT_SECRET=
+QUICKBOOKS_ENVIRONMENT=
+LINKEDIN_CLIENT_ID=
+LINKEDIN_CLIENT_SECRET=
 SENTRY_DSN=
 NEXT_PUBLIC_SENTRY_DSN=
 SENTRY_ORG=
@@ -65,6 +76,15 @@ SENTRY_AUTH_TOKEN=
 ```
 
 Only set Slack variables when the Slack connector is active. Same applies to Google (`GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`) and Microsoft (`MICROSOFT_CLIENT_ID`/`MICROSOFT_CLIENT_SECRET`/`MICROSOFT_TENANT_ID`) — only set these once you've registered an OAuth app with the respective provider and want that connector available. `MICROSOFT_TENANT_ID` defaults to `"common"` (multi-tenant) when left blank, which is fine for most pilots.
+
+The same "only set when active" rule applies to the five newer connectors:
+- GitHub (`GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET`) — register an OAuth app at github.com/settings/developers.
+- Jira (`JIRA_CLIENT_ID`/`JIRA_CLIENT_SECRET`) — register an OAuth 2.0 (3LO) app at developer.atlassian.com.
+- HubSpot (`HUBSPOT_CLIENT_ID`/`HUBSPOT_CLIENT_SECRET`) — create a public app at developers.hubspot.com.
+- QuickBooks (`QUICKBOOKS_CLIENT_ID`/`QUICKBOOKS_CLIENT_SECRET`/`QUICKBOOKS_ENVIRONMENT`) — register an app at developer.intuit.com; `QUICKBOOKS_ENVIRONMENT` is `sandbox` or `production` (defaults to `production` when blank).
+- LinkedIn (`LINKEDIN_CLIENT_ID`/`LINKEDIN_CLIENT_SECRET`) — create an app at developer.linkedin.com. Reading company-page posts additionally requires LinkedIn's Community Management API product, which needs separate partner review and approval before the connector can list/ingest real posts — the OAuth install/callback flow works without it, but `files`/`ingest` calls will 502 with a 403 from LinkedIn until approved.
+
+Each connector's redirect URI follows the same pattern: `{NEXT_PUBLIC_APP_URL}/api/connectors/{type}/callback` (e.g. `/api/connectors/github/callback`, `/api/connectors/jira/callback`, `/api/connectors/hubspot/callback`, `/api/connectors/quickbooks/callback`, `/api/connectors/linkedin/callback`). Register this exact URI with each provider before testing the install flow.
 
 Sentry variables are optional — the app runs identically with no Sentry account configured (`enabled: !!process.env.SENTRY_DSN` gates initialization to a no-op). Set them once a Sentry project exists; leave them blank otherwise. `NEXUS_LLM_MODEL` should be `deepseek-v4-flash` or `deepseek-v4-pro`, not the legacy `deepseek-chat`/`deepseek-reasoner` names — DeepSeek retires those on 2026-07-24 15:59 UTC.
 
