@@ -15,7 +15,9 @@
 
 import { describe, expect, it, beforeAll } from "vitest";
 import { repository } from "@/lib/data/repository";
-import type { EvidenceRecord } from "@/lib/contracts";
+import { knowledgeNoteInputSchema, type EvidenceRecord } from "@/lib/contracts";
+
+const note = (title: string, body: string) => knowledgeNoteInputSchema.parse({ title, body });
 
 const WS_A = "ws-alpha";
 const WS_B = "ws-beta";
@@ -57,8 +59,8 @@ beforeAll(async () => {
     metadata: {}, evidenceId: "ev-b1", confidence: 0.9,
   });
 
-  await repository.upsertKnowledgeNote(WS_A, { title: "Helios plan", body: "Internal Alpha note about Project Helios launch." }, "tester");
-  await repository.upsertKnowledgeNote(WS_B, { title: "Gamma deal", body: "Internal Beta note about the Gamma acquisition." }, "tester");
+  await repository.upsertKnowledgeNote(WS_A, note("Helios plan", "Internal Alpha note about Project Helios launch."), "tester");
+  await repository.upsertKnowledgeNote(WS_B, note("Gamma deal", "Internal Beta note about the Gamma acquisition."), "tester");
 });
 
 describe("Evidence isolation", () => {

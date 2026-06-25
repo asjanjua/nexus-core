@@ -107,7 +107,7 @@ function nextWithPath(request: NextRequest): NextResponse {
 // CSP: strict but pragmatic for a Next.js app with Clerk and inline styles from Tailwind
 // CLERK_DOMAIN is read at module load — Next.js middleware runs in the Edge runtime
 // where process.env is available at build time for static values.
-const CSP_DIRECTIVES = [
+export const CSP_DIRECTIVES = [
   "default-src 'self'",
   // Next.js App Router and Clerk both need client-side bootstrap scripts.
   // Keep 'unsafe-inline' until we implement nonce-based CSP for the app shell.
@@ -125,12 +125,15 @@ const CSP_DIRECTIVES = [
   "upgrade-insecure-requests",
 ].join("; ");
 
-function withSecurityHeaders(response: NextResponse, request: NextRequest): NextResponse {
+export function withSecurityHeaders(response: NextResponse, request: NextRequest): NextResponse {
   // Standard hardening
   response.headers.set("x-content-type-options", "nosniff");
   response.headers.set("x-frame-options", "DENY");
   response.headers.set("referrer-policy", "strict-origin-when-cross-origin");
   response.headers.set("permissions-policy", "camera=(), microphone=(), geolocation=(), payment=()");
+  // Defense-in-depth: isolate the browsing context. "allow-popups" keeps Clerk /
+  // OAuth popup flows working while still blocking cross-origin window references.
+  response.headers.set("cross-origin-opener-policy", "same-origin-allow-popups");
   response.headers.set("content-security-policy", CSP_DIRECTIVES);
 
   if (process.env.NODE_ENV === "production") {
