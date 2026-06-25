@@ -165,10 +165,12 @@ Priority order:
 
 ## Implementation Checklist
 
-- [ ] Add discriminated-union contracts for any new runner or sync state.
-- [ ] Add append-only event rows for long-running workflows before exposing UI automation.
-- [ ] Add explicit `EffectResult`-style result contracts for disk/network/provider calls.
-- [ ] Add error taxonomies for verifier/runner outcomes.
-- [ ] Add auth-mode contracts before shipping local/on-prem client work.
-- [ ] Add tests for impossible state rejection and exhaustive outcome handling.
+Contract layer landed 2026-06-25 in `apps/mission-control/lib/guardrails.ts` (tests: `tests/guardrails.test.ts`, 16 runtime assertions verified via tsx, tsc clean). These are the shared primitives; runners adopt them when written.
+
+- [x] Add discriminated-union contracts for any new runner or sync state. (`RunnerState` + `runnerStateSchema`)
+- [x] Add append-only event rows for long-running workflows before exposing UI automation. (`RunnerEvent` + `runnerEvent()` builder; persisted via existing audit/event stores)
+- [x] Add explicit `EffectResult`-style result contracts for disk/network/provider calls. (`EffectResult<T>`, `ok()`/`err()`/`mapEffect()`/`runEffect()`)
+- [x] Add error taxonomies for verifier/runner outcomes. (`VerifierOutcome` + `isRetryableOutcome`/`isUserActionable`)
+- [x] Add auth-mode contracts before shipping local/on-prem client work. (`AuthMode` + `canSyncToCloud()` + `authModeTransitionEvent()`)
+- [x] Add tests for impossible state rejection and exhaustive outcome handling. (`tests/guardrails.test.ts`)
 

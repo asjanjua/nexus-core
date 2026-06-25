@@ -6,18 +6,22 @@
 
 ## Session Info
 
-- **Last updated:** 2026-06-25 (v0.25.x — session #31 with Jarvis/DeepSeek Pro V4. 12 product tasks closed: cron jobs, provider UI, Resend email, Mode Indicator, strategy profile, note-to-entity linking, Google Drive connector, onboarding workflow routing, pilot paperwork generation, Create Decision from brief, note embeddings, backcast dashboard seeding.)
-- **Last model:** DeepSeek Pro V4 (Jarvis / Hermes Chief Engineer)
-- **Session number:** #31
+- **Last updated:** 2026-06-25 (v0.25.x — session #32 with Claude. Built and shipped the Microsoft Teams/SharePoint connector (Task #40), reconciled HANDOVER/TASKS/CUTOVER paperwork, and confirmed/committed the full uncommitted batch from session #31.)
+- **Last model:** Claude (Sonnet 4.6, Cowork)
+- **Session number:** #32
 - **Current version:** 0.25.x — Phases 1-8 + 9D complete, V1.1 Tier 1 (U1-U4) complete. Strategy pipeline fully implemented: readiness → buyer lane → onboarding → workflow pilot → governed value proof.
+- **Session #32 delivered (2026-06-25):**
+  - **Task #40 (SharePoint/Teams connector):** `lib/connectors/sharepoint.ts` — pure-fetch Microsoft identity platform OAuth 2.0 client (authorization-code flow, tenant configurable via `MICROSOFT_TENANT_ID`, default `"common"`) plus Microsoft Graph API `listFiles()`/`downloadFile()` against `/me/drive`. Mirrors `lib/connectors/google-drive.ts` structurally. Four API routes under `app/api/connectors/sharepoint/` (install, callback, files, ingest) — line-for-line structural parity with the Google Drive routes, reusing the same `requireScope`, `repository.upsertConnector`, and `ingestEvidence` calls. Settings UI: the pre-existing `sharepoint` catalogue entry in `app/settings/connectors/page.tsx` flipped from `available: false` to `true`, plus Microsoft-specific error messages and an env-var hint block. `MICROSOFT_CLIENT_ID`/`MICROSOFT_CLIENT_SECRET`/`MICROSOFT_TENANT_ID` added to `render.yaml` (sync: false) and `CUTOVER.md` Step 2 (also backfilled the previously-missing `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` lines in `CUTOVER.md`, which render.yaml already had but the cutover checklist had silently dropped).
+  - **Committed and pushed:** the entire uncommitted batch from session #31 (cron jobs, provider UI, Resend email, Mode Indicator, strategy profile, Google Drive connector, knowledge embeddings, etc.) plus the new SharePoint connector landed in a single commit `2ff4c26` ("Add Microsoft SharePoint/Teams connector (OAuth + Graph API)") and pushed to `origin/main`. Ali ran the commit/push himself on his own machine after a stale `.git/index.lock` blocked write access from the sandbox's mounted view of the repo (confirmed via `ps aux` that no live process held the lock — it was a leftover from an earlier interrupted git operation, combined with a fuse-mount permission quirk that prevented the sandbox from unlinking it directly).
+  - **Not yet run:** `npm install && tsc --noEmit && npm test && npm run build` against this commit. Run that verification cycle before relying on this build, and before triggering a Render deploy.
 - **Session #31 delivered (2026-06-25):**
   - **Task P0.1 (Render cron jobs):** Three cron services added to `render.yaml` — dispatch every 2 min, billing daily at midnight, synthesis daily at 1am. All use `NEXUS_CRON_SECRET` auth. Verify in Render dashboard after deploy.
   - **Task #35 (DB transactions):** `createDecision`/`updateDecision`, `createAction`/`updateAction`, `saveAgentOutput`, `rollbackAgentOutput` now wrapped in `db.transaction()` so the row write and its audit-event write commit or roll back together. `tests/repository-transactions.test.ts` added.
   - **Task #36 (LLM routing wiring):** `callLLM()` now executes the `model-routing.ts` 10-surface fallback-chain policy via the new `callLLMWithRouting()`, wired into all 8 real call sites (retrieval, synthesis, dashboard, decision-extraction, recommendations, exports, company-detection x2). Found and fixed a real production bug as a byproduct: DeepSeek retires `deepseek-chat`/`deepseek-reasoner` on **2026-07-24 15:59 UTC** -- `DEFAULT_MODEL` now falls back to `deepseek-v4-flash`, and `estimateCostMicro()` uses correct split pricing (v4-flash $0.14/$0.28 per M tokens, v4-pro $0.435/$0.87 per M).
   - **Task #32 (Sentry):** wired via `instrumentation.ts`'s `onRequestError` hook (covers all ~36 API routes automatically), plus `app/global-error.tsx`, `app/error.tsx`, and `lib/observability/sentry.ts` manual-capture helpers for the catch-and-continue paths the hook can't see (Stripe webhook, LLM fallback exhaustion). Ships disabled (no-op) until `SENTRY_DSN` is set.
   - **Task #37 (Queen's Review fixes):** an external review of Task #32 raised 5 findings; 4 confirmed and fixed (workspaceId fallback tagging via query-param/`"unknown"`, 3 stray `deepseek-chat` refs cleaned up across `CUTOVER.md`/`settings/page.tsx`/`ai-policy.test.ts`, `tracesSampleRate` raised 0.2→1.0 for pilot volume, `tests/observability/sentry.test.ts` added); 1 finding (claimed `app/error.tsx` was missing) was a false positive -- verified the file already existed with Sentry wiring. Lesson logged: verify external/automated review findings against current file state before acting, same standard as any other source.
-- **Last commit:** `3530808` -- `chore: fix vite audit advisory` (the four tasks above are uncommitted in this sandbox -- npm registry returns 403 here, so `npm install`, `tsc --noEmit`, `npm test`, and `npm run build` could not be run to verify before commit. Run those on a machine with registry access before committing/pushing.)
-- **Remote status:** v0.25.0 plus audit fix pushed to `origin/main`; Render deployed-commit confirmation and authenticated smoke remain pending. The four tasks above are NOT yet pushed.
+- **Last commit:** `2ff4c26` -- "Add Microsoft SharePoint/Teams connector (OAuth + Graph API)" -- bundles the SharePoint connector plus the entire session #31 batch (Tasks #35/#36/#32/#37, cron jobs, provider UI, Resend email, Mode Indicator, strategy profile, Google Drive connector, knowledge embeddings, onboarding routing, pilot paperwork generation). Committed and pushed by Ali on 2026-06-25; confirmed `origin/main` matches local `HEAD` at `2ff4c26`. NOT yet verified with `npm install`/`tsc`/`npm test`/`npm run build` -- run that cycle next.
+- **Remote status:** `2ff4c26` pushed to `origin/main`. Render deployed-commit confirmation and authenticated smoke remain pending for this commit.
 - **Production DB:** migrations 0001-0026 applied to Neon/production database. Migrations 0025-0026 were applied on 2026-06-25 and `db:check` returned `ok=true` against `neondb`.
 - **Local verification (2026-06-13):** `npm run build --workspace @nexus/mission-control` passed. `npm test --workspace @nexus/mission-control` passed: 28 test files / 179 tests.
 - **Local verification (2026-06-15):** Browser CTA/auth checks passed for v0.23.1. For v0.24.0, `npm exec -w @nexus/mission-control tsc -- --noEmit` passed, `npm run test` passed: 28 test files / 183 tests, and `npm run build` passed. In-app browser `/workflows` smoke redirects to Clerk sign-in and cannot authenticate in that browser session; verify authenticated `/workflows` in logged-in Chrome/Render after deploy.
@@ -60,7 +64,7 @@
 ### Confirmed Missing
 
 - **Authenticated production smoke:** v0.25.0 needs Render deploy plus logged-in browser verification for `/knowledge`, `/workflows`, Connector Settings policy save, and Ask note citations.
-- **Additional connector data flows:** Google Drive, Teams, SharePoint, Jira, GitHub, CRM, finance, and social connectors are not yet ingesting live data.
+- **Additional connector data flows:** Google Drive and SharePoint/Teams now have full OAuth connector implementations (Task #40, 2026-06-25) but neither has been verified against a real Microsoft/Google OAuth app yet -- registering an Azure AD app (single-tenant vs multi-tenant `common` is Ali's call per pilot client) and a Google Cloud OAuth client, then running the install flow end-to-end, is the remaining verification step. Jira, GitHub, CRM, finance, and social connectors remain unbuilt.
 - **Connector scheduler/sync jobs:** Slack event ingestion is live, but broader scheduled sync and per-source sync history remain future connector work.
 - **Knowledge follow-through:** note embeddings, richer graph filters, note-to-entity linking UI, daily/project/workflow brief automation, duplicate/contradiction audits, and resurfacing remain future work.
 
@@ -794,15 +798,17 @@ CLOUDFLARE_R2_*            R2 object storage (optional)
 | U7 Shadow ROI Instrumentation | Complete locally | v0.24.0 |
 | Phase 8C -- Ops Review Twin | Primitive payload shipped; richer product UI later | v0.19.1+ |
 | Phase 9 -- Team Members | Build when pilot client needs it | -- |
+| Google Drive Connector | Complete, committed and pushed (`2ff4c26`); needs real-OAuth-app verification | v0.25.x |
+| SharePoint/Teams Connector | Complete, committed and pushed (`2ff4c26`); needs real-OAuth-app verification | v0.25.x |
 | Phase 10+ | Future | -- |
 
 ## What Needs to Come Next
 
 ### Next build (highest impact)
 
-1. **Confirm Render deploy for v0.25.0/audit-fix commit `3530808` and complete authenticated smoke.**
-2. **If Render is stale, trigger manual deploy from `main`.**
-3. **Connector data flows:** add Google Drive/SharePoint/Teams/Jira/GitHub/CRM/finance/social ingestion paths.
+1. **Run `npm install`/`npx tsc --noEmit`/`npm test`/`npm run build` against committed/pushed commit `2ff4c26` to verify it** (not yet done by either Ali or this session).
+2. **Confirm Render deploy for commit `2ff4c26` and complete authenticated smoke.** If Render is stale, trigger manual deploy from `main`.
+3. **Connector data flows -- done:** Google Drive and SharePoint/Teams connectors are built and committed (Tasks per 2026-06-25), pending real-OAuth-app verification (register an Azure AD app and a Google Cloud OAuth client, then run each install flow end-to-end). **Still open:** Jira, GitHub, CRM, finance, and social ingestion paths.
 
 ### Operational sign-off (see docs/SECURITY_REVIEW.md)
 
@@ -852,25 +858,26 @@ Before doing anything else, read:
 4. BACKLOG.md
 5. AGENTS.md
 
-Current version: v0.25.0 pushed to origin/main; PLUS four uncommitted code-hardening tasks on top of it (Task #35 DB transactions, Task #36 LLM routing wiring + DeepSeek V4 migration, Task #32 Sentry, Task #37 Queen's Review fixes -- see Session Info above for detail). Render deployed-commit confirmation pending for v0.25.0; the four newer tasks are not yet pushed at all.
-Last full verification: 2026-06-17, for v0.25.0 only. TypeScript clean, 29 test files / 187 tests passing, production build clean, production dependency audit clean. The four newer tasks have NOT been verified -- this sandbox's npm registry returns 403, so run `npm install`, `npx tsc --noEmit`, `npm test`, and `npm run build` on a machine with registry access before committing/pushing them. Protected `/knowledge` and `/api/knowledge/*` block unauthenticated curl via Clerk; use logged-in Chrome/Render for UI smoke after deploy.
+Current version: everything is committed and pushed to `origin/main` at commit `2ff4c26` -- "Add Microsoft SharePoint/Teams connector (OAuth + Graph API)". This single commit bundles the full session #31 batch (Task #35 DB transactions, Task #36 LLM routing wiring + DeepSeek V4 migration, Task #32 Sentry, Task #37 Queen's Review fixes, cron jobs, provider UI, Resend email, Mode Indicator, strategy profile, Google Drive connector, knowledge embeddings, onboarding routing, pilot paperwork generation) PLUS the session #32 SharePoint/Teams connector (Task #40). Ali committed and pushed this himself on 2026-06-25 after a sandbox `.git/index.lock` fuse-mount permission issue blocked a direct sandbox commit -- confirmed `origin/main` matches local `HEAD` at `2ff4c26`. There is nothing uncommitted or unpushed as of this writing.
+Last full verification: 2026-06-17, for v0.25.0 only. TypeScript clean, 29 test files / 187 tests passing, production build clean, production dependency audit clean at that time. Everything committed since then (Tasks #35/#36/#32/#37 and the Google Drive + SharePoint/Teams connectors) has NOT been verified with `npm install`/`npx tsc --noEmit`/`npm test`/`npm run build` -- run that full cycle next, on a machine with npm registry access (this sandbox's registry access returns 403). Protected `/knowledge` and `/api/knowledge/*` block unauthenticated curl via Clerk; use logged-in Chrome/Render for UI smoke after deploy.
 
 Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. U5 Workflow Twin Scorer, U6 backcasting, and U7 shadow ROI are committed in v0.24.0. Billing Tiers + Stripe full integration (v0.20.0-v0.21.0), Orchestration Dispatcher (v0.22.0), Company Memory UI, first Slack connector data flow (v0.23.0), and Connector Settings policy UX (v0.24.0) complete.
 Migrations 0001-0026 applied to Neon production. `db:check` passed on 2026-06-25.
 
-What is built: onboarding, ingestion, retrieval, 7 agent rooms, 20 role dashboards, Ask, governance (passports, output gates, learning signals), Decision Twin, entity extraction, Company Memory pages/backlinks, eval harness, Executive Synthesis, scheduled synthesis, billing tiers, Stripe, orchestration dispatcher (dispatch_jobs queue, atomic claim, priority, retry, fan-out, 4 job type handlers, cron runner), first Slack inbound ingestion path, Connector Settings policy UX, Workflow Twin Scorer, backcasting, shadow ROI, the v0.25.0 Knowledge Workspace, transaction-safe multi-table repository writes (Task #35), policy-driven LLM routing with fallback chains (Task #36), and Sentry error tracking wired but disabled pending a DSN (Task #32/#37) -- all locally.
+What is built: onboarding, ingestion, retrieval, 7 agent rooms, 20 role dashboards, Ask, governance (passports, output gates, learning signals), Decision Twin, entity extraction, Company Memory pages/backlinks, eval harness, Executive Synthesis, scheduled synthesis, billing tiers, Stripe, orchestration dispatcher (dispatch_jobs queue, atomic claim, priority, retry, fan-out, 4 job type handlers, cron runner), first Slack inbound ingestion path, Connector Settings policy UX, Workflow Twin Scorer, backcasting, shadow ROI, the v0.25.0 Knowledge Workspace, transaction-safe multi-table repository writes (Task #35), policy-driven LLM routing with fallback chains (Task #36), Sentry error tracking wired but disabled pending a DSN (Task #32/#37), a full Google Drive OAuth connector (install/callback/files/ingest), and a full Microsoft SharePoint/Teams OAuth connector via Graph API (install/callback/files/ingest, Task #40) -- all committed and pushed at `2ff4c26`, none yet verified with a build/test cycle, and the two new connectors are also pending a real-OAuth-app round-trip test.
 
 Immediate next build:
-1. On a machine with npm registry access: run `npm install`, `npx tsc --noEmit`, `npm test`, `npm run build` to verify Tasks #35/#36/#32/#37, then commit and push.
+1. On a machine with npm registry access: run `npm install`, `npx tsc --noEmit`, `npm test`, `npm run build` against `2ff4c26` to verify everything above. Nothing further to commit at this step -- it is already pushed.
 2. Create a Sentry project, set the 5 Sentry env vars in Render (listed in `CUTOVER.md` Step 2), trigger a test error, confirm it lands in the dashboard.
-3. Log in to Render and confirm `nexus-mission-control` deployed commit; trigger manual deploy from `main` if stale, then run authenticated smoke.
-4. Add cron job entries to `render.yaml` (dispatch runner, billing reset, trial-to-free conversion) -- single-file change, currently coded but not declared in the blueprint.
-5. Add additional connector data flows beyond Slack.
+3. Log in to Render and confirm `nexus-mission-control` deployed commit is `2ff4c26`; trigger manual deploy from `main` if stale, then run authenticated smoke.
+4. Register a Google Cloud OAuth client and an Azure AD app, set `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` and `MICROSOFT_CLIENT_ID`/`MICROSOFT_CLIENT_SECRET`/`MICROSOFT_TENANT_ID` in Render (already listed in `render.yaml` and `CUTOVER.md` Step 2), then run each connector's install flow end-to-end to confirm the OAuth round trip and a real file ingest.
+5. Add remaining connector data flows: Jira, GitHub, CRM, finance, social.
 
 Open design question (not yet implemented, analysis delivered to Ali, awaiting his decision): dynamic per-job model switching between deepseek-v4-pro and deepseek-v4-flash (draft-then-refine recommended) and a typed `AgentSkill` enum for ingestion-type-to-skill mapping. See Task #38.
 
 Known missing:
-- Additional connector data flows beyond Slack: Drive, Teams, SharePoint, Jira, GitHub, CRM, finance, and social.
+- Connector data flows beyond Slack/Drive/SharePoint: Jira, GitHub, CRM, finance, and social.
+- Real-OAuth-app verification for the Google Drive and SharePoint/Teams connectors (code-complete, untested against live credentials).
 - v0.25.0 authenticated production smoke for `/knowledge`, `/workflows`, `/settings/connectors`, and Ask note citations.
 - Cron job entries in `render.yaml` (dispatch, billing, trial conversion) -- handlers exist in code, just not declared in the blueprint.
 

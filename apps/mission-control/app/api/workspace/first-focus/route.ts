@@ -36,7 +36,7 @@ export async function POST(request: Request) {
   const profile = await repository.getWorkspaceProfile(ctx.workspaceId);
   const companyContext = profile ? buildCompanyContext(profile) : "";
 
-  const mapping = await mapFocusToDashboard(parsed.data.intent, companyContext);
+  const mapping = await mapFocusToDashboard(parsed.data.intent, companyContext, { workspaceId: ctx.workspaceId });
 
   if (!mapping) {
     return fail("mapping_failed: LLM unavailable or intent too thin", 422);

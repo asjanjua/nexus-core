@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     return fail("invalid_request: description must be between 10 and 2000 characters", 400);
   }
 
-  const profile = await detectCompanyProfile(parsed.data.description);
+  const profile = await detectCompanyProfile(parsed.data.description, { workspaceId: ctx.workspaceId });
 
   if (!profile) {
     return fail("detection_failed: LLM unavailable or description too thin", 422);

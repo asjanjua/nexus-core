@@ -17,6 +17,13 @@ export default async function ExportHubPage() {
 
   const exports = [
     {
+      href: "/pilot/paperwork",
+      label: "Pilot Paperwork Pack",
+      description: "SOW, onboarding checklist, success scorecard, billing triggers, and value proof — pre-filled from your strategy profile. Send to the sponsor.",
+      badge: "PDF",
+      color: "blue",
+    },
+    {
       href: "/export/weekly-brief",
       label: "Weekly Executive Brief",
       description: "AI-generated narrative for all active roles. Review before sharing.",

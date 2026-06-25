@@ -14,6 +14,7 @@
  */
 
 import { ask } from "@/lib/services/llm";
+import { getPrompt } from "@/lib/prompts/registry";
 import { getSector } from "@/lib/domain/sector-library";
 import { companyArchetypeSchema, type CompanyArchetype, type WorkspaceRoleState } from "@/lib/contracts";
 import { roleStatesFromSuggestions, suggestRolesForProfile } from "@/lib/services/role-suggestion";
@@ -51,61 +52,32 @@ export type DetectedProfile = {
 };
 
 // ---------------------------------------------------------------------------
-// Prompt
+// Prompts
+//
+// The detection and focus-mapping system prompts live in the prompt registry
+// (keys `onboarding.company-detect` and `onboarding.focus-map`) so they are
+// versioned, centrally owned, and audited via `prompt_rendered` events. Pass an
+// `audit` context (workspaceId) so each render is attributable.
 // ---------------------------------------------------------------------------
 
-const DETECTION_SYSTEM_PROMPT = `You are a senior business analyst at NexusAI. Given a company description, infer a structured company profile.
-
-Respond ONLY with a valid JSON object. No markdown code fences, no explanatory text outside the JSON.
-
-Required format:
-{
-  "companyName": "string or null",
-  "sector": "financial_services | professional_services | technology_saas | manufacturing | retail_commerce | healthcare | real_estate_construction | education_training",
-  "subsector": "brief label describing the company's niche (e.g. 'Digital Banking / Neobank', 'B2B SaaS', 'Merchant Acquiring')",
-  "businessModel": "b2b | b2c | b2b2c | marketplace | services | government",
-  "companyArchetype": "corporate | startup_scaleup | sme_physical | digital_native | professional_practice",
-  "companyStage": "pre_revenue | early_stage | growth | scale_up | enterprise | public",
-  "employeeBand": "1_10 | 11_50 | 51_200 | 201_1000 | 1001_5000 | 5000_plus",
-  "region": "plain language region (e.g. 'GCC', 'Pakistan', 'Southeast Asia', 'North America', 'Europe')",
-  "primaryGoals": ["array of up to 4 keys from: revenue_growth, cost_reduction, regulatory_compliance, market_expansion, digital_transformation, risk_management, talent_retention, product_launch"],
-  "riskProfile": "conservative | moderate | growth_oriented | aggressive",
-  "suggestedDocuments": [
-    {
-      "name": "Document name (specific, not generic)",
-      "type": "pdf | docx | xlsx | txt | md | pptx",
-      "priority": "high | medium",
-      "description": "Why this matters for leadership in this sector (1 sentence)"
-    }
-  ],
-  "suggestedKPIs": ["KPI 1", "KPI 2", "KPI 3", "KPI 4", "KPI 5"],
-  "suggestedRisks": ["Risk 1 (specific)", "Risk 2 (specific)", "Risk 3 (specific)"],
-  "sensitivityDefault": "internal | confidential",
-  "confidence": 0.0,
-  "reasoning": "2-3 sentences explaining your classification"
-}
-
-Rules:
-- sector must be exactly one of the 8 keys listed.
-- companyArchetype must be one of the 5 keys listed. Use sme_physical for owner-operated shops, restaurants, clinics, branches, and other physical-location businesses. Use digital_native for internet-first, ads/social-driven, SaaS, D2C, marketplace, creator, or PLG companies. Use professional_practice for partnership-led advisory, law, accounting, consulting, and agencies. Use startup_scaleup for founder-led companies where stage matters more than formal titles. Use corporate for formal C-suite, regulated, mature, or board-governed companies.
-- Suggest exactly 5 documents tailored to this company type and stage. Be specific (e.g. 'Board pack Q2 2026' not 'Board pack').
-- sensitivityDefault: use 'confidential' for financial services, healthcare, and legal/regulated sectors. Use 'internal' for others.
-- confidence: 0.8+ for clear descriptions, 0.5-0.8 for ambiguous, 0.3-0.5 for very thin descriptions.
-- riskProfile: 'conservative' for regulated industries, 'moderate' for established companies, 'growth_oriented' for scale-ups, 'aggressive' for early-stage startups.
-- Be sector-aware and specific. Generic suggestions are not acceptable.`;
+type PromptAudit = { workspaceId?: string; actor?: string };
 
 // ---------------------------------------------------------------------------
 // Main export
 // ---------------------------------------------------------------------------
 
-export async function detectCompanyProfile(description: string): Promise<DetectedProfile | null> {
+export async function detectCompanyProfile(
+  description: string,
+  audit?: PromptAudit
+): Promise<DetectedProfile | null> {
   if (!description?.trim() || description.trim().length < 10) return null;
 
+  const systemPrompt = getPrompt("onboarding.company-detect", {}, { ...audit, route: "company_detection" });
   const userPrompt = `Company description:\n"${description.trim()}"\n\nGenerate the company profile JSON.`;
 
   let raw: string;
   try {
-    raw = await ask(userPrompt, DETECTION_SYSTEM_PROMPT, {
+    raw = await ask(userPrompt, systemPrompt, {
       maxTokens: 800,
       temperature: 0.1,
       route: "company_detection",
@@ -225,42 +197,21 @@ export type FocusMapping = {
   focusSummary: string;            // one sentence description of what Nexus will monitor
 };
 
-const FOCUS_SYSTEM_PROMPT = `You are the NexusAI onboarding strategist. A user has described what they want executive intelligence help with.
-Your job is to map their intent to the right role dashboards and suggest specific first questions they can ask Nexus.
-
-Respond ONLY with valid JSON. No markdown, no extra text.
-
-Format:
-{
-  "recommendedDashboards": ["ceo"],
-  "suggestedQuestions": [
-    "What is blocking revenue growth this quarter?",
-    "Which operational risks need immediate CEO attention?",
-    "What is the status of our top strategic initiative?"
-  ],
-  "focusSummary": "Monitoring growth blockers, strategic risks, and cross-functional bottlenecks for the CEO lens."
-}
-
-Dashboard keys available: ceo (strategy, risks, open decisions), coo (operations, delivery, execution), cbo (commercial, BD pipeline, growth), cto (technology, data quality, security, infrastructure).
-Rules:
-- Recommend 1-3 dashboards most relevant to the stated focus.
-- Suggest exactly 3 questions that are specific, actionable, and answerable from business documents.
-- focusSummary must be one clear sentence.
-- Questions should reflect both the user's stated intent AND the company's sector/stage if provided.`;
-
 export async function mapFocusToDashboard(
   intent: string,
-  companyContext: string
+  companyContext: string,
+  audit?: PromptAudit
 ): Promise<FocusMapping | null> {
   if (!intent?.trim() || intent.trim().length < 5) return null;
 
+  const systemPrompt = getPrompt("onboarding.focus-map", {}, { ...audit, route: "company_focus" });
   const userPrompt = companyContext
     ? `${companyContext}\n\nUser focus: "${intent.trim()}"\n\nMap this to dashboards and suggest first questions.`
     : `User focus: "${intent.trim()}"\n\nMap this to dashboards and suggest first questions.`;
 
   let raw: string;
   try {
-    raw = await ask(userPrompt, FOCUS_SYSTEM_PROMPT, {
+    raw = await ask(userPrompt, systemPrompt, {
       maxTokens: 400,
       temperature: 0.15,
       route: "company_focus",
