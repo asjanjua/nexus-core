@@ -168,6 +168,8 @@ async function answerQuestion(
       maxTokens: 200,
       temperature: 0.1,
       workspaceId,
+      route: "synthesis",
+      surfaceId: "daily_executive_brief",
     });
   } catch {
     answer = "Synthesis unavailable — verify AI provider credentials in your Render environment.";

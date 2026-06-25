@@ -20,6 +20,7 @@
     "@codemirror/lang-markdown": "^6.3.4",
     "@aws-sdk/client-s3": "^3.1056.0",
     "@clerk/nextjs": "^6.39.5",
+    "@sentry/nextjs": "^10.0.0",
     "@uiw/react-codemirror": "^4.25.5",
     "chokidar": "^4.0.3",
     "drizzle-orm": "^0.45.2",

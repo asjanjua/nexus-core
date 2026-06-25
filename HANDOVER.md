@@ -6,19 +6,27 @@
 
 ## Session Info
 
-- **Last updated:** 2026-06-25 (v0.25.0 -- migrations applied, production health OK, Render deploy confirmation pending)
-- **Last model:** Codex
-- **Session number:** #27
-- **Current version:** 0.25.0 -- Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. Billing Tiers, Orchestration Dispatcher, Company Memory UI, first Slack connector data flow, production hardening, Connector Settings policy UX, Workflow Twin Scorer, U6 backcasting, U7 shadow ROI, and Knowledge Workspace are complete and verified locally.
-- **Last commit:** `3530808` -- `chore: fix vite audit advisory`
-- **Remote status:** v0.25.0 plus audit fix pushed to `origin/main`; Render deployed-commit confirmation and authenticated smoke remain pending.
+- **Last updated:** 2026-06-25 (v0.25.x -- DB transaction safety, LLM routing wiring + DeepSeek V4 migration, Sentry error tracking wired and hardened, all reflected below)
+- **Last model:** Claude (Sonnet)
+- **Session number:** #28
+- **Current version:** 0.25.x -- Phases 1-8 + 9D complete, V1.1 Tier 1 (U1-U4) complete, plus four code-hardening tasks closed this session/segment on top of v0.25.0:
+  - **Task #35 (DB transactions):** `createDecision`/`updateDecision`, `createAction`/`updateAction`, `saveAgentOutput`, `rollbackAgentOutput` now wrapped in `db.transaction()` so the row write and its audit-event write commit or roll back together. `tests/repository-transactions.test.ts` added.
+  - **Task #36 (LLM routing wiring):** `callLLM()` now executes the `model-routing.ts` 10-surface fallback-chain policy via the new `callLLMWithRouting()`, wired into all 8 real call sites (retrieval, synthesis, dashboard, decision-extraction, recommendations, exports, company-detection x2). Found and fixed a real production bug as a byproduct: DeepSeek retires `deepseek-chat`/`deepseek-reasoner` on **2026-07-24 15:59 UTC** -- `DEFAULT_MODEL` now falls back to `deepseek-v4-flash`, and `estimateCostMicro()` uses correct split pricing (v4-flash $0.14/$0.28 per M tokens, v4-pro $0.435/$0.87 per M).
+  - **Task #32 (Sentry):** wired via `instrumentation.ts`'s `onRequestError` hook (covers all ~36 API routes automatically), plus `app/global-error.tsx`, `app/error.tsx`, and `lib/observability/sentry.ts` manual-capture helpers for the catch-and-continue paths the hook can't see (Stripe webhook, LLM fallback exhaustion). Ships disabled (no-op) until `SENTRY_DSN` is set.
+  - **Task #37 (Queen's Review fixes):** an external review of Task #32 raised 5 findings; 4 confirmed and fixed (workspaceId fallback tagging via query-param/`"unknown"`, 3 stray `deepseek-chat` refs cleaned up across `CUTOVER.md`/`settings/page.tsx`/`ai-policy.test.ts`, `tracesSampleRate` raised 0.2→1.0 for pilot volume, `tests/observability/sentry.test.ts` added); 1 finding (claimed `app/error.tsx` was missing) was a false positive -- verified the file already existed with Sentry wiring. Lesson logged: verify external/automated review findings against current file state before acting, same standard as any other source.
+- **Last commit:** `3530808` -- `chore: fix vite audit advisory` (the four tasks above are uncommitted in this sandbox -- npm registry returns 403 here, so `npm install`, `tsc --noEmit`, `npm test`, and `npm run build` could not be run to verify before commit. Run those on a machine with registry access before committing/pushing.)
+- **Remote status:** v0.25.0 plus audit fix pushed to `origin/main`; Render deployed-commit confirmation and authenticated smoke remain pending. The four tasks above are NOT yet pushed.
 - **Production DB:** migrations 0001-0026 applied to Neon/production database. Migrations 0025-0026 were applied on 2026-06-25 and `db:check` returned `ok=true` against `neondb`.
 - **Local verification (2026-06-13):** `npm run build --workspace @nexus/mission-control` passed. `npm test --workspace @nexus/mission-control` passed: 28 test files / 179 tests.
 - **Local verification (2026-06-15):** Browser CTA/auth checks passed for v0.23.1. For v0.24.0, `npm exec -w @nexus/mission-control tsc -- --noEmit` passed, `npm run test` passed: 28 test files / 183 tests, and `npm run build` passed. In-app browser `/workflows` smoke redirects to Clerk sign-in and cannot authenticate in that browser session; verify authenticated `/workflows` in logged-in Chrome/Render after deploy.
 - **Local verification (2026-06-17):** For v0.25.0, `npm exec -w @nexus/mission-control tsc -- --noEmit` passed, `npm run test -w @nexus/mission-control` passed: 29 test files / 187 tests, `npm run build -w @nexus/mission-control` passed, and `npm audit --omit=dev --json` reported 0 production vulnerabilities. Protected `/knowledge` and `/api/knowledge/*` are Clerk-gated for unauthenticated curl; verify in a logged-in browser session after deploy.
 - **Production health (2026-06-25):** `https://nexus-mission-control.onrender.com/api/health` returned `status=ok` with database, vector search, R2 originals, and DeepSeek LLM checks healthy. Unauthenticated `/knowledge` and `/api/knowledge/search` still returned signed-out 404s, so confirm Render deployed commit `3530808` before smoke.
-- **Strategy docs (2026-06-17):** `docs/USER_STRATEGY_AND_PIVOTS.md` is now the canonical user strategy. Future product work should start from readiness -> buyer lane -> signup/onboarding -> first workflow pilot -> governed value proof.
+- **Strategy docs (updated 2026-06-25):** `docs/USER_STRATEGY_AND_PIVOTS.md` is the canonical user strategy and now includes the operating paper trail plus current plan. Future product work should start from readiness -> buyer lane -> signup/onboarding -> first workflow pilot -> governed value proof.
 - **Backlog map (2026-06-25):** `BACKLOG.md` is now the cross-document backlog view. Use it with `TASKS.md`, `HANDOVER.md`, and `docs/ROADMAP.md` before starting a new phase.
+- **Strategy operating plan (2026-06-25):** `TASKS.md` and `BACKLOG.md` now carry the plan for release smoke, strategy profile persistence, onboarding-to-workflow routing, pilot paperwork generation, Knowledge Workspace follow-through, and backlog hygiene.
+- **Markdown cleanup (2026-06-25):** `docs/MARKDOWN_ESTATE_REVIEW_2026-06-25.md` classifies all 63 Markdown files. First cleanup pass is complete: stale spec headers updated, runbook roles clarified, launch/demo copy refreshed, v0.25.0 smoke checks added, and active UX review ideas promoted into `BACKLOG.md`.
+- **Engineering guardrails (2026-06-25):** `docs/ENGINEERING_GUARDRAILS.md` captures the FP review as practical Nexus rules: typed runtime states, explicit auth modes, append-only events, visible async effects, and exhaustive runner/verifier failure taxonomies. Use it before autonomous workflow runners, local/on-prem distribution, connector sync jobs, or verifier loops.
+- **Queen review fixes (2026-06-25):** Route-level Sentry capture is present in `app/error.tsx`; `@sentry/nextjs` now resolves locally after `npm install`; the Sentry test mock is hoist-safe; `callLLM` now has a `draftRefineFlow` and intermediate-step response contract; agent skill hints are typed and dispatcher explicit-agent assignment is enforced/audited; evidence `sourceType` now uses a canonical enum instead of raw free text.
 
 ---
 
@@ -796,7 +804,7 @@ CLOUDFLARE_R2_*            R2 object storage (optional)
 
 ### Operational sign-off (see docs/SECURITY_REVIEW.md)
 
-- [ ] Wire Sentry for error tracking
+- [x] Wire Sentry for error tracking -- CLOSED 2026-06-25 (Task #32, hardened Task #37). Code-complete and ships disabled until `SENTRY_DSN` is set. Remaining: `npm install` on a machine with registry access, create a Sentry project, set the 5 Sentry env vars in Render (now listed in `CUTOVER.md` Step 2), confirm a test error lands in the dashboard.
 - [ ] Set up support@nexusai.io or Freshdesk
 - [ ] Verify security headers via securityheaders.com
 - [ ] Run tenant isolation test
@@ -842,23 +850,27 @@ Before doing anything else, read:
 4. BACKLOG.md
 5. AGENTS.md
 
-Current version: v0.25.0 pushed to origin/main; Render deployed-commit confirmation pending
-Last full verification: 2026-06-17. For v0.25.0, TypeScript clean, 29 test files / 187 tests passing, production build clean, and production dependency audit clean. Protected `/knowledge` and `/api/knowledge/*` block unauthenticated curl via Clerk; use logged-in Chrome/Render for UI smoke after deploy.
+Current version: v0.25.0 pushed to origin/main; PLUS four uncommitted code-hardening tasks on top of it (Task #35 DB transactions, Task #36 LLM routing wiring + DeepSeek V4 migration, Task #32 Sentry, Task #37 Queen's Review fixes -- see Session Info above for detail). Render deployed-commit confirmation pending for v0.25.0; the four newer tasks are not yet pushed at all.
+Last full verification: 2026-06-17, for v0.25.0 only. TypeScript clean, 29 test files / 187 tests passing, production build clean, production dependency audit clean. The four newer tasks have NOT been verified -- this sandbox's npm registry returns 403, so run `npm install`, `npx tsc --noEmit`, `npm test`, and `npm run build` on a machine with registry access before committing/pushing them. Protected `/knowledge` and `/api/knowledge/*` block unauthenticated curl via Clerk; use logged-in Chrome/Render for UI smoke after deploy.
 
 Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. U5 Workflow Twin Scorer, U6 backcasting, and U7 shadow ROI are committed in v0.24.0. Billing Tiers + Stripe full integration (v0.20.0-v0.21.0), Orchestration Dispatcher (v0.22.0), Company Memory UI, first Slack connector data flow (v0.23.0), and Connector Settings policy UX (v0.24.0) complete.
 Migrations 0001-0026 applied to Neon production. `db:check` passed on 2026-06-25.
 
-What is built: onboarding, ingestion, retrieval, 7 agent rooms, 20 role dashboards, Ask, governance (passports, output gates, learning signals), Decision Twin, entity extraction, Company Memory pages/backlinks, eval harness, Executive Synthesis, scheduled synthesis, billing tiers, Stripe, orchestration dispatcher (dispatch_jobs queue, atomic claim, priority, retry, fan-out, 4 job type handlers, cron runner), first Slack inbound ingestion path, Connector Settings policy UX, Workflow Twin Scorer, backcasting, shadow ROI, and the v0.25.0 Knowledge Workspace locally.
+What is built: onboarding, ingestion, retrieval, 7 agent rooms, 20 role dashboards, Ask, governance (passports, output gates, learning signals), Decision Twin, entity extraction, Company Memory pages/backlinks, eval harness, Executive Synthesis, scheduled synthesis, billing tiers, Stripe, orchestration dispatcher (dispatch_jobs queue, atomic claim, priority, retry, fan-out, 4 job type handlers, cron runner), first Slack inbound ingestion path, Connector Settings policy UX, Workflow Twin Scorer, backcasting, shadow ROI, the v0.25.0 Knowledge Workspace, transaction-safe multi-table repository writes (Task #35), policy-driven LLM routing with fallback chains (Task #36), and Sentry error tracking wired but disabled pending a DSN (Task #32/#37) -- all locally.
 
 Immediate next build:
-1. Log in to Render and confirm `nexus-mission-control` deployed commit `3530808`; trigger manual deploy from `main` if stale.
-2. Smoke `/knowledge`, `/workflows`, `/settings/connectors`, and Ask note citations while logged in.
-3. Add additional connector data flows beyond Slack.
+1. On a machine with npm registry access: run `npm install`, `npx tsc --noEmit`, `npm test`, `npm run build` to verify Tasks #35/#36/#32/#37, then commit and push.
+2. Create a Sentry project, set the 5 Sentry env vars in Render (listed in `CUTOVER.md` Step 2), trigger a test error, confirm it lands in the dashboard.
+3. Log in to Render and confirm `nexus-mission-control` deployed commit; trigger manual deploy from `main` if stale, then run authenticated smoke.
+4. Add cron job entries to `render.yaml` (dispatch runner, billing reset, trial-to-free conversion) -- single-file change, currently coded but not declared in the blueprint.
+5. Add additional connector data flows beyond Slack.
+
+Open design question (not yet implemented, analysis delivered to Ali, awaiting his decision): dynamic per-job model switching between deepseek-v4-pro and deepseek-v4-flash (draft-then-refine recommended) and a typed `AgentSkill` enum for ingestion-type-to-skill mapping. See Task #38.
 
 Known missing:
-- Additional connector data flows beyond Slack.
 - Additional connector data flows beyond Slack: Drive, Teams, SharePoint, Jira, GitHub, CRM, finance, and social.
 - v0.25.0 authenticated production smoke for `/knowledge`, `/workflows`, `/settings/connectors`, and Ask note citations.
+- Cron job entries in `render.yaml` (dispatch, billing, trial conversion) -- handlers exist in code, just not declared in the blueprint.
 
 Start by confirming git status, then read the files above, then proceed.
 ```

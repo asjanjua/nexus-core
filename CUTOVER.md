@@ -1,5 +1,10 @@
 # NexusAI Production Cutover Runbook
 
+Use this on release day when moving a locally verified build to the live pilot URL.
+
+For first-time Render setup, use `DEPLOY.md` and `docs/RENDER_DEPLOY.md`.
+For the final production gate, use `docs/PRODUCTION_HEALTH_CHECKLIST.md`.
+
 This is the current cutover checklist for the Render + Neon deployment path.
 
 Use this when moving a new build from local validation to a live pilot URL.
@@ -34,7 +39,7 @@ NEXUS_DB_REQUIRED=true
 NEXUS_ENV=pilot
 NEXT_PUBLIC_NEXUS_ENV=pilot
 NEXUS_LLM_PROVIDER=deepseek
-NEXUS_LLM_MODEL=deepseek-chat
+NEXUS_LLM_MODEL=deepseek-v4-flash
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 DEEPSEEK_API_KEY=
 OPENAI_API_KEY=
@@ -47,9 +52,16 @@ R2_BUCKET=
 SLACK_CLIENT_ID=
 SLACK_CLIENT_SECRET=
 SLACK_SIGNING_SECRET=
+SENTRY_DSN=
+NEXT_PUBLIC_SENTRY_DSN=
+SENTRY_ORG=
+SENTRY_PROJECT=
+SENTRY_AUTH_TOKEN=
 ```
 
 Only set Slack variables when the Slack connector is active.
+
+Sentry variables are optional — the app runs identically with no Sentry account configured (`enabled: !!process.env.SENTRY_DSN` gates initialization to a no-op). Set them once a Sentry project exists; leave them blank otherwise. `NEXUS_LLM_MODEL` should be `deepseek-v4-flash` or `deepseek-v4-pro`, not the legacy `deepseek-chat`/`deepseek-reasoner` names — DeepSeek retires those on 2026-07-24 15:59 UTC.
 
 ---
 
@@ -151,6 +163,11 @@ Checklist:
 - [ ] Pending evidence can be approved.
 - [ ] CEO/COO/CBO/CTO dashboards render.
 - [ ] Ask answers with evidence refs or refuses when evidence is weak.
+- [ ] `/workflows` renders the workflow scorer/backcasting surface.
+- [ ] `/settings/connectors` renders Connector Settings.
+- [ ] `/knowledge` opens.
+- [ ] A markdown note can be created, saved, previewed, and shown in graph mode.
+- [ ] Ask can reference note content with note references separate from evidence references.
 - [ ] Settings -> Agent Governance renders profiles and output log.
 - [ ] Rollback button is visible for prior agent outputs when history exists.
 

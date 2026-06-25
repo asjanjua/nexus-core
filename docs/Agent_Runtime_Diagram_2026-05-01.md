@@ -1,5 +1,9 @@
 # Agent Runtime Diagram - 2026-05-01
 
+Status: Historical runtime reference.
+
+This diagram predates the current NexusAI Mission Control architecture and should not be treated as the active system map. Use `docs/ARCHITECTURE.md`, `docs/AI_OPERATING_MODEL.md`, `docs/KNOWLEDGE_WORKSPACE.md`, and `docs/DEVELOPMENT_FINISH_LINE_VISUAL.md` for the current product architecture and finish-line view.
+
 ## Current Runtime Map (OpenClaw + Hermes + ConsultingAI)
 
 ```mermaid
@@ -42,4 +46,3 @@ flowchart LR
 2. Keep ACP strictly for specialist handoff into Hermes.
 3. Use MCP for tool servers (integration expansion), not for replacing gateway routing.
 4. Keep channel adapters (Slack/Discord/WhatsApp) at the edge and route inward through OpenClaw.
-

@@ -7,7 +7,7 @@ const settings: WorkspaceSettings = {
   name: "Test",
   timezone: "UTC",
   llmProvider: "deepseek",
-  llmModel: "deepseek-chat",
+  llmModel: "deepseek-v4-flash",
   quarantineThreshold: 0.55,
   defaultSensitivity: "internal",
   slackEnabled: false,

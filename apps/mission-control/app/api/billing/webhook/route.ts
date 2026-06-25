@@ -29,6 +29,7 @@ import {
 } from "@/lib/billing/stripe";
 import { repository } from "@/lib/data/repository";
 import { invalidateBudgetCache } from "@/lib/billing/budget";
+import { captureHandledError } from "@/lib/observability/sentry";
 
 // Webhook must read the raw body before any parsing
 export const dynamic = "force-dynamic";
@@ -59,7 +60,11 @@ export async function POST(request: Request) {
     await processEvent(event);
   } catch (err) {
     console.error("[billing/webhook] Event processing error:", event.type, err);
-    // Still return 200 — returning 4xx/5xx causes Stripe to retry indefinitely
+    // Still return 200 — returning 4xx/5xx causes Stripe to retry indefinitely.
+    // Report to Sentry anyway: a swallowed billing-event failure (e.g. a plan
+    // upgrade that silently didn't apply) is exactly the kind of thing that
+    // must not go unnoticed just because Stripe got its 200.
+    captureHandledError(err, { route: "billing_webhook", errorType: "stripe_event_processing_failed", extra: { eventType: event.type, eventId: event.id } });
   }
 
   return ok({ received: true, type: event.type });

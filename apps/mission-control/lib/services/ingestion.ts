@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import type { EvidenceRecord, IngestionStatus } from "@/lib/contracts";
+import type { EvidenceRecord, EvidenceSourceType, IngestionStatus } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
 import { generateEmbedding, isVectorSearchEnabled } from "@/lib/services/embeddings";
 import { extractAndStoreEntitiesForEvidence } from "@/lib/services/entity-extraction";
@@ -9,7 +9,7 @@ export const MAX_UPLOAD_BYTES = 50 * 1024 * 1024; // 50 MB hard cap
 type IngestionInput = {
   workspaceId: string;
   tenantId: string;
-  sourceType: string;
+  sourceType: EvidenceSourceType;
   department?: string;
   connectorInstanceId?: string;
   sourcePath: string;

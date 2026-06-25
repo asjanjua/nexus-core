@@ -88,7 +88,9 @@ Task: Produce this agent's brief using only the evidence above. Include what cha
     summary = await ask(userPrompt, DASHBOARD_SYSTEM_PROMPT, {
       maxTokens: 256,
       temperature: 0.1,
-      workspaceId
+      workspaceId,
+      route: "dashboard",
+      surfaceId: "dashboard_cards"
     });
   } catch {
     summary = `Evidence count: ${evidenceRefs.length}. AI synthesis unavailable — verify DEEPSEEK_API_KEY (or ANTHROPIC_API_KEY) is set in your Render environment.`;

@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { verifyPassword } from "@/lib/auth";
 import { store } from "@/lib/data/store";
+import { evidenceSourceTypeSchema } from "@/lib/contracts";
 import type { Action, ActionInput, ActionStatus, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, DispatchJob, DispatchJobInput, DispatchJobStatus, Entity, EntityInput, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, KnowledgeLink, KnowledgeNote, KnowledgeNoteInput, KnowledgeSearchResult, KnowledgeSyncEvent, LearningSignal, LearningSignalInput, LearningSignalSummary, PromptRegistryEntry, Recommendation, RecommendationStatus, Role, SynthesisSchedule, SynthesisScheduleInput, SynthesisScheduleStatus, WorkflowTwin, WorkflowTwinInput, WorkflowTwinRun, WorkflowTwinRunInput, WorkflowTwinRunStatus, WorkflowTwinStatus, WorkflowTwinType, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
 import { assertDbConfigured, isDbRequired } from "@/lib/data/db-policy";
 
@@ -184,7 +185,9 @@ function toEvidenceRecord(row: typeof evidenceRecords.$inferSelect): EvidenceRec
     id: row.id,
     tenantId: row.tenantId,
     workspaceId: row.workspaceId,
-    sourceType: row.sourceType,
+    sourceType: evidenceSourceTypeSchema.safeParse(row.sourceType).success
+      ? row.sourceType as EvidenceRecord["sourceType"]
+      : "document",
     department: row.department ?? undefined,
     connectorInstanceId: row.connectorInstanceId ?? undefined,
     sourcePath: row.sourcePath,
@@ -1077,8 +1080,8 @@ export const repository = {
     const { processingMs, ...recordInput } = input;
     const id = `out-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const now = new Date();
-    const saved = await runDb(async (db) => {
-      const priorRows = await db
+    const saved = await runDb(async (db) => db.transaction(async (tx) => {
+      const priorRows = await tx
         .select({ outputVersion: agentOutputs.outputVersion })
         .from(agentOutputs)
         .where(sql`${agentOutputs.workspaceId} = ${recordInput.workspaceId}
@@ -1088,7 +1091,7 @@ export const repository = {
         .limit(1);
       const outputVersion = (priorRows[0]?.outputVersion ?? 0) + 1;
 
-      await db
+      await tx
         .update(agentOutputs)
         .set({ isActive: false, replacedById: id })
         .where(sql`${agentOutputs.workspaceId} = ${recordInput.workspaceId}
@@ -1096,7 +1099,7 @@ export const repository = {
           AND ${agentOutputs.roleKey} = ${recordInput.roleKey}
           AND ${agentOutputs.isActive} = true`);
 
-      const [row] = await db
+      const [row] = await tx
         .insert(agentOutputs)
         .values({
           id,
@@ -1115,7 +1118,7 @@ export const repository = {
         })
         .returning();
 
-      await db.insert(auditEvents).values({
+      await tx.insert(auditEvents).values({
         id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         workspaceId: recordInput.workspaceId,
         type: "agent_output_created",
@@ -1134,7 +1137,7 @@ export const repository = {
       });
 
       return toAgentOutput(row);
-    });
+    }));
     if (saved) return saved;
     return store.saveAgentOutput(input);
   },
@@ -1145,8 +1148,8 @@ export const repository = {
     actor = "system",
     reason = ""
   ): Promise<AgentOutput | null> {
-    const restored = await runDb(async (db) => {
-      const targetRows = await db
+    const restored = await runDb(async (db) => db.transaction(async (tx) => {
+      const targetRows = await tx
         .select()
         .from(agentOutputs)
         .where(sql`${agentOutputs.workspaceId} = ${workspaceId} AND ${agentOutputs.id} = ${outputId}`)
@@ -1154,7 +1157,7 @@ export const repository = {
       const target = targetRows[0];
       if (!target) return null;
 
-      const activeRows = await db
+      const activeRows = await tx
         .select()
         .from(agentOutputs)
         .where(sql`${agentOutputs.workspaceId} = ${workspaceId}
@@ -1165,19 +1168,19 @@ export const repository = {
       const active = activeRows[0];
 
       if (active) {
-        await db
+        await tx
           .update(agentOutputs)
           .set({ isActive: false, replacedById: target.id })
           .where(eq(agentOutputs.id, active.id));
       }
 
-      const [row] = await db
+      const [row] = await tx
         .update(agentOutputs)
         .set({ isActive: true, replacedById: null })
         .where(eq(agentOutputs.id, target.id))
         .returning();
 
-      await db.insert(auditEvents).values({
+      await tx.insert(auditEvents).values({
         id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
         workspaceId,
         type: "agent_output_rolled_back",
@@ -1191,7 +1194,7 @@ export const repository = {
       });
 
       return toAgentOutput(row);
-    });
+    }));
     if (restored !== null) return restored;
     return store.rollbackAgentOutput(workspaceId, outputId, actor, reason);
   },
@@ -1627,14 +1630,16 @@ export const repository = {
       createdAt:      now,
       updatedAt:      now
     };
-    await runDb((db) => db.insert(decisions).values(record)).catch(() => null);
-    await runDb((db) => db.insert(auditEvents).values({
-      id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      workspaceId,
-      type: "decision_created",
-      actor,
-      payload: { decisionId: id, title: input.title, owner: input.owner, priority: input.priority ?? "medium" },
-      createdAt: now
+    await runDb((db) => db.transaction(async (tx) => {
+      await tx.insert(decisions).values(record);
+      await tx.insert(auditEvents).values({
+        id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        workspaceId,
+        type: "decision_created",
+        actor,
+        payload: { decisionId: id, title: input.title, owner: input.owner, priority: input.priority ?? "medium" },
+        createdAt: now
+      });
     })).catch(() => null);
     const result: Decision = {
       id, workspaceId,
@@ -1666,17 +1671,17 @@ export const repository = {
       set.status = patch.status;
       if (patch.status === "decided") set.decidedAt = now;
     }
-    await runDb((db) =>
-      db.update(decisions).set(set)
-        .where(sql`${decisions.id} = ${id} AND ${decisions.workspaceId} = ${workspaceId}`)
-    ).catch(() => null);
-    await runDb((db) => db.insert(auditEvents).values({
-      id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      workspaceId,
-      type: "decision_updated",
-      actor,
-      payload: { decisionId: id, patch },
-      createdAt: now
+    await runDb((db) => db.transaction(async (tx) => {
+      await tx.update(decisions).set(set)
+        .where(sql`${decisions.id} = ${id} AND ${decisions.workspaceId} = ${workspaceId}`);
+      await tx.insert(auditEvents).values({
+        id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        workspaceId,
+        type: "decision_updated",
+        actor,
+        payload: { decisionId: id, patch },
+        createdAt: now
+      });
     })).catch(() => null);
     const updated = await repository.listDecisions(workspaceId);
     return updated.find((d) => d.id === id) ?? null;
@@ -1724,14 +1729,16 @@ export const repository = {
       createdAt:   now,
       updatedAt:   now
     };
-    await runDb((db) => db.insert(actions).values(record)).catch(() => null);
-    await runDb((db) => db.insert(auditEvents).values({
-      id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      workspaceId,
-      type: "action_created",
-      actor,
-      payload: { actionId: id, decisionId: input.decisionId, owner: input.owner, isBlocker: input.isBlocker ?? false },
-      createdAt: now
+    await runDb((db) => db.transaction(async (tx) => {
+      await tx.insert(actions).values(record);
+      await tx.insert(auditEvents).values({
+        id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        workspaceId,
+        type: "action_created",
+        actor,
+        payload: { actionId: id, decisionId: input.decisionId, owner: input.owner, isBlocker: input.isBlocker ?? false },
+        createdAt: now
+      });
     })).catch(() => null);
     const result: Action = {
       id, workspaceId,
@@ -1759,17 +1766,17 @@ export const repository = {
       set.status = patch.status;
       if (patch.status === "done") set.completedAt = now;
     }
-    await runDb((db) =>
-      db.update(actions).set(set)
-        .where(sql`${actions.id} = ${id} AND ${actions.workspaceId} = ${workspaceId}`)
-    ).catch(() => null);
-    await runDb((db) => db.insert(auditEvents).values({
-      id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      workspaceId,
-      type: "action_updated",
-      actor,
-      payload: { actionId: id, patch },
-      createdAt: now
+    await runDb((db) => db.transaction(async (tx) => {
+      await tx.update(actions).set(set)
+        .where(sql`${actions.id} = ${id} AND ${actions.workspaceId} = ${workspaceId}`);
+      await tx.insert(auditEvents).values({
+        id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        workspaceId,
+        type: "action_updated",
+        actor,
+        payload: { actionId: id, patch },
+        createdAt: now
+      });
     })).catch(() => null);
     const all = await repository.listActions(workspaceId);
     return all.find((a) => a.id === id) ?? null;

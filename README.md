@@ -44,6 +44,10 @@ Nexus Core V1 is designed for paid pilots and readiness-led onboarding, not broa
 
 For the cross-document planning view, see [BACKLOG.md](BACKLOG.md). It separates shipped code, production-readiness gates, product backlog, connector backlog, design backlog, and deferred scale items.
 
+For the visual finish-line map, see [docs/DEVELOPMENT_FINISH_LINE_VISUAL.md](docs/DEVELOPMENT_FINISH_LINE_VISUAL.md).
+
+For the markdown estate review, see [docs/MARKDOWN_ESTATE_REVIEW_2026-06-25.md](docs/MARKDOWN_ESTATE_REVIEW_2026-06-25.md).
+
 Included in V1:
 - Mission control data contracts and templates
 - Evidence-backed recommendation pipeline

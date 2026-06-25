@@ -2,6 +2,8 @@
 
 NexusAI V1 ships with eight broad sectors because the first pilot motion needs clarity more than exhaustive taxonomy coverage.
 
+Sector handling should serve the buyer-lane strategy, not replace it. When sector fit is uncertain, route the user through readiness, company archetype, first workflow selection, and governed value proof.
+
 ## Current Gap List
 
 - Hospitality and tourism
@@ -23,3 +25,10 @@ NexusAI V1 ships with eight broad sectors because the first pilot motion needs c
 ## Expansion Trigger
 
 Add a new sector when multiple workspaces cluster around the same unsupported company type and the unsupported type changes documents, KPIs, risks, or agent responsibilities enough to justify a first-class taxonomy entry.
+
+## Buyer-Lane Tie-In
+
+- Evaluator / SME: keep unsupported-sector language simple and route to readiness guidance.
+- SME self-serve: use archetype-first onboarding and one owner workflow.
+- Business / advisory: use workflow scorer output to choose the pilot before adding sector taxonomy.
+- Regulated enterprise: prioritize governance, data boundaries, and approval language even when the sector label is imperfect.

@@ -1,5 +1,11 @@
 # NexusAI Mission Control - Render Deployment Runbook
 
+Use this when you are setting up or understanding the Render deployment path from scratch.
+
+For release-day cutover, use `CUTOVER.md`.
+For the final go/no-go checklist, use `docs/PRODUCTION_HEALTH_CHECKLIST.md`.
+For detailed Render-specific environment and smoke notes, use `docs/RENDER_DEPLOY.md`.
+
 This document covers the current production pilot path for NexusAI Mission Control.
 
 Current stack:
@@ -195,6 +201,10 @@ Browser smoke path:
 6. Approve it if needed.
 7. Open a dashboard.
 8. Ask: `What are the top risks?`
+9. Open `/workflows` and confirm the workflow scorer/backcasting surface renders.
+10. Open `/settings/connectors` and confirm Connector Settings renders.
+11. Open `/knowledge`, create a note, save it, switch to preview/graph, and confirm the note appears in the vault tree.
+12. Ask about a term from that note and confirm the answer returns note references separately from evidence references.
 
 ---
 

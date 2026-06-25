@@ -282,7 +282,9 @@ export async function answerWithEvidence(
     const answer = await ask(userPrompt, ASK_SYSTEM_PROMPT, {
       maxTokens: 512,
       temperature: 0.15,
-      workspaceId
+      workspaceId,
+      route: "ask",
+      surfaceId: "ask_web_quick"
     });
 
     const gate = passport ? evaluateOutputGate(answer, passport, passport.actionRight) : { allowed: true as const, escalationRequired: false as const };

@@ -2,7 +2,10 @@
 
 > Master task list for the NexusAI relay team. Do not delete tasks; mark them complete with `[x]`.
 > For the cross-document backlog map and prioritization view, see `BACKLOG.md`.
-> Last reviewed and tightened: 2026-06-17.
+> For the visual finish-line map, see `docs/DEVELOPMENT_FINISH_LINE_VISUAL.md`.
+> For the markdown estate review, see `docs/MARKDOWN_ESTATE_REVIEW_2026-06-25.md`.
+> For typed runtime/state/effect safety rules, see `docs/ENGINEERING_GUARDRAILS.md`.
+> Last reviewed and tightened: 2026-06-25.
 
 ---
 
@@ -47,13 +50,13 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 **Production Hardening: Shipped.** (v0.23.1) -- Stripe webhook idempotency, cron/webhook rate limits, Clerk CSP domain handling, dispatch input typing, and demo navigation/auth shell fixes.
 **Workflow Pilot Productization: Shipped.** (v0.24.0) -- Connector Settings policy UX, Workflow Twin Scorer product page, U6 backcasting API/UI, and U7 shadow ROI instrumentation. Committed and pushed to `origin/main`; Render deploy/authenticated smoke should be confirmed.
 **Knowledge Workspace and Live Vault Sync: Shipped locally.** (v0.25.0) -- `/knowledge`, markdown editor, wikilinks, backlinks, graph, import/export, optional live local folder sync, MCP memory wrapper, and Ask `noteRefs`. Migrations 0025-0026 applied; Render deployed-commit confirmation and authenticated smoke remain pending.
-**User Strategy and Pivot Docs: Documentation complete.** (2026-06-17) -- `docs/USER_STRATEGY_AND_PIVOTS.md` is the canonical strategy. Paperwork now aligns around readiness -> buyer lane -> signup/onboarding -> first workflow pilot -> governed value proof.
+**User Strategy and Pivot Docs: Documentation complete.** (updated 2026-06-25) -- `docs/USER_STRATEGY_AND_PIVOTS.md` is the canonical strategy. Paperwork now aligns around readiness -> buyer lane -> signup/onboarding -> first workflow pilot -> governed value proof, with `BACKLOG.md` as the operating backlog and `TASKS.md` as the execution checklist.
 **Demo packs: Audited and rewritten.** (v0.15.1) -- All 3 sector packs CEO-grade with pre-tuned Ask questions.
 **Production DB: Migrations 0001-0026 applied. `db:check` returned `ok=true` against `neondb` on 2026-06-25.**
 
 **The product is demo-ready and pilot-design-ready for GCC fintech, professional services, and SaaS buyers. First paid pilot production readiness still requires the open operations, monitoring, backup, support, and authenticated-smoke items below.**
 
-**Priority order (updated 2026-06-17):**
+**Priority order (updated 2026-06-25):**
 1. [x] Finish and verify v0.23.1 hardening -- local auth/CTA behavior, TypeScript, tests, and build pass. Commit/deploy next.
 2. [x] Connector Settings UX -- Slack channel allowlist, sync status, source sensitivity, last ingest, and policy audit trail.
 3. [x] Workflow Twin Scorer product path -- UI/API scoring flow from company profile, data readiness, risk, pain, and speed benefit.
@@ -61,19 +64,85 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 5. [x] U7 Shadow ROI instrumentation -- measured manual-vs-Nexus comparison for the chosen workflow.
 6. [x] Build Knowledge Workspace v0.25.0 -- markdown editor, backlinks, graph, import/export, live local vault sync, MCP wrapper, and Ask `noteRefs`.
 7. [x] Align user strategy and paperwork docs -- readiness-first buyer lanes, workflow scorer bridge, sponsor/reviewer requirements, and governed value proof.
-8. [ ] Implement user strategy in product -- persist readiness leads, buyer lane, workspace member/profile context, and route onboarding into first workflow selection.
-9. [ ] Confirm Render deploy for pushed v0.25.0 commit `3530808`, then run authenticated smoke tests in the logged-in browser session. Migrations 0025-0026 and production `/api/health` are complete.
-10. [ ] Add Knowledge Workspace follow-through: note embeddings, richer graph filters, note-to-entity linking UI, daily/project/workflow brief automation, duplicate/contradiction audit, and resurfacing.
-11. [ ] Add additional connector data flows beyond Slack: Google Drive, Teams/SharePoint, Jira, GitHub, CRM, finance, and social platforms.
+8. [ ] Confirm Render deploy for pushed v0.25.0 commit `3530808`, then run authenticated smoke tests in the logged-in browser session. Migrations 0025-0026 and production `/api/health` are complete.
+9. [ ] Add cron job entries to `render.yaml` -- dispatch runner, billing reset, and trial-to-free conversion. Without these, synthesis briefs do not auto-generate, token budgets do not reset monthly, and trial users do not convert to Free. This is a single-file config change with outsized operational impact.
+10. [x] Wire LLM routing table into execution path -- CLOSED 2026-06-25 (Task #36). `callLLM()` now executes the `model-routing.ts` policy via `callLLMWithRouting()`, wired into all 8 real call sites. Found and fixed a real bug as a byproduct: DeepSeek retires `deepseek-chat`/`deepseek-reasoner` 2026-07-24 15:59 UTC, so `DEFAULT_MODEL` and `estimateCostMicro()` now use `deepseek-v4-flash`/`deepseek-v4-pro` with correct split pricing.
+11. [ ] Add workspace-level provider allow-list setting -- extend the existing workspace AI policy controls to let GCC regulated buyers restrict to Anthropic/OpenAI only (excluding Chinese providers). The `isProviderAllowed()` function already exists in `lib/security/ai-policy.ts`; this needs a UI control in Settings > AI Policy and a provider exclusion list stored on workspace settings.
+12. [ ] Add Resend email delivery for synthesis briefs -- Pro tier promises weekly scheduled synthesis and Business tier promises daily synthesis + email. Without outbound email, these are in-app-only features. Pure-fetch integration, same pattern as Stripe. Template for synthesis brief, send on cron completion, unsubscribe link.
+13. [x] Add Sentry error tracking -- CLOSED 2026-06-25 (Task #32, hardened in Task #37). Wired via `instrumentation.ts`'s `onRequestError` hook (covers all ~36 API routes automatically), plus `app/global-error.tsx`, `app/error.tsx`, and manual-capture helpers in `lib/observability/sentry.ts` for swallowed catch-and-continue paths (Stripe webhook, LLM fallback exhaustion). Code ships disabled (no-op) until `SENTRY_DSN` is set in Render -- still need to: run `npm install` on a machine with registry access (sandbox npm returns 403), create a Sentry project, set the 5 Sentry env vars in Render (now listed in `CUTOVER.md`), and confirm a test error lands in the dashboard.
+14. [ ] Add Mode Indicator React context/provider -- Design Philosophy Pillar 3.6 requires every screen to show a persistent data-locality signal: where data is stored and where the model runs. Four states: Cloud storage/Cloud model, Desktop+Cloud, Local-first, On-prem+local model. This is a cross-cutting architecture concern, not just CSS. Every API call must route through a mode-aware client. Implement as a React context that every component can access.
+15. [ ] Implement user strategy in product -- persist readiness leads, buyer lane, workspace member/profile context, and route onboarding into first workflow selection.
+16. [ ] Wire strategy paperwork into the pilot path -- generate/update SOW, onboarding checklist, success scorecard, and billing triggers from the selected buyer lane and workflow pilot.
+17. [ ] Add Knowledge Workspace follow-through: note embeddings, richer graph filters, note-to-entity linking UI, daily/project/workflow brief automation, duplicate/contradiction audit, and resurfacing.
+18. [ ] Add additional connector data flows beyond Slack: Google Drive, Teams/SharePoint, Jira, GitHub, CRM, finance, and social platforms.
+19. [ ] Apply engineering guardrails before autonomous/local runner work -- typed state machines, append-only events, visible async effects, auth-mode contracts, and verifier error taxonomy.
 
-**Design priority order (updated 2026-06-15):**
+## Strategy Operating Plan (updated 2026-06-25)
+
+The current strategy is not "get users to sign up." It is readiness -> buyer lane -> onboarding -> first workflow pilot -> governed value proof.
+
+- [x] Canonical strategy note exists: `docs/USER_STRATEGY_AND_PIVOTS.md`.
+- [x] Cross-document backlog exists: `BACKLOG.md`.
+- [x] Product roadmap points to the strategy and backlog: `docs/ROADMAP.md`.
+- [x] Pilot paperwork references the buyer-lane strategy: SOW, onboarding checklist, success scorecard, billing triggers, one-pager, and messaging docs.
+- [ ] Release gate: confirm Render deployed commit `3530808`, then smoke `/knowledge`, `/workflows`, `/settings/connectors`, and Ask note citations while logged in.
+- [ ] Strategy profile: persist readiness result, buyer lane, role, sector, company size, priority, sponsor, reviewer, governance posture, and selected first workflow.
+- [ ] Onboarding route: carry the strategy profile into workspace setup and workflow scorer/backcasting instead of sending every user to a generic dashboard.
+- [ ] Pilot paperwork generation: use buyer lane plus selected workflow to prefill the SOW, onboarding checklist, scorecard, billing trigger checklist, and value proof pack.
+- [ ] Knowledge memory loop: use `/knowledge` for workflow briefs, entity notes, pilot learnings, and reusable institutional context; keep Ask `noteRefs` separate from governed `evidenceRefs`.
+- [ ] Backlog hygiene: whenever a strategy or release status changes, update `CHANGELOG.md`, `TASKS.md`, `HANDOVER.md`, `BACKLOG.md`, and `docs/ROADMAP.md` in the same pass.
+- [x] Markdown estate review: classify all repo markdown files and save the cleanup backlog in `docs/MARKDOWN_ESTATE_REVIEW_2026-06-25.md`.
+- [x] Docs cleanup: fix stale spec status headers, refresh launch/demo copy, clarify deploy/cutover doc roles, and convert valid UX review items into implementation tickets.
+- [x] Docs cleanup follow-through: ensure all production runbooks include v0.25.0 smoke checks for `/knowledge`, `/workflows`, `/settings/connectors`, and Ask `noteRefs`.
+- [x] FP engineering review captured: `docs/ENGINEERING_GUARDRAILS.md` now defines typed state, auth-mode, append-only event, async effect, and verifier failure rules.
+
+## Engineering Guardrails (added 2026-06-25)
+
+These tasks come from the FP-style review of workflow/runtime risk. They should be completed before building autonomous review loops, local/on-prem distribution, or high-trust connector sync automation.
+
+- [x] Create guardrails doc: `docs/ENGINEERING_GUARDRAILS.md`.
+- [ ] Add discriminated-union contracts for new runner/sync states instead of raw `status: string` shapes.
+- [ ] Add explicit auth-mode contract before local/on-prem distribution: Clerk cloud, local license, offline local, hybrid sync pending.
+- [ ] Add append-only run/sync/verifier event records before exposing autonomous workflow loops.
+- [ ] Add visible `EffectResult`-style result contracts for disk, network, LLM, storage, and source-system effects.
+- [ ] Add verifier/runner outcome taxonomy: passed, user-fixable failed, system error, timeout, OOM, permission denied, policy denied, provider unavailable, cancelled.
+- [ ] Add `assertNever`-style exhaustive handling tests for new runner/auth/verifier states.
+
+## Architecture Review Action Items (added 2026-06-25)
+
+These tasks come from the Queen's Architecture Review of the full stack. Human-action items (upgrading Render to Standard, Neon to Launch) are excluded; those are noted in `docs/INFRA_DECISION_MEMO.md` and the Distribution Plan. These are code/config tasks only.
+
+- [ ] Add cron job entries to `render.yaml`: dispatch runner (`/api/cron/dispatch`), billing reset (`/api/cron/billing`), and trial-to-free conversion. Single-file change. Cron endpoints and handlers already exist in code but are not declared in the Render blueprint.
+- [x] Wire `routePolicyFor(surfaceId)` from `lib/config/model-routing.ts` into `callLLM()` in `lib/services/llm.ts`. CLOSED 2026-06-25 (Task #36) -- see item 10 above for detail.
+- [ ] Add workspace-level provider allow-list UI in Settings > AI Policy. The `isProviderAllowed()` enforcement already exists; add a multi-select of allowed providers stored on workspace settings. Default: all enabled providers allowed. GCC buyers can restrict to Anthropic/OpenAI only.
+- [ ] Add Resend email delivery: synthesis brief template, send on scheduled cron completion, unsubscribe link. Pure-fetch integration. ~2 hours of work.
+- [x] Add Sentry error tracking: install SDK, tag errors by workspaceId/route/errorType, wire into API route error boundaries. Free tier covers pilot volume. CLOSED 2026-06-25 (Task #32, hardened Task #37) -- see item 13 above for detail and what is still pending (npm install + SENTRY_DSN on a machine with registry access).
+- [ ] Add Mode Indicator React context/provider per Design Philosophy Pillar 3.6. Four states map to `clerk_cloud`, `local_license`, `offline_local`, `hybrid_sync_pending` from ENGINEERING_GUARDRAILS.md auth-mode contracts. Persistent UI indicator on every screen. API client routes through mode-aware wrapper.
+- [ ] Migrate remaining company-detection/onboarding prompts into the prompt registry (P2-B follow-through, open since v0.17.0).
+- [x] Wrap multi-table repository writes in DB transactions. CLOSED 2026-06-25 (Task #35). `createDecision`/`updateDecision`, `createAction`/`updateAction`, `saveAgentOutput`, and `rollbackAgentOutput` now use `db.transaction()` so the row write and its audit-event write commit or roll back together. Added `tests/repository-transactions.test.ts`. `enqueueDispatchJob` checked and confirmed single-table -- no transaction needed.
+
+### Architecture review notes (not tasks, but context for future work)
+
+- **Rate limiting is already built.** v0.11.0 middleware (lines 166-177): auth 10/min, readiness 12/min, ingestion 20/min, ask 30/min, dashboard 60/min, cron 2/min, billing webhook 10/min. Returns 429 with `Retry-After` and `x-ratelimit-*` headers. Do not duplicate this work.
+- **Knowledge Workspace local vault sync** (`NEXUS_VAULT_SYNC`, `NEXUS_LOCAL_VAULT_PATH`) is production-tested dual Postgres/local storage with path validation, symlink rejection, and conflict preservation. This is the prototype seam for the Tauri Desktop local-data strategy.
+- **Orchestration Dispatcher** (`dispatch_jobs` with `FOR UPDATE SKIP LOCKED`) provides the atomic job claiming and retry primitives needed for local Tauri SQLite dispatch. The pattern transfers directly.
+- **AuthMode contracts** in `docs/ENGINEERING_GUARDRAILS.md` (lines 47-62) already define the Clerk-to-local-auth transition for Tauri Desktop Phase 2. Implementation is deferred, not undesigned.
+
+**Design priority order (updated 2026-06-25):**
 1. [x] Figma Pro selected as active design workspace; Penpot parked until MCP/plugin compatibility improves.
 2. [x] Consulting-grade v1 design direction captured in `docs/UI_UX_FLOW_PLAN.md`.
 3. [x] First Figma screens started: Executive Command Center, Agent Control Profile, Workflow Twin Run.
 4. [x] Complete next Figma screen batch: Mission Creation, Mission Run Detail, Evidence Room, Approval Inbox.
-5. [ ] Complete governance/admin screen batch: Risk and Audit, Integration Hub, Integration Detail, Governance Settings.
-6. [ ] Complete onboarding/prototype handoff batch: User and Role Management, Company Setup, First Mission Template, Audit Export / Executive Pack.
-7. [ ] Convert repeated Figma UI patterns into reusable components and implementation tickets.
+5. [ ] Lock design system: Tailwind config + Figma variables round-trip (UI/UX Workplan Phase 1).
+6. [ ] Verify/rebuild Batch 1-2 screens with expert review P1 fixes applied.
+7. [ ] Complete governance/admin screen batch: Risk and Audit, Integration Hub, Integration Detail, Governance Settings.
+8. [ ] Complete onboarding/prototype handoff batch: User and Role Management, Company Setup, First Mission Template, Audit Export / Executive Pack.
+9. [ ] Build expert review mini features: Trust Drawer, Approval Consequence Preview, Command Palette, Mission Health Score.
+10. [ ] Design-to-code generation: React/Next.js components from Figma via `get_design_context`.
+11. [ ] Empty/loading/error states for all screens.
+12. [ ] Convert repeated Figma UI patterns into reusable components and Code Connect mappings.
+
+**Figma MCP capability note (verified 2026-06-25):** The connected Figma MCP has full Plugin API write access via `use_figma`, not just Framelink read-only. Claude can create/edit screens, components, and variables directly in Figma AND read designs back as code. See `docs/UI_UX_WORKPLAN.md` for the full MCP-aware workflow.
 
 What is built at v0.18.0 (Executive Synthesis Layer):
 - No new DB migrations. Synthesis is computed on demand from existing agent outputs + evidence.
@@ -994,8 +1063,10 @@ Positioning rule from the 2026-05-31 reassessment:
 
 ## Phase 7C — Production Operations ✓ CODE COMPLETE (v0.11.0) — external services pending
 
-> Code layer complete. External service wiring (Sentry, Stripe, uptime monitoring, support
-> email) and the SECURITY_REVIEW.md sign-off must be completed before the first pilot signs.
+> Code layer complete. Sentry is now wired in code (Task #32, hardened Task #37) but ships
+> disabled until `SENTRY_DSN` is set in Render. Stripe is fully wired (v0.20.0-v0.21.0).
+> Uptime monitoring and the SECURITY_REVIEW.md sign-off must be completed before the first
+> pilot signs.
 
 ### Billing and subscription infrastructure
 - [x] Workspace status field: `trial | pilot | active | suspended | cancelled` — schema + migration 0012 done.
@@ -1015,9 +1086,11 @@ Positioning rule from the 2026-05-31 reassessment:
   per workspace. Not a client-facing feature — internal business intelligence.
 
 ### Operational monitoring and observability
-- [ ] Integrate Sentry for error tracking. Capture all unhandled exceptions in API routes,
+- [x] Integrate Sentry for error tracking. Capture all unhandled exceptions in API routes,
   ingestion pipeline, LLM calls, and connector syncs. Tag errors by workspaceId, route,
-  and error type. Alert on error rate spikes.
+  and error type. CLOSED 2026-06-25 (Task #32, hardened Task #37). Alert-on-spike rules
+  still need to be configured in the Sentry dashboard once a project exists -- that is a
+  dashboard-config step, not code.
 - [x] Add LLM cost monitoring: `llm_usage` table in schema + migration 0012. `repository.recordLLMUsage()`
   writes token cost records (micro-USD) after every LLM call. `estimateCostMicro()` per model family. (v0.11.0)
 - [ ] Add ingestion pipeline monitoring: track extraction success rate, average confidence

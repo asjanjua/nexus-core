@@ -19,6 +19,7 @@ import { repository } from "@/lib/data/repository";
 import { ingestEvidence } from "@/lib/services/ingestion";
 import { generateRecommendations } from "@/lib/services/recommendations";
 import { DEMO_PACKS, DEMO_PACK_SECTORS } from "@/lib/demo/sector-packs";
+import { evidenceSourceTypeSchema } from "@/lib/contracts";
 import crypto from "crypto";
 
 export async function POST(request: Request) {
@@ -81,7 +82,7 @@ export async function POST(request: Request) {
       const record = await ingestEvidence({
         workspaceId: ctx.workspaceId,
         tenantId: ctx.workspaceId,
-        sourceType: item.sourceType,
+        sourceType: evidenceSourceTypeSchema.parse(item.sourceType),
         department: item.department,
         sourcePath: item.sourcePath,
         sourceTimestamp: new Date(Date.now() - item.freshnessHours * 3_600_000).toISOString(),

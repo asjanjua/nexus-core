@@ -1,7 +1,7 @@
 import crypto from "crypto";
 import { z } from "zod";
 import { fail, ok } from "@/lib/api";
-import { sensitivitySchema } from "@/lib/contracts";
+import { evidenceSourceTypeSchema, sensitivitySchema } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
 import { ingestEvidence, MAX_UPLOAD_BYTES } from "@/lib/services/ingestion";
 import { extractTextFromBuffer } from "@/lib/services/extract";
@@ -15,7 +15,7 @@ export const runtime = "nodejs";
 const formSchema = z.object({
   workspaceId: z.string().default("workspace-demo"),
   tenantId: z.string().default("tenant-demo"),
-  sourceType: z.string().default("upload"),
+  sourceType: evidenceSourceTypeSchema.default("upload"),
   connectorInstanceId: z.string().optional(),
   sourcePath: z.string().optional(),
   sourceUri: z.string().optional(),
@@ -94,7 +94,7 @@ export async function POST(request: Request) {
   const profile = await repository.getWorkspaceProfile(workspaceId).catch(() => null);
   const fileCls = classifyFilename(file.name, profile?.sector ?? "");
   const department = rawDepartment ?? fileCls.department;
-  const sourceType = rawSourceType ?? fileCls.sourceType ?? parsed.data.sourceType;
+  const sourceType = evidenceSourceTypeSchema.parse(rawSourceType ?? fileCls.sourceType ?? parsed.data.sourceType);
   // Respect caller-supplied sensitivity but fall back to sector-aware default
   const callerSensitivity = asOptionalString(form.get("sensitivity"));
   const effectiveSensitivity = (callerSensitivity ?? fileCls.sensitivity) as

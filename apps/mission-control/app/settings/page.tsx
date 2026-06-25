@@ -862,8 +862,8 @@ function LLMTab({ workspaceId }: { workspaceId: string }) {
 
   const modelOptions: Record<string, string[]> = {
     anthropic: ["claude-opus-4-6", "claude-sonnet-4-6", "claude-haiku-4-5-20251001"],
-    deepseek: ["deepseek-chat", "deepseek-reasoner"],
-    openai_compatible: ["deepseek-chat", "qwen-plus", "kimi-k2"],
+    deepseek: ["deepseek-v4-pro", "deepseek-v4-flash"],
+    openai_compatible: ["deepseek-v4-pro", "deepseek-v4-flash", "qwen-plus", "kimi-k2"],
     openai: ["gpt-4o", "gpt-4-turbo", "gpt-3.5-turbo"],
     azure_openai: ["gpt-4o", "gpt-4-turbo"]
   };

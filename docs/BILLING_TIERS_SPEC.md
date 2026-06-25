@@ -1,8 +1,10 @@
 # NexusAI Billing Tiers and Usage Metering -- Specification
 
-Status: Scoped (not yet built)
+Status: Shipped/historical specification
 Scoped: 2026-06-10
-Estimated build: 2-3 sessions
+Current state: Billing tiers shipped in v0.20.0; Stripe Checkout, webhooks, Billing Portal, and trial conversion shipped in v0.21.0.
+
+Use this document as the product/design spec for pricing and usage metering. Use `TASKS.md`, `BACKLOG.md`, and `HANDOVER.md` for current execution status.
 
 ---
 

@@ -18,6 +18,8 @@ import { cardsForRole } from "@/lib/services/dashboard";
 import { synthesiseForRole } from "@/lib/services/synthesis";
 import { buildWorkflowTwinRunInput } from "@/lib/services/workflow-twins";
 import { proposeDecisionsFromAgentOutputs } from "@/lib/services/decision-extraction";
+import { AGENT_LIBRARY } from "@/lib/agents/agent-library";
+import { agentSupportsJobType, requiredFamiliesForJob } from "@/lib/agents/agent-skills";
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -143,8 +145,46 @@ async function handleAgentBriefJob(job: DispatchJob): Promise<void> {
   };
 
   if (!role) throw new Error("agent_brief job missing required payload field: role");
+  await enforceAgentSkillCompatibility(job, agentId);
 
   await cardsForRole(role, job.workspaceId, { agentId, department });
+}
+
+async function enforceAgentSkillCompatibility(job: DispatchJob, agentId?: string): Promise<void> {
+  if (!agentId) return;
+
+  const agent = AGENT_LIBRARY[agentId];
+  if (!agent) {
+    await repository.pushAudit({
+      workspaceId: job.workspaceId,
+      type: "dispatch_agent_assignment_denied",
+      actor: "dispatcher",
+      payload: {
+        jobId: job.id,
+        jobType: job.jobType,
+        agentId,
+        reason: "unknown_agent"
+      }
+    });
+    throw new Error(`dispatch_agent_assignment_denied: unknown agent ${agentId}`);
+  }
+
+  if (agentSupportsJobType(agent.skillHints, job.jobType)) return;
+
+  await repository.pushAudit({
+    workspaceId: job.workspaceId,
+    type: "dispatch_agent_assignment_denied",
+    actor: "dispatcher",
+    payload: {
+      jobId: job.id,
+      jobType: job.jobType,
+      agentId,
+      agentSkills: agent.skillHints,
+      requiredFamilies: requiredFamiliesForJob(job.jobType),
+      reason: "agent_missing_required_skill_family"
+    }
+  });
+  throw new Error(`dispatch_agent_assignment_denied: ${agentId} is not compatible with ${job.jobType}`);
 }
 
 async function handleSynthesisJob(job: DispatchJob): Promise<void> {

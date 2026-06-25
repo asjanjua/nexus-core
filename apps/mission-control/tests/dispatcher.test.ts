@@ -297,14 +297,35 @@ describe("executeJob — success path", () => {
     expect(vi.mocked(repository.markJobDone)).toHaveBeenCalledWith(job.id);
   });
 
-  it("calls cardsForRole for agent_brief jobs", async () => {
-    const job = await enqueueJob(WS, { jobType: "agent_brief", payload: { role: "coo", agentId: "ag-1" } });
+  it("calls cardsForRole for compatible agent_brief jobs", async () => {
+    const job = await enqueueJob(WS, { jobType: "agent_brief", payload: { role: "coo", agentId: "strategy_agent" } });
     job.status = "running"; job.attempts = 1;
 
     const result = await executeJob(job);
 
     expect(result.success).toBe(true);
-    expect(vi.mocked(cardsForRole)).toHaveBeenCalledWith("coo", WS, { agentId: "ag-1", department: undefined });
+    expect(vi.mocked(cardsForRole)).toHaveBeenCalledWith("coo", WS, { agentId: "strategy_agent", department: undefined });
+  });
+
+  it("denies unknown explicit agent assignments before running the handler", async () => {
+    const job = await enqueueJob(WS, { jobType: "agent_brief", payload: { role: "coo", agentId: "not_an_agent" } });
+    job.status = "running"; job.attempts = 1;
+
+    const result = await executeJob(job);
+
+    expect(result.success).toBe(false);
+    expect(result.error).toContain("dispatch_agent_assignment_denied");
+    expect(vi.mocked(cardsForRole)).not.toHaveBeenCalled();
+    expect(vi.mocked(repository.pushAudit)).toHaveBeenCalledWith(expect.objectContaining({
+      workspaceId: WS,
+      type: "dispatch_agent_assignment_denied",
+      actor: "dispatcher",
+      payload: expect.objectContaining({
+        jobId: job.id,
+        agentId: "not_an_agent",
+        reason: "unknown_agent"
+      })
+    }));
   });
 });
 

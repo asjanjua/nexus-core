@@ -1,7 +1,7 @@
 # NexusAI User Strategy and Pivot Map
 
-Status: Canonical strategy note for paperwork, roadmap, and user-flow alignment.
-Last updated: 2026-06-17.
+Status: Canonical strategy note for paperwork, roadmap, backlog, and user-flow alignment.
+Last updated: 2026-06-25.
 
 ## Core Pivot
 
@@ -12,6 +12,19 @@ Readiness assessment -> buyer lane -> signup/onboarding -> first workflow pilot 
 ```
 
 The strategic pivot is from account creation to pilot conversion. Clerk remains the identity provider, but NexusAI should own the market-aware user strategy: who the user is, what kind of buyer they represent, what first workflow proves value, and which governance boundary is required before expansion.
+
+## Operating Paper Trail
+
+The current paperwork set is the operating layer for this strategy:
+
+- `BACKLOG.md` is the cross-document backlog and release-gate map.
+- `TASKS.md` is the detailed execution checklist.
+- `HANDOVER.md` is the current relay state for the next operator or agent.
+- `docs/ROADMAP.md` is the product narrative and sequencing view.
+- `docs/KNOWLEDGE_WORKSPACE.md` is the v0.25.0 company-memory feature spec.
+- Pilot paperwork lives in `docs/PILOT_SOW_TEMPLATE.md`, `docs/PILOT_ONBOARDING_CHECKLIST.md`, `docs/PILOT_SUCCESS_SCORECARD.md`, and `docs/PILOT_BILLING_TRIGGERS.md`.
+
+Before any paid-pilot push, these documents should agree on three things: current release status, the first workflow being sold, and the proof loop used to decide whether the pilot expands.
 
 ## Buyer Lanes
 
@@ -95,3 +108,20 @@ Track the strategy as a funnel:
 - Billing and paperwork should not assume one generic buyer.
 - Public-facing copy should avoid internal "pivot" language, but internal docs should name the pivot clearly.
 - Regulated-buyer language must preserve the human-approval and no-autonomous-writeback boundary.
+
+## Current Plan
+
+1. **Finish the v0.25.0 release gate.**
+   Confirm Render is serving the pushed commit, then run authenticated smoke for `/knowledge`, `/workflows`, `/settings/connectors`, and Ask note citations.
+
+2. **Productize the strategy profile.**
+   Persist readiness assessment context, buyer lane, role, sector, company size, priority, and governance posture so signup and onboarding inherit the strategy instead of restarting from scratch.
+
+3. **Route onboarding into the first workflow.**
+   Use the workflow scorer and backcasting output to choose one pilot workflow, name the sponsor/reviewer, attach the evidence bundle, and define the shadow ROI metric.
+
+4. **Use Knowledge Workspace as the memory layer.**
+   Let `/knowledge` capture reusable project notes, workflow briefs, entity context, and pilot learnings while keeping evidence refs and note refs separate.
+
+5. **Keep paperwork synchronized.**
+   Every release or strategic shift should update `CHANGELOG.md`, `TASKS.md`, `HANDOVER.md`, `BACKLOG.md`, `docs/ROADMAP.md`, and the relevant pilot docs before it is treated as done.

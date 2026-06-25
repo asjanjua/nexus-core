@@ -1,8 +1,10 @@
 # Scheduled Synthesis Refresh -- Scoping Specification
 
-Status: Scoped (not yet built)
+Status: Partially shipped/historical specification
 Scoped: 2026-06-10
-Estimated build: 2 sessions
+Current state: Scheduled synthesis core shipped in v0.19.0 with schedule table, Settings UI, protected cron endpoint, runner script, and in-app persistence through `agent_outputs`.
+
+Remaining from this original scope: email digest delivery, Slack delivery, and richer week-over-week delivery polish. Use `TASKS.md`, `BACKLOG.md`, and `HANDOVER.md` for current execution status.
 
 ---
 

@@ -142,7 +142,8 @@ export async function proposeDecisionsFromAgentOutputs(input: {
         maxTokens: 1400,
         temperature: 0.05,
         workspaceId: input.workspaceId,
-        route: "decision_extraction"
+        route: "decision_extraction",
+        surfaceId: "decision_memo"
       }
     );
     const parsed = extractionResponseSchema.safeParse(JSON.parse(stripJsonFence(text)));

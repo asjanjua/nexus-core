@@ -2,6 +2,120 @@
 
 ---
 
+## Unreleased — Queen's Review Fixes: Sentry + DeepSeek Cleanup (2026-06-25)
+
+Follow-up to Task #32, from an external automated review ("Queen's Review"). Four of five findings were confirmed and fixed; one (claimed missing `app/error.tsx`) was a false positive — the file already existed with Sentry wiring from the original Task #32 work.
+
+**Fixed**
+- `instrumentation.ts` — `onRequestError` no longer relies solely on the `x-workspace-id` header for the `workspaceId` Sentry tag. That header is absent precisely on the errors that matter most: auth failures, CORS preflight, 429s from the rate limiter, and malformed requests that fail before any route handler resolves workspace context. Added `resolveWorkspaceId()`: header first, then `?workspaceId=` query param (several GET routes pass it this way), then an explicit `"unknown"` tag so Sentry dashboards can distinguish "no workspace could be resolved" from "we forgot to tag this."
+- Three stale `deepseek-chat`/`deepseek-reasoner` references that would have configured the soon-to-deprecate model (retires 2026-07-24 15:59 UTC): `CUTOVER.md`'s env var template, the AI Policy dropdown in `app/settings/page.tsx` (a pilot customer could have picked either deprecated model from the UI today), and the `ai-policy.test.ts` fixture. Added an inline deprecation comment at `lib/services/llm.ts`'s `DEFAULT_MODEL` fallback expression (line ~292) and switched its literal fallback from `deepseek-chat` to `deepseek-v4-flash`.
+- `sentry.server.config.ts` — `tracesSampleRate` raised from 0.2 to 1.0 in production. At pilot volume (well under 1,000 transactions/day) full tracing costs nothing meaningful and gives complete visibility; the 0.2 figure was sized for consumer-app traffic that doesn't apply yet.
+- Added `tests/observability/sentry.test.ts` — vitest coverage for `captureHandledError`/`captureDegradedState` with `@sentry/nextjs` mocked, covering Error-vs-non-Error capture, tag attachment, missing-workspaceId graceful handling, and extra-context attachment. Like the rest of the Sentry work, this can't run in this sandbox (no installed dependency) — run `npm test` on your machine to verify.
+
+**Not fixed (false positive)**
+- Queen's review claimed `app/error.tsx` doesn't exist. It does — it was added/updated during the original Task #32 work in this same session and already calls `Sentry.captureException` in a `useEffect`. No action needed.
+
+---
+
+## Unreleased — Sentry Production Error Tracking (2026-06-25)
+
+Closes Task #32 from the production hardening backlog.
+
+**Added**
+- `@sentry/nextjs` (^10.0.0) added to `package.json` dependencies. **Not yet installed in this sandbox** — the sandbox's npm registry access returns 403 Forbidden, so this must be installed on your machine (`npm install`) before `tsc --noEmit` or `next build` will succeed.
+- `instrumentation.ts` — registers Sentry for both the Node and Edge runtimes at boot, and exports `onRequestError`, which Next.js 15 calls automatically for every uncaught error in route handlers, server components, server actions, and middleware. This is the main coverage mechanism — none of the ~36 API routes needed manual wrapping for this to work.
+- `instrumentation-client.ts`, `sentry.server.config.ts`, `sentry.edge.config.ts` — per-runtime `Sentry.init()`. All disabled by default (`enabled: !!process.env.SENTRY_DSN`) so the app runs identically with no Sentry account configured. Server config strips `authorization`/`cookie` headers in `beforeSend` before anything leaves the process. Client config has session replay explicitly off (would otherwise capture DOM content, including evidence text).
+- `app/global-error.tsx` (new — root layout previously had no error boundary at all) and `app/error.tsx` (updated) both call `Sentry.captureException`.
+- `lib/observability/sentry.ts` — `captureHandledError()` and `captureDegradedState()` helpers for the minority of call sites that catch-and-continue rather than throw (so `onRequestError` never sees them). Tags every report with `route`, `errorType`, and `workspaceId` where available.
+- Wired the helper into two of the highest-value swallowed-error paths: the Stripe webhook's event-processing catch (`app/api/billing/webhook/route.ts` — a silently-failed plan upgrade is a billing-correctness issue, not just noise) and `callLLMWithRouting()`'s full-fallback-exhaustion branch in `lib/services/llm.ts` (every provider in a surface's chain failed — previously invisible, now reported as a warning-level message with the surface ID and candidate count).
+- `next.config.mjs` wrapped with `withSentryConfig`; source map upload is disabled unless `SENTRY_AUTH_TOKEN` is set, so it's a no-op until you configure it. Added `tunnelRoute: "/monitoring"` so ad-blockers don't strip the browser beacon.
+- `middleware.ts` CSP `connect-src` extended to allow Sentry's ingest domains (`*.ingest.sentry.io`, `*.ingest.us.sentry.io`, `*.ingest.de.sentry.io`) — without this the browser SDK's CSP would silently block its own error reports.
+- `render.yaml`: added `SENTRY_DSN`, `NEXT_PUBLIC_SENTRY_DSN`, `SENTRY_ORG`, `SENTRY_PROJECT`, `SENTRY_AUTH_TOKEN` (all `sync: false` — set manually in Render dashboard).
+
+**Fixed in passing**
+- `render.yaml` still hardcoded `NEXUS_LLM_MODEL: deepseek-chat` — exactly the legacy model name flagged as a 2026-07-24 deprecation risk in the Task #36 changelog entry below. Changed to `deepseek-v4-flash`.
+
+**Deliberately out of scope**
+- Per-route manual `captureException` wrapping was not added to all 36 API routes — `onRequestError` already covers every uncaught throw automatically. Manual wiring was reserved for the two paths above where the error is caught and the function returns normally (nothing throws past the route handler for `onRequestError` to see).
+- Session replay and performance tracing are configured conservatively (`tracesSampleRate: 0.2` in production, replay off) — revisit once real pilot traffic volume is known.
+
+**Action needed on your machine before this ships**
+1. `npm install` (pulls `@sentry/nextjs`).
+2. `npx tsc --noEmit 2>&1 | grep -v ".next/"` — could not be verified in this sandbox since the package isn't installed there (npm registry returns 403 in this environment).
+3. Create a Sentry project, set `SENTRY_DSN` + `NEXT_PUBLIC_SENTRY_DSN` (same value, project DSN) in Render. `SENTRY_ORG`/`SENTRY_PROJECT`/`SENTRY_AUTH_TOKEN` are optional — only needed for source-map upload at build time.
+4. Trigger a test error (e.g. visit a broken route) and confirm it shows up in the Sentry dashboard before treating this as live in production.
+
+---
+
+## Unreleased — LLM Routing Policy Wired + DeepSeek V4 Migration (2026-06-25)
+
+Closes Task #36 from the production hardening backlog (architecture review: "routing table declared but never executed — must wire before pilot").
+
+**Fixed — routing**
+- `callLLM()` in `lib/services/llm.ts` now honours `lib/config/model-routing.ts`'s declarative per-surface routing policy when callers pass a `surfaceId`. Previously the policy file existed but was never read — every call used a single `NEXUS_LLM_PROVIDER` env toggle regardless of which of the 10 declared surfaces (ask, dashboard, synthesis, decision memo, recommendations, etc.) was calling.
+- Added `callLLMWithRouting()`: walks each surface's `fallbackChain` in order, skips candidates that are disabled, not yet runtime-supported (openai/azure_openai/experimental_gateway), workspace-disallowed, or missing an API key, and returns the first successful call with `fromFallback: true` set whenever a non-primary candidate was used.
+- `localOnlyMode` remains a hard stop (throws, no fallback attempted); per-provider allow-list checks are a soft skip (falls through to the next candidate).
+- Wired `surfaceId` into all 8 real production call sites: `retrieval.ts` (ask_web_quick), `synthesis.ts` and `exports.ts` (daily_executive_brief), `dashboard.ts` (dashboard_cards), `decision-extraction.ts` (decision_memo), `recommendations.ts` (recommendation_draft), and both calls in `company-detection.ts` (ingestion_triage_assist).
+- `app/api/eval/run/route.ts` deliberately left unmigrated — no `SurfaceId` exists for internal eval-harness calls; it falls through to the legacy single-provider path by design, not a missed call site.
+- Scope boundary: only provider/model selection and fallback execution are wired from policy. `confidenceFloor` and `requiresApprovalBeforeUse` are intentionally left to existing downstream logic (`avgConfidence` checks, `shouldRouteOutputToReview`, output-gate) to avoid duplicating logic that already runs at each call site.
+
+**Fixed — DeepSeek V4 migration (time-sensitive, verify before 2026-07-24)**
+- DeepSeek is retiring the `deepseek-chat` / `deepseek-reasoner` model names on 2026-07-24 15:59 UTC (confirmed against `https://api-docs.deepseek.com/quick_start/pricing` on 2026-06-25). `DEFAULT_MODEL`'s deepseek fallback changed from `deepseek-chat` to `deepseek-v4-flash`.
+- `estimateCostMicro()`'s deepseek pricing was a flat, stale $0.27/$1.10 per-million rate for all deepseek models. Replaced with confirmed current split pricing (cache-miss, no caching wired yet): `deepseek-v4-pro` $0.435/M in, $0.87/M out; `deepseek-v4-flash` $0.14/M in, $0.28/M out. Legacy `deepseek-chat` priced as flash since it maps to v4-flash non-thinking mode.
+- **Action needed before 2026-07-24**: confirm no external config (Render env vars, admin settings) still hardcodes `deepseek-chat`/`deepseek-reasoner` as a literal model string outside this file.
+
+**Tests**
+- `tsc --noEmit` clean across the app after routing + call-site changes.
+- No new automated test added for `callLLMWithRouting()` fallback behaviour this session — flagged as follow-up.
+
+---
+
+## Unreleased — Repository Transaction Safety (2026-06-25)
+
+Closes Task #35 from the production hardening backlog (Queen's eval, High severity: "No DB transactions for multi-table writes").
+
+**Fixed**
+- `repository.createDecision` / `repository.updateDecision`: decision row write and audit event write now run inside a single `db.transaction()`. Previously these were two independent `runDb()` calls each swallowed with `.catch(() => null)` — a failure on the audit insert left the decision committed with no audit trail, and vice versa.
+- `repository.createAction` / `repository.updateAction`: same fix — action row and audit event now commit or roll back together.
+- `repository.saveAgentOutput`: version lookup, supersede-prior-active update, new row insert, and audit event insert now run inside one transaction instead of four sequential statements on the same connection. A failure partway through (e.g. the audit insert) no longer leaves a new agent output row marked active without an audit record.
+- `repository.rollbackAgentOutput`: target lookup, active-row lookup, supersede update, restore update, and audit insert now run inside one transaction.
+
+**Not changed**
+- `enqueueDispatchJob` was reviewed and found to be a single-table insert — no fan-out exists in the current implementation, so no transaction wrapping was needed there.
+- In-memory fallback paths (`store.*`) are unaffected — they remain single-process synchronous operations and don't need Postgres transactions.
+
+**Tests**
+- Added `tests/repository-transactions.test.ts` — mocks `pg`/`drizzle-orm/node-postgres` to verify `createDecision`, `createAction`, and `saveAgentOutput` each issue exactly one `db.transaction()` call covering all their writes, and that a failure on a later write inside the transaction does not produce two separate (partially-committed) transaction calls.
+
+---
+
+## Unreleased — Strategy Paper Trail Alignment (2026-06-25)
+
+This docs-only pass keeps the updated paper trail aligned with the active NexusAI strategy.
+
+**Strategy**
+- Updated `docs/USER_STRATEGY_AND_PIVOTS.md` with the current operating paper trail and execution plan.
+- Reconfirmed the strategy path: readiness assessment -> buyer lane -> signup/onboarding -> first workflow pilot -> governed value proof.
+
+**Tasks and backlog**
+- Updated `TASKS.md` with the active strategy operating plan.
+- Updated `BACKLOG.md` with strategy/profile, pilot-paperwork generation, and Knowledge Workspace follow-through items.
+- Updated `docs/ROADMAP.md` so deploy/smoke, strategy implementation, paperwork automation, and Knowledge follow-through are sequenced consistently.
+- Added `docs/MARKDOWN_ESTATE_REVIEW_2026-06-25.md` to classify all repo Markdown files and capture targeted cleanup work.
+- Cleaned up stale spec status headers, clarified deploy/cutover runbook roles, refreshed launch/demo copy, and promoted active UX review ideas into the backlog.
+
+**Engineering guardrails**
+- Added `docs/ENGINEERING_GUARDRAILS.md` from the FP review, translating type/state/effect principles into Nexus rules for autonomous runners, local/on-prem auth, connector sync, and verifier loops.
+- Added matching backlog/tasks/handover references so typed state machines, append-only events, explicit async effects, and exhaustive failure categories are tracked before future automation work.
+
+**Queen review fixes**
+- Confirmed route-level Sentry capture through `app/error.tsx`, installed/resolved `@sentry/nextjs`, and fixed the Sentry test mock so TypeScript and targeted observability tests pass.
+- Added an explicit `draftRefineFlow`/intermediate-step contract to the LLM call interface and wired routing policy flow metadata into routed calls.
+- Added typed agent skill taxonomy plus dispatcher enforcement for explicit agent assignments; incompatible or unknown agents are denied, audited, and failed rather than silently executed.
+- Replaced free-text evidence `sourceType` contracts with a canonical source-type enum and normalized ingestion/demo-reset paths through it.
+
+---
+
 ## Unreleased — User Strategy and Paperwork Alignment
 
 This documentation pass aligns NexusAI's paperwork and strategic docs around a readiness-first user strategy.

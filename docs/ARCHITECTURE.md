@@ -1,6 +1,6 @@
 # NexusAI Mission Control Architecture
 
-Updated: 2026-06-17
+Updated: 2026-06-25
 Current product state: v0.25.0 (verified locally 2026-06-17). Covers U2 Agent Control Profiles, U3 output history/rollback, U4 learning signals, Phase 8A Decision & Action Twin, AI decision proposals, persistent Ask memory, entity extraction and Company Memory pages, P2 AI trust controls, the Executive Synthesis Layer, synthesis source/entity traceability, scheduled synthesis core, workflow twin primitives, billing tiers with Stripe integration, the orchestration dispatcher, the first Slack connector ingestion path, v0.23.1 production hardening/auth-navigation fixes, Connector Settings policy UX, Workflow Twin Scorer, U6 backcasting, U7 shadow ROI instrumentation, and v0.25.0 Knowledge Workspace with Markdown import/export, optional local vault sync, MCP memory tools, and Ask note refs.
 
 ## 1. Purpose
@@ -19,6 +19,7 @@ The product is not designed to replace ERP, CRM, HRIS, core banking, BI, legal r
 - Least privilege by agent: each agent has an Agent Control Profile defining what it can see, do, and escalate.
 - Rollback-ready history: generated agent outputs are versioned, searchable, and restorable without deleting prior history.
 - Additive integration: NexusAI reads from source systems but does not become the system of record for upstream operations.
+- Typed runtime safety: long-running runners, connector sync jobs, verifier loops, and future local/on-prem auth flows should follow `docs/ENGINEERING_GUARDRAILS.md` so invalid states, hidden async failures, and ambiguous auth modes are rejected by design.
 
 ## 3. Current Infrastructure
 
@@ -33,7 +34,7 @@ The product is not designed to replace ERP, CRM, HRIS, core banking, BI, legal r
 | Object storage | Cloudflare R2 | Original-file retention path when enabled |
 | Knowledge vault | Postgres + Markdown import/export | Postgres is canonical for hosted governance; Markdown is the portability/sync layer |
 | Local sync | Optional filesystem watcher | Enabled only with `NEXUS_VAULT_SYNC` and an absolute `NEXUS_LOCAL_VAULT_PATH` |
-| LLM providers | DeepSeek/OpenAI/Anthropic-style routing | Centralized LLM service with route policy |
+| LLM providers | DeepSeek/OpenAI/Anthropic-style routing | Centralized LLM service. Route policy declared in `model-routing.ts` (10 surfaces, fallback chains) but NOT yet wired into `llm.ts` execution path. See §12. |
 | Edge/security | Cloudflare selective services | DNS/CDN/WAF/AI Gateway/R2; no full Workers migration in V1 |
 
 ## 4. System Diagram
@@ -526,7 +527,33 @@ Backcasting and ROI are stored in `workflow_twins.config` for V1 speed, with aud
 
 Recurring operating review: blockers, KPIs, overdue owners, department status, follow-up actions.
 
-## 12. Architecture Decisions to Preserve
+## 12. Architecture Review Findings (2026-06-25)
+
+### LLM Routing: Policy vs Execution Gap
+
+`lib/config/model-routing.ts` declares a 10-surface routing policy with 5 provider profiles, per-surface fallback chains, data class restrictions, confidence floors, draft-then-refine flow markers, and `requiresApprovalBeforeUse` gates. It exports `routePolicyFor(surfaceId)` and `providerProfileFor(provider)`.
+
+`lib/services/llm.ts` does not import or use any of this. The actual execution path reads `NEXUS_LLM_PROVIDER` env var (a single provider toggle), checks `resolveProviderForWorkspace()` against workspace AI policy settings, and calls that one provider. No surface-based routing. No fallback chain. No tier selection. No confidence floor check.
+
+**Action required:** Wire `routePolicyFor(surfaceId)` into `callLLM()`. Each call site should pass its `SurfaceId` so the execution path selects provider, tier, model, and fallback chain from the declared policy. Start with `dashboard_cards` (premium) and `ingestion_triage_assist` (economy) as the two most impactful surfaces to differentiate.
+
+### Knowledge Workspace as Tauri Distribution Prototype
+
+The Knowledge Workspace local vault sync (`NEXUS_VAULT_SYNC`, `NEXUS_LOCAL_VAULT_PATH`) is not just a feature. It is the first production-tested seam between cloud Postgres and local filesystem storage, with path validation, symlink rejection, and conflict preservation. When Tauri Desktop Phase 2 (local-first) is built, this sync layer is the prototype for the broader local-data strategy.
+
+### Orchestration Dispatcher as Concurrency Foundation
+
+The `dispatch_jobs` table with `FOR UPDATE SKIP LOCKED` atomic claiming, exponential backoff retry, and fan-out provides the concurrency primitives needed for local Tauri SQLite dispatch. This pattern transfers directly: when a Tauri Desktop client runs a local dispatcher with a local SQLite database, the atomic job claiming and retry logic prevents sync engine state corruption.
+
+### Mode Indicator as Cross-Cutting Architecture
+
+Design Philosophy Pillar 3.6 requires every screen to show a persistent data-locality signal stating where data is stored and where the model runs. The four states (Cloud storage/Cloud model, Desktop+Cloud, Local-first, On-prem+local model) map directly to the `AuthMode` discriminated union in `docs/ENGINEERING_GUARDRAILS.md`. This is a cross-cutting concern requiring a React context/provider that every component can access, and a mode-aware API client wrapper. Non-trivial and should be built before the Tauri Desktop fork.
+
+### Rate Limiting Already Built
+
+v0.11.0 middleware (middleware.ts lines 166-177) implements 7 rate limit rules: auth 10/min, readiness 12/min, ingestion 20/min, ask 30/min, dashboard 60/min, cron 2/min, billing webhook 10/min. Returns 429 with `Retry-After` and `x-ratelimit-*` headers. This is not a gap.
+
+## 13. Architecture Decisions to Preserve
 
 - Keep Postgres plus `pgvector` for V1 evidence and retrieval.
 - Keep Clerk for self-serve signup and organization tenancy.
@@ -535,3 +562,6 @@ Recurring operating review: blockers, KPIs, overdue owners, department status, f
 - Keep governance controls server-side.
 - Keep human approval as the boundary for consequential actions.
 - Keep output history append-style and rollback-ready; never delete prior versions as part of rollback.
+- Keep Knowledge Workspace local vault sync as the Tauri local-data prototype.
+- Keep Orchestration Dispatcher `FOR UPDATE SKIP LOCKED` pattern as the concurrency foundation for local dispatch.
+- Keep `model-routing.ts` as the declarative routing policy; wire it into execution before adding new surfaces or providers.

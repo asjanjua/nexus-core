@@ -1,7 +1,9 @@
 # NexusAI Agent Rooms
 
-Status: Product direction
-Updated: 2026-05-30
+Status: Shipped direction with future expansion notes
+Updated: 2026-06-25
+
+Agent Rooms shipped in v0.10.3 as the visual/product framing for specialist agent outputs. Use this document as the product language and future expansion reference; use `TASKS.md`, `BACKLOG.md`, and `HANDOVER.md` for current execution status.
 
 ## Position
 

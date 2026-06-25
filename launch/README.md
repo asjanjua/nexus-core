@@ -2,6 +2,8 @@
 
 This folder collects the core public-launch materials for Nexus Core.
 
+Current story: readiness-first executive intelligence. Nexus should route users from readiness assessment to buyer lane, first workflow pilot, governed value proof, and reusable company memory.
+
 ## Included
 - `landing-page.md` - a short web/blog landing-page draft
 - `launch-post-template.md` - a social post template for X, LinkedIn, or a newsletter
@@ -17,6 +19,6 @@ This folder collects the core public-launch materials for Nexus Core.
 Keep the launch message simple:
 - what Nexus is
 - who it helps
+- how readiness routes into a first workflow pilot
 - how to try it
 - why it is different
-

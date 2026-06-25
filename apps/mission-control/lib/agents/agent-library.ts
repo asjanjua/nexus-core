@@ -1,4 +1,5 @@
 import type { Role } from "@/lib/contracts";
+import type { AgentSkill } from "@/lib/agents/agent-skills";
 
 const DEFAULT_AGENT_BRIEFS = ["strategy_agent", "risk_agent", "decision_agent"];
 
@@ -24,7 +25,7 @@ export type NexusAgent = {
   evidenceScope: string[];
   outputType: AgentOutputType;
   approvalPolicy: AgentApprovalPolicy;
-  skillHints: string[];
+  skillHints: AgentSkill[];
   suggestedNextAction: string;
 };
 

@@ -52,11 +52,41 @@ export type RecommendationStatus = z.infer<typeof recommendationStatusSchema>;
 export const decisionStatusSchema = z.enum(["open", "decided", "superseded"]);
 export type DecisionStatus = z.infer<typeof decisionStatusSchema>;
 
+export const evidenceSourceTypeSchema = z.enum([
+  "upload",
+  "document",
+  "slack",
+  "audit",
+  "pdf",
+  "docx",
+  "pptx",
+  "xlsx",
+  "csv",
+  "txt",
+  "md",
+  "contract",
+  "finance_export",
+  "ad_performance",
+  "local_ad_performance",
+  "social_export",
+  "whatsapp_business",
+  "local_business",
+  "creator_performance",
+  "email_crm",
+  "google_drive",
+  "sharepoint",
+  "teams",
+  "jira",
+  "github",
+  "crm",
+]);
+export type EvidenceSourceType = z.infer<typeof evidenceSourceTypeSchema>;
+
 export const evidenceRecordSchema = z.object({
   id: z.string(),
   tenantId: z.string(),
   workspaceId: z.string(),
-  sourceType: z.string(),
+  sourceType: evidenceSourceTypeSchema,
   department: z.string().optional(),
   connectorInstanceId: z.string().optional(),
   sourcePath: z.string(),

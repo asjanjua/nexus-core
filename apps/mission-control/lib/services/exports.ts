@@ -172,7 +172,13 @@ async function generateRoleBrief(
   const prompt = `${companyContext ? `${companyContext}\n\n` : ""}Role: ${roleLabelFromKey(role)}\n\nEvidence:\n\n${snippet}\n\nWrite the executive brief for this role.`;
 
   try {
-    return await ask(prompt, BRIEF_SYSTEM_PROMPT, { maxTokens: 256, temperature: 0.15, workspaceId });
+    return await ask(prompt, BRIEF_SYSTEM_PROMPT, {
+      maxTokens: 256,
+      temperature: 0.15,
+      workspaceId,
+      route: "exports_brief",
+      surfaceId: "daily_executive_brief"
+    });
   } catch {
     return `Evidence available but AI synthesis unavailable. Check your LLM API key configuration.`;
   }

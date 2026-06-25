@@ -1,7 +1,9 @@
 # NexusAI U2 Agent Control Profile (Passport) Specification
 
 ## Status
-Build-ready V1.1 specification.
+Shipped/historical V1.1 specification.
+
+U2 Agent Control Profiles are complete for the current V1.1 product surfaces: passport persistence, evidence filtering, output gates, hard stops, tool guards, suspend/resume, and Settings governance UI are built. Use this document as the product/security spec, not as the current task list. Use `TASKS.md`, `BACKLOG.md`, and `HANDOVER.md` for execution status.
 
 This repository document is the versioned product spec for U2. It distills the detailed source specification from the local Downloads file into the core controls, implementation boundaries, and acceptance checks that should remain visible in the NexusAI repo.
 

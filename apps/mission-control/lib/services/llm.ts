@@ -12,6 +12,8 @@
 import { repository } from "@/lib/data/repository";
 import { isProviderAllowed } from "@/lib/security/ai-policy";
 import { checkTokenBudget } from "@/lib/billing/budget";
+import { routePolicyFor, type SurfaceId, type ProviderId } from "@/lib/config/model-routing";
+import { captureDegradedState } from "@/lib/observability/sentry";
 
 const ANTHROPIC_BASE_URL = (
   process.env.ANTHROPIC_BASE_URL?.trim().replace(/\/+$/, "") ||
@@ -20,11 +22,15 @@ const ANTHROPIC_BASE_URL = (
 const ANTHROPIC_API = `${ANTHROPIC_BASE_URL}/v1/messages`;
 const ANTHROPIC_VERSION = "2023-06-01";
 type LLMProvider = "anthropic" | "deepseek" | "openai_compatible";
+export type DraftRefineFlow = "single_pass" | "draft_then_refine";
 
 const LLM_PROVIDER = (process.env.NEXUS_LLM_PROVIDER ?? "anthropic").trim().toLowerCase() as LLMProvider;
+// deepseek-chat / deepseek-reasoner are deprecated by DeepSeek on 2026-07-24 and will be
+// fully retired after that date. deepseek-v4-flash / deepseek-v4-pro are the current model IDs
+// (deepseek-chat maps to v4-flash non-thinking mode today, but only until the deprecation date).
 const DEFAULT_MODEL =
   process.env.NEXUS_LLM_MODEL ??
-  (LLM_PROVIDER === "deepseek" ? "deepseek-chat" : "claude-opus-4-6");
+  (LLM_PROVIDER === "deepseek" ? "deepseek-v4-flash" : "claude-opus-4-6");
 const DEEPSEEK_BASE_URL = (
   process.env.DEEPSEEK_BASE_URL?.trim().replace(/\/+$/, "") ||
   "https://api.deepseek.com"
@@ -81,6 +87,22 @@ export type LLMOptions = {
   workspaceId?: string;
   /** API route or call-site label for cost attribution (e.g. "dashboard", "ask", "ingestion"). */
   route?: string;
+  /** Policy surface from lib/config/model-routing.ts — when set, drives provider/model selection and fallback. */
+  surfaceId?: SurfaceId;
+  /**
+   * Declared generation flow for this call. Current runtime executes a single provider call,
+   * but the contract is explicit so draft-then-refine surfaces can return intermediate state
+   * when the second pass is implemented.
+   */
+  draftRefineFlow?: DraftRefineFlow;
+};
+
+export type LLMIntermediateStep = {
+  step: "draft" | "refine";
+  text: string;
+  model: string;
+  inputTokens: number;
+  outputTokens: number;
 };
 
 export type LLMResponse = {
@@ -89,6 +111,8 @@ export type LLMResponse = {
   inputTokens: number;
   outputTokens: number;
   fromFallback: boolean;
+  draftRefineFlow?: DraftRefineFlow;
+  intermediate?: LLMIntermediateStep[];
 };
 
 function normalizeProvider(value: string | undefined | null): LLMProvider {
@@ -112,16 +136,33 @@ function apiKey(provider: LLMProvider): string | null {
 
 async function resolveProviderForWorkspace(opts: LLMOptions): Promise<LLMProvider> {
   const provider = normalizeProvider(process.env.NEXUS_LLM_PROVIDER);
-  if (!opts.workspaceId || opts.workspaceId === "_global_") return provider;
-  const settings = await repository.getWorkspaceSettings(opts.workspaceId).catch(() => null);
-  if (!settings) return provider;
-  if (settings.localOnlyMode) {
-    throw new Error(`llm_policy_blocked: workspace ${opts.workspaceId} is in local-only mode`);
-  }
-  if (!isProviderAllowed(settings, provider)) {
-    throw new Error(`llm_provider_denied: ${provider} is not allowed for workspace ${opts.workspaceId}`);
-  }
+  await assertProviderAllowedForWorkspace(provider, opts.workspaceId);
   return provider;
+}
+
+/**
+ * Checks a specific provider against workspace policy (local-only mode, allow-list).
+ * Throws on local-only mode (hard stop — no fallback should be attempted).
+ * Returns false (not throw) when the provider itself is simply not on the allow-list,
+ * so routing callers can skip to the next fallback-chain candidate instead of failing outright.
+ */
+async function assertProviderAllowedForWorkspace(provider: LLMProvider, workspaceId: string | undefined): Promise<boolean> {
+  if (!workspaceId || workspaceId === "_global_") return true;
+  const settings = await repository.getWorkspaceSettings(workspaceId).catch(() => null);
+  if (!settings) return true;
+  if (settings.localOnlyMode) {
+    throw new Error(`llm_policy_blocked: workspace ${workspaceId} is in local-only mode`);
+  }
+  return isProviderAllowed(settings, provider);
+}
+
+/** Maps a model-routing.ts ProviderId onto the LLM client's runtime-supported provider set. */
+function toRuntimeProvider(provider: ProviderId): LLMProvider | null {
+  if (provider === "anthropic") return "anthropic";
+  if (provider === "deepseek") return "deepseek";
+  // openai, azure_openai, experimental_gateway are declared in policy for future use
+  // but currentRuntimeSupported is false for all of them today — skip in the fallback chain.
+  return null;
 }
 
 function estimateTokens(messages: LLMMessage[], systemPrompt?: string): number {
@@ -189,10 +230,16 @@ function estimateCostMicro(model: string, inputTokens: number, outputTokens: num
   if (m.includes("haiku")) {
     return Math.round(inputTokens * 0.25 + outputTokens * 1.25);
   }
-  // deepseek-chat pricing as of 2026-06: $0.27/M input, $1.10/M output (non-cache)
-  // Verify at https://platform.deepseek.com/docs/pricing if costs look wrong
+  // DeepSeek V4 pricing confirmed at https://api-docs.deepseek.com/quick_start/pricing on 2026-06-25.
+  // Cache-miss rates used as the conservative default (no context caching wired yet).
+  //   deepseek-v4-pro:   $0.435/M input, $0.87/M output
+  //   deepseek-v4-flash: $0.14/M input,  $0.28/M output
+  // Legacy "deepseek-chat" (deprecated 2026-07-24, maps to v4-flash non-thinking) priced as flash.
+  if (m.includes("v4-pro") || m.includes("deepseek-pro")) {
+    return Math.round(inputTokens * 0.435 + outputTokens * 0.87);
+  }
   if (m.includes("deepseek")) {
-    return Math.round(inputTokens * 0.27 + outputTokens * 1.10);
+    return Math.round(inputTokens * 0.14 + outputTokens * 0.28);
   }
   // Unknown model — use a mid-range conservative estimate
   return Math.round(inputTokens * 3 + outputTokens * 15);
@@ -259,7 +306,10 @@ async function callOpenAICompatible(
   }
 
   const baseUrl = provider === "deepseek" ? DEEPSEEK_BASE_URL : OPENAI_COMPAT_BASE_URL;
-  const model = opts.model ?? DEFAULT_MODEL ?? (provider === "deepseek" ? "deepseek-chat" : "");
+  // DEPRECATED: deepseek-chat retires 2026-07-24 15:59 UTC. This is a last-resort fallback
+  // for configs that somehow skip DEFAULT_MODEL (which already defaults to deepseek-v4-flash).
+  // Remove this literal after the retirement date once no workspace can reach it.
+  const model = opts.model ?? DEFAULT_MODEL ?? (provider === "deepseek" ? "deepseek-v4-flash" : "");
   const requestMessages = [
     ...(opts.systemPrompt ? [{ role: "system", content: opts.systemPrompt }] : []),
     ...messages.map((m) => ({ role: m.role, content: m.content }))
@@ -306,21 +356,8 @@ async function callOpenAICompatible(
   };
 }
 
-/**
- * Call Claude with a system prompt + user messages.
- * Returns a fallback marker when the key is missing so callers
- * can degrade gracefully rather than throw.
- */
-export async function callLLM(
-  messages: LLMMessage[],
-  opts: LLMOptions = {}
-): Promise<LLMResponse> {
-  const provider = await resolveProviderForWorkspace(opts);
-  if (provider === "deepseek" || provider === "openai_compatible") {
-    return callOpenAICompatible(messages, opts, provider);
-  }
-
-  const key = apiKey(provider);
+async function callAnthropic(messages: LLMMessage[], opts: LLMOptions): Promise<LLMResponse> {
+  const key = apiKey("anthropic");
 
   if (!key) {
     return {
@@ -377,6 +414,122 @@ export async function callLLM(
     outputTokens: json.usage.output_tokens,
     fromFallback: false
   };
+}
+
+/**
+ * Surface-aware routing path (lib/config/model-routing.ts).
+ *
+ * Walks the surface's declared fallbackChain in order, skipping any candidate whose
+ * provider is not runtime-supported, not enabledNow, not on the workspace's allow-list,
+ * or missing an API key — and tries the next one. This is the fix for the gap flagged
+ * in the 2026-06-25 architecture review: routing policy previously existed only as a
+ * declarative doc; callLLM ignored it and used a single NEXUS_LLM_PROVIDER env toggle.
+ *
+ * Note on scope: this wires *model/provider selection and fallback* from the policy.
+ * confidenceFloor and requiresApprovalBeforeUse are intentionally left to the existing
+ * call-site logic (avgConfidence thresholds, shouldRouteOutputToReview, output-gate) —
+ * those checks already run downstream of the LLM call and operate on output content,
+ * not on which model answered.
+ */
+async function callLLMWithRouting(
+  messages: LLMMessage[],
+  opts: LLMOptions,
+  surfaceId: SurfaceId
+): Promise<LLMResponse> {
+  const policy = routePolicyFor(surfaceId);
+  const candidates = policy.fallbackChain.filter((c) => c.enabledNow);
+
+  let lastErrorMessage = "no enabled provider in fallback chain";
+
+  for (let i = 0; i < candidates.length; i++) {
+    const candidate = candidates[i];
+    const runtimeProvider = toRuntimeProvider(candidate.provider);
+    if (!runtimeProvider) continue; // policy lists a provider the runtime doesn't speak yet
+
+    let allowed: boolean;
+    try {
+      allowed = await assertProviderAllowedForWorkspace(runtimeProvider, opts.workspaceId);
+    } catch (err) {
+      // local-only mode is a hard policy stop — do not try further candidates
+      throw err;
+    }
+    if (!allowed) continue;
+
+    if (!apiKey(runtimeProvider)) {
+      lastErrorMessage = `missing API key for ${runtimeProvider}`;
+      continue;
+    }
+
+    const candidateOpts: LLMOptions = {
+      ...opts,
+      model: candidate.model,
+      draftRefineFlow: opts.draftRefineFlow ?? policy.draftRefineFlow
+    };
+    try {
+      const result =
+        runtimeProvider === "anthropic"
+          ? await callAnthropic(messages, candidateOpts)
+          : await callOpenAICompatible(messages, candidateOpts, runtimeProvider);
+      if (result.model === "none") {
+        // callAnthropic/callOpenAICompatible degraded internally (key vanished mid-call) — try next
+        lastErrorMessage = result.text;
+        continue;
+      }
+      return {
+        ...result,
+        fromFallback: i > 0,
+        draftRefineFlow: candidateOpts.draftRefineFlow
+      };
+    } catch (err) {
+      lastErrorMessage = err instanceof Error ? err.message : String(err);
+      continue;
+    }
+  }
+
+  // Every candidate in the policy's fallback chain failed or was disallowed.
+  // Nothing throws past this point, so without this report the failure is
+  // invisible to onRequestError — surface it explicitly.
+  captureDegradedState(`LLM fallback chain exhausted for surface ${surfaceId}`, {
+    route: "callLLMWithRouting",
+    errorType: "llm_fallback_chain_exhausted",
+    workspaceId: opts.workspaceId,
+    extra: { surfaceId, lastErrorMessage, candidateCount: candidates.length }
+  });
+
+  return {
+    text: `[LLM unavailable for surface ${surfaceId} — ${lastErrorMessage}]`,
+    model: "none",
+    inputTokens: 0,
+    outputTokens: 0,
+    fromFallback: true,
+    draftRefineFlow: opts.draftRefineFlow ?? policy.draftRefineFlow
+  };
+}
+
+/**
+ * Call an LLM with a system prompt + user messages.
+ *
+ * When opts.surfaceId is provided, routes through the declared policy in
+ * lib/config/model-routing.ts (provider/model selection + fallback chain).
+ * When omitted (legacy call sites not yet migrated), falls back to the single
+ * NEXUS_LLM_PROVIDER env toggle behavior.
+ *
+ * Returns a fallback marker when no provider is reachable so callers can
+ * degrade gracefully rather than throw.
+ */
+export async function callLLM(
+  messages: LLMMessage[],
+  opts: LLMOptions = {}
+): Promise<LLMResponse> {
+  if (opts.surfaceId) {
+    return callLLMWithRouting(messages, opts, opts.surfaceId);
+  }
+
+  const provider = await resolveProviderForWorkspace(opts);
+  if (provider === "deepseek" || provider === "openai_compatible") {
+    return callOpenAICompatible(messages, opts, provider);
+  }
+  return callAnthropic(messages, opts);
 }
 
 /**

@@ -1,5 +1,11 @@
 # NexusAI Render Deploy
 
+Use this for Render-specific setup, environment variables, and smoke-test details.
+
+For release-day cutover sequencing, use `CUTOVER.md`.
+For the final go/no-go checklist, use `docs/PRODUCTION_HEALTH_CHECKLIST.md`.
+For a general deployment overview, use `DEPLOY.md`.
+
 Render is the current primary hosting path for NexusAI Mission Control.
 
 The app architecture is:

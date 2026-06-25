@@ -1,6 +1,12 @@
 # BACKLOG.md — NexusAI Operating Backlog
 
 > Source-of-truth backlog view for NexusAI Mission Control. `TASKS.md` remains the detailed execution checklist; this file is the cross-document backlog map for planning, handover, and prioritization.
+> Visual finish-line map: `docs/DEVELOPMENT_FINISH_LINE_VISUAL.md`.
+> Markdown estate review: `docs/MARKDOWN_ESTATE_REVIEW_2026-06-25.md`.
+> Engineering guardrails: `docs/ENGINEERING_GUARDRAILS.md`.
+> Architecture review: `TASKS.md` § Architecture Review Action Items.
+> Distribution plan: `NexusAI_Distribution_Plan.docx` and `docs/INFRA_DECISION_MEMO.md`.
+> UI/UX workplan: `docs/UI_UX_WORKPLAN.md` (MCP-aware design-to-code pipeline).
 > Last reviewed: 2026-06-25.
 
 ---
@@ -11,6 +17,8 @@
 2. **Prioritize proof over breadth.** Nexus should prove one governed workflow with strong evidence, then expand connectors, roles, and automation.
 3. **Keep human approval as the trust boundary.** No autonomous writeback, external send, payment, HR action, legal commitment, filing, or source-system update in V1.
 4. **Use docs as operating controls.** `TASKS.md`, `HANDOVER.md`, `docs/ROADMAP.md`, `docs/PRODUCTION_HEALTH_CHECKLIST.md`, and `docs/SECURITY_REVIEW.md` should agree before release work is considered done.
+5. **Keep strategy in the paperwork.** Readiness, buyer lane, first workflow, sponsor/reviewer, evidence bundle, governance boundary, and shadow ROI should appear in the backlog, tasks, and pilot docs before a pilot is sold.
+6. **Make runtime state explicit.** Workflow runners, sync jobs, local/on-prem auth, and verifier loops should use typed state machines, append-only events, visible async results, and exhaustive error taxonomies.
 
 ---
 
@@ -37,6 +45,7 @@ These are the highest-priority operational items because they determine whether 
 | Commit/push/deploy v0.25.0 | production pending | `HANDOVER.md`, `docs/ROADMAP.md` | v0.25.0 and audit fix are pushed to `origin/main`; Render dashboard login is needed to confirm/deploy commit `3530808`. |
 | Authenticated Render smoke for `/knowledge`, `/workflows`, `/settings/connectors`, and Ask note citations | open | `TASKS.md`, `HANDOVER.md`, `docs/PRODUCTION_HEALTH_CHECKLIST.md` | Must be done in a logged-in browser session because Clerk blocks unauthenticated curl. |
 | Confirm Render deployed intended commit | open | `docs/PRODUCTION_HEALTH_CHECKLIST.md` | Verify service commit SHA and env before customer demo. Current unauthenticated `/knowledge` probe still returns 404, so v0.25 routes are not confirmed live. |
+| Add cron job entries to `render.yaml` | open | `TASKS.md`, architecture review | Dispatch runner, billing reset, trial-to-free conversion. Cron handlers exist in code but are not declared in Render blueprint. Without these: no auto-synthesis, no token budget reset, no trial conversion. |
 | `/api/health` returns `status=ok` in production | done | `docs/PRODUCTION_HEALTH_CHECKLIST.md` | Verified 2026-06-25: DB, vector search, R2 originals, and DeepSeek LLM config are healthy. |
 
 ---
@@ -51,7 +60,11 @@ These are the minimum trust and operations items before a paid pilot contract sh
 | Security headers production scan | open | `TASKS.md`, `docs/SECURITY_REVIEW.md` | Run securityheaders.com against live app; target A rating. |
 | Manual API auth-bypass review | open | `docs/SECURITY_REVIEW.md` | Confirm every sensitive API route uses `requireScope()` or a signed internal secret. |
 | PII / restricted-evidence red-team pass | open | `docs/SECURITY_REVIEW.md` | Upload fictitious PII/account data and verify safe Ask/dashboard behavior. |
-| Sentry or equivalent error tracking | open | `TASKS.md` | Tag errors by workspace, route, and error type. |
+| Sentry or equivalent error tracking | open | `TASKS.md`, architecture review | Tag errors by workspace, route, and error type. Free tier covers pilot volume. |
+| Resend email delivery for synthesis briefs | open | `TASKS.md`, architecture review | Pro/Business tiers promise email delivery of synthesis briefs. Pure-fetch integration. ~2 hours. |
+| Wire LLM routing table into execution path | open | `TASKS.md`, architecture review | `model-routing.ts` policy exists (10 surfaces, fallback chains, tiers). `llm.ts` ignores it. Each call site needs a `SurfaceId` to select correct provider/tier/fallback. |
+| Workspace provider allow-list UI | open | `TASKS.md`, architecture review | Extend AI Policy settings so GCC buyers can exclude Chinese providers. `isProviderAllowed()` enforcement exists; needs UI + stored allow-list. |
+| Mode Indicator React context | open | `TASKS.md`, architecture review, Design Philosophy §3.6 | Cross-cutting data-locality signal on every screen. Four states matching AuthMode contracts. |
 | Uptime monitoring | open | `TASKS.md` | Monitor `/api/health`, dashboard, and ingestion route. |
 | Automated dependency scanning in CI/deploy | open | `TASKS.md`, `docs/SECURITY_REVIEW.md` | At minimum block critical advisories. |
 | Neon daily backups and restore test | open | `TASKS.md`, `docs/PRODUCTION_HEALTH_CHECKLIST.md` | 30-day retention target. |
@@ -69,6 +82,8 @@ These are the next product moves after release/cutover and paid-pilot safety gat
 |---|---|---|---|
 | Persist user strategy in product | open | `TASKS.md`, `docs/USER_STRATEGY_AND_PIVOTS.md` | Readiness lead, buyer lane, workspace profile context, and first workflow routing. |
 | Route onboarding into first workflow selection | open | `TASKS.md`, `docs/USER_STRATEGY_AND_PIVOTS.md` | Tie backcasting/workflow scorer into the first workspace journey. |
+| Strategy profile data model | open | `TASKS.md`, `docs/USER_STRATEGY_AND_PIVOTS.md` | Store readiness result, buyer lane, role, sector, company size, priority, sponsor, reviewer, governance posture, and selected workflow. |
+| Pilot paperwork generation from strategy profile | open | `TASKS.md`, pilot paperwork docs | Prefill SOW, onboarding checklist, success scorecard, billing trigger checklist, and value proof pack from lane plus workflow. |
 | Seed dashboards and suggested questions from backcast result | open | `TASKS.md` | Current backcast persists scope but does not fully seed first-value surfaces. |
 | Knowledge Workspace note embeddings | open | `TASKS.md`, `docs/KNOWLEDGE_WORKSPACE.md` | Enables semantic note search beyond text matching. |
 | Note-to-entity linking UI | open | `TASKS.md`, `docs/KNOWLEDGE_WORKSPACE.md` | Bridge markdown notes into Company Memory entities. |
@@ -78,6 +93,43 @@ These are the next product moves after release/cutover and paid-pilot safety gat
 | Direct “Create Decision from this brief” action | open | `TASKS.md` | Prefill decision/action draft from dashboard or synthesis card. |
 | Ops Review Twin richer UI | open | `TASKS.md`, `docs/NEXUS_WORKFLOW_TWIN_REALIGNMENT.md` | Weekly execution summary, blockers, overdue owners, KPI signals. |
 | Trusted eval scorecards from U3/U4 data | open | `TASKS.md`, `docs/V1_1_UPGRADE_PLAN.md` | Agent quality, groundedness, acceptance/edit rates. |
+| Type-safe runtime state and effect boundaries | open | `TASKS.md`, `docs/ENGINEERING_GUARDRAILS.md` | Before autonomous runners or local/on-prem sync, add discriminated state contracts, append-only run events, visible async result contracts, and verifier error taxonomies. |
+
+### Architecture Review Notes (context, not tasks)
+
+These notes from the 2026-06-25 architecture review affect prioritization and sequencing but are not standalone tasks.
+
+- **Rate limiting is already built** (v0.11.0 middleware, 7 rules, 429 with Retry-After). Do not duplicate. Any "rate limiting" task in the distribution plan refers to additional coverage beyond middleware, which should specify which routes and why.
+- **Knowledge Workspace local vault sync** is an architectural asset for Tauri Desktop distribution. The sync layer (`NEXUS_VAULT_SYNC`, `NEXUS_LOCAL_VAULT_PATH`) is a production-tested seam between cloud and local storage with path validation, symlink rejection, and conflict preservation. When building Tauri Desktop Phase 2 (local-first), this is the prototype for the broader local-data strategy.
+- **Orchestration Dispatcher** (`FOR UPDATE SKIP LOCKED`) provides the concurrency foundation needed for local Tauri SQLite dispatch. The atomic job claiming pattern transfers directly. Highlight this when scoping Tauri local-first architecture.
+- **AuthMode contracts** in ENGINEERING_GUARDRAILS.md are designed, not just "watch." The `clerk_cloud | local_license | offline_local | hybrid_sync_pending` discriminated union is the auth transition plan for Tauri. Implementation is deferred to Tauri Desktop Phase 2, not undesigned.
+- **LLM routing gap** is the single most impactful wiring task. The policy layer (`model-routing.ts`: 10 surfaces, 5 providers, fallback chains, data class restrictions, confidence floors) and the enforcement layer (`llm.ts`: single env var toggle) are not connected. Wiring them means executive briefs get premium models, ingestion triage gets economy models, and fallback fires automatically when a provider is down.
+
+## P2a — Strategy / Paperwork Backlog
+
+This is the operating plan that keeps the strategy in the paperwork rather than isolated in one markdown file.
+
+| Item | Status | Source | Notes |
+|---|---|---|---|
+| Keep canonical strategy current | done | `docs/USER_STRATEGY_AND_PIVOTS.md` | Updated 2026-06-25 with paper-trail ownership and current plan. |
+| Keep task plan current | done | `TASKS.md` | Current strategy operating plan is now listed near the top of the execution checklist. |
+| Keep backlog current | done | `BACKLOG.md` | Backlog now separates release gates, strategy implementation, pilot paperwork generation, and Knowledge Workspace follow-through. |
+| Keep handover current | done | `HANDOVER.md` | Updated 2026-06-25 with the strategy paper-trail alignment note; update again after Render commit confirmation and authenticated smoke. |
+| Keep changelog current | done | `CHANGELOG.md` | Added the 2026-06-25 strategy paper-trail alignment note. |
+| Keep markdown estate review current | done | `docs/MARKDOWN_ESTATE_REVIEW_2026-06-25.md` | Classifies all 63 Markdown files and lists targeted cleanup work. |
+| Keep engineering guardrails current | done | `docs/ENGINEERING_GUARDRAILS.md` | Added 2026-06-25 from the FP review: typed states, auth modes, append-only events, visible async effects, and exhaustive failure categories. |
+| Translate strategy into product tickets | open | `TASKS.md` | Break readiness profile, buyer lane routing, onboarding handoff, and paperwork generation into implementation tasks. |
+
+## P2b — Documentation Cleanup Backlog
+
+This backlog comes from `docs/MARKDOWN_ESTATE_REVIEW_2026-06-25.md`.
+
+| Item | Status | Source | Notes |
+|---|---|---|---|
+| Fix stale status headers in shipped specs | done | markdown estate review | Billing tiers, scheduled synthesis, U2 passport, agent rooms, and older runtime diagram now have current status stamps. |
+| Refresh launch/demo copy | done | markdown estate review | Launch and demo docs now reflect readiness-first buyer lanes, governed workflow pilots, and v0.25.0 Knowledge Workspace. |
+| Consolidate production runbook roles | done | markdown estate review | `DEPLOY.md`, `CUTOVER.md`, and `docs/RENDER_DEPLOY.md` now say when to use each runbook. |
+| Convert valid UX review items into tickets | done | markdown estate review | Active UX review items have been added to the Design / UX backlog. |
 
 ---
 
@@ -120,10 +172,18 @@ Slack has the first inbound channel-message ingestion path and Connector Setting
 | Item | Status | Source | Notes |
 |---|---|---|---|
 | Onboarding multi-file aggregate status polish | open | `UIUX_AUDIT.md` | Current wizard still anchors top-level result around `results[0]`; show processed/pending/quarantined counts. |
-| Governance/admin Figma batch | open | `TASKS.md`, `docs/UI_UX_FLOW_PLAN.md` | Risk and Audit, Integration Hub, Integration Detail, Governance Settings. |
-| Onboarding/prototype handoff batch | open | `TASKS.md`, `docs/UI_UX_FLOW_PLAN.md` | User and Role Management, Company Setup, First Mission Template, Audit Export / Executive Pack. |
-| Convert repeated Figma UI patterns into implementation tickets | open | `TASKS.md`, `docs/UI_UX_FLOW_PLAN.md` | Needed before a larger UI build wave. |
+| Design system lock (Tailwind + Figma variables) | open | `docs/UI_UX_WORKPLAN.md` Phase 1 | Round-trip design tokens between Tailwind config and Figma variables via Plugin API MCP. |
+| Governance/admin Figma batch | open | `docs/UI_UX_WORKPLAN.md` Phase 2 | Risk and Audit, Integration Hub, Integration Detail, Governance Settings. Via `use_figma` Plugin API. |
+| Onboarding/prototype handoff batch | open | `docs/UI_UX_WORKPLAN.md` Phase 2 | User and Role Management, Company Setup, First Mission Template, Audit Export / Executive Pack. |
+| Design-to-code generation | open | `docs/UI_UX_WORKPLAN.md` Phase 4 | Generate React/Next.js components from Figma via `get_design_context` + Code Connect mappings. |
+| Convert repeated Figma UI patterns into Code Connect | open | `docs/UI_UX_WORKPLAN.md` Phase 6 | Map Figma nodes to React components via `add_code_connect_map`. |
 | Empty/partial/blocked states pass | open | `docs/UI_UX_EXPERT_REVIEW_2026-06-16.md` | Make blocked connectors, insufficient evidence, denied outputs, and loading states first-class. |
+| Command palette | open | `docs/UI_UX_EXPERT_REVIEW_2026-06-16.md` | Keyboard-first launcher for open mission, review blockers, Ask, create approval, export audit pack, and pause agent. |
+| Trust Drawer | open | `docs/UI_UX_EXPERT_REVIEW_2026-06-16.md` | Reusable drawer from confidence badges/evidence counts with sources, freshness, sensitivity, confidence, review, audit, and export trace. |
+| Approval consequence preview | open | `docs/UI_UX_EXPERT_REVIEW_2026-06-16.md` | Before approval, show exactly what unlocks and confirm no external send occurs unless explicitly configured. |
+| Now / Next strip | open | `docs/UI_UX_EXPERT_REVIEW_2026-06-16.md` | Persistent mission/workflow status strip showing current step, next gate, owner, and ETA. |
+| Source coverage map | open | `docs/UI_UX_EXPERT_REVIEW_2026-06-16.md` | Show required source types found/missing before weak-evidence outputs happen. |
+| Accessibility/state icon pass | open | `docs/UI_UX_EXPERT_REVIEW_2026-06-16.md` | Validate focus states, contrast, labels, icons, loading/empty/error/blocked states before implementation. |
 
 ---
 

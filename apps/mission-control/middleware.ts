@@ -116,7 +116,7 @@ const CSP_DIRECTIVES = [
   "style-src 'self' 'unsafe-inline'",   // Tailwind generates inline styles
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  `connect-src 'self' https://api.anthropic.com https://api.deepseek.com https://*.clerk.accounts.dev https://${CLERK_DOMAIN} wss:`,
+  `connect-src 'self' https://api.anthropic.com https://api.deepseek.com https://*.clerk.accounts.dev https://${CLERK_DOMAIN} https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io wss:`,
   "frame-ancestors 'none'",
   "object-src 'none'",
   "base-uri 'self'",

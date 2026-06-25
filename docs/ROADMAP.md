@@ -7,7 +7,7 @@
 
 ## Design Principles
 
-See `docs/USER_STRATEGY_AND_PIVOTS.md` for the canonical user strategy and pivot map. Roadmap decisions should preserve the flow: readiness assessment -> buyer lane -> signup/onboarding -> first workflow pilot -> governed value proof. See `BACKLOG.md` for the cross-document operating backlog and release-gate view.
+See `docs/USER_STRATEGY_AND_PIVOTS.md` for the canonical user strategy and pivot map. Roadmap decisions should preserve the flow: readiness assessment -> buyer lane -> signup/onboarding -> first workflow pilot -> governed value proof. See `BACKLOG.md` for the cross-document operating backlog and release-gate view, keep `TASKS.md` aligned with the active strategy plan, and use `docs/DEVELOPMENT_FINISH_LINE_VISUAL.md` for the visual finish-line map.
 
 **1. AI as analyst, not assistant.**
 NexusAI should feel like a senior analyst embedded in the executive team. Every AI touch-point should demonstrate the system understands the business — sector, stage, risks, goals — before a question is asked.
@@ -26,6 +26,9 @@ Every document uploaded, every question asked, every decision logged makes Nexus
 
 **6. Consulting-grade operating system, not decorative dashboard.**
 The UI should feel like a top-tier consulting command layer: restrained, evidence-first, precise, and built for decisions. Use neutral surfaces, high-trust dark navigation, and status color only when it carries operational meaning. The Figma v1 direction is documented in `docs/UI_UX_FLOW_PLAN.md`.
+
+**7. Typed runtime safety before autonomy.**
+Autonomous loops, workflow runners, local/on-prem auth, connector sync, and verifier jobs must use explicit state machines, append-only events, visible async outcomes, and exhaustive failure categories. The engineering guardrails are documented in `docs/ENGINEERING_GUARDRAILS.md`.
 
 ---
 
@@ -82,7 +85,7 @@ Mission Control now includes an Obsidian-like company second brain at `/knowledg
 Connector settings now expose Slack source policy and sensitivity controls. `/workflows` provides the pilot product path: score candidate workflow twins, choose a first Parallel Workflow Pilot, backcast the target outcome, and record shadow ROI measurements.
 
 **User Strategy and Pivot Docs** (documentation alignment)
-The product strategy is now documented as readiness-first buyer routing, not generic signup. Each buyer lane gets a distinct path through readiness, onboarding, workflow selection, pilot paperwork, and governed value proof. The canonical strategy lives in `docs/USER_STRATEGY_AND_PIVOTS.md`.
+The product strategy is now documented as readiness-first buyer routing, not generic signup. Each buyer lane gets a distinct path through readiness, onboarding, workflow selection, pilot paperwork, and governed value proof. The canonical strategy lives in `docs/USER_STRATEGY_AND_PIVOTS.md`; the active execution plan is mirrored in `TASKS.md` and `BACKLOG.md`.
 
 **Billing Tiers + Stripe** (v0.20.0–v0.21.0)
 Plan-gated token budgets, feature flags, self-serve Stripe checkout, subscription lifecycle webhooks, Billing Portal, and trial-to-free conversion. The commercial layer is fully wired.
@@ -92,12 +95,25 @@ The dashboard starts with one evidence-backed leadership brief per role, with so
 
 ### Next Build
 
-1. **v0.25.0 deploy/smoke:** apply migration 0026, deploy, and smoke `/knowledge`, `/workflows`, `/settings/connectors`, and Ask note citations in a logged-in browser session.
-2. **User Strategy Implementation:** connect readiness submissions to buyer lane, signup/onboarding context, workspace profile, and first workflow selection.
-3. **Knowledge Workspace follow-through:** add richer graph filters, note-to-entity linking UI, note embedding storage, scheduled daily/project/workflow briefs, duplicate/contradiction audits, and resurfacing.
-4. **Connector Data Flows:** add Google Drive/SharePoint/Teams/Jira/GitHub/CRM/finance/social ingestion paths with read-only provenance and sensitivity policy.
-5. **Workflow Twin Follow-through:** connect scorer selection more deeply into onboarding and create workflow-specific starter packs for Ops Review, Proposal/SOW, and Regulatory Response.
-6. **UI/UX prototype coverage:** complete the Figma v1 flow set: Mission Creation, Mission Run Detail, Evidence Room, Approval Inbox, Risk and Audit, Integration Hub, Governance Settings, and onboarding screens.
+**Infrastructure and wiring (do first, unblocks everything):**
+
+1. **v0.25.0 deploy/smoke:** confirm Render is serving commit `3530808`, then smoke `/knowledge`, `/workflows`, `/settings/connectors`, and Ask note citations in a logged-in browser session. Migrations 0025-0026 and production `/api/health` are already confirmed.
+2. **Add cron entries to `render.yaml`:** dispatch runner, billing reset, trial-to-free conversion. Cron handlers exist in code but are not declared in the Render blueprint. Without these: no auto-synthesis, no monthly token budget reset, no trial conversion. Single-file change.
+3. **Wire LLM routing table into execution path:** `model-routing.ts` defines a 10-surface routing policy with provider fallback chains. `llm.ts` ignores it and uses a single env var. Connect `routePolicyFor(surfaceId)` into `callLLM()` so executive briefs use premium models, ingestion triage uses economy models, and fallback fires when a provider is down.
+4. **Add Resend email delivery:** synthesis brief template, send on scheduled cron completion, unsubscribe link. Pure-fetch integration, same pattern as Stripe.
+5. **Add Sentry error tracking:** tag errors by workspaceId, route, and error type. No production error visibility exists today.
+6. **Add workspace provider allow-list UI:** extend Settings > AI Policy so GCC regulated buyers can restrict to Anthropic/OpenAI only. The `isProviderAllowed()` enforcement layer already exists.
+
+**Product build (after infrastructure):**
+
+7. **User Strategy Implementation:** connect readiness submissions to buyer lane, signup/onboarding context, workspace profile, and first workflow selection.
+8. **Pilot Paperwork Automation:** generate or prefill SOW, onboarding checklist, success scorecard, billing trigger checklist, and value proof pack from the buyer lane and chosen workflow.
+9. **Mode Indicator context/provider:** Design Philosophy Pillar 3.6 requires a persistent data-locality signal on every screen. Four states matching the AuthMode contracts in `docs/ENGINEERING_GUARDRAILS.md`. Cross-cutting React context, not just CSS.
+10. **Knowledge Workspace follow-through:** add richer graph filters, note-to-entity linking UI, note embedding storage, scheduled daily/project/workflow briefs, duplicate/contradiction audits, and resurfacing.
+11. **Connector Data Flows:** add Google Drive/SharePoint/Teams/Jira/GitHub/CRM/finance/social ingestion paths with read-only provenance and sensitivity policy.
+12. **Engineering Guardrails:** apply `docs/ENGINEERING_GUARDRAILS.md` before autonomous/local runner work: discriminated state contracts, auth-mode modeling, append-only events, explicit effect results, and verifier failure taxonomy.
+13. **Workflow Twin Follow-through:** connect scorer selection more deeply into onboarding and create workflow-specific starter packs for Ops Review, Proposal/SOW, and Regulatory Response.
+14. **UI/UX design-to-code pipeline:** 6-phase workplan in `docs/UI_UX_WORKPLAN.md`. Phase 1: lock design system (Tailwind + Figma variables). Phase 2: rebuild/complete all 15 screens with expert review fixes via Figma Plugin API MCP. Phase 3: mini features (Trust Drawer, Approval Consequence Preview, Command Palette, Mission Health Score). Phase 4: generate React/Next.js components from Figma via `get_design_context`. Phase 5: empty/loading/error states. Phase 6: verification and Code Connect mappings. The connected Figma MCP has full write access, enabling a bidirectional design-code workflow.
 
 ### Later
 

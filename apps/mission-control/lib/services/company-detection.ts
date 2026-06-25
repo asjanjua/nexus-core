@@ -107,7 +107,9 @@ export async function detectCompanyProfile(description: string): Promise<Detecte
   try {
     raw = await ask(userPrompt, DETECTION_SYSTEM_PROMPT, {
       maxTokens: 800,
-      temperature: 0.1
+      temperature: 0.1,
+      route: "company_detection",
+      surfaceId: "ingestion_triage_assist"
     });
   } catch {
     return null;
@@ -258,7 +260,12 @@ export async function mapFocusToDashboard(
 
   let raw: string;
   try {
-    raw = await ask(userPrompt, FOCUS_SYSTEM_PROMPT, { maxTokens: 400, temperature: 0.15 });
+    raw = await ask(userPrompt, FOCUS_SYSTEM_PROMPT, {
+      maxTokens: 400,
+      temperature: 0.15,
+      route: "company_focus",
+      surfaceId: "ingestion_triage_assist"
+    });
   } catch {
     return null;
   }

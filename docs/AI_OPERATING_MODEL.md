@@ -135,6 +135,8 @@ AI-related events should be append-only and tenant/workspace scoped. V1 events s
 
 The existing `audit_events` table is the V1 sink. A dedicated AI-generation table can be added later if token-level cost tracking becomes necessary.
 
+For long-running or autonomous AI work, apply `docs/ENGINEERING_GUARDRAILS.md`: return visible job/run IDs for async effects, write append-only run events, model runner states as discriminated unions, and distinguish proof failure from timeout, OOM, permission denial, policy denial, and provider outage.
+
 ## Evaluation Harness
 
 The V1 golden prompt set should cover:
