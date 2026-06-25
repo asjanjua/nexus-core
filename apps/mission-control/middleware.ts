@@ -108,10 +108,10 @@ function nextWithPath(request: NextRequest): NextResponse {
 // where process.env is available at build time for static values.
 const CSP_DIRECTIVES = [
   "default-src 'self'",
-  // Next.js injects inline scripts; use strict-dynamic to allow them via nonces in future
-  // For now allow 'unsafe-inline' only in development; production gets 'strict-dynamic'
+  // Next.js App Router and Clerk both need client-side bootstrap scripts.
+  // Keep 'unsafe-inline' until we implement nonce-based CSP for the app shell.
   process.env.NODE_ENV === "production"
-    ? `script-src 'self' https://${CLERK_DOMAIN} https://*.clerk.accounts.dev 'strict-dynamic'`
+    ? `script-src 'self' 'unsafe-inline' https://${CLERK_DOMAIN} https://*.clerk.accounts.dev`
     : `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://${CLERK_DOMAIN} https://*.clerk.accounts.dev`,
   "style-src 'self' 'unsafe-inline'",   // Tailwind generates inline styles
   "img-src 'self' data: blob: https:",
