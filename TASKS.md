@@ -46,10 +46,10 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 **Slack Connector Data Flow: Shipped.** (v0.23.0) -- allowlisted Slack channel messages ingest as governed evidence with provenance, sensitivity, confidence, and audit events.
 **Production Hardening: Shipped.** (v0.23.1) -- Stripe webhook idempotency, cron/webhook rate limits, Clerk CSP domain handling, dispatch input typing, and demo navigation/auth shell fixes.
 **Workflow Pilot Productization: Shipped.** (v0.24.0) -- Connector Settings policy UX, Workflow Twin Scorer product page, U6 backcasting API/UI, and U7 shadow ROI instrumentation. Committed and pushed to `origin/main`; Render deploy/authenticated smoke should be confirmed.
-**Knowledge Workspace and Live Vault Sync: Shipped locally.** (v0.25.0) -- `/knowledge`, markdown editor, wikilinks, backlinks, graph, import/export, optional live local folder sync, MCP memory wrapper, and Ask `noteRefs`. Pending migration/deploy/authenticated smoke.
+**Knowledge Workspace and Live Vault Sync: Shipped locally.** (v0.25.0) -- `/knowledge`, markdown editor, wikilinks, backlinks, graph, import/export, optional live local folder sync, MCP memory wrapper, and Ask `noteRefs`. Migrations 0025-0026 applied; Render deployed-commit confirmation and authenticated smoke remain pending.
 **User Strategy and Pivot Docs: Documentation complete.** (2026-06-17) -- `docs/USER_STRATEGY_AND_PIVOTS.md` is the canonical strategy. Paperwork now aligns around readiness -> buyer lane -> signup/onboarding -> first workflow pilot -> governed value proof.
 **Demo packs: Audited and rewritten.** (v0.15.1) -- All 3 sector packs CEO-grade with pre-tuned Ask questions.
-**Production DB: Migrations 0001-0024 applied. Migrations 0025-0026 need confirmation in the target production environment before v0.25.0 deploy.**
+**Production DB: Migrations 0001-0026 applied. `db:check` returned `ok=true` against `neondb` on 2026-06-25.**
 
 **The product is demo-ready and pilot-design-ready for GCC fintech, professional services, and SaaS buyers. First paid pilot production readiness still requires the open operations, monitoring, backup, support, and authenticated-smoke items below.**
 
@@ -62,7 +62,7 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 6. [x] Build Knowledge Workspace v0.25.0 -- markdown editor, backlinks, graph, import/export, live local vault sync, MCP wrapper, and Ask `noteRefs`.
 7. [x] Align user strategy and paperwork docs -- readiness-first buyer lanes, workflow scorer bridge, sponsor/reviewer requirements, and governed value proof.
 8. [ ] Implement user strategy in product -- persist readiness leads, buyer lane, workspace member/profile context, and route onboarding into first workflow selection.
-9. [ ] Apply migrations 0025-0026 in the target production database, deploy v0.25.0, and run authenticated smoke tests in the logged-in browser session.
+9. [ ] Confirm Render deploy for pushed v0.25.0 commit `3530808`, then run authenticated smoke tests in the logged-in browser session. Migrations 0025-0026 and production `/api/health` are complete.
 10. [ ] Add Knowledge Workspace follow-through: note embeddings, richer graph filters, note-to-entity linking UI, daily/project/workflow brief automation, duplicate/contradiction audit, and resurfacing.
 11. [ ] Add additional connector data flows beyond Slack: Google Drive, Teams/SharePoint, Jira, GitHub, CRM, finance, and social platforms.
 

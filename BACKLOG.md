@@ -33,11 +33,11 @@ These are the highest-priority operational items because they determine whether 
 
 | Item | Status | Source | Notes |
 |---|---|---|---|
-| Confirm/apply migrations `0025-0026` in production database | open | `TASKS.md`, `HANDOVER.md`, `docs/PRODUCTION_HEALTH_CHECKLIST.md` | Required before v0.25.0 deploy. |
-| Commit/push/deploy v0.25.0 | open | `HANDOVER.md`, `docs/ROADMAP.md` | v0.24.0 is on `origin/main`; v0.25.0 is locally verified but uncommitted. |
+| Confirm/apply migrations `0025-0026` in production database | done | `TASKS.md`, `HANDOVER.md`, `docs/PRODUCTION_HEALTH_CHECKLIST.md` | Applied successfully on 2026-06-25; `db:check` returned `ok=true` against `neondb`. |
+| Commit/push/deploy v0.25.0 | production pending | `HANDOVER.md`, `docs/ROADMAP.md` | v0.25.0 and audit fix are pushed to `origin/main`; Render dashboard login is needed to confirm/deploy commit `3530808`. |
 | Authenticated Render smoke for `/knowledge`, `/workflows`, `/settings/connectors`, and Ask note citations | open | `TASKS.md`, `HANDOVER.md`, `docs/PRODUCTION_HEALTH_CHECKLIST.md` | Must be done in a logged-in browser session because Clerk blocks unauthenticated curl. |
-| Confirm Render deployed intended commit | open | `docs/PRODUCTION_HEALTH_CHECKLIST.md` | Verify service commit SHA and env before customer demo. |
-| `/api/health` returns `status=ok` in production | open | `docs/PRODUCTION_HEALTH_CHECKLIST.md` | Covers DB, vector search, originals storage, and LLM key health. |
+| Confirm Render deployed intended commit | open | `docs/PRODUCTION_HEALTH_CHECKLIST.md` | Verify service commit SHA and env before customer demo. Current unauthenticated `/knowledge` probe still returns 404, so v0.25 routes are not confirmed live. |
+| `/api/health` returns `status=ok` in production | done | `docs/PRODUCTION_HEALTH_CHECKLIST.md` | Verified 2026-06-25: DB, vector search, R2 originals, and DeepSeek LLM config are healthy. |
 
 ---
 

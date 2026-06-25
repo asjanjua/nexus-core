@@ -190,8 +190,8 @@ Current residual dependency notes:
 
 Do not onboard a paid pilot unless all of these are true:
 
-- [ ] `/api/health` returns `status=ok`.
-- [ ] Migrations have run against the target database.
+- [x] `/api/health` returns `status=ok`. Verified 2026-06-25 against `https://nexus-mission-control.onrender.com/api/health`.
+- [x] Migrations have run against the target database. Migrations 0001-0026 are applied; `db:check` returned `ok=true` against `neondb`.
 - [ ] Upload, approval, dashboard, and Ask smoke tests pass.
 - [ ] LLM provider and embedding provider are configured.
 - [ ] R2 is configured if original-file retention is promised.
