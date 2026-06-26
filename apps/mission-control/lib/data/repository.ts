@@ -51,7 +51,8 @@ import {
   type recommendationStatusEnum,
   type ingestionStatusEnum
 } from "@/db/schema";
-import { buildKnowledgeGraph, buildKnowledgeLinks, defaultKnowledgePath, extractKnowledge, searchKnowledgeNotes } from "@/lib/knowledge/markdown";
+import { applyKnowledgeFilters, buildKnowledgeGraph, buildKnowledgeLinks, defaultKnowledgePath, extractKnowledge, searchKnowledgeNotes } from "@/lib/knowledge/markdown";
+import type { KnowledgeFilterOptions } from "@/lib/knowledge/markdown";
 
 export type WorkspaceStatus = "trial" | "pilot" | "active" | "suspended" | "cancelled";
 
@@ -642,20 +643,32 @@ export const repository = {
     return saved;
   },
 
-  async listKnowledgeNotes(workspaceId: string, options: { query?: string; limit?: number } = {}): Promise<KnowledgeNote[]> {
+  async listKnowledgeNotes(
+    workspaceId: string,
+    options: { query?: string; limit?: number } & KnowledgeFilterOptions = {}
+  ): Promise<KnowledgeNote[]> {
     const limit = Math.min(500, Math.max(1, options.limit ?? 100));
+    const hasStructuralFilters = Boolean(
+      options.tags?.length || options.sourceKinds?.length || options.entityId || options.workflowId ||
+        (options.refType && options.refType !== "any") || (options.freshness && options.freshness !== "all")
+    );
+    // When structural filters are active, pull the full 500-row pool before filtering and
+    // re-limiting, so the limit applies to the post-filter result set rather than truncating
+    // candidates before the filter ever runs.
+    const fetchLimit = hasStructuralFilters ? 500 : limit;
     const rows = await runDb((db) =>
       db
         .select()
         .from(knowledgeNotes)
         .where(sql`${knowledgeNotes.workspaceId} = ${workspaceId} AND ${knowledgeNotes.status} <> 'deleted'`)
         .orderBy(desc(knowledgeNotes.updatedAt))
-        .limit(limit)
+        .limit(fetchLimit)
     );
     if (!rows) return store.listKnowledgeNotes(workspaceId, options);
-    const notes = rows.map(toKnowledgeNote);
-    if (options.query) return searchKnowledgeNotes(notes, options.query, limit).map((result) => result.note);
-    return notes;
+    let notes = rows.map(toKnowledgeNote);
+    if (options.query) notes = searchKnowledgeNotes(notes, options.query, fetchLimit).map((result) => result.note);
+    notes = applyKnowledgeFilters(notes, options);
+    return notes.slice(0, limit);
   },
 
   async getKnowledgeNote(workspaceId: string, id: string): Promise<KnowledgeNote | null> {
@@ -818,12 +831,16 @@ export const repository = {
     return searchKnowledgeNotes(notes, query, limit);
   },
 
-  async getKnowledgeGraph(workspaceId: string) {
+  async getKnowledgeGraph(workspaceId: string, filters: KnowledgeFilterOptions = {}) {
     const [notes, links] = await Promise.all([
-      repository.listKnowledgeNotes(workspaceId, { limit: 500 }),
+      repository.listKnowledgeNotes(workspaceId, { limit: 500, ...filters }),
       repository.listKnowledgeLinks(workspaceId)
     ]);
-    return buildKnowledgeGraph(notes, links);
+    // Keep the graph's edges consistent with the filtered note set — an edge whose source
+    // note was filtered out would otherwise dangle (point at a node that doesn't exist).
+    const noteIds = new Set(notes.map((note) => note.id));
+    const filteredLinks = links.filter((link) => noteIds.has(link.sourceNoteId));
+    return buildKnowledgeGraph(notes, filteredLinks);
   },
 
   async recordKnowledgeSyncEvent(input: Omit<KnowledgeSyncEvent, "id" | "createdAt">): Promise<KnowledgeSyncEvent> {

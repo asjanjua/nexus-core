@@ -2,6 +2,7 @@ import { fail, ok } from "@/lib/api";
 import { requireScope } from "@/lib/api-auth";
 import { knowledgeNoteInputSchema } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
+import { parseKnowledgeFilterParams } from "@/lib/knowledge/filter-params";
 import { newKnowledgeNoteTemplate } from "@/lib/services/knowledge";
 import { writeNoteToVault } from "@/lib/services/vault-sync";
 
@@ -12,7 +13,8 @@ export async function GET(request: Request) {
   const url = new URL(request.url);
   const query = url.searchParams.get("q") ?? undefined;
   const limit = Math.min(500, Math.max(1, Number(url.searchParams.get("limit") ?? "100")));
-  const notes = await repository.listKnowledgeNotes(ctx.workspaceId, { query, limit });
+  const filters = parseKnowledgeFilterParams(url.searchParams);
+  const notes = await repository.listKnowledgeNotes(ctx.workspaceId, { query, limit, ...filters });
   return ok({ notes, total: notes.length });
 }
 

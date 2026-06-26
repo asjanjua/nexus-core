@@ -2,6 +2,18 @@
 
 ---
 
+## Unreleased — Knowledge Workspace: Richer Graph Filters (2026-06-27)
+
+Closes the `BACKLOG.md` P2 item "Richer Knowledge graph filters" — filter the Knowledge Workspace note list and graph by tag, source kind, entity, workflow, ref type, and freshness window, all from one shared filter state.
+
+**Backend.** New `applyKnowledgeFilters`/`KnowledgeFilterOptions`/`KnowledgeFreshness` exports in `lib/knowledge/markdown.ts` — a single filter implementation shared by both the DB-backed `repository.ts` and the in-memory `store.ts`, so filter semantics never drift between the two backends. `repository.listKnowledgeNotes` widens its DB fetch pool to 500 rows when any structural filter is active (the existing pattern used for full-text search), then filters and slices in TypeScript rather than building JSONB array-containment SQL. `repository.getKnowledgeGraph` now filters notes first, then drops any link whose source note didn't survive the filter, so the graph never shows dangling edges. New `lib/knowledge/filter-params.ts` is the single shared query-param parser used by both `GET /api/knowledge/notes` and `GET /api/knowledge/graph`, so the note list and the graph always agree on what a given filter URL means.
+
+**UI.** `components/knowledge-workspace.tsx` gets a collapsible Filters panel in the vault sidebar: tag chips (multi-select, populated from a one-time unfiltered facet fetch so the tag picker always shows the whole vault's tags, not just the filtered subset), source-kind chips, a ref-type dropdown, a freshness dropdown, a workflow dropdown (from `/api/workflow-twins`), and an entity search-and-select control distinct from the existing note-to-entity linking control. An active-filter count badge and a clear-filters button. Built entirely from existing `.panel`/`.badge`/`.input`/`.btn-subtle` utility classes per the locked design system — no new colors or one-off styles.
+
+**Verification.** Scoped `tsc --noEmit` (excluding the generated `.next/types` glob, which is unrelated to this change) passes clean on the touched files. `npm test` and `npm run build` could not be run in this sandbox: `node_modules` is synced from Ali's Mac and carries darwin-arm64 native bindings (e.g. `rolldown`'s binary), while the sandbox runs linux-arm64 — vitest fails at startup with `Cannot find native binding`, unrelated to this change. Ali should run the standard 4-gate cycle (`npm install`, `tsc --noEmit`, `npm test`, `npm run build`) on his own machine before this item is marked `done` in `BACKLOG.md`.
+
+---
+
 ## Unreleased — Pilot Build-Out Step 5: Figma Signature-Pattern Parity (2026-06-26)
 
 Closes the Figma side of the locked design system's six signature patterns (Trust Drawer, Approval Consequence Preview, Now/Next strip, Mode Indicator, Nav Health Badges, Passport Drift Warning). All six are already live in the actual product since Step 4 (`d3aa1ce`); this step makes the Figma prototype an honest mirror rather than a partial one.

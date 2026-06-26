@@ -33,7 +33,8 @@ import {
   type WorkspaceSettings
 } from "@/lib/contracts";
 import type { ConnectorRecord } from "@/lib/data/repository";
-import { buildKnowledgeLinks, defaultKnowledgePath, extractKnowledge, searchKnowledgeNotes } from "@/lib/knowledge/markdown";
+import { applyKnowledgeFilters, buildKnowledgeLinks, defaultKnowledgePath, extractKnowledge, searchKnowledgeNotes } from "@/lib/knowledge/markdown";
+import type { KnowledgeFilterOptions } from "@/lib/knowledge/markdown";
 
 type AuditEvent = {
   id: string;
@@ -260,11 +261,15 @@ export const store = {
     entityStore.push(record);
     return record;
   },
-  listKnowledgeNotes(workspaceId: string, options: { query?: string; limit?: number } = {}): KnowledgeNote[] {
-    const notes = knowledgeNoteStore
+  listKnowledgeNotes(
+    workspaceId: string,
+    options: { query?: string; limit?: number } & KnowledgeFilterOptions = {}
+  ): KnowledgeNote[] {
+    let notes = knowledgeNoteStore
       .filter((note) => note.workspaceId === workspaceId && note.status !== "deleted")
       .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-    if (options.query) return searchKnowledgeNotes(notes, options.query, options.limit ?? 50).map((result) => result.note);
+    if (options.query) notes = searchKnowledgeNotes(notes, options.query, 500).map((result) => result.note);
+    notes = applyKnowledgeFilters(notes, options);
     return notes.slice(0, options.limit ?? 100);
   },
   getKnowledgeNote(workspaceId: string, id: string): KnowledgeNote | null {

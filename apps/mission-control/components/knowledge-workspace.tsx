@@ -39,6 +39,42 @@ type SyncStatus = {
 
 const ROOTS = ["_Inbox", "Daily", "Projects", "Workflows", "Entities", "Sources"];
 
+const SOURCE_KINDS = ["manual", "import", "sync", "automation", "mcp"] as const;
+const REF_TYPES = [
+  { value: "any", label: "Any" },
+  { value: "evidence", label: "Evidence" },
+  { value: "entity", label: "Entity" },
+  { value: "workflow_twin", label: "Workflow" },
+  { value: "decision", label: "Decision" },
+  { value: "recommendation", label: "Recommendation" }
+] as const;
+const FRESHNESS_OPTIONS = [
+  { value: "all", label: "Any time" },
+  { value: "24h", label: "Last 24h" },
+  { value: "7d", label: "Last 7 days" },
+  { value: "30d", label: "Last 30 days" }
+] as const;
+
+type KnowledgeFilters = {
+  tags: string[];
+  sources: string[];
+  refType: string;
+  freshness: string;
+  entityId: string | null;
+  entityLabel: string;
+  workflowId: string;
+};
+
+const EMPTY_FILTERS: KnowledgeFilters = {
+  tags: [],
+  sources: [],
+  refType: "any",
+  freshness: "all",
+  entityId: null,
+  entityLabel: "",
+  workflowId: ""
+};
+
 function folderFor(path: string) {
   return path.split("/")[0] || "_Inbox";
 }
@@ -67,8 +103,35 @@ export function KnowledgeWorkspace() {
   const [entityResults, setEntityResults] = useState<Array<{ id: string; name: string; type: string }>>([]);
   const [entitySearching, setEntitySearching] = useState(false);
 
+  // Richer Knowledge graph filters: tag, ref type, entity, source, freshness, workflow.
+  // The same filter state drives both the note list (refresh) and the graph (refreshGraph),
+  // so what you see in the vault list is exactly what's plotted in the graph.
+  const [filters, setFilters] = useState<KnowledgeFilters>(EMPTY_FILTERS);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [allTags, setAllTags] = useState<string[]>([]);
+  const [workflows, setWorkflows] = useState<Array<{ id: string; name: string }>>([]);
+  const [filterEntitySearch, setFilterEntitySearch] = useState("");
+  const [filterEntityResults, setFilterEntityResults] = useState<Array<{ id: string; name: string; type: string }>>([]);
+
+  const activeFilterCount =
+    filters.tags.length + filters.sources.length + (filters.entityId ? 1 : 0) + (filters.workflowId ? 1 : 0) +
+    (filters.refType !== "any" ? 1 : 0) + (filters.freshness !== "all" ? 1 : 0);
+
+  function buildFilterParams(): string {
+    const params = new URLSearchParams();
+    if (query) params.set("q", query);
+    if (filters.tags.length) params.set("tags", filters.tags.join(","));
+    if (filters.sources.length) params.set("sources", filters.sources.join(","));
+    if (filters.refType !== "any") params.set("refType", filters.refType);
+    if (filters.freshness !== "all") params.set("freshness", filters.freshness);
+    if (filters.entityId) params.set("entityId", filters.entityId);
+    if (filters.workflowId) params.set("workflowId", filters.workflowId);
+    return params.toString();
+  }
+
   async function refresh() {
-    const res = await fetch(`/api/knowledge/notes${query ? `?q=${encodeURIComponent(query)}` : ""}`);
+    const qs = buildFilterParams();
+    const res = await fetch(`/api/knowledge/notes${qs ? `?${qs}` : ""}`);
     const json = await res.json();
     if (!json.ok) throw new Error(json.error ?? "knowledge_load_failed");
     const next = json.data.notes as KnowledgeNote[];
@@ -83,7 +146,8 @@ export function KnowledgeWorkspace() {
   }
 
   async function refreshGraph() {
-    const res = await fetch("/api/knowledge/graph");
+    const qs = buildFilterParams();
+    const res = await fetch(`/api/knowledge/graph${qs ? `?${qs}` : ""}`);
     const json = await res.json();
     if (json.ok) setGraph(json.data as KnowledgeGraph);
   }
@@ -94,12 +158,72 @@ export function KnowledgeWorkspace() {
     if (json.ok) setSync(json.data as SyncStatus);
   }
 
+  async function fetchFacets() {
+    // Unfiltered pull so the tag picker always shows the full vault's tag universe,
+    // not just the tags present in the current filtered view.
+    const res = await fetch("/api/knowledge/notes?limit=500");
+    const json = await res.json();
+    if (!json.ok) return;
+    const tagSet = new Set<string>();
+    for (const note of json.data.notes as KnowledgeNote[]) for (const tag of note.tags) tagSet.add(tag);
+    setAllTags(Array.from(tagSet).sort((a, b) => a.localeCompare(b)));
+  }
+
+  async function fetchWorkflows() {
+    const res = await fetch("/api/workflow-twins");
+    const json = await res.json();
+    if (json.ok) setWorkflows((json.data.twins ?? []).map((twin: { id: string; name: string }) => ({ id: twin.id, name: twin.name })));
+  }
+
+  async function searchFilterEntities(q: string) {
+    if (!q.trim()) { setFilterEntityResults([]); return; }
+    try {
+      const res = await fetch(`/api/entities?search=${encodeURIComponent(q)}&limit=6`);
+      const json = await res.json();
+      if (json.ok) {
+        setFilterEntityResults((json.data?.entities ?? []).map((e: { id: string; name: string; type: string }) => ({
+          id: e.id, name: e.name, type: e.type
+        })));
+      }
+    } catch { /* search failure is non-fatal */ }
+  }
+
+  function toggleTagFilter(tag: string) {
+    setFilters((prev) => ({
+      ...prev,
+      tags: prev.tags.includes(tag) ? prev.tags.filter((t) => t !== tag) : [...prev.tags, tag]
+    }));
+  }
+
+  function toggleSourceFilter(source: string) {
+    setFilters((prev) => ({
+      ...prev,
+      sources: prev.sources.includes(source) ? prev.sources.filter((s) => s !== source) : [...prev.sources, source]
+    }));
+  }
+
+  function setEntityFilter(entity: { id: string; name: string }) {
+    setFilters((prev) => ({ ...prev, entityId: entity.id, entityLabel: entity.name }));
+    setFilterEntitySearch("");
+    setFilterEntityResults([]);
+  }
+
+  function clearFilters() {
+    setFilters(EMPTY_FILTERS);
+  }
+
+  useEffect(() => {
+    void refreshSync();
+    void fetchFacets();
+    void fetchWorkflows();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     void refresh().catch((err) => setMessage(err instanceof Error ? err.message : "Could not load knowledge notes."));
     void refreshGraph();
-    void refreshSync();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [filters]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, KnowledgeNote[]>();
@@ -269,6 +393,140 @@ export function KnowledgeWorkspace() {
           <input className="input min-w-0" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Quick search..." />
           <button className="btn-subtle" type="submit">Go</button>
         </form>
+
+        <div>
+          <button
+            className="flex w-full items-center justify-between rounded-md border border-white/10 bg-white/[0.025] px-3 py-2 text-xs text-white/65 hover:text-white"
+            onClick={() => setFiltersOpen((open) => !open)}
+          >
+            <span className="font-medium uppercase tracking-[0.12em]">Filters</span>
+            <span className="flex items-center gap-2">
+              {activeFilterCount > 0 && <span className="badge badge-green">{activeFilterCount}</span>}
+              <span className="text-white/35">{filtersOpen ? "−" : "+"}</span>
+            </span>
+          </button>
+
+          {filtersOpen && (
+            <div className="mt-2 space-y-3 rounded-md border border-white/10 bg-white/[0.02] p-3">
+              {allTags.length > 0 && (
+                <div>
+                  <p className="label">Tags</p>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {allTags.map((tag) => (
+                      <button
+                        key={tag}
+                        className={`badge ${filters.tags.includes(tag) ? "badge-green" : "badge-muted"}`}
+                        onClick={() => toggleTagFilter(tag)}
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <p className="label">Source</p>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {SOURCE_KINDS.map((source) => (
+                    <button
+                      key={source}
+                      className={`badge ${filters.sources.includes(source) ? "badge-green" : "badge-muted"}`}
+                      onClick={() => toggleSourceFilter(source)}
+                    >
+                      {source}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="label">Has ref type</p>
+                <select
+                  className="input mt-1 w-full"
+                  value={filters.refType}
+                  onChange={(event) => setFilters((prev) => ({ ...prev, refType: event.target.value }))}
+                >
+                  {REF_TYPES.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <p className="label">Freshness</p>
+                <select
+                  className="input mt-1 w-full"
+                  value={filters.freshness}
+                  onChange={(event) => setFilters((prev) => ({ ...prev, freshness: event.target.value }))}
+                >
+                  {FRESHNESS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <p className="label">Workflow</p>
+                <select
+                  className="input mt-1 w-full"
+                  value={filters.workflowId}
+                  onChange={(event) => setFilters((prev) => ({ ...prev, workflowId: event.target.value }))}
+                >
+                  <option value="">Any workflow</option>
+                  {workflows.map((wf) => (
+                    <option key={wf.id} value={wf.id}>{wf.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <p className="label">Entity</p>
+                {filters.entityId ? (
+                  <div className="mt-1 flex items-center justify-between rounded-md border border-nexus-accent/40 bg-nexus-accent/10 px-2 py-1 text-xs text-white">
+                    <span className="truncate">{filters.entityLabel}</span>
+                    <button
+                      className="px-1 text-white/40 hover:text-red-400"
+                      onClick={() => setFilters((prev) => ({ ...prev, entityId: null, entityLabel: "" }))}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      className="input mt-1 w-full"
+                      value={filterEntitySearch}
+                      onChange={(event) => {
+                        setFilterEntitySearch(event.target.value);
+                        void searchFilterEntities(event.target.value);
+                      }}
+                      placeholder="Search entities..."
+                    />
+                    {filterEntityResults.length > 0 && (
+                      <div className="mt-1 max-h-32 space-y-1 overflow-y-auto">
+                        {filterEntityResults.map((entity) => (
+                          <button
+                            key={entity.id}
+                            className="block w-full truncate rounded-md border border-white/10 px-2 py-1 text-left text-xs text-white/65 hover:text-white hover:border-nexus-accent/40"
+                            onClick={() => setEntityFilter(entity)}
+                          >
+                            {entity.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {activeFilterCount > 0 && (
+                <button className="btn-subtle w-full" onClick={clearFilters}>Clear filters</button>
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
           {Array.from(grouped.entries()).map(([folder, items]) => (
             <div key={folder}>

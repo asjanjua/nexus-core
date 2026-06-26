@@ -212,6 +212,77 @@ export function searchKnowledgeNotes(notes: KnowledgeNote[], query: string, limi
     .slice(0, limit);
 }
 
+export type KnowledgeFreshness = "24h" | "7d" | "30d" | "all";
+
+export type KnowledgeFilterOptions = {
+  /** OR semantics: a note matches if it has any of these tags. */
+  tags?: string[];
+  /** OR semantics across sourceKind enum values (manual, import, sync, automation, mcp). */
+  sourceKinds?: string[];
+  /** Exact entity ID — note must list this entity in entityRefs. */
+  entityId?: string;
+  /** Exact workflow twin ID — note must list this workflow in workflowRefs. */
+  workflowId?: string;
+  /** Note must carry at least one ref of this type. "any" disables the filter. */
+  refType?: KnowledgeLinkType | "any";
+  /** Note must have been updated within this rolling window. "all" disables the filter. */
+  freshness?: KnowledgeFreshness;
+};
+
+const FRESHNESS_WINDOW_MS: Record<Exclude<KnowledgeFreshness, "all">, number> = {
+  "24h": 24 * 60 * 60 * 1000,
+  "7d": 7 * 24 * 60 * 60 * 1000,
+  "30d": 30 * 24 * 60 * 60 * 1000
+};
+
+const REF_TYPE_FIELD: Record<Exclude<KnowledgeLinkType, "note">, keyof KnowledgeNote> = {
+  evidence: "evidenceRefs",
+  entity: "entityRefs",
+  workflow_twin: "workflowRefs",
+  decision: "decisionRefs",
+  recommendation: "recommendationRefs"
+};
+
+/**
+ * Applies the "Richer Knowledge graph filters" backlog item: tag, ref type, entity, source,
+ * freshness, and workflow. Pure in-memory filtering so it can run identically against rows
+ * returned by the DB-backed repository and the in-memory store fallback.
+ */
+export function applyKnowledgeFilters(notes: KnowledgeNote[], options: KnowledgeFilterOptions): KnowledgeNote[] {
+  let result = notes;
+
+  if (options.tags?.length) {
+    const wanted = new Set(options.tags.map((tag) => tag.toLowerCase()));
+    result = result.filter((note) => note.tags.some((tag) => wanted.has(tag.toLowerCase())));
+  }
+
+  if (options.sourceKinds?.length) {
+    const wanted = new Set(options.sourceKinds);
+    result = result.filter((note) => wanted.has(note.sourceKind));
+  }
+
+  if (options.entityId) {
+    result = result.filter((note) => note.entityRefs.includes(options.entityId!));
+  }
+
+  if (options.workflowId) {
+    result = result.filter((note) => note.workflowRefs.includes(options.workflowId!));
+  }
+
+  if (options.refType && options.refType !== "any" && options.refType !== "note") {
+    const field = REF_TYPE_FIELD[options.refType];
+    result = result.filter((note) => Array.isArray(note[field]) && (note[field] as string[]).length > 0);
+  }
+
+  if (options.freshness && options.freshness !== "all") {
+    const windowMs = FRESHNESS_WINDOW_MS[options.freshness];
+    const cutoff = Date.now() - windowMs;
+    result = result.filter((note) => new Date(note.updatedAt).getTime() >= cutoff);
+  }
+
+  return result;
+}
+
 export function buildKnowledgeLinks(note: KnowledgeNote): Omit<KnowledgeLink, "id" | "workspaceId" | "sourceNoteId" | "createdAt">[] {
   const extracted = extractKnowledge(note.body, note.frontmatter);
   const links: Omit<KnowledgeLink, "id" | "workspaceId" | "sourceNoteId" | "createdAt">[] = [];
