@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { ConfidenceBadge } from "@/components/ui/trust-drawer-trigger";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -128,8 +129,13 @@ function EvidenceCard({
       </div>
 
       {/* Confidence */}
-      <div className="mb-4">
+      <div className="mb-4 space-y-2">
         <ConfidenceBar value={item.extractionConfidence} />
+        <ConfidenceBadge
+          confidence={item.extractionConfidence}
+          title={filename}
+          sources={[{ id: item.id, sourceType: item.sourceType }]}
+        />
       </div>
 
       {/* Metadata row */}

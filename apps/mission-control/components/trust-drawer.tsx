@@ -105,7 +105,8 @@ export function TrustDrawer() {
 
   if (!state.open) return null;
 
-  const pct = Math.round(state.overallConfidence * 100);
+  const hasOverallConfidence = state.overallConfidence !== null;
+  const pct = hasOverallConfidence ? Math.round((state.overallConfidence as number) * 100) : 0;
   const tone = confidenceTone(pct);
 
   return (
@@ -132,22 +133,28 @@ export function TrustDrawer() {
         </div>
 
         <div className="flex-1 overflow-y-auto p-5 space-y-5">
-          <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-nexus-muted">Confidence</p>
-            <div className="mt-2 flex items-center gap-3">
-              <p className="text-3xl font-bold text-nexus-text">{pct}%</p>
-              <MetaChip
-                label={pct >= 70 ? "Strong" : pct >= 40 ? "Needs review" : "Weak — verify before relying on this"}
-                tone={tone}
-              />
+          {hasOverallConfidence ? (
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-nexus-muted">Confidence</p>
+              <div className="mt-2 flex items-center gap-3">
+                <p className="text-3xl font-bold text-nexus-text">{pct}%</p>
+                <MetaChip
+                  label={pct >= 70 ? "Strong" : pct >= 40 ? "Needs review" : "Weak — verify before relying on this"}
+                  tone={tone}
+                />
+              </div>
+              <div className="mt-2 h-1 rounded-full bg-white/10">
+                <div
+                  className={`h-full rounded-full ${tone === "accent" ? "bg-nexus-accent" : tone === "warn" ? "bg-nexus-warn" : "bg-nexus-danger"}`}
+                  style={{ width: `${Math.max(4, Math.min(100, pct))}%` }}
+                />
+              </div>
             </div>
-            <div className="mt-2 h-1 rounded-full bg-white/10">
-              <div
-                className={`h-full rounded-full ${tone === "accent" ? "bg-nexus-accent" : tone === "warn" ? "bg-nexus-warn" : "bg-nexus-danger"}`}
-                style={{ width: `${Math.max(4, Math.min(100, pct))}%` }}
-              />
-            </div>
-          </div>
+          ) : (
+            <p className="rounded-lg border border-dashed border-nexus-border px-3 py-2 text-xs text-nexus-muted">
+              No single confidence score applies here. Review each source below on its own merits.
+            </p>
+          )}
 
           <div>
             <p className="text-xs font-medium uppercase tracking-wide text-nexus-muted">

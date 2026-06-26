@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { ConfidenceBadge } from "@/components/ui/trust-drawer-trigger";
 
 type AskResult = {
   answer: string;
@@ -266,8 +267,12 @@ export function AskPanel({
             </p>
           )}
 
-          <div className="flex flex-wrap gap-2">
-            <span className="badge">confidence {Math.round(result.confidence * 100)}%</span>
+          <div className="flex flex-wrap items-center gap-2">
+            <ConfidenceBadge
+              confidence={result.confidence}
+              title={query}
+              sources={result.evidenceRefs.map((id) => ({ id }))}
+            />
             <span className="badge">freshness {result.freshnessHours}h</span>
             <span className="badge">{result.evidenceRefs.length} ref{result.evidenceRefs.length !== 1 ? "s" : ""}</span>
             {result.refused && (

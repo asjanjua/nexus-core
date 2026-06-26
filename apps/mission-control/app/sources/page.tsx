@@ -2,6 +2,7 @@ import { PageShell } from "@/components/page-shell";
 import { auth } from "@clerk/nextjs/server";
 import { repository } from "@/lib/data/repository";
 import { DeleteEvidenceButton } from "@/components/delete-evidence-button";
+import { EvidenceTrustLink } from "@/components/ui/trust-drawer-trigger";
 import Link from "next/link";
 
 function fileName(path: string): string {
@@ -76,8 +77,16 @@ export default async function SourcesPage({
                   <DeleteEvidenceButton id={row.id} name={fileName(row.sourcePath)} />
                 </div>
               </div>
-              <p className="mt-2 text-white/60">
-                {row.department ? `${row.department} · ` : ""}{row.sourceType} · {Math.round(row.extractionConfidence * 100)}% confidence
+              <p className="mt-2 flex flex-wrap items-center gap-1.5 text-white/60">
+                <span>
+                  {row.department ? `${row.department} · ` : ""}{row.sourceType}
+                </span>
+                <EvidenceTrustLink
+                  label={`${Math.round(row.extractionConfidence * 100)}% confidence`}
+                  title={fileName(row.sourcePath)}
+                  confidence={row.extractionConfidence}
+                  records={[row]}
+                />
               </p>
               <p className="mt-1 break-all text-xs text-white/40">hash: {row.hash}</p>
               <p className="text-xs text-white/40">timestamp: {row.sourceTimestamp}</p>

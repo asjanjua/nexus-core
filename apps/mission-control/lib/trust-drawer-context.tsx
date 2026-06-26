@@ -43,7 +43,13 @@ export interface TrustDrawerEntity {
 
 export interface TrustDrawerOpenOptions {
   title: string;
-  overallConfidence: number;
+  /**
+   * Null when the caller has no real aggregate confidence score to show
+   * (e.g. a Decision backed by evidence but with no single confidence
+   * number of its own). The drawer hides the confidence header rather
+   * than fabricating a percentage — see the no-fabrication rule above.
+   */
+  overallConfidence: number | null;
   sources: TrustDrawerSource[];
   entities?: TrustDrawerEntity[];
   /** Already-loaded full records — skips fetching for any id present here. */
@@ -53,7 +59,7 @@ export interface TrustDrawerOpenOptions {
 interface TrustDrawerState {
   open: boolean;
   title: string;
-  overallConfidence: number;
+  overallConfidence: number | null;
   sources: TrustDrawerSource[];
   entities: TrustDrawerEntity[];
   records: Record<string, EvidenceRecord>;

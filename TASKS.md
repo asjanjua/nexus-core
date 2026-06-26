@@ -129,7 +129,7 @@ These tasks come from the Queen's Architecture Review of the full stack. Human-a
    - [x] End-to-end surface story: Figma page `04 V0.1 V0.2 Desktop Buildout` now covers the broader product arc documented in `docs/UI_UX_SURFACE_INVENTORY_2026-06-26.md`.
    - [x] Full V0.1 desktop prototype: Figma page `05 V0.1 Full Desktop Prototype` now has 30 browser screens for the complete Render-aligned room-and-tool journey.
    - [x] Full V0.2 desktop prototype: Figma page `06 V0.2 Full Desktop Prototype` now mirrors the 30-screen journey with guided routing, trust drawer, source coverage, owner, approval consequence, and audit-readiness cues.
-   - [x] Trust Drawer pattern from confidence/evidence badges — built 2026-06-26 on the live `/dashboard/ceo` bridge (`lib/trust-drawer-context.tsx`, `components/trust-drawer.tsx`, `components/ui/trust-drawer-trigger.tsx`), not yet rolled out beyond the Executive Room and synthesis brief.
+   - [x] Trust Drawer pattern from confidence/evidence badges — built 2026-06-26 on the live `/dashboard/ceo` bridge (`lib/trust-drawer-context.tsx`, `components/trust-drawer.tsx`, `components/ui/trust-drawer-trigger.tsx`); rolled out 2026-06-26 across Ask, Approvals, Recommendations, Decisions, Sources, and Export Hub. Confidence is shown as `null` (no fabricated score) wherever a surface has evidence but no real aggregate number, via the new `EvidenceCountLink` trigger.
    - [ ] Approval Consequence Preview.
    - [ ] Now / Next strip on mission/workflow screens.
    - [ ] Nav health badges.

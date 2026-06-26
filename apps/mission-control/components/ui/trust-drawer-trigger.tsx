@@ -89,3 +89,37 @@ export function EvidenceTrustLink({
     </button>
   );
 }
+
+/**
+ * Pill badge for surfaces that have real evidence references but no single
+ * aggregate confidence score of their own (e.g. a Decision created from a
+ * rationale with evidenceRefs, where there is no one number that honestly
+ * represents "how confident is this decision"). Opens the Trust Drawer with
+ * the confidence header hidden rather than inventing a percentage.
+ */
+export function EvidenceCountLink({
+  title,
+  sources,
+  records,
+}: {
+  title: string;
+  sources: TrustDrawerSource[];
+  records?: EvidenceRecord[];
+}) {
+  const { openDrawer } = useTrustDrawer();
+  const count = sources.length;
+
+  return (
+    <button
+      type="button"
+      onClick={() => openDrawer({ title, overallConfidence: null, sources, records })}
+      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition hover:brightness-110 ${TONE_SOFT.sky}`}
+      title="Open Trust Drawer"
+    >
+      {count} source{count !== 1 ? "s" : ""}
+      <span aria-hidden className="text-[10px] opacity-60">
+        ›
+      </span>
+    </button>
+  );
+}

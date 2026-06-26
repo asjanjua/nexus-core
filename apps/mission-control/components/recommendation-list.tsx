@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ConfidenceBadge } from "@/components/ui/trust-drawer-trigger";
 
 type Recommendation = {
   id: string;
@@ -59,9 +60,6 @@ export function RecommendationList({
           </li>
         ) : (
           rows.map((rec) => {
-            const confPct = Math.round(rec.confidence * 100);
-            const confColor =
-              confPct >= 70 ? "text-green-300" : confPct >= 40 ? "text-amber-300" : "text-red-300";
             const isBusy = busyId === rec.id;
             const isDone = ["approved", "rejected", "promoted"].includes(rec.status);
             return (
@@ -72,9 +70,13 @@ export function RecommendationList({
                 <div className="flex items-start gap-3">
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-white leading-snug">{rec.title}</p>
-                    <p className="mt-0.5 text-xs text-white/50">
-                      {rec.owner} &middot;{" "}
-                      <span className={confColor}>{confPct}% confidence</span>
+                    <p className="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-white/50">
+                      <span>{rec.owner}</span>
+                      <ConfidenceBadge
+                        confidence={rec.confidence}
+                        title={rec.title}
+                        sources={rec.evidenceRefs.map((id) => ({ id }))}
+                      />
                     </p>
                   </div>
                   <span

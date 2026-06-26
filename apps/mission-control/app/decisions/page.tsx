@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { EvidenceCountLink } from "@/components/ui/trust-drawer-trigger";
 
 // ---------------------------------------------------------------------------
 // Types (mirroring contracts — kept local so this file is self-contained)
@@ -22,6 +23,10 @@ type Decision = {
   decidedAt?: string | null;
   createdAt: string;
   updatedAt: string;
+  // Populated when the decision was created with evidence-backed rationale.
+  // Older/manually-created decisions may have an empty array — the Trust
+  // Drawer trigger only renders when there is something real to show.
+  evidenceRefs?: string[];
 };
 
 type Action = {
@@ -454,6 +459,12 @@ function DecisionCard({
             </span>
             {blockerCount > 0 && (
               <span className="text-xs text-red-400">{blockerCount} blocker{blockerCount > 1 ? "s" : ""}</span>
+            )}
+            {decision.evidenceRefs && decision.evidenceRefs.length > 0 && (
+              <EvidenceCountLink
+                title={decision.title}
+                sources={decision.evidenceRefs.map((id) => ({ id }))}
+              />
             )}
           </div>
           <h3 className="text-sm font-semibold text-white leading-snug">{decision.title}</h3>

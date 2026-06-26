@@ -7,13 +7,21 @@
 
 import { auth } from "@clerk/nextjs/server";
 import { repository } from "@/lib/data/repository";
+import { EvidenceTrustLink } from "@/components/ui/trust-drawer-trigger";
 
 export default async function ExportHubPage() {
   const { userId, orgId } = await auth();
   const workspaceId = orgId ?? userId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
-  const settings = await repository.getWorkspaceSettings(workspaceId);
+  const [settings, evidence] = await Promise.all([
+    repository.getWorkspaceSettings(workspaceId),
+    repository.getEvidenceForWorkspace(workspaceId),
+  ]);
   const workspaceName = settings?.name ?? workspaceId;
   const today = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });
+  const processedEvidence = evidence.filter((item) => item.ingestionStatus === "processed");
+  const avgEvidenceConfidence = evidence.length
+    ? Math.round((evidence.reduce((sum, item) => sum + item.extractionConfidence, 0) / evidence.length) * 100)
+    : 0;
 
   const exports = [
     {
@@ -63,6 +71,24 @@ export default async function ExportHubPage() {
           <h1 className="text-2xl font-semibold text-white">{workspaceName}</h1>
           <p className="mt-1 text-sm text-white/50">Pilot Delivery Exports &mdash; {today}</p>
         </div>
+
+        {evidence.length > 0 && (
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/10 bg-white/[0.03] px-5 py-4">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-wide text-white/40">Evidence behind these exports</p>
+              <p className="mt-1 text-xs text-white/50">
+                {processedEvidence.length} of {evidence.length} source{evidence.length !== 1 ? "s" : ""} cleared into synthesis.
+                Check what's backing these before sharing externally.
+              </p>
+            </div>
+            <EvidenceTrustLink
+              label={`${avgEvidenceConfidence}% avg confidence`}
+              title="Export Hub — Evidence Base"
+              confidence={avgEvidenceConfidence / 100}
+              records={evidence}
+            />
+          </div>
+        )}
 
         <div className="space-y-3">
           {exports.map((item) => (
