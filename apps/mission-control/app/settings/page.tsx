@@ -7,6 +7,7 @@
 
 import { useState, useEffect } from "react";
 import { PageShell } from "@/components/page-shell";
+import { MetaChip } from "@/components/ui/nexus-primitives";
 import {
   briefLanguageModeForArchetype,
   getAllSectors,
@@ -2066,27 +2067,46 @@ function AgentGovernanceTab() {
           <p className="text-sm text-white/40">No agent outputs found for this filter yet. Open a dashboard to generate briefs.</p>
         ) : (
           <div className="space-y-2">
-            {outputs.map((output) => (
-              <article key={output.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-medium text-white">{output.agentId} · {output.roleKey}</p>
-                    <p className="mt-1 text-xs text-white/40">
-                      {new Date(output.createdAt).toLocaleString()} · output v{output.outputVersion} · agent v{output.agentVersion}
-                    </p>
+            {outputs.map((output) => {
+              // Passport Drift Warning — locked signature pattern (see nexus-design-system
+              // skill): flag when the agent's control profile has moved to a newer version
+              // since this specific output was generated. Real comparison only — agent v{n}
+              // is the version stored on the AgentOutput row at creation time
+              // (lib/services/dashboard.ts: agentVersion: passport?.version ?? 1); current
+              // version comes from the live agent-control-profiles history, same data the
+              // passport cards above render. No drift is inferred unless both numbers exist
+              // and disagree.
+              const currentProfile = latestProfiles.find((p) => p.agentKey === output.agentId);
+              const hasDrifted = Boolean(currentProfile) && currentProfile!.version !== output.agentVersion;
+              return (
+                <article key={output.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-medium text-white">{output.agentId} · {output.roleKey}</p>
+                      <p className="mt-1 text-xs text-white/40">
+                        {new Date(output.createdAt).toLocaleString()} · output v{output.outputVersion} · agent v{output.agentVersion}
+                      </p>
+                      {hasDrifted && (
+                        <p className="mt-1.5">
+                          <MetaChip
+                            label={`Passport drift — this brief ran on agent v${output.agentVersion}, control profile is now v${currentProfile!.version}`}
+                            tone="warn"
+                          />
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      <span className={`badge ${output.isActive ? "badge-green" : "badge-muted"}`}>
+                        {output.isActive ? "active" : "historical"}
+                      </span>
+                      <span className="badge">{Math.round(output.confidence * 100)}%</span>
+                      <span className="badge">{output.evidenceRefs.length} sources</span>
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-1.5">
-                    <span className={`badge ${output.isActive ? "badge-green" : "badge-muted"}`}>
-                      {output.isActive ? "active" : "historical"}
-                    </span>
-                    <span className="badge">{Math.round(output.confidence * 100)}%</span>
-                    <span className="badge">{output.evidenceRefs.length} sources</span>
-                  </div>
-                </div>
-                <p className="mt-2 text-xs text-white/45">Prompt: {output.inputSummary}</p>
-                <p className="mt-2 line-clamp-3 text-sm leading-6 text-white/70">{output.content}</p>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <span className="text-xs text-white/30">ID {output.id}</span>
+                  <p className="mt-2 text-xs text-white/45">Prompt: {output.inputSummary}</p>
+                  <p className="mt-2 line-clamp-3 text-sm leading-6 text-white/70">{output.content}</p>
+                  <div className="mt-3 flex flex-wrap items-center gap-2">
+                    <span className="text-xs text-white/30">ID {output.id}</span>
                   {signalSent[output.id] ? (
                     <span className="text-xs text-emerald-400">
                       Signal recorded: {signalSent[output.id]}
@@ -2144,9 +2164,10 @@ function AgentGovernanceTab() {
                       {savingKey === output.id ? "Rolling back..." : "Roll back to this version"}
                     </button>
                   )}
-                </div>
-              </article>
-            ))}
+                  </div>
+                </article>
+              );
+            })}
           </div>
         )}
       </section>

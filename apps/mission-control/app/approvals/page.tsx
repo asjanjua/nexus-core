@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { ConfidenceBadge } from "@/components/ui/trust-drawer-trigger";
+import { ConsequencePreview, useConsequencePreview } from "@/components/ui/consequence-preview";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -244,6 +245,11 @@ export default function ApprovalsPage() {
     }
   }
 
+  // Gate single-item decisions behind the Approval Consequence Preview —
+  // bulk "Approve all" intentionally skips the per-item preview since the
+  // user already reviewed the policy banner and chose a batch action.
+  const preview = useConsequencePreview<string>(decide);
+
   async function approveAll() {
     setBulkProcessing(true);
     const pending = items.filter((i) => itemStates[i.id]?.status === "idle");
@@ -331,7 +337,7 @@ export default function ApprovalsPage() {
               key={item.id}
               item={item}
               state={itemStates[item.id] ?? { status: "idle" }}
-              onDecide={decide}
+              onDecide={preview.request}
             />
           ))}
           {pendingCount === 0 && (
@@ -350,6 +356,24 @@ export default function ApprovalsPage() {
             </div>
           )}
         </div>
+      )}
+
+      {preview.pending && (
+        <ConsequencePreview
+          open
+          decision={preview.pending.decision}
+          itemLabel={
+            items.find((i) => i.id === preview.pending?.id)?.sourcePath.split("/").pop() ??
+            preview.pending.id
+          }
+          unlocks="Sets this record to processed and enters it into the LLM synthesis pipeline — it will be used to generate recommendations."
+          stops="Quarantines this record. It is excluded from all intelligence outputs and will not be used in any synthesis."
+          loopsBack="There is no automatic re-review. If you get a cleaner version of this source, re-uploading it creates a new record that goes through the queue fresh — this one stays quarantined."
+          leavesNexus={false}
+          busy={preview.busy}
+          onConfirm={preview.confirm}
+          onCancel={preview.cancel}
+        />
       )}
     </div>
   );

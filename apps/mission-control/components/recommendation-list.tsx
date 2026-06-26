@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ConfidenceBadge } from "@/components/ui/trust-drawer-trigger";
+import { ConsequencePreview, useConsequencePreview } from "@/components/ui/consequence-preview";
 
 type Recommendation = {
   id: string;
@@ -22,6 +23,8 @@ export function RecommendationList({
   const [rows, setRows] = useState(initial);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const preview = useConsequencePreview<string>((id, decision) => setStatus(id, decision));
 
   async function setStatus(id: string, status: "approved" | "rejected") {
     setBusyId(id);
@@ -105,14 +108,14 @@ export function RecommendationList({
                   <div className="flex gap-2 pt-1">
                     <button
                       className="rounded-lg bg-nexus-accent px-3 py-1.5 text-xs font-medium text-black transition hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed"
-                      onClick={() => setStatus(rec.id, "approved")}
+                      onClick={() => preview.request(rec.id, "approved")}
                       disabled={isBusy}
                     >
                       {isBusy ? "Processing..." : "Approve"}
                     </button>
                     <button
                       className="rounded-lg border border-red-400/30 bg-red-400/10 px-3 py-1.5 text-xs font-medium text-red-300 transition hover:bg-red-400/20 disabled:opacity-40 disabled:cursor-not-allowed"
-                      onClick={() => setStatus(rec.id, "rejected")}
+                      onClick={() => preview.request(rec.id, "rejected")}
                       disabled={isBusy}
                     >
                       Reject
@@ -124,6 +127,20 @@ export function RecommendationList({
           })
         )}
       </ul>
+
+      {preview.pending && (
+        <ConsequencePreview
+          open
+          decision={preview.pending.decision}
+          itemLabel={rows.find((r) => r.id === preview.pending?.id)?.title ?? preview.pending.id}
+          unlocks="Marks this recommendation as approved and removes it from the active review queue. It remains visible in history; no Decision or owner notification is created automatically — that's a separate step if you want one."
+          stops="Marks this recommendation as rejected and removes it from the active queue. It will not be reconsidered automatically."
+          leavesNexus={false}
+          busy={preview.busy}
+          onConfirm={preview.confirm}
+          onCancel={preview.cancel}
+        />
+      )}
     </section>
   );
 }

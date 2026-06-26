@@ -2,6 +2,56 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+
+// ---------------------------------------------------------------------------
+// Nav Health Badges — locked signature pattern (see nexus-design-system
+// skill). Quiet counts for the four states that genuinely need a human:
+// approvals pending, risks open, evidence below threshold, workflows
+// blocked. Backed by /api/nav/health, which reads real records only — see
+// that route's comment for exactly what each count means.
+// ---------------------------------------------------------------------------
+
+type NavHealth = {
+  approvalsPending: number;
+  risksOpen: number;
+  evidenceBelowThreshold: number;
+  workflowsBlocked: number;
+};
+
+type BadgeTone = "neutral" | "warn" | "danger";
+
+const BADGE_TONE_CLASSES: Record<BadgeTone, string> = {
+  neutral: "bg-white/10 text-white/50",
+  warn: "bg-nexus-warn/15 text-nexus-warn",
+  danger: "bg-nexus-danger/15 text-nexus-danger",
+};
+
+function NavBadge({ count, tone }: { count: number; tone: BadgeTone }) {
+  if (count <= 0) return null;
+  return (
+    <span className={`ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${BADGE_TONE_CLASSES[tone]}`}>
+      {count}
+    </span>
+  );
+}
+
+/** href -> badge, derived from the health payload. Only items with a real, verified count get one. */
+function badgeFor(href: string, health: NavHealth | null): { count: number; tone: BadgeTone } | null {
+  if (!health) return null;
+  switch (href) {
+    case "/approvals":
+      return { count: health.approvalsPending, tone: "warn" };
+    case "/decisions":
+      return { count: health.workflowsBlocked, tone: "danger" };
+    case "/sources":
+      return { count: health.evidenceBelowThreshold, tone: "neutral" };
+    case "/dashboard/ceo":
+      return { count: health.risksOpen, tone: "danger" };
+    default:
+      return null;
+  }
+}
 
 const navSections = [
   {
@@ -58,6 +108,22 @@ const navSections = [
 
 export function SideNav() {
   const pathname = usePathname();
+  const [health, setHealth] = useState<NavHealth | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/nav/health")
+      .then((res) => res.json())
+      .then((payload) => {
+        if (!cancelled && payload.ok) setHealth(payload.data);
+      })
+      .catch(() => {
+        // Quiet failure — badges are a convenience, not a critical path.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
 
   function isActive(href: string) {
     if (href === "/") return pathname === "/";
@@ -82,20 +148,24 @@ export function SideNav() {
               <div key={section.label}>
                 <p className="mb-1.5 px-2 text-xs uppercase text-white/30">{section.label}</p>
                 <div className="space-y-0.5">
-                  {section.items.map((item) => (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={[
-                        "block rounded-md px-3 py-2 text-sm transition",
-                        isActive(item.href)
-                          ? "bg-white/10 text-white font-medium"
-                          : "text-white/60 hover:bg-white/10 hover:text-white"
-                      ].join(" ")}
-                    >
-                      {item.label}
-                    </Link>
-                  ))}
+                  {section.items.map((item) => {
+                    const badge = badgeFor(item.href, health);
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className={[
+                          "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition",
+                          isActive(item.href)
+                            ? "bg-white/10 text-white font-medium"
+                            : "text-white/60 hover:bg-white/10 hover:text-white"
+                        ].join(" ")}
+                      >
+                        <span>{item.label}</span>
+                        {badge && <NavBadge count={badge.count} tone={badge.tone} />}
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -118,20 +188,24 @@ export function SideNav() {
             <div key={section.label}>
               <p className="mb-1.5 px-3 text-xs uppercase text-white/30">{section.label}</p>
               <div className="space-y-0.5">
-                {section.items.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className={[
-                      "block rounded-lg border px-3 py-2 text-sm transition",
-                      isActive(item.href)
-                        ? "border-nexus-accent/30 bg-nexus-accent/10 text-white font-medium"
-                        : "border-transparent text-white/60 hover:border-white/10 hover:bg-white/[0.045] hover:text-white"
-                    ].join(" ")}
-                  >
-                    {item.label}
-                  </Link>
-                ))}
+                {section.items.map((item) => {
+                  const badge = badgeFor(item.href, health);
+                  return (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className={[
+                        "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition",
+                        isActive(item.href)
+                          ? "border-nexus-accent/30 bg-nexus-accent/10 text-white font-medium"
+                          : "border-transparent text-white/60 hover:border-white/10 hover:bg-white/[0.045] hover:text-white"
+                      ].join(" ")}
+                    >
+                      <span>{item.label}</span>
+                      {badge && <NavBadge count={badge.count} tone={badge.tone} />}
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           ))}

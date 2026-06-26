@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { EvidenceCountLink } from "@/components/ui/trust-drawer-trigger";
+import { NowNextStrip } from "@/components/ui/now-next-strip";
 
 // ---------------------------------------------------------------------------
 // Types (mirroring contracts — kept local so this file is self-contained)
@@ -496,13 +497,16 @@ function DecisionCard({
 
       {/* Actions */}
       {decisionActions.length > 0 && (
-        <div className="space-y-0.5 border-t border-white/8 pt-3">
-          <p className="mb-2 text-xs font-medium text-white/50">
-            Actions · {openCount} open{decisionActions.length > openCount ? ` · ${decisionActions.length - openCount} done` : ""}
-          </p>
-          {decisionActions.map(a => (
-            <ActionRow key={a.id} action={a} onUpdate={onActionUpdate} />
-          ))}
+        <div className="space-y-3 border-t border-white/8 pt-3">
+          {openCount > 0 && <NowNextStrip actions={decisionActions} />}
+          <div className="space-y-0.5">
+            <p className="mb-2 text-xs font-medium text-white/50">
+              Actions · {openCount} open{decisionActions.length > openCount ? ` · ${decisionActions.length - openCount} done` : ""}
+            </p>
+            {decisionActions.map(a => (
+              <ActionRow key={a.id} action={a} onUpdate={onActionUpdate} />
+            ))}
+          </div>
         </div>
       )}
 
