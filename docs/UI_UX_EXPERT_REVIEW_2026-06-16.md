@@ -258,7 +258,7 @@ Why it matters: makes export feel controlled and professional.
 
 ## Prototype Fix List
 
-1. Add primary action buttons to every screen.
+1. [x] Add primary action buttons to every screen. Completed in Figma on 2026-06-26.
 2. Add nav count/status badges.
 3. Add Trust Drawer pattern to Evidence Room and Approval Inbox.
 4. Add consequence preview to Approval Detail.

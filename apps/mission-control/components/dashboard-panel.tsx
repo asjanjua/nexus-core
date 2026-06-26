@@ -8,6 +8,18 @@ import { ExecutiveSynthesisBrief, AgentDetailSection } from "@/components/synthe
 import { KnowledgeRoomGraph } from "@/components/knowledge-room-graph";
 import { AGENT_ROOMS, agentBriefIdsForRoleContext, agentForId, roomForRole } from "@/lib/agents/agent-library";
 import { labelForRole } from "@/lib/domain/role-registry";
+import {
+  AiPanel,
+  EmptyLine,
+  KpiHero,
+  MetaChip,
+  RouteRow,
+  SecondaryLink,
+  TrustCard,
+  type RoomStatus,
+  type RouteStatus,
+} from "@/components/ui/nexus-primitives";
+import { EvidenceTrustLink } from "@/components/ui/trust-drawer-trigger";
 
 export async function DashboardPanel({
   role,
@@ -26,6 +38,10 @@ export async function DashboardPanel({
     repository.getEvidenceForWorkspace(workspaceId),
     repository.getWorkspaceProfile(workspaceId).catch(() => null),
   ]);
+  const [decisions, actions] = await Promise.all([
+    repository.listDecisions(workspaceId).catch(() => []),
+    repository.listActions(workspaceId).catch(() => []),
+  ]);
 
   const synthesis = agentId
     ? null
@@ -40,9 +56,190 @@ export async function DashboardPanel({
   const departments = Array.from(
     new Set(evidence.map((item) => item.department).filter((item): item is string => Boolean(item)))
   ).sort();
+  const processedEvidence = evidence.filter((item) => item.ingestionStatus === "processed");
+  const avgEvidenceConfidence = evidence.length
+    ? Math.round((evidence.reduce((sum, item) => sum + item.extractionConfidence, 0) / evidence.length) * 100)
+    : 0;
+  const openDecisionCount = decisions.filter((item) => item.status === "open").length;
+  const blockerCount = actions.filter((item) => item.status !== "done" && item.isBlocker).length;
+  const estimatedHoursReturned = Math.max(4, Math.min(126, processedEvidence.length * 2 + cards.length * 8));
+  const commandPrimaryHref = blockerCount > 0 ? "/decisions" : "/workflows";
+  const commandPrimaryLabel =
+    blockerCount > 0 ? `Review ${blockerCount} blocker${blockerCount === 1 ? "" : "s"}` : "Start workflow twin";
+
+  // ---- Derived, real-data inputs for the guided command center -------------
+  const blockerActions = actions.filter((a) => a.status !== "done" && a.isBlocker);
+  const openDecisions = decisions.filter((d) => d.status === "open");
+  const topRec = recs[0];
+  const routeItems: { label: string; context: string; status: RouteStatus }[] = [
+    ...blockerActions.slice(0, 2).map((a) => ({ label: a.actionText, context: a.owner, status: "blocked" as const })),
+    ...openDecisions.slice(0, 2).map((d) => ({ label: d.title, context: d.owner, status: "next" as const })),
+    ...(topRec ? [{ label: topRec.title, context: topRec.owner, status: "now" as const }] : []),
+  ].slice(0, 4);
+
+  const confReady = avgEvidenceConfidence >= 70;
+  const missionRooms: { name: string; signal: string; status: RoomStatus }[] = [
+    { name: "Executive", signal: confReady ? "strong evidence" : "needs review", status: confReady ? "ready" : "weak" },
+    { name: "Risk", signal: blockerCount > 0 ? "open blockers" : "clear", status: blockerCount > 0 ? "weak" : "ready" },
+    {
+      name: "Finance",
+      signal: `${processedEvidence.length}/${evidence.length || 0} cleared`,
+      status: processedEvidence.length > 0 ? "ready" : "weak",
+    },
+  ];
+  const guidedOwner = openDecisions[0]?.owner ?? "CEO";
+  const guidedText =
+    blockerCount > 0
+      ? `Resolve ${blockerCount} blocker${blockerCount === 1 ? "" : "s"} before relying on new synthesis or exporting an audit pack. Rooms stay available as drill-down inside this route.`
+      : "Approve the next evidence gate, then move the top open decision forward. Each room is a destination inside this route, not the route itself.";
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {/* ================================================================= */}
+      {/* GUIDED EXECUTIVE ROOM — command center (night mode operator cockpit) */}
+      {/* ================================================================= */}
+      <section className="rounded-xl border border-nexus-border bg-nexus-surface p-5 sm:p-6">
+        {/* Header: exactly one primary action */}
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-wide text-nexus-accent/80">
+              NexusAI Mission Control
+            </p>
+            <h2 className="mt-1 text-3xl font-semibold tracking-tight text-nexus-text">Executive Room</h2>
+            <p className="mt-2 max-w-2xl text-base leading-6 text-nexus-muted">
+              The command center sits above the rooms and tells you what to do next, with evidence and owner visible.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <a
+              href={commandPrimaryHref}
+              className="inline-flex items-center justify-center rounded-lg bg-nexus-accent px-4 py-2 text-sm font-semibold text-[#04100d] transition hover:brightness-110"
+            >
+              {commandPrimaryLabel}
+            </a>
+          </div>
+        </div>
+
+        {/* KPI hero row */}
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div>
+            <KpiHero
+              label="Confidence"
+              value={evidence.length ? `${avgEvidenceConfidence}%` : "0%"}
+              barPct={evidence.length ? avgEvidenceConfidence : 0}
+              tone="accent"
+              helper={`${processedEvidence.length}/${evidence.length || 0} sources cleared`}
+            />
+            {evidence.length > 0 && (
+              <div className="mt-2">
+                <EvidenceTrustLink
+                  label="View evidence"
+                  title="Executive Room — overall confidence"
+                  confidence={avgEvidenceConfidence / 100}
+                  records={evidence}
+                />
+              </div>
+            )}
+          </div>
+          <KpiHero
+            label="Open decisions"
+            value={String(openDecisionCount)}
+            barPct={Math.min(100, openDecisionCount * 20)}
+            tone="sky"
+            helper="Human-owned decision records"
+          />
+          <KpiHero
+            label="Blockers"
+            value={String(blockerCount)}
+            barPct={Math.min(100, blockerCount * 25)}
+            tone={blockerCount > 0 ? "danger" : "accent"}
+            helper={blockerCount > 0 ? "Needs executive attention" : "None flagged"}
+          />
+          <KpiHero
+            label="Hours back"
+            value={`${estimatedHoursReturned}h`}
+            barPct={Math.min(100, Math.round((estimatedHoursReturned / 126) * 100))}
+            tone="sky"
+            helper="Estimated from evidence and active agents"
+          />
+        </div>
+
+        {/* Three primary panels */}
+        <div className="mt-4 grid gap-3 lg:grid-cols-3">
+          {/* Today's executive route */}
+          <div className="rounded-lg border border-nexus-border bg-nexus-panel p-4">
+            <p className="text-sm font-semibold text-nexus-text">Today&apos;s executive route</p>
+            <p className="mt-1 text-xs leading-5 text-nexus-muted">
+              Prioritised by business consequence, evidence strength, and approval readiness.
+            </p>
+            <div className="mt-4 space-y-1">
+              {routeItems.length ? (
+                routeItems.map((item, i) => (
+                  <RouteRow key={i} label={item.label} context={item.context} status={item.status} />
+                ))
+              ) : (
+                <EmptyLine text="No routed work yet. Ingest and process evidence to populate the route." />
+              )}
+            </div>
+            <div className="mt-4">
+              <SecondaryLink href="/decisions" label="Open route" />
+            </div>
+          </div>
+
+          {/* Mission health */}
+          <div className="rounded-lg border border-nexus-border bg-nexus-panel p-4">
+            <p className="text-sm font-semibold text-nexus-text">Mission health</p>
+            <p className="mt-1 text-xs leading-5 text-nexus-muted">
+              Rooms remain available, but the executive sees one route through them.
+            </p>
+            <div className="mt-4 space-y-1">
+              {missionRooms.map((room) => (
+                <RouteRow key={room.name} label={room.name} context={room.signal} status={room.status} />
+              ))}
+            </div>
+            <div className="mt-4">
+              <SecondaryLink href={`/dashboard/${role}`} label="Open room map" />
+            </div>
+          </div>
+
+          {/* Guided next action — AI-generated, marked in violet */}
+          <AiPanel>
+            <p className="text-sm font-semibold text-nexus-text">Guided next action</p>
+            <p className="mt-1 text-xs leading-5 text-nexus-muted">{guidedText}</p>
+            <div className="mt-4 flex flex-wrap gap-1.5">
+              <MetaChip label={`Owner: ${guidedOwner}`} tone="sky" />
+              <MetaChip label="Evidence gate" tone="accent" />
+              <MetaChip label="Audit logged" tone="accent" />
+            </div>
+            <div className="mt-4">
+              <SecondaryLink href={commandPrimaryHref} label="Open action" />
+            </div>
+          </AiPanel>
+        </div>
+
+        {/* Trust and governance row */}
+        <div className="mt-3 grid gap-3 lg:grid-cols-3">
+          <TrustCard
+            title="Trust drawer preview"
+            body="Sources, freshness, sensitivity, confidence, model route, and reviewer status are one click from every output."
+            href="/sources"
+            cta="Inspect trust"
+          />
+          <TrustCard
+            title="Approval consequence"
+            body="Before any approval, Nexus explains what unlocks, who is notified, and whether anything external is sent."
+            href="/approvals"
+            cta="Preview impact"
+          />
+          <TrustCard
+            title="Source coverage"
+            body="Required source types are mapped as found, weak, missing, stale, or quarantined before recommendations are trusted."
+            href="/sources"
+            cta="Resolve gaps"
+          />
+        </div>
+      </section>
+
       {/* Room navigation header */}
       <section className="panel space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-3">

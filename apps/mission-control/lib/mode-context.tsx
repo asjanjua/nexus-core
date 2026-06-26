@@ -107,11 +107,15 @@ export function ModeProvider({ children }: { children: ReactNode }) {
 // Visual indicator
 // ---------------------------------------------------------------------------
 
+// Locked design-system tokens only — see nexus-design-system skill. Mode
+// Indicator previously used raw Tailwind colors (emerald/amber/blue) that
+// don't exist in the token set; on-prem/local is the strongest trust state
+// and gets the accent (mint) token to give it real visual weight, per spec.
 const VARIANT_CLASSES: Record<ModePresentation["variant"], string> = {
-  neutral: "bg-white/10 text-white/50 border-white/10",
-  local: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
-  offline: "bg-amber-500/10 text-amber-400 border-amber-500/30",
-  sync: "bg-blue-500/10 text-blue-400 border-blue-500/30",
+  neutral: "bg-white/10 text-nexus-muted border-white/10",
+  local: "bg-nexus-accent/10 text-nexus-accent border-nexus-accent/30",
+  offline: "bg-nexus-warn/10 text-nexus-warn border-nexus-warn/30",
+  sync: "bg-nexus-sky/10 text-nexus-sky border-nexus-sky/30",
 };
 
 /**

@@ -7,7 +7,7 @@
 > Architecture review: `TASKS.md` § Architecture Review Action Items.
 > Distribution plan: `NexusAI_Distribution_Plan.docx` and `docs/INFRA_DECISION_MEMO.md`.
 > UI/UX workplan: `docs/UI_UX_WORKPLAN.md` (MCP-aware design-to-code pipeline).
-> Last reviewed: 2026-06-25.
+> Last reviewed: 2026-06-26.
 
 ---
 
@@ -171,6 +171,13 @@ Slack has the first inbound channel-message ingestion path and Connector Setting
 
 | Item | Status | Source | Notes |
 |---|---|---|---|
+| Expert review P1 pass across existing Figma screens | in progress | `docs/UI_UX_EXPERT_REVIEW_2026-06-16.md` | Start from the top of the expert review before adding more screens. Order: primary actions, Trust Drawer, Approval Consequence Preview, Now / Next strip, nav health badges, passport metadata. |
+| V0.2 full desktop prototype | done | Figma page `06 V0.2 Full Desktop Prototype`, `docs/UI_UX_SURFACE_INVENTORY_2026-06-26.md` | Built on 2026-06-26 as a 30-screen proposed desktop-browser board matching the V0.1 surface arc, but with guided next action, owner, trust drawer, approval consequence, source coverage, and audit-readiness cues visible across the journey. |
+| V0.1 full desktop prototype | done | Figma page `05 V0.1 Full Desktop Prototype`, `docs/UI_UX_SURFACE_INVENTORY_2026-06-26.md` | Built on 2026-06-26 as a 30-screen desktop-browser board covering public entry, product brief, readiness, onboarding, executive room, Ask, ingestion, sources, review, approvals, evidence, recommendations, decisions, workflows, memory, entity detail, knowledge, exports, connectors, settings, AI policy, weekly brief, one-pager, and pilot paperwork. |
+| End-to-end V0.1/V0.2 surface story | done | `docs/UI_UX_SURFACE_INVENTORY_2026-06-26.md`, Figma page `04 V0.1 V0.2 Desktop Buildout` | Read the current app surfaces and extended Figma beyond dashboard rooms: public entry, readiness, onboarding, connectors, ingestion, sources, review, approvals, evidence, Ask, rooms, recommendations, decisions, workflows, company memory, knowledge, settings, AI policy, exports, and pilot paperwork. |
+| Desktop option comparison: Render rooms vs proposed command center | done | Figma page `03 Desktop Options - Render vs Proposed` | Created on 2026-06-26 as two 1440x900 browser frames: Option A preserves the pushed room-based Render structure; Option B keeps rooms but adds the command-center layer for executive triage. |
+| Primary action hierarchy across the 7 Figma screens | done | `docs/UI_UX_EXPERT_REVIEW_2026-06-16.md` | Completed in Figma on 2026-06-26. Added one dominant top-bar action per existing screen: Review blockers, Review passport, Run forecast, Launch guarded run, Review open gates, Approve evidence, Review now. Visual render checked after removing a cluttered secondary hint treatment. |
+| Live CEO dashboard command-center bridge | local verified | live `/dashboard/ceo`, `dashboard-panel.tsx` | Added a Figma-aligned command-center layer above the existing executive synthesis: evidence confidence, open decisions, blockers, estimated hours returned, mission-flow state, and primary next action. TypeScript clean on 2026-06-26. Authenticated browser smoke still needed in logged-in Render session. |
 | Onboarding multi-file aggregate status polish | open | `UIUX_AUDIT.md` | Current wizard still anchors top-level result around `results[0]`; show processed/pending/quarantined counts. |
 | Design system lock (Tailwind + Figma variables) | open | `docs/UI_UX_WORKPLAN.md` Phase 1 | Round-trip design tokens between Tailwind config and Figma variables via Plugin API MCP. |
 | Governance/admin Figma batch | open | `docs/UI_UX_WORKPLAN.md` Phase 2 | Risk and Audit, Integration Hub, Integration Detail, Governance Settings. Via `use_figma` Plugin API. |
@@ -179,9 +186,9 @@ Slack has the first inbound channel-message ingestion path and Connector Setting
 | Convert repeated Figma UI patterns into Code Connect | open | `docs/UI_UX_WORKPLAN.md` Phase 6 | Map Figma nodes to React components via `add_code_connect_map`. |
 | Empty/partial/blocked states pass | open | `docs/UI_UX_EXPERT_REVIEW_2026-06-16.md` | Make blocked connectors, insufficient evidence, denied outputs, and loading states first-class. |
 | Command palette | open | `docs/UI_UX_EXPERT_REVIEW_2026-06-16.md` | Keyboard-first launcher for open mission, review blockers, Ask, create approval, export audit pack, and pause agent. |
-| Trust Drawer | open | `docs/UI_UX_EXPERT_REVIEW_2026-06-16.md` | Reusable drawer from confidence badges/evidence counts with sources, freshness, sensitivity, confidence, review, audit, and export trace. |
-| Approval consequence preview | open | `docs/UI_UX_EXPERT_REVIEW_2026-06-16.md` | Before approval, show exactly what unlocks and confirm no external send occurs unless explicitly configured. |
-| Now / Next strip | open | `docs/UI_UX_EXPERT_REVIEW_2026-06-16.md` | Persistent mission/workflow status strip showing current step, next gate, owner, and ETA. |
+| Trust Drawer | done (2026-06-26) | `docs/UI_UX_EXPERT_REVIEW_2026-06-16.md` | Built: `lib/trust-drawer-context.tsx`, `components/trust-drawer.tsx`, `components/ui/trust-drawer-trigger.tsx`. Live on Executive Room confidence KPI and synthesis brief badges. Review status derived from real `ingestionStatus` (no fabricated review metadata). Not yet rolled out to Ask, Approvals, Recommendations, Decisions, Sources, Export Hub — that is pending step 3 of the pilot build-out plan. |
+| Approval consequence preview | open | `docs/UI_UX_EXPERT_REVIEW_2026-06-16.md` | Next after Trust Drawer. Before approval, show exactly what unlocks and confirm no external send occurs unless explicitly configured. |
+| Now / Next strip | open | `docs/UI_UX_EXPERT_REVIEW_2026-06-16.md` | Next after consequence preview. Persistent mission/workflow status strip showing current step, next gate, owner, and ETA. |
 | Source coverage map | open | `docs/UI_UX_EXPERT_REVIEW_2026-06-16.md` | Show required source types found/missing before weak-evidence outputs happen. |
 | Accessibility/state icon pass | open | `docs/UI_UX_EXPERT_REVIEW_2026-06-16.md` | Validate focus states, contrast, labels, icons, loading/empty/error/blocked states before implementation. |
 

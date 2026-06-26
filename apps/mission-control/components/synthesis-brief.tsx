@@ -12,17 +12,11 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ExecutiveSynthesis } from "@/lib/contracts";
+import { ConfidenceBadge } from "@/components/ui/trust-drawer-trigger";
 
-// ---------------------------------------------------------------------------
-// Confidence badge
-// ---------------------------------------------------------------------------
-
-function ConfidenceBadge({ confidence }: { confidence: number }) {
-  const pct = Math.round(confidence * 100);
-  const color =
-    pct >= 70 ? "badge-green" : pct >= 40 ? "text-amber-300 border-amber-300/30 bg-amber-300/10 text-xs font-medium border rounded-full px-2 py-0.5" : "text-red-300 border-red-300/30 bg-red-300/10 text-xs font-medium border rounded-full px-2 py-0.5";
-  return <span className={pct >= 70 ? `badge ${color}` : color}>confidence {pct}%</span>;
-}
+// Confidence badge moved to components/ui/trust-drawer-trigger.tsx — it now
+// opens the Trust Drawer on click and uses locked design tokens instead of
+// the raw amber-300/red-300 Tailwind colors this file used to hardcode.
 
 // ---------------------------------------------------------------------------
 // Single answered question card
@@ -70,7 +64,18 @@ function QuestionCard({
           {!isInsufficient && (
             <div className="mt-3 space-y-2">
               <div className="flex flex-wrap gap-2">
-                <ConfidenceBadge confidence={confidence} />
+                <ConfidenceBadge
+                  confidence={confidence}
+                  title={question}
+                  sources={sources.map((s) => ({
+                    id: s.id,
+                    label: s.label,
+                    sourceType: s.sourceType,
+                    department: s.department,
+                    confidence: s.confidence,
+                  }))}
+                  entities={entities.map((e) => ({ id: e.id, name: e.name, type: e.type, confidence: e.confidence }))}
+                />
                 {evidenceCount > 0 && (
                   <span className="badge badge-muted">{evidenceCount} evidence sources</span>
                 )}
@@ -166,7 +171,11 @@ export function ExecutiveSynthesisBrief({
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <ConfidenceBadge confidence={synthesis.overallConfidence} />
+          <ConfidenceBadge
+            confidence={synthesis.overallConfidence}
+            title={`${roleLabel} Intelligence Brief — overall confidence`}
+            sources={synthesis.totalEvidenceRefs.map((id) => ({ id }))}
+          />
           <span className="badge badge-muted">
             {answeredCount}/{synthesis.questions.length} answered
           </span>

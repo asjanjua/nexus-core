@@ -5,7 +5,7 @@
 > For the visual finish-line map, see `docs/DEVELOPMENT_FINISH_LINE_VISUAL.md`.
 > For the markdown estate review, see `docs/MARKDOWN_ESTATE_REVIEW_2026-06-25.md`.
 > For typed runtime/state/effect safety rules, see `docs/ENGINEERING_GUARDRAILS.md`.
-> Last reviewed and tightened: 2026-06-25.
+> Last reviewed and tightened: 2026-06-26.
 
 ---
 
@@ -116,13 +116,24 @@ These tasks come from the Queen's Architecture Review of the full stack. Human-a
 - **AuthMode contracts** in `docs/ENGINEERING_GUARDRAILS.md` (lines 47-62) already define the Clerk-to-local-auth transition for Tauri Desktop Phase 2. Implementation is deferred, not undesigned.
 - **Connector architecture has two runtimes** (2026-06-26). All 8 existing connectors (Slack, Google Drive, SharePoint, GitHub, Jira, HubSpot, QuickBooks, LinkedIn) use OAuth + REST (`fetch()` only). IMAP email (Spacemail, Fastmail, cPanel, self-hosted) requires TCP sockets, TLS negotiation, and MIME parsing via `imapflow`. This is a second connector runtime. Build one "IMAP Email" connector (protocol-level, user provides server/port/credentials). No POP3. Credential encryption already solved (`lib/crypto.ts`, AES-256-GCM). Sequence: prove OAuth pattern e2e (Google Drive, Gmail/Outlook) first, then build IMAP as a separate architecture track. See `ARCHITECTURE.md` S13.
 
-**Design priority order (updated 2026-06-25):**
+**Design priority order (updated 2026-06-26):**
 1. [x] Figma Pro selected as active design workspace; Penpot parked until MCP/plugin compatibility improves.
 2. [x] Consulting-grade v1 design direction captured in `docs/UI_UX_FLOW_PLAN.md`.
 3. [x] First Figma screens started: Executive Command Center, Agent Control Profile, Workflow Twin Run.
 4. [x] Complete next Figma screen batch: Mission Creation, Mission Run Detail, Evidence Room, Approval Inbox.
 5. [ ] Lock design system: Tailwind config + Figma variables round-trip (UI/UX Workplan Phase 1).
-6. [ ] Verify/rebuild Batch 1-2 screens with expert review P1 fixes applied.
+6. [~] Verify/rebuild Batch 1-2 screens with expert review P1 fixes applied.
+   - [x] Primary action hierarchy: one dominant next action on each existing Figma screen.
+   - [x] Live CEO dashboard bridge: command-center layer added above the existing executive synthesis stack.
+   - [x] Desktop option comparison: Figma page `03 Desktop Options - Render vs Proposed` now has Option A for current room-based Render structure and Option B for the proposed command-center-over-rooms model.
+   - [x] End-to-end surface story: Figma page `04 V0.1 V0.2 Desktop Buildout` now covers the broader product arc documented in `docs/UI_UX_SURFACE_INVENTORY_2026-06-26.md`.
+   - [x] Full V0.1 desktop prototype: Figma page `05 V0.1 Full Desktop Prototype` now has 30 browser screens for the complete Render-aligned room-and-tool journey.
+   - [x] Full V0.2 desktop prototype: Figma page `06 V0.2 Full Desktop Prototype` now mirrors the 30-screen journey with guided routing, trust drawer, source coverage, owner, approval consequence, and audit-readiness cues.
+   - [x] Trust Drawer pattern from confidence/evidence badges — built 2026-06-26 on the live `/dashboard/ceo` bridge (`lib/trust-drawer-context.tsx`, `components/trust-drawer.tsx`, `components/ui/trust-drawer-trigger.tsx`), not yet rolled out beyond the Executive Room and synthesis brief.
+   - [ ] Approval Consequence Preview.
+   - [ ] Now / Next strip on mission/workflow screens.
+   - [ ] Nav health badges.
+   - [ ] Agent passport version/owner/review metadata.
 7. [ ] Complete governance/admin screen batch: Risk and Audit, Integration Hub, Integration Detail, Governance Settings.
 8. [ ] Complete onboarding/prototype handoff batch: User and Role Management, Company Setup, First Mission Template, Audit Export / Executive Pack.
 9. [ ] Build expert review mini features: Trust Drawer, Approval Consequence Preview, Command Palette, Mission Health Score.

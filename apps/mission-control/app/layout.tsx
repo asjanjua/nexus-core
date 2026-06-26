@@ -4,6 +4,8 @@ import { SideNav } from "@/components/side-nav";
 import { TrialBanner } from "@/components/trial-banner";
 import { FeedbackButton } from "@/components/feedback-button";
 import { ModeProvider, ModeIndicator } from "@/lib/mode-context";
+import { TrustDrawerProvider } from "@/lib/trust-drawer-context";
+import { TrustDrawer } from "@/components/trust-drawer";
 import {
   ClerkProvider,
   UserButton,
@@ -156,6 +158,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           afterSignOutUrl="/sign-in"
         >
           <main className="flex min-h-screen flex-col md:flex-row">
+            <TrustDrawerProvider>
             <ModeProvider>
             <SideNav />
             <div className="w-full min-w-0 p-3 sm:p-5 lg:p-6">
@@ -232,7 +235,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
               {children}
             </div>
+            <TrustDrawer />
             </ModeProvider>
+            </TrustDrawerProvider>
           </main>
           <FeedbackButton />
         </ClerkProvider>
