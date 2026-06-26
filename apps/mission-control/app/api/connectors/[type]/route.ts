@@ -24,6 +24,9 @@ const ALLOWED_TYPES = new Set([
   "hubspot",
   "quickbooks",
   "linkedin",
+  "gmail",
+  "outlook-mail",
+  "imap",
 ]);
 
 const connectorPolicySchema = z.object({

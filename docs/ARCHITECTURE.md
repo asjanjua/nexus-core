@@ -553,7 +553,53 @@ Design Philosophy Pillar 3.6 requires every screen to show a persistent data-loc
 
 v0.11.0 middleware (middleware.ts lines 166-177) implements 7 rate limit rules: auth 10/min, readiness 12/min, ingestion 20/min, ask 30/min, dashboard 60/min, cron 2/min, billing webhook 10/min. Returns 429 with `Retry-After` and `x-ratelimit-*` headers. This is not a gap.
 
-## 13. Architecture Decisions to Preserve
+## 13. Connector Architecture: Two Runtimes (2026-06-26)
+
+### Current connector architecture (OAuth + REST)
+
+8 OAuth callback routes exist: Slack, Google Drive, SharePoint, GitHub, Jira, HubSpot, QuickBooks, LinkedIn. All follow the same pattern:
+
+- OAuth 2.0 authorization code flow
+- `fetch()` to REST APIs (stateless HTTP)
+- Credentials stored AES-256-GCM encrypted via `lib/crypto.ts` (PBKDF2 key derivation from AUTH_SECRET, random IV, authenticated)
+- Non-secret config in `connectors.config` JSON column
+- Works in any Node.js runtime (no native dependencies)
+
+Only Slack has a complete ingestion path (channel messages to governed evidence). The other 7 have OAuth callback scaffolding but no ingestion implementation.
+
+### IMAP Email connector: a second runtime (planned)
+
+Basic email (Spacemail, Fastmail, cPanel, self-hosted, ProtonMail Bridge) requires IMAP, not OAuth + REST. This is architecturally a new connector category:
+
+| Dimension | OAuth + REST connectors | IMAP Email connector |
+|---|---|---|
+| Auth | OAuth 2.0 tokens (revocable, scoped, expiring) | Username + password (full account access) |
+| Protocol | HTTPS (stateless) | IMAP over TLS (stateful TCP session) |
+| Library | None (native `fetch()`) | Required (`imapflow` recommended) |
+| MIME parsing | Not needed (API returns structured data) | Required (multipart messages, attachments, encoded headers) |
+| Edge runtime | Yes | No (TCP sockets) |
+| Ingestion scope | API queries (labels, date ranges, threads) | Folder-based SEARCH (more limited) |
+| Provider coupling | Per-provider (Google, Microsoft) | None (protocol-level, user provides server settings) |
+
+**Design decisions:**
+
+1. **Protocol, not provider.** Build one "IMAP Email" connector with configurable server/port/username/password. No "Spacemail connector" or "Hostinger connector." Same approach as Thunderbird/Apple Mail.
+2. **IMAP only. No POP3.** POP3 is destructive by default, has no folder support, no server-side search, and no reliable dedup mechanism. Not worth the engineering cost.
+3. **Credential storage is already solved.** `lib/crypto.ts` provides AES-256-GCM encryption with PBKDF2 key derivation. The `encryptedCredentials` column stores the encrypted blob. IMAP passwords use the exact same path as OAuth tokens. Verified: plaintext never persists to the database.
+4. **Build OAuth connectors first.** Gmail and Outlook (OAuth + REST) cover 80%+ of business email users and fit the existing pattern. IMAP covers the long tail (basic hosting, self-hosted, privacy-focused providers). Prove the existing pattern end-to-end before building a second runtime.
+5. **Separate API route pattern.** IMAP has no OAuth callback. It needs: connection test endpoint (validates server/port/credentials), save-settings endpoint, and folder-list endpoint. Different from the OAuth authorize/callback flow.
+
+**Ingestion scope design (when built):**
+
+- Start with INBOX only, configurable folder list later
+- Date window: last N days on first sync, UIDNEXT tracking for incremental
+- Headers + body text only in v1 (no attachment ingestion)
+- IMAP UID for dedup within a folder, Message-ID for cross-folder dedup
+- Sensitivity defaults from connector config (same as Slack)
+
+**Sequence:** Google Drive end-to-end verification -> Gmail/Outlook (OAuth + REST, fits existing pattern) -> IMAP Email (new runtime, covers long tail including founder's Spacemail).
+
+## 14. Architecture Decisions to Preserve
 
 - Keep Postgres plus `pgvector` for V1 evidence and retrieval.
 - Keep Clerk for self-serve signup and organization tenancy.

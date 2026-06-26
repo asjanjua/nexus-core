@@ -41,6 +41,8 @@ type ConnectorDef = {
   installHref: string;
   available: boolean;
   lane: "saas" | "warehouse" | "private";
+  /** "oauth" (default) renders an Install link. "manual" renders an inline connect form (IMAP). */
+  connectKind?: "oauth" | "manual";
 };
 
 const CONNECTOR_CATALOGUE: ConnectorDef[] = [
@@ -149,6 +151,46 @@ const CONNECTOR_CATALOGUE: ConnectorDef[] = [
     lane: "saas",
   },
   {
+    type: "gmail",
+    name: "Gmail",
+    description: "Ingest mailbox content (read-only) from a Google Workspace or personal Gmail account.",
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
+        <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-.904.732-1.636 1.636-1.636h.825L12 11.273l9.539-7.452h.825A1.636 1.636 0 0 1 24 5.457z" />
+      </svg>
+    ),
+    installHref: "/api/connectors/gmail/install",
+    available: true,
+    lane: "saas",
+  },
+  {
+    type: "outlook-mail",
+    name: "Outlook Mail",
+    description: "Ingest mailbox content (read-only) from Outlook.com or Microsoft 365 / Exchange Online.",
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
+        <path d="M24 7.387v9.226c0 .397-.32.717-.717.717h-6.39V6.67h6.39c.397 0 .717.32.717.717zM15.6 6.67H1.44a.72.72 0 0 0-.72.72v9.22a.72.72 0 0 0 .72.72H15.6V6.67zM8.52 9.07a3.05 3.05 0 1 1 0 6.1 3.05 3.05 0 0 1 0-6.1z" />
+      </svg>
+    ),
+    installHref: "/api/connectors/outlook-mail/install",
+    available: true,
+    lane: "saas",
+  },
+  {
+    type: "imap",
+    name: "IMAP Email",
+    description: "Connect any IMAP-over-TLS mailbox (Spacemail, Hostinger, Zoho, self-hosted, etc.) with server settings — no OAuth required.",
+    icon: (
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
+        <path d="M2 4h20a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2zm0 2v.01L12 13 22 6.01V6H2zm0 2.5V18h20V8.5l-10 6.5-10-6.5z" />
+      </svg>
+    ),
+    installHref: "",
+    available: true,
+    lane: "saas",
+    connectKind: "manual",
+  },
+  {
     type: "snowflake",
     name: "Snowflake",
     description: "Query tables directly via warehouse connector for structured data ingest.",
@@ -212,20 +254,42 @@ function StatusBadge({ status }: { status: string }) {
 // Connector row
 // ---------------------------------------------------------------------------
 
+type ImapConnectDraft = {
+  host: string;
+  port: string;
+  secure: boolean;
+  username: string;
+  password: string;
+  label: string;
+};
+
+const EMPTY_IMAP_DRAFT: ImapConnectDraft = {
+  host: "",
+  port: "993",
+  secure: true,
+  username: "",
+  password: "",
+  label: "",
+};
+
 function ConnectorRow({
   def,
   record,
   onRevoke,
   onSavePolicy,
+  onConnectImap,
   revoking,
   saving,
+  connectingImap,
 }: {
   def: ConnectorDef;
   record?: ConnectorRecord;
   onRevoke: (type: string) => void;
   onSavePolicy: (type: string, draft: ConnectorPolicyDraft) => void;
+  onConnectImap: (draft: ImapConnectDraft) => void;
   revoking: string | null;
   saving: string | null;
+  connectingImap: boolean;
 }) {
   const isActive = record?.status === "active";
   const isRevoked = record?.status === "revoked";
@@ -257,6 +321,8 @@ function ConnectorRow({
         : "read_only",
     notes: typeof config.notes === "string" ? config.notes : "",
   });
+  const [imapDraft, setImapDraft] = useState<ImapConnectDraft>(EMPTY_IMAP_DRAFT);
+  const [imapFormOpen, setImapFormOpen] = useState(false);
 
   return (
     <div className="flex items-start gap-4 rounded-xl border border-white/10 bg-white/5 p-4">
@@ -400,7 +466,15 @@ function ConnectorRow({
 
       {/* Actions */}
       <div className="shrink-0">
-        {!isInstalled && def.available && (
+        {!isInstalled && def.available && def.connectKind === "manual" && (
+          <button
+            className="btn-primary text-xs"
+            onClick={() => setImapFormOpen((value) => !value)}
+          >
+            {imapFormOpen ? "Cancel" : "Connect →"}
+          </button>
+        )}
+        {!isInstalled && def.available && def.connectKind !== "manual" && (
           <a href={def.installHref} className="btn-primary text-xs">
             Install →
           </a>
@@ -414,7 +488,15 @@ function ConnectorRow({
             {revoking === def.type ? "Revoking..." : "Revoke"}
           </button>
         )}
-        {isRevoked && def.available && (
+        {isRevoked && def.available && def.connectKind === "manual" && (
+          <button
+            className="btn-subtle text-xs"
+            onClick={() => setImapFormOpen((value) => !value)}
+          >
+            {imapFormOpen ? "Cancel" : "Reconnect"}
+          </button>
+        )}
+        {isRevoked && def.available && def.connectKind !== "manual" && (
           <a href={def.installHref} className="btn-subtle text-xs">
             Reinstall
           </a>
@@ -423,6 +505,74 @@ function ConnectorRow({
           <span className="text-xs text-white/20">—</span>
         )}
       </div>
+
+      {/* Inline IMAP connect form — manual server settings, no OAuth */}
+      {def.connectKind === "manual" && imapFormOpen && !isInstalled && (
+        <div className="mt-3 w-full basis-full grid gap-3 rounded-xl border border-white/10 bg-black/20 p-3 text-xs">
+          <div className="grid gap-3 md:grid-cols-2">
+            <label className="space-y-1">
+              <span className="text-white/50">IMAP host</span>
+              <input
+                className="input"
+                value={imapDraft.host}
+                onChange={(e) => setImapDraft({ ...imapDraft, host: e.target.value })}
+                placeholder="imap.example.com"
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-white/50">Port</span>
+              <input
+                className="input"
+                value={imapDraft.port}
+                onChange={(e) => setImapDraft({ ...imapDraft, port: e.target.value })}
+                placeholder="993"
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-white/50">Username</span>
+              <input
+                className="input"
+                value={imapDraft.username}
+                onChange={(e) => setImapDraft({ ...imapDraft, username: e.target.value })}
+                placeholder="you@example.com"
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-white/50">Password</span>
+              <input
+                type="password"
+                className="input"
+                value={imapDraft.password}
+                onChange={(e) => setImapDraft({ ...imapDraft, password: e.target.value })}
+              />
+            </label>
+            <label className="space-y-1">
+              <span className="text-white/50">Label (optional)</span>
+              <input
+                className="input"
+                value={imapDraft.label}
+                onChange={(e) => setImapDraft({ ...imapDraft, label: e.target.value })}
+                placeholder="Support inbox"
+              />
+            </label>
+            <label className="flex items-center gap-2 text-white/60 self-end">
+              <input
+                type="checkbox"
+                checked={imapDraft.secure}
+                onChange={(e) => setImapDraft({ ...imapDraft, secure: e.target.checked })}
+              />
+              Use TLS (recommended, port 993)
+            </label>
+          </div>
+          <button
+            className="btn-primary w-fit text-xs"
+            disabled={connectingImap}
+            onClick={() => onConnectImap(imapDraft)}
+          >
+            {connectingImap ? "Connecting..." : "Connect mailbox"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
@@ -447,6 +597,7 @@ export default function ConnectorsPage() {
   const [loading, setLoading] = useState(true);
   const [revoking, setRevoking] = useState<string | null>(null);
   const [savingPolicy, setSavingPolicy] = useState<string | null>(null);
+  const [connectingImap, setConnectingImap] = useState(false);
   const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
   // Handle redirect params from OAuth callback
@@ -478,6 +629,8 @@ export default function ConnectorsPage() {
         quickbooks_client_id_not_configured: "QuickBooks OAuth is not configured on this instance.",
         linkedin_not_configured: "LinkedIn OAuth is not configured on this instance.",
         linkedin_client_id_not_configured: "LinkedIn OAuth is not configured on this instance.",
+        google_client_id_not_configured_gmail: "Google OAuth is not configured on this instance.",
+        microsoft_client_id_not_configured_outlook: "Microsoft OAuth is not configured on this instance.",
       };
       setToast({ type: "error", message: messages[error] ?? `Install failed: ${error}` });
     }
@@ -511,6 +664,40 @@ export default function ConnectorsPage() {
       }
     } finally {
       setRevoking(null);
+    }
+  }
+
+  async function handleConnectImap(draft: {
+    host: string;
+    port: string;
+    secure: boolean;
+    username: string;
+    password: string;
+    label: string;
+  }) {
+    setConnectingImap(true);
+    try {
+      const res = await fetch("/api/connectors/imap/connect", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          host: draft.host,
+          port: Number(draft.port) || 993,
+          secure: draft.secure,
+          username: draft.username,
+          password: draft.password,
+          label: draft.label || undefined,
+        }),
+      });
+      const payload = await res.json();
+      if (payload.ok) {
+        setToast({ type: "success", message: "IMAP mailbox connected successfully." });
+        await fetchConnectors();
+      } else {
+        setToast({ type: "error", message: payload.error ?? "IMAP connection failed." });
+      }
+    } finally {
+      setConnectingImap(false);
     }
   }
 
@@ -592,8 +779,10 @@ export default function ConnectorsPage() {
                       record={recordByType[def.type]}
                       onRevoke={handleRevoke}
                       onSavePolicy={handleSavePolicy}
+                      onConnectImap={handleConnectImap}
                       revoking={revoking}
                       saving={savingPolicy}
+                      connectingImap={connectingImap}
                     />
                   ))}
                 </div>
@@ -629,6 +818,14 @@ export default function ConnectorsPage() {
         <p className="font-medium text-white/60 mt-4">To enable LinkedIn:</p>
         <p>Create an app at developer.linkedin.com, then set <code className="text-nexus-accent/70">LINKEDIN_CLIENT_ID</code> and <code className="text-nexus-accent/70">LINKEDIN_CLIENT_SECRET</code> in your environment. Posting/reading company-page data also requires LinkedIn's Community Management API product, which needs separate partner approval.</p>
         <p className="mt-1">Redirect URI: <code className="text-white/50">{"{NEXT_PUBLIC_APP_URL}"}/api/connectors/linkedin/callback</code></p>
+        <p className="font-medium text-white/60 mt-4">To enable Gmail:</p>
+        <p>Reuses the same Google Cloud OAuth client as Google Drive — set <code className="text-nexus-accent/70">GOOGLE_CLIENT_ID</code> and <code className="text-nexus-accent/70">GOOGLE_CLIENT_SECRET</code>, and add the Gmail redirect URI below to the same OAuth client's allowed redirect URIs.</p>
+        <p className="mt-1">Redirect URI: <code className="text-white/50">{"{NEXT_PUBLIC_APP_URL}"}/api/connectors/gmail/callback</code></p>
+        <p className="font-medium text-white/60 mt-4">To enable Outlook Mail:</p>
+        <p>Reuses the same Azure AD app registration as SharePoint — set <code className="text-nexus-accent/70">MICROSOFT_CLIENT_ID</code>, <code className="text-nexus-accent/70">MICROSOFT_CLIENT_SECRET</code>, and optionally <code className="text-nexus-accent/70">MICROSOFT_TENANT_ID</code>, and add the Mail.Read scope plus the redirect URI below to that registration.</p>
+        <p className="mt-1">Redirect URI: <code className="text-white/50">{"{NEXT_PUBLIC_APP_URL}"}/api/connectors/outlook-mail/callback</code></p>
+        <p className="font-medium text-white/60 mt-4">To enable IMAP Email:</p>
+        <p>No environment variables or OAuth app needed. Click Connect above and enter the mailbox's IMAP host, port, username, and password directly — works with any standards-compliant IMAP server (Spacemail, Hostinger, Zoho, self-hosted, etc). Credentials are encrypted at rest the same way OAuth tokens are. POP3 is not supported.</p>
       </div>
     </PageShell>
   );

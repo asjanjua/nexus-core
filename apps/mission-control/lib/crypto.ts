@@ -49,7 +49,7 @@ export function encryptCredentials(plaintext: string): string {
 export function decryptCredentials(blob: string): string | null {
   try {
     const raw = Buffer.from(blob, "base64url");
-    if (raw.length < IV_BYTES + TAG_BYTES + 1) return null;
+    if (raw.length < IV_BYTES + TAG_BYTES) return null;
 
     const iv = raw.subarray(0, IV_BYTES);
     const tag = raw.subarray(raw.length - TAG_BYTES);

@@ -8,7 +8,7 @@
  * `withSecurityHeaders` exported from middleware.
  */
 
-import { describe, expect, it, beforeAll, afterAll } from "vitest";
+import { describe, expect, it, beforeAll, afterAll, vi } from "vitest";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { withSecurityHeaders, CSP_DIRECTIVES } from "@/middleware";
@@ -41,12 +41,11 @@ describe("Security headers", () => {
   });
 
   describe("in production", () => {
-    const prev = process.env.NODE_ENV;
     beforeAll(() => {
-      Object.defineProperty(process.env, "NODE_ENV", { value: "production", configurable: true });
+      vi.stubEnv("NODE_ENV", "production");
     });
     afterAll(() => {
-      Object.defineProperty(process.env, "NODE_ENV", { value: prev, configurable: true });
+      vi.unstubAllEnvs();
     });
 
     it("emits HSTS with preload", () => {

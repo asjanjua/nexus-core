@@ -114,6 +114,7 @@ These tasks come from the Queen's Architecture Review of the full stack. Human-a
 - **Knowledge Workspace local vault sync** (`NEXUS_VAULT_SYNC`, `NEXUS_LOCAL_VAULT_PATH`) is production-tested dual Postgres/local storage with path validation, symlink rejection, and conflict preservation. This is the prototype seam for the Tauri Desktop local-data strategy.
 - **Orchestration Dispatcher** (`dispatch_jobs` with `FOR UPDATE SKIP LOCKED`) provides the atomic job claiming and retry primitives needed for local Tauri SQLite dispatch. The pattern transfers directly.
 - **AuthMode contracts** in `docs/ENGINEERING_GUARDRAILS.md` (lines 47-62) already define the Clerk-to-local-auth transition for Tauri Desktop Phase 2. Implementation is deferred, not undesigned.
+- **Connector architecture has two runtimes** (2026-06-26). All 8 existing connectors (Slack, Google Drive, SharePoint, GitHub, Jira, HubSpot, QuickBooks, LinkedIn) use OAuth + REST (`fetch()` only). IMAP email (Spacemail, Fastmail, cPanel, self-hosted) requires TCP sockets, TLS negotiation, and MIME parsing via `imapflow`. This is a second connector runtime. Build one "IMAP Email" connector (protocol-level, user provides server/port/credentials). No POP3. Credential encryption already solved (`lib/crypto.ts`, AES-256-GCM). Sequence: prove OAuth pattern e2e (Google Drive, Gmail/Outlook) first, then build IMAP as a separate architecture track. See `ARCHITECTURE.md` S13.
 
 **Design priority order (updated 2026-06-25):**
 1. [x] Figma Pro selected as active design workspace; Penpot parked until MCP/plugin compatibility improves.
@@ -2107,6 +2108,33 @@ Positioning rule from the 2026-05-31 reassessment:
 - [ ] **Drata** — API key. Same as Vanta — compliance posture, failing controls.
 - [ ] **Okta** — API key. Login failure rates, MFA adoption, suspicious login signals.
 
+### Email bundle (second connector runtime — see docs/ARCHITECTURE.md §13)
+> Note: Gmail and Outlook Mail reuse the existing Google/Microsoft OAuth clients (Google Drive
+> and SharePoint respectively) with mail-specific scopes — pure `fetch()`, no SDK, same pattern
+> as every other connector. IMAP is architecturally different: it is the codebase's first
+> non-OAuth, non-REST connector, requiring `imapflow`/`mailparser` and a stateful TCP/TLS
+> session instead of `fetch()`. Built 2026-06-26 per Ali's explicit decision to build both
+> Gmail/Outlook and IMAP in the same pass rather than sequencing IMAP as long-tail.
+- [~] **Gmail** — OAuth2, `gmail.readonly` scope. `lib/connectors/gmail.ts` +
+  install/callback/files/ingest routes built and code-complete, pending real-OAuth-app
+  verification (reuses `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`, needs the Gmail redirect URI
+  added to the same OAuth client). Current scope is message listing + per-message plain-text
+  ingest as `sourceType: "email_crm"`. Attachment extraction and thread-level rollups are not
+  yet built — still open.
+- [~] **Outlook Mail** — OAuth2 via Microsoft Graph, `Mail.Read` scope. `lib/connectors/outlook-mail.ts`
+  + install/callback/files/ingest routes built and code-complete, pending real-OAuth-app
+  verification (reuses `MICROSOFT_CLIENT_ID`/`MICROSOFT_CLIENT_SECRET`/`MICROSOFT_TENANT_ID`,
+  needs the Outlook Mail redirect URI added to the same Azure AD registration). Works against
+  Outlook.com and Microsoft 365/Exchange Online alike. Same scope gaps as Gmail above — still open.
+- [~] **IMAP Email** — protocol-level, not provider-specific (no OAuth). `lib/connectors/imap.ts`
+  using `imapflow` + `mailparser`, plus `connect`/`files`/`ingest` routes (no install/callback —
+  user supplies host/port/username/password directly in a settings-page form; credentials are
+  encrypted at rest through the same `repository.upsertConnector` path as every OAuth connector).
+  Code-complete pending `npm install` (new dependency, not yet installed) and a real-mailbox
+  connection test. Covers any standards-compliant IMAP-over-TLS server (Spacemail, Hostinger,
+  Zoho, self-hosted, etc). No POP3 by design. Folder browsing beyond INBOX and attachment
+  extraction are not yet built — still open.
+
 ### Marketing and Growth bundle (SaaS application layer)
 > Note: Phase 7A classifyFilename handles file uploads of ad exports (Meta Ads CSV, Google Ads
 > XLSX). Phase 10 here handles live API connections to the same platforms — different path,
@@ -2129,7 +2157,7 @@ Positioning rule from the 2026-05-31 reassessment:
   approved for the registered app. Engagement-metric rollups are not yet built — still open.
 - [ ] Add webhook ingestion path for tools that support real-time updates
 - [ ] Add department-specific connector bundles
-- [ ] Add Docs + Comms bundle: Google Drive, SharePoint, OneDrive, Dropbox, Box, Slack, Microsoft Teams, Gmail, Outlook
+- [ ] Add Docs + Comms bundle: Google Drive, SharePoint, OneDrive, Dropbox, Box, Slack, Microsoft Teams
 - [ ] Add Meetings bundle: Zoom, Google Meet, Microsoft Teams recordings/transcripts, Otter.ai, Fireflies.ai
 - [ ] Add Project/Work bundle: Jira, Linear, Asana, Monday.com, ClickUp, Trello, Smartsheet
 - [ ] Add CRM/Sales bundle: Salesforce, HubSpot, Microsoft Dynamics 365 CRM, Zoho CRM, Pipedrive

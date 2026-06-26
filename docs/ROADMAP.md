@@ -121,7 +121,7 @@ Phase 7A/7B are COMPLETE (20-role registry, 5 archetypes, agent rooms, stage-awa
 
 **Phase 9 -- Team Members** (Q4 2026): workspace invitations, role-based access, CxO lens assignment. Build when a pilot client requests it.
 
-**Phase 10 -- Core Connectors** (Q4 2026 / Q1 2027): Google Drive, SharePoint, Slack, Teams, Gmail, Outlook, Jira, Salesforce, QuickBooks. Each with read-only ingestion, provenance, sensitivity policy, sync schedule. Slack has the first inbound channel-message ingestion path and Connector Settings policy UX; broader scheduled sync, sync history, and additional connector data flows remain to build.
+**Phase 10 -- Core Connectors** (Q4 2026 / Q1 2027): Two runtime tracks. **Track A (OAuth + REST):** Google Drive, SharePoint, Slack, Teams, Gmail, Outlook, Jira, Salesforce, QuickBooks. All use `fetch()`, OAuth 2.0, and fit the existing connector pattern. 8 OAuth callback routes exist; Slack has end-to-end ingestion; Google Drive and SharePoint have OAuth scaffolding. **Track B (IMAP, separate architecture):** generic "IMAP Email" connector for basic email hosting (Spacemail, Fastmail, cPanel, self-hosted). Requires `imapflow` library, TCP sockets, MIME parsing. Protocol-level, not provider-specific. No POP3. Credential encryption solved (`lib/crypto.ts`). Sequence: prove Track A end-to-end first, then build Track B.
 
 **Phase 12 -- Company Memory** (2027): richer graph traversal, diff views, and the Obsidian-for-companies concept. Entity extraction, entity pages, and the first Knowledge Workspace are already in place.
 

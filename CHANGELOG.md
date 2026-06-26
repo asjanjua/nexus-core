@@ -2,6 +2,22 @@
 
 ---
 
+## Unreleased — Gmail, Outlook Mail, and IMAP Email Connectors (2026-06-26)
+
+Built per Ali's explicit instruction ("both 1 and 2") to build Gmail/Outlook and IMAP in the same pass rather than sequencing IMAP as long-tail per the original `docs/ARCHITECTURE.md` §13 sequencing note. Not yet committed/pushed, build-verified, or `npm install`-ed — see Immediate Next Steps in `HANDOVER.md`.
+
+**Gmail** — OAuth2 reusing the existing Google Drive client (`GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`), `gmail.readonly` + `userinfo.email` scopes. `lib/connectors/gmail.ts`: `listMessages()`, `getMessage()`, `extractPlainTextBody()` (walks the MIME tree, prefers `text/plain`, falls back to stripped `text/html`), `getHeader()`. Ingest serializes Subject/From/To/Date + body to text, `sourceType: "email_crm"`. Each connector needs its own redirect URI (`/api/connectors/gmail/callback`) added to the same OAuth client used by Google Drive. Scope is message listing + per-message ingest — attachment extraction and thread rollups not yet built.
+
+**Outlook Mail** — OAuth2 via Microsoft Graph reusing the existing SharePoint Azure AD app registration (`MICROSOFT_CLIENT_ID`/`MICROSOFT_CLIENT_SECRET`/`MICROSOFT_TENANT_ID`), `Mail.Read` scope. `lib/connectors/outlook-mail.ts`: `listMessages()` (paged via `@odata.nextLink`), `getMessage()`, `extractPlainTextBody()` (strips HTML — Graph defaults to HTML bodies). Ingest as `sourceType: "email_crm"`. Works identically against Outlook.com and Microsoft 365/Exchange Online since both sit behind Graph. Needs its own redirect URI (`/api/connectors/outlook-mail/callback`) added to the SharePoint app registration alongside the `Mail.Read` scope grant.
+
+**IMAP Email** — the codebase's first non-OAuth, non-`fetch()` connector ("second runtime" per `docs/ARCHITECTURE.md` §13). Protocol-level, not provider-specific: one connector that works against any IMAP-over-TLS server, same approach Thunderbird/Apple Mail take — no "Spacemail connector," no "Hostinger connector." `lib/connectors/imap.ts` uses the new `imapflow` dependency for the stateful TCP/TLS session (`verifyConnection()`, `listMailboxes()`, `listMessages()`, `getMessage()`) and the new `mailparser` dependency for RFC822 MIME parsing. No `install`/`callback` routes — instead `POST /api/connectors/imap/connect` accepts host/port/secure/username/password directly, test-connects before storing, and persists credentials through the same `repository.upsertConnector` AES-256-GCM encryption path every OAuth connector's tokens already go through. Settings page renders an inline form (host/port/TLS toggle/username/password/label) instead of an OAuth "Install" link. Ingest as `sourceType: "email_crm"`. No POP3 by design. Requires `npm install` to fetch the two new dependencies — not yet run.
+
+**Shared plumbing**: `ALLOWED_TYPES` in `app/api/connectors/[type]/route.ts` extended with `gmail`, `outlook-mail`, `imap`. `CONNECTOR_CATALOGUE` in `app/settings/connectors/page.tsx` extended with all three, plus a new `connectKind: "manual"` flag on `ConnectorDef` so the settings page can render IMAP's inline credential form instead of an OAuth install link. `package.json` gained `imapflow`, `mailparser`, `@types/mailparser`.
+
+**Docs accuracy note**: per the convention established 2026-06-25, all three are marked `[~]`/`local verified` (not `[x]`/`done`) in `TASKS.md`/`BACKLOG.md` — code-complete locally, pending real-OAuth-app verification (Gmail/Outlook) or a real-mailbox connection test (IMAP), none yet committed, pushed, or build-verified.
+
+---
+
 ## Unreleased — Five New OAuth Connectors: GitHub, Jira, HubSpot, QuickBooks, LinkedIn (2026-06-25)
 
 Built per Ali's explicit instruction to build all five rather than defer LinkedIn/social. All five follow the pure-fetch, no-SDK pattern established by Google Drive/SharePoint: `lib/connectors/{type}.ts` client + 4 API routes (`install`, `callback`, `files`, `ingest`) per connector, each using the shared HMAC-signed OAuth `state` pattern from `lib/security.ts`. Not yet committed/pushed or build-verified — see Immediate Next Steps in `HANDOVER.md`.

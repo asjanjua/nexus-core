@@ -6,10 +6,17 @@
 
 ## Session Info
 
-- **Last updated:** 2026-06-25 (v0.25.x — session #33 with Claude. Built 5 new OAuth connectors — GitHub, Jira, HubSpot, QuickBooks, LinkedIn — per Ali's explicit instruction to build all five now rather than defer LinkedIn/social. Each is `lib/connectors/{type}.ts` + 4 API routes, wired into shared plumbing. Code-complete, NOT yet committed/pushed or build-verified.)
+- **Last updated:** 2026-06-26 (v0.25.x — session #34 with Claude. Built the Email bundle per Ali's explicit "both 1 and 2" instruction: Gmail + Outlook Mail OAuth connectors, plus the IMAP Email connector — the codebase's first non-OAuth connector runtime (docs/ARCHITECTURE.md §13). Code-complete, NOT yet npm-installed, committed, pushed, or build-verified.)
 - **Last model:** Claude (Sonnet 4.6, Cowork)
-- **Session number:** #33
+- **Session number:** #34
 - **Current version:** 0.25.x — Phases 1-8 + 9D complete, V1.1 Tier 1 (U1-U4) complete. Strategy pipeline fully implemented: readiness → buyer lane → onboarding → workflow pilot → governed value proof.
+- **Session #34 delivered (2026-06-26):**
+  - **Gmail connector** — `lib/connectors/gmail.ts` (pure-fetch, reuses the existing Google Cloud OAuth client — `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` — with a new scope `gmail.readonly` and its own redirect URI `/api/connectors/gmail/callback`) + install/callback/files/ingest routes under `app/api/connectors/gmail/`. Ingest builds text from Subject/From/To/Date headers plus a MIME-tree-walking plain-text body extractor; `sourceType: "email_crm"`, `sourcePath: "gmail://{id}"`. Not yet built: attachment extraction, thread rollups. **Action required before this works:** add `https://<app-url>/api/connectors/gmail/callback` to the existing Google OAuth client's authorized redirect URIs (Google Cloud Console) — no new client, no new env vars.
+  - **Outlook Mail connector** — `lib/connectors/outlook-mail.ts` (pure-fetch, reuses the existing Azure AD app registration — `MICROSOFT_CLIENT_ID`/`MICROSOFT_CLIENT_SECRET`/`MICROSOFT_TENANT_ID` — already used by SharePoint, with scope `Mail.Read` and its own redirect URI `/api/connectors/outlook-mail/callback`) + install/callback/files/ingest routes under `app/api/connectors/outlook-mail/`. Same ingest text shape as Gmail; Graph mail body is HTML by default so `extractPlainTextBody()` strips tags. `sourceType: "email_crm"`. Not yet built: attachment extraction, thread rollups. **Action required:** add `https://<app-url>/api/connectors/outlook-mail/callback` to the existing Azure app registration's redirect URIs — no new client, no new env vars.
+  - **IMAP Email connector (new runtime, per ARCHITECTURE.md §13)** — `lib/connectors/imap.ts`, using `imapflow` (stateful TCP/TLS session) and `mailparser` (RFC822 parsing) instead of `fetch()`. No OAuth: a single `POST /api/connectors/imap/connect` route test-logs in via `verifyConnection()` before persisting host/port/secure/username/password through the same encrypted `repository.upsertConnector` path every other connector uses (zero changes needed to the encryption layer — it's already generic). `files`/`ingest` routes under `app/api/connectors/imap/`. One configurable connector, not per-provider (no Spacemail/Hostinger connectors); explicitly no POP3. `sourceType: "email_crm"`, `sourcePath: "imap://{mailbox}/{uid}"` (no `sourceUri` — IMAP has no canonical web link). Not yet built: folder browsing beyond INBOX, attachment extraction. **No new env vars required** — credentials are supplied per-mailbox through the UI form.
+  - **Shared plumbing:** `ALLOWED_TYPES` in `app/api/connectors/[type]/route.ts` now includes `gmail`, `outlook-mail`, `imap`. `app/settings/connectors/page.tsx` got 3 new catalogue entries, a new `connectKind?: "oauth" | "manual"` discriminator on `ConnectorDef` (drives an inline credential-entry form instead of an OAuth "Install →" link for IMAP), 2 new error messages, and 3 env-var hint blocks. `package.json` gained `imapflow`, `mailparser` (deps) and `@types/mailparser` (devDep) — **not yet `npm install`-ed**, npm registry is blocked in the sandbox.
+  - **Paperwork reconciled:** `TASKS.md` (new "Email bundle" section, 3 `[~]` entries), `BACKLOG.md` (3 new connector rows replacing the old Gmail/Outlook placeholder row), `CHANGELOG.md` (new dated entry above the prior 5-connector entry), this file.
+  - **NOT yet done:** `npm install` (sandbox registry blocked — Ali must run this), `tsc --noEmit`/`npm test`/`npm run build` verification, commit/push (`.git/index.lock` fuse-mount restriction — Ali must run this), Google/Azure redirect-URI registration, and a real-mailbox IMAP connection test.
 - **Session #33 delivered (2026-06-25):**
   - **5 new connectors (Tasks #55-59), all code-complete, all pending real-OAuth-app verification:**
     - **GitHub** — `lib/connectors/github.ts` (classic OAuth web app flow, tokens don't expire) + install/callback/files/ingest routes. Scope: repo listing + per-issue/PR ingest as `sourceType: "github"`. Not yet built: CI-pass-rate/deployment-frequency/label rollups.
@@ -816,6 +823,9 @@ CLOUDFLARE_R2_*            R2 object storage (optional)
 | HubSpot Connector | Code-complete, partial scope (deals only); NOT yet committed/pushed | v0.25.x |
 | QuickBooks Connector | Code-complete, partial scope (invoices only, not P&L/AR/AP/balance-sheet reports); NOT yet committed/pushed | v0.25.x |
 | LinkedIn Connector | Code-complete; gated on LinkedIn Community Management API partner approval; NOT yet committed/pushed | v0.25.x |
+| Gmail Connector | Code-complete, reuses Google OAuth client (needs redirect-URI registration); NOT yet npm-installed/committed/pushed | v0.25.x |
+| Outlook Mail Connector | Code-complete, reuses Azure AD app registration (needs redirect-URI registration); NOT yet npm-installed/committed/pushed | v0.25.x |
+| IMAP Email Connector | Code-complete, first non-OAuth connector runtime; needs `npm install` for `imapflow`/`mailparser` and a real-mailbox test; NOT yet committed/pushed | v0.25.x |
 | Phase 10+ | Future | -- |
 
 ## What Needs to Come Next
@@ -876,17 +886,11 @@ Before doing anything else, read:
 
 Current version: `origin/main` is at commit `9da3411` -- "Add engineering guardrails module, pilot paperwork page, prompt registry updates; correct HANDOVER/TASKS docs", on top of `2ff4c26` -- "Add Microsoft SharePoint/Teams connector (OAuth + Graph API)" (which bundled the full session #31 batch: Task #35 DB transactions, Task #36 LLM routing + DeepSeek V4 migration, Task #32 Sentry, Task #37 Queen's Review fixes, cron jobs, provider UI, Resend email, Mode Indicator, strategy profile, Google Drive connector, knowledge embeddings, onboarding routing, pilot paperwork generation, plus SharePoint/Teams itself, Task #40).
 
-NOT YET COMMITTED OR PUSHED as of this writing: 5 new OAuth connectors built in session #33 (2026-06-25) -- GitHub, Jira, HubSpot, QuickBooks, LinkedIn (Tasks #55-59), each `lib/connectors/{type}.ts` + install/callback/files/ingest routes, plus shared plumbing edits (`ALLOWED_TYPES`, `app/settings/connectors/page.tsx` catalogue/errors/instructions, `render.yaml` env vars, `CUTOVER.md` env vars/instructions) and paperwork reconciliation (`TASKS.md`, `BACKLOG.md`, `CHANGELOG.md`, this file). This is 25 new files plus 6+ modified files sitting in the sandbox's working tree. Same sandbox constraint as every prior session: `.git/index.lock` cannot be created/removed from the sandbox due to a fuse-mount permission restriction, so Ali must run the commit/push from his own machine. Exact commands:
+NOT YET COMMITTED OR PUSHED as of this writing: TWO uncommitted batches stacked in the sandbox's working tree, oldest first:
+1. Session #33 (2026-06-25) -- 5 OAuth connectors: GitHub, Jira, HubSpot, QuickBooks, LinkedIn (Tasks #55-59).
+2. Session #34 (2026-06-26, this session) -- the Email bundle: Gmail, Outlook Mail, IMAP Email (Tasks #63-66), built per Ali's explicit "both 1 and 2" instruction. Gmail/Outlook are `lib/connectors/{gmail,outlook-mail}.ts` + install/callback/files/ingest routes, reusing the existing Google/Azure OAuth clients. IMAP is `lib/connectors/imap.ts` + connect/files/ingest routes (no install/callback -- no OAuth), the first connector to use `imapflow`/`mailparser` instead of `fetch()`. Shared plumbing: `ALLOWED_TYPES`, `app/settings/connectors/page.tsx` (3 new catalogue entries + new `connectKind` discriminator for IMAP's inline credential form), `package.json` (`imapflow`, `mailparser`, `@types/mailparser`). Paperwork: `TASKS.md`, `BACKLOG.md`, `CHANGELOG.md`, this file.
 
-```bash
-cd /Users/alijanjua/Documents/Playground/nexus-core
-rm -f .git/index.lock
-git add -A
-git commit -m "Add 5 OAuth connectors (GitHub, Jira, HubSpot, QuickBooks, LinkedIn) + shared plumbing"
-git push origin main
-```
-
-Last full verification: 2026-06-17, for v0.25.0 only. TypeScript clean, 29 test files / 187 tests passing, production build clean, production dependency audit clean at that time. Everything committed since then (Tasks #35/#36/#32/#37/#19, Google Drive + SharePoint/Teams, guardrails/pilot-paperwork) plus everything built THIS session (5 new connectors, uncommitted) has NOT been verified with `npm install`/`npx tsc --noEmit`/`npm test`/`npm run build` -- run that full cycle next, on a machine with npm registry access (this sandbox's registry access returns 403):
+Both batches need npm install, build verification, commit, and push together. Same sandbox constraint as every prior session: `.git/index.lock` cannot be created/removed from the sandbox due to a fuse-mount permission restriction, and the sandbox's npm registry access is blocked (403), so Ali must run all of the following from his own machine. Exact commands:
 
 ```bash
 cd /Users/alijanjua/Documents/Playground/nexus-core
@@ -896,6 +900,26 @@ npm run test
 npm run build
 ```
 
+If all four pass clean:
+
+```bash
+cd /Users/alijanjua/Documents/Playground/nexus-core
+rm -f .git/index.lock
+git add -A
+git commit -m "Add 5 OAuth connectors (GitHub, Jira, HubSpot, QuickBooks, LinkedIn) + Email bundle (Gmail, Outlook Mail, IMAP) + shared plumbing"
+git push origin main
+```
+
+Last full verification: 2026-06-17, for v0.25.0 only. Everything since then -- Tasks #35/#36/#32/#37/#19, Google Drive + SharePoint/Teams, guardrails/pilot-paperwork, the 5-connector batch, and this session's Email bundle -- has NOT been verified with `npm install`/`npx tsc --noEmit`/`npm test`/`npm run build`. Run the cycle above before committing.
+
+New env-var/registration steps needed for the Email bundle (in addition to the 7 connectors already listed below):
+
+| Connector | Reuses existing client? | Action required | New env vars |
+|---|---|---|---|
+| Gmail | Yes -- same Google Cloud OAuth client as Google Drive | Add `{NEXT_PUBLIC_APP_URL}/api/connectors/gmail/callback` to the client's authorized redirect URIs | None |
+| Outlook Mail | Yes -- same Azure AD app registration as SharePoint | Add `{NEXT_PUBLIC_APP_URL}/api/connectors/outlook-mail/callback` to the app's redirect URIs | None |
+| IMAP Email | No OAuth client at all | None -- credentials entered per-mailbox via the Settings UI form | None |
+
 Protected `/knowledge` and `/api/knowledge/*` block unauthenticated curl via Clerk; use logged-in Chrome/Render for UI smoke after deploy.
 
 Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. U5 Workflow Twin Scorer, U6 backcasting, and U7 shadow ROI are committed in v0.24.0. Billing Tiers + Stripe full integration (v0.20.0-v0.21.0), Orchestration Dispatcher (v0.22.0), Company Memory UI, first Slack connector data flow (v0.23.0), and Connector Settings policy UX (v0.24.0) complete.
@@ -904,11 +928,11 @@ Migrations 0001-0026 applied to Neon production. `db:check` passed on 2026-06-25
 What is built: onboarding, ingestion, retrieval, 7 agent rooms, 20 role dashboards, Ask, governance (passports, output gates, learning signals), Decision Twin, entity extraction, Company Memory pages/backlinks, eval harness, Executive Synthesis, scheduled synthesis, billing tiers, Stripe, orchestration dispatcher, first Slack inbound ingestion path, Connector Settings policy UX, Workflow Twin Scorer, backcasting, shadow ROI, the v0.25.0 Knowledge Workspace, transaction-safe multi-table repository writes (Task #35), policy-driven LLM routing with fallback chains (Task #36), Sentry error tracking wired but disabled pending a DSN (Task #32/#37), a full Google Drive OAuth connector, a full Microsoft SharePoint/Teams OAuth connector via Graph API (Task #40), an engineering guardrails module (Task #19), a pilot paperwork page -- all committed and pushed at `9da3411`. PLUS, built this session but NOT yet committed: GitHub, Jira, HubSpot, QuickBooks, and LinkedIn OAuth connectors (Tasks #55-59) -- each code-complete with narrower scope than originally specced for Jira/HubSpot/GitHub/QuickBooks (per-record list+ingest, not aggregate/rollup signals -- exact gaps documented in `TASKS.md` and `CHANGELOG.md`), and LinkedIn additionally gated on a separate LinkedIn Community Management API partner-approval step.
 
 Immediate next build:
-1. Ali commits/pushes the 5-connector batch using the commands above.
-2. On a machine with npm registry access: run `npm install`, `npx tsc --noEmit`, `npm test`, `npm run build` against the new commit to verify everything, including the prior unverified `9da3411` batch.
+1. Ali runs `npm install`/`npx tsc --noEmit`/`npm test`/`npm run build` (commands above), fixes anything that breaks (most likely candidate: IMAP/mailparser type issues, since neither has compiled in this environment yet), then commits/pushes both stacked batches together.
+2. Run a real-mailbox IMAP connection test against `/api/connectors/imap/connect` (any IMAP host -- Gmail, Outlook, Spacemail, Hostinger, etc. all work since it's protocol-level) to confirm `imapflow` behaves as expected outside the sandbox.
 3. Create a Sentry project, set the 5 Sentry env vars in Render (listed in `CUTOVER.md` Step 2), trigger a test error, confirm it lands in the dashboard.
 4. Log in to Render and confirm `nexus-mission-control` deployed commit matches the new `origin/main` HEAD; trigger manual deploy from `main` if stale, then run authenticated smoke.
-5. Register OAuth apps with all 7 providers now in play and set their env vars in Render (all already listed in `render.yaml` and `CUTOVER.md` Step 2), then run each connector's install flow end-to-end:
+5. Register OAuth apps with all 9 providers now in play (7 from the prior batch plus Gmail/Outlook reusing existing clients) and set their env vars in Render (all already listed in `render.yaml` and `CUTOVER.md` Step 2), then run each connector's install flow end-to-end:
    - Google Cloud OAuth client -- `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`
    - Azure AD app -- `MICROSOFT_CLIENT_ID`/`MICROSOFT_CLIENT_SECRET`/`MICROSOFT_TENANT_ID`
    - GitHub OAuth app (github.com/settings/developers) -- `GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET`
@@ -923,9 +947,11 @@ Open design question (not yet implemented, analysis delivered to Ali, awaiting h
 
 Known missing:
 - Aggregate/rollup signals for Jira, HubSpot, GitHub, QuickBooks (current scope is per-record, not the originally-specced summary signals -- see `TASKS.md`).
-- Real-OAuth-app verification for all 7 connectors (Google Drive, SharePoint/Teams, GitHub, Jira, HubSpot, QuickBooks, LinkedIn) -- none tested against live credentials yet.
+- Attachment extraction and thread rollups for Gmail and Outlook Mail; folder browsing beyond INBOX and attachment extraction for IMAP -- see `TASKS.md`.
+- Real-OAuth-app verification for all 9 connectors now built (Google Drive, SharePoint/Teams, GitHub, Jira, HubSpot, QuickBooks, LinkedIn, Gmail, Outlook Mail) -- none tested against live credentials yet. IMAP needs a real-mailbox connection test instead (no OAuth).
 - LinkedIn Community Management API partner approval -- separate from OAuth client registration, required before `files`/`ingest` return real post data.
-- Salesforce, Xero, Meta, and Gmail/Outlook connectors remain entirely unbuilt.
+- `npm install` has not been run anywhere for `imapflow`/`mailparser`/`@types/mailparser` -- first build attempt after install may surface type or peer-dependency issues.
+- Salesforce, Xero, and Meta connectors remain entirely unbuilt.
 - v0.25.0 authenticated production smoke for `/knowledge`, `/workflows`, `/settings/connectors`, and Ask note citations.
 - Cron job entries in `render.yaml` (dispatch, billing, trial conversion) -- handlers exist in code, just not declared in the blueprint.
 
