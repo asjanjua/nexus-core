@@ -137,9 +137,9 @@ These tasks come from the Queen's Architecture Review of the full stack. Human-a
 7. [ ] Complete governance/admin screen batch: Risk and Audit, Integration Hub, Integration Detail, Governance Settings.
 8. [ ] Complete onboarding/prototype handoff batch: User and Role Management, Company Setup, First Mission Template, Audit Export / Executive Pack.
 9. [ ] Build expert review mini features: Trust Drawer, Approval Consequence Preview, Command Palette, Mission Health Score.
-10. [ ] Design-to-code generation: React/Next.js components from Figma via `get_design_context`.
+10. [~] Design-to-code generation: React/Next.js components from Figma via `get_design_context` — proven both directions (write via `use_figma`, read back via `get_design_context`) for all 6 signature patterns; full screen-by-screen generation still open.
 11. [ ] Empty/loading/error states for all screens.
-12. [ ] Convert repeated Figma UI patterns into reusable components and Code Connect mappings.
+12. [x] Convert repeated Figma UI patterns into reusable components and Code Connect mappings — 2026-06-26. All 6 locked signature patterns now genuinely represented on Figma page `06 V0.2 Full Desktop Prototype`: Trust Drawer, Approval Consequence Preview, Now/Next strip already existed; Mode Indicator (`54:2`), Nav Health Badges (`54:25`), Passport Drift Warning (`54:48`) were built this session from the real shipped code, not faked. Live Code Connect API submission is blocked by Figma plan tier (Org/Enterprise required; Ali declined to upgrade) — mappings recorded manually in `docs/UI_UX_WORKPLAN.md` §1a instead. Patterns are duplicated frames, not true component instances, so each mapping is representative, not cascading.
 
 **Figma MCP capability note (verified 2026-06-25):** The connected Figma MCP has full Plugin API write access via `use_figma`, not just Framelink read-only. Claude can create/edit screens, components, and variables directly in Figma AND read designs back as code. See `docs/UI_UX_WORKPLAN.md` for the full MCP-aware workflow.
 

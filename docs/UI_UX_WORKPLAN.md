@@ -33,6 +33,23 @@ The Figma MCP connected to this workspace is the **official Figma MCP with Plugi
 
 The workflow is **bidirectional**. Claude can both write designs into Figma AND read them back out as code. This is significantly more powerful than the Framelink read-only model (which only supports `get_figma_data` and `download_figma_images`).
 
+### Code Connect status (Step 5, 2026-06-26)
+
+**Blocked on plan tier — confirmed, not a workaround.** `send_code_connect_mappings` / `add_code_connect_map` require a Dev or Full seat on a Figma **Organization or Enterprise** plan. Ali's teams are pro and starter (`whoami` confirmed); Ali has decided not to upgrade. The bidirectional design-to-code loop above still works in full (write, read, screenshot, design-context) — only the live Code Connect linking step is unavailable. The six locked signature patterns are mapped manually below instead, which is audit-equivalent even without the live Figma integration.
+
+File: `NcQ8F5a0hczwGwZua2gfun` ("Nexus-Mission-Control-Base-UI-UX"), page "06 V0.2 Full Desktop Prototype" (node `44:2`).
+
+| Pattern | Figma node (representative) | Code component |
+|---|---|---|
+| Trust Drawer | `44:299` ("Card / Trust drawer preview") | `apps/mission-control/components/ui/trust-drawer-trigger.tsx`, `components/trust-drawer.tsx`, `lib/trust-drawer-context.tsx` |
+| Approval Consequence Preview | `44:304` ("Card / Approval consequence") | `apps/mission-control/components/ui/consequence-preview.tsx` (+ `useConsequencePreview` hook) |
+| Now / Next strip | `44:102` / `44:105` ("Chip / Now", "Chip / Next gate") | `apps/mission-control/components/ui/now-next-strip.tsx` |
+| Mode Indicator | `54:2` ("Card / Mode indicator" — built this session, did not previously exist in this page) | `apps/mission-control/lib/mode-context.tsx` (`ModeIndicator`) |
+| Nav Health Badges | `54:25` ("Card / Nav health badges" — built this session) | `apps/mission-control/components/side-nav.tsx` (`NavBadge`, `badgeFor`) |
+| Passport Drift Warning | `54:48` ("Card / Passport drift warning" — built this session) | `apps/mission-control/app/settings/page.tsx` (Agent Governance tab, `hasDrifted` block) |
+
+Note on instancing: every repeated card on page `44:2` (Trust Drawer, Approval Consequence, etc.) is a **duplicated plain frame, not a true Figma component instance** — confirmed via metadata search (zero `<component>` tags in the subtree). One mapping per pattern documents the correspondence; it does not cascade to all ~30 per-screen copies the way a real component/instance relationship would. Converting these into genuine main components + instances is follow-on work, not done here.
+
 ### Queen's Review findings (still valid)
 
 The Queen's Veracity Analysis of 2026-06-25 correctly identified:
