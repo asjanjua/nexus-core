@@ -2,6 +2,20 @@
 
 ---
 
+## Unreleased — Pilot Build-Out Step 5: Figma Signature-Pattern Parity (2026-06-26)
+
+Closes the Figma side of the locked design system's six signature patterns (Trust Drawer, Approval Consequence Preview, Now/Next strip, Mode Indicator, Nav Health Badges, Passport Drift Warning). All six are already live in the actual product since Step 4 (`d3aa1ce`); this step makes the Figma prototype an honest mirror rather than a partial one.
+
+**Found genuinely present already** on page "06 V0.2 Full Desktop Prototype" (file `NcQ8F5a0hczwGwZua2gfun`, node `44:2`): Trust Drawer (`44:299`), Approval Consequence Preview (`44:304`), Now/Next strip (`44:102`/`44:105`) — each a real, repeated card across the ~30 screens.
+
+**Built from scratch via the Figma Plugin API**, after confirming the other three patterns had no Figma representation at all — not faked, built from the real shipped components: Mode Indicator (`54:2`, sourced from `lib/mode-context.tsx` — all 4 auth-mode states with their actual badge text and tooltip copy), Nav Health Badges (`54:25`, sourced from `components/side-nav.tsx` — the 4 real badge routes with their actual tone mapping), Passport Drift Warning (`54:48`, sourced from `app/settings/page.tsx`'s Agent Governance tab — the real "Passport drift" chip copy and version-mismatch logic). All three render-verified via `get_design_context` against the locked token hex values.
+
+**Code Connect — blocked by Figma plan tier, resolved manually.** `send_code_connect_mappings` requires a Dev/Full seat on a Figma Organization or Enterprise plan; confirmed via `whoami` that both of Ali's teams (pro, starter) sit below that tier. Ali's explicit decision: no upgrade — mappings are documented by hand instead, in `docs/UI_UX_WORKPLAN.md` (new "Code Connect status" section), with a node-to-component table for all 6 patterns and an explicit note that repeated cards on this page are duplicated frames, not true Figma component instances, so each mapping is representative of one instance rather than cascading.
+
+**Verification:** `cc64239` builds on Ali's locally-verified Step 4 commit (`d3aa1ce` — 239 tests passing across 37 files, `npm run build` clean at 135 pages). Both commits pushed to `origin/main` by Ali from his own machine (sandbox has no outbound GitHub access).
+
+---
+
 ## Unreleased — Gmail, Outlook Mail, and IMAP Email Connectors (2026-06-26)
 
 Built per Ali's explicit instruction ("both 1 and 2") to build Gmail/Outlook and IMAP in the same pass rather than sequencing IMAP as long-tail per the original `docs/ARCHITECTURE.md` §13 sequencing note. Not yet committed/pushed, build-verified, or `npm install`-ed — see Immediate Next Steps in `HANDOVER.md`.
