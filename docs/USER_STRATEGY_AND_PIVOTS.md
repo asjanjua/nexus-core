@@ -1,7 +1,7 @@
 # NexusAI User Strategy and Pivot Map
 
 Status: Canonical strategy note for paperwork, roadmap, backlog, and user-flow alignment.
-Last updated: 2026-06-25.
+Last updated: 2026-07-04.
 
 ## Core Pivot
 
@@ -12,6 +12,26 @@ Readiness assessment -> buyer lane -> signup/onboarding -> first workflow pilot 
 ```
 
 The strategic pivot is from account creation to pilot conversion. Clerk remains the identity provider, but NexusAI should own the market-aware user strategy: who the user is, what kind of buyer they represent, what first workflow proves value, and which governance boundary is required before expansion.
+
+## Auth and Email Boundary
+
+Clerk owns authentication email flows. NexusAI should not build a custom email-confirmation or password-reset system while Clerk remains the hosted identity provider.
+
+- Clerk handles signup verification, signin verification codes or links, password resets, account security email, and future organization invitation email.
+- NexusAI handles product email only: scheduled synthesis briefs, cron-driven notifications, pilot communications, support/security notifications, and later workflow alerts.
+- Product email should use a managed delivery provider such as Resend or Cloudflare Email Sending, configured through `NEXUS_RESEND_API_KEY` and `NEXUS_FROM_EMAIL` or an equivalent provider adapter.
+- Pinavia/Nexus sender identity should use a domain-authenticated address such as `Nexus <noreply@pinavia.io>` or `Pinavia <hello@pinavia.io>`.
+- Do not self-host a mail server for V1 demos or early pilots. Email reliability is a deliverability and reputation problem, not just an SMTP implementation problem.
+
+## Voice and Local Whisper Boundary
+
+Voice should be future-proofed but not shipped as a first-iteration demo dependency. The V1 demo path should stay text, upload, Ask, synthesis, approvals, and scheduled email.
+
+- Browser microphone capture stays out of V1. The current security posture denies microphone access by default, which is appropriate for regulated demos.
+- Local PC dictation is acceptable as a user-side convenience if it produces text before Nexus receives it. In that mode Nexus receives a normal Ask query or note, not raw audio.
+- Nexus-owned audio processing starts later with explicit consent, audit logging, sensitivity gating, and a transcript-first model.
+- The lowest-risk future seam is "local Whisper or OS dictation -> transcript -> Ask or evidence ingestion." The higher-risk seams are WhatsApp voice notes, inbound voice calls, call recording, and voice evidence ingestion.
+- Do not block the first iteration on Whisper, Deepgram, Twilio Voice, browser microphone permissions, or audio storage.
 
 ## Operating Paper Trail
 
@@ -108,6 +128,7 @@ Track the strategy as a funnel:
 - Billing and paperwork should not assume one generic buyer.
 - Public-facing copy should avoid internal "pivot" language, but internal docs should name the pivot clearly.
 - Regulated-buyer language must preserve the human-approval and no-autonomous-writeback boundary.
+- Keep auth email and product email separate: Clerk for verification and account lifecycle, NexusAI delivery provider for operational product emails.
 
 ## Current Plan
 
@@ -125,3 +146,6 @@ Track the strategy as a funnel:
 
 5. **Keep paperwork synchronized.**
    Every release or strategic shift should update `CHANGELOG.md`, `TASKS.md`, `HANDOVER.md`, `BACKLOG.md`, `docs/ROADMAP.md`, and the relevant pilot docs before it is treated as done.
+
+6. **Configure production email deliberately.**
+   Before demos use custom domains, confirm Clerk email verification is enabled, set the product sender domain (`pinavia.io`), configure the product email provider credentials in Render, and send one scheduled synthesis test email end to end.

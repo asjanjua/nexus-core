@@ -128,13 +128,12 @@ A small UX addition: show a "Last refreshed: Monday 7:00am" timestamp on the syn
 
 ### 5.2 Email Digest (pilot priority)
 
-Use Resend (simple, cheap, good DX with React Email templates).
+Use managed product email delivery, currently implemented with a pure-fetch Resend client at `lib/email/resend.ts`. This is separate from Clerk authentication email. Clerk owns signup/signin verification and account lifecycle email; the synthesis runner owns product notifications only.
 
-```
-npm install resend @react-email/components
-```
-
-Template: `lib/email/synthesis-digest.tsx`
+Required production settings:
+- `NEXUS_RESEND_API_KEY`
+- `NEXUS_FROM_EMAIL`, ideally a domain-authenticated sender such as `Nexus <noreply@pinavia.io>`
+- `NEXT_PUBLIC_APP_URL` for the in-app brief and unsubscribe links
 
 Content per role:
 - Subject: "NexusAI Weekly Brief: [Role] -- [Company Name]"
@@ -286,12 +285,11 @@ New audit events:
 
 ### Session 2: Email delivery and polish
 
-1. Install Resend, build React Email template for synthesis digest
-2. Email delivery dispatch in cron runner
-3. Render cron job config in `render.yaml`
-4. Test run: end-to-end scheduled synthesis with email delivery
-5. Update ARCHITECTURE.md, ROADMAP.md, TASKS.md, CHANGELOG.md
-6. Bump version to v0.19.0
+1. Configure the production sender domain and product-email provider credentials.
+2. Confirm Clerk auth email verification remains configured in Clerk, not Nexus.
+3. Run one end-to-end scheduled synthesis test with email delivery.
+4. Confirm unsubscribe link and audit event behavior.
+5. Update ARCHITECTURE.md, ROADMAP.md, TASKS.md, CHANGELOG.md when the production sender is verified.
 
 ---
 

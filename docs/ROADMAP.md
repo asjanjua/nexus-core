@@ -87,6 +87,12 @@ Connector settings now expose Slack source policy and sensitivity controls. `/wo
 **User Strategy and Pivot Docs** (documentation alignment)
 The product strategy is now documented as readiness-first buyer routing, not generic signup. Each buyer lane gets a distinct path through readiness, onboarding, workflow selection, pilot paperwork, and governed value proof. The canonical strategy lives in `docs/USER_STRATEGY_AND_PIVOTS.md`; the active execution plan is mirrored in `TASKS.md` and `BACKLOG.md`.
 
+**Email Boundary** (strategy alignment)
+Clerk owns authentication email: signup/signin verification, password reset, account lifecycle, and future organization invitations. Nexus owns product email only: scheduled synthesis briefs, cron-driven notifications, pilot communications, and support/security notifications through a managed delivery provider. Do not build a custom auth confirmation flow or self-host a mail server for V1 demos.
+
+**Voice and Local Whisper Boundary** (strategy alignment)
+Voice remains a future channel, not a first-demo dependency. Keep browser microphone capture disabled for V1 demos. Future-proof the seam as local OS dictation or local Whisper on the user's PC producing a transcript that Nexus treats as a normal Ask query, note, or evidence transcript. Nexus-owned audio processing comes later with explicit consent, audit logging, sensitivity gating, and transcript retention rules.
+
 **Billing Tiers + Stripe** (v0.20.0–v0.21.0)
 Plan-gated token budgets, feature flags, self-serve Stripe checkout, subscription lifecycle webhooks, Billing Portal, and trial-to-free conversion. The commercial layer is fully wired.
 
@@ -100,7 +106,7 @@ The dashboard starts with one evidence-backed leadership brief per role, with so
 1. **v0.25.0 deploy/smoke:** confirm Render is serving commit `3530808`, then smoke `/knowledge`, `/workflows`, `/settings/connectors`, and Ask note citations in a logged-in browser session. Migrations 0025-0026 and production `/api/health` are already confirmed.
 2. **Add cron entries to `render.yaml`:** dispatch runner, billing reset, trial-to-free conversion. Cron handlers exist in code but are not declared in the Render blueprint. Without these: no auto-synthesis, no monthly token budget reset, no trial conversion. Single-file change.
 3. **Wire LLM routing table into execution path:** `model-routing.ts` defines a 10-surface routing policy with provider fallback chains. `llm.ts` ignores it and uses a single env var. Connect `routePolicyFor(surfaceId)` into `callLLM()` so executive briefs use premium models, ingestion triage uses economy models, and fallback fires when a provider is down.
-4. **Add Resend email delivery:** synthesis brief template, send on scheduled cron completion, unsubscribe link. Pure-fetch integration, same pattern as Stripe.
+4. **Configure production email delivery:** keep Clerk responsible for auth email verification, configure `pinavia.io` sender authentication for Nexus product email, set `NEXUS_RESEND_API_KEY`/`NEXUS_FROM_EMAIL` or an equivalent managed-provider adapter, then run one scheduled synthesis email test.
 5. **Add Sentry error tracking:** tag errors by workspaceId, route, and error type. No production error visibility exists today.
 6. **Add workspace provider allow-list UI:** extend Settings > AI Policy so GCC regulated buyers can restrict to Anthropic/OpenAI only. The `isProviderAllowed()` enforcement layer already exists.
 

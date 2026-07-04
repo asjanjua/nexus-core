@@ -6,9 +6,16 @@
 
 ## Session Info
 
-- **Last updated:** 2026-06-26 (v0.25.x — session #38 with Claude. Pilot build-out plan step 5 complete: all 6 locked signature patterns now genuinely represented in Figma, mirroring the Step 4 live-product build. Code Connect live API submission is blocked by Figma's plan tier — Ali declined to upgrade, mappings documented manually instead.)
-- **Last model:** Claude (Sonnet 4.6)
-- **Session number:** #38
+- **Last updated:** 2026-07-04 (v0.25.x — session #39 with Codex. Email strategy plus voice/Whisper future-proofing aligned in paperwork: Clerk owns auth email, Nexus owns product email through a managed sender, and voice stays deferred behind a transcript-first seam.)
+- **Last model:** Codex (GPT-5)
+- **Session number:** #39
+- **Session #39 delivered (2026-07-04) — auth/product email boundary and production sender paperwork:**
+  - **Strategy decision recorded:** Clerk remains the owner of signup/signin verification, password reset, account lifecycle, and future organization invitation email. Nexus does not build a custom auth-confirmation flow for V1 demos.
+  - **Product email boundary recorded:** Nexus sends only product email — scheduled synthesis briefs, pilot notifications, support/security notifications, and future workflow alerts — through a managed provider such as Resend or Cloudflare Email Sending.
+  - **No self-hosted mail server for V1:** self-hosted mail is explicitly out of scope for the demo/pilot phase because deliverability, abuse handling, DNS reputation, and operational monitoring would slow the deployment path.
+  - **Voice/Whisper boundary recorded:** do not make Whisper, browser microphone access, Twilio Voice, Deepgram, or audio storage a V1 demo dependency. Future-proof as local OS dictation or local Whisper producing a transcript that Nexus treats as a normal Ask query, note, or evidence transcript.
+  - **Paperwork updated:** `docs/USER_STRATEGY_AND_PIVOTS.md`, `docs/INFRA_DECISION_MEMO.md`, `docs/SCHEDULED_SYNTHESIS_SPEC.md`, `docs/ROADMAP.md`, `BACKLOG.md`, `TASKS.md`, `CUTOVER.md`, `DEPLOY.md`, `docs/RENDER_DEPLOY.md`, `.env.example`, and `CHANGELOG.md`.
+  - **Open operational task:** authenticate the `pinavia.io` sending domain, set `NEXUS_RESEND_API_KEY` and `NEXUS_FROM_EMAIL` (for example `Nexus <noreply@pinavia.io>`), confirm Clerk email verification/password reset in the Clerk dashboard, and run one scheduled synthesis email delivery test before demos.
 - **Session #38 delivered (2026-06-26) — pilot build-out plan, step 5 (Ali chose "Build missing frames first"):**
   - **Audited Figma page `06 V0.2 Full Desktop Prototype` (`44:2`) against the 6 locked signature patterns.** Trust Drawer (`44:299`), Approval Consequence Preview (`44:304`), and Now/Next strip (`44:102`/`44:105`) were genuinely present — real repeated cards, not just labels. Mode Indicator, Nav Health Badges, and Passport Drift Warning had no Figma representation at all.
   - **Built the 3 missing frames from the real shipped code, not faked**, via the Figma Plugin API (`use_figma`): Mode Indicator (`54:2`, from `lib/mode-context.tsx`'s `MODE_PRESENTATION` — all 4 states with real badge/tooltip text), Nav Health Badges (`54:25`, from `components/side-nav.tsx`'s `badgeFor()` — the 4 real routes with real tone mapping), Passport Drift Warning (`54:48`, from `app/settings/page.tsx`'s Agent Governance tab — the real "Passport drift — this brief ran on agent v2, control profile is now v3" chip copy). All three verified via `get_design_context` to render with correct locked-token hex values.

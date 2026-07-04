@@ -25,6 +25,7 @@ The goal is not infrastructure purity. The goal is a reliable, understandable pi
 | Database | Neon Postgres | Managed Postgres, direct migration URL, good pilot fit |
 | Vector search | `pgvector` | Keeps semantic search close to evidence and governance joins |
 | Auth | Clerk | Already integrated for signup, login, and organizations |
+| Email | Clerk + managed product email provider | Clerk handles auth verification and account lifecycle email; Nexus product/cron email uses Resend or Cloudflare Email Sending |
 | File storage | Cloudflare R2 | Low-cost original-file retention with S3-compatible APIs |
 | Edge/security | Cloudflare selective services | DNS, CDN, WAF, AI Gateway where useful |
 | Messaging | Slack adapter first | Governed secondary interface, not source of truth |
@@ -36,6 +37,7 @@ The goal is not infrastructure purity. The goal is a reliable, understandable pi
 - No split vector database unless retrieval load proves it is necessary
 - No autonomous writeback to enterprise systems
 - No replacement of Clerk during pilot packaging
+- No custom auth-email confirmation flow or self-hosted mail server for V1 demos
 
 ## Why This Fits NexusAI
 

@@ -2,6 +2,20 @@
 
 ---
 
+## Unreleased — Email Boundary and Production Sender Paperwork (2026-07-04)
+
+Aligned the Nexus strategy and deployment paperwork around the auth/product email split for Pinavia demos.
+
+**Decision.** Clerk owns auth email: signup/signin verification, password reset, account lifecycle, and future organization invitation email. Nexus owns product email only: scheduled synthesis briefs, pilot notifications, support/security notifications, and later workflow alerts. No custom auth-confirmation flow or self-hosted mail server for V1 demos.
+
+**Docs.** Updated `docs/USER_STRATEGY_AND_PIVOTS.md`, `docs/INFRA_DECISION_MEMO.md`, `docs/SCHEDULED_SYNTHESIS_SPEC.md`, `docs/ROADMAP.md`, `BACKLOG.md`, `TASKS.md`, `CUTOVER.md`, `DEPLOY.md`, `docs/RENDER_DEPLOY.md`, `.env.example`, and `HANDOVER.md`.
+
+**Operational follow-up.** Authenticate the `pinavia.io` sender domain, set `NEXUS_RESEND_API_KEY` and `NEXUS_FROM_EMAIL` (for example `Nexus <noreply@pinavia.io>`), confirm Clerk email verification/password reset settings in Clerk, and run one scheduled synthesis email delivery test before demos.
+
+**Voice future-proofing.** Recorded that Whisper/local voice should not be a first-iteration demo dependency. Browser microphone access stays disabled for V1. The future seam is transcript-first: local OS dictation or local Whisper on the user's PC produces text, then Nexus handles it as a normal Ask query, note, or evidence transcript. Nexus-owned audio processing is deferred until consent, audit logging, sensitivity gating, and transcript retention rules are designed.
+
+---
+
 ## Unreleased — Knowledge Workspace: Richer Graph Filters (2026-06-27)
 
 Closes the `BACKLOG.md` P2 item "Richer Knowledge graph filters" — filter the Knowledge Workspace note list and graph by tag, source kind, entity, workflow, ref type, and freshness window, all from one shared filter state.

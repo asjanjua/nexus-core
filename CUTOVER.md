@@ -68,6 +68,8 @@ QUICKBOOKS_CLIENT_SECRET=
 QUICKBOOKS_ENVIRONMENT=
 LINKEDIN_CLIENT_ID=
 LINKEDIN_CLIENT_SECRET=
+NEXUS_RESEND_API_KEY=
+NEXUS_FROM_EMAIL="Nexus <noreply@pinavia.io>"
 SENTRY_DSN=
 NEXT_PUBLIC_SENTRY_DSN=
 SENTRY_ORG=
@@ -85,6 +87,8 @@ The same "only set when active" rule applies to the five newer connectors:
 - LinkedIn (`LINKEDIN_CLIENT_ID`/`LINKEDIN_CLIENT_SECRET`) — create an app at developer.linkedin.com. Reading company-page posts additionally requires LinkedIn's Community Management API product, which needs separate partner review and approval before the connector can list/ingest real posts — the OAuth install/callback flow works without it, but `files`/`ingest` calls will 502 with a 403 from LinkedIn until approved.
 
 Each connector's redirect URI follows the same pattern: `{NEXT_PUBLIC_APP_URL}/api/connectors/{type}/callback` (e.g. `/api/connectors/github/callback`, `/api/connectors/jira/callback`, `/api/connectors/hubspot/callback`, `/api/connectors/quickbooks/callback`, `/api/connectors/linkedin/callback`). Register this exact URI with each provider before testing the install flow.
+
+Email boundary: Clerk owns signup/signin verification, password reset, account lifecycle, and future organization invitation email. Nexus product email uses a managed sender only. Set `NEXUS_RESEND_API_KEY` and `NEXUS_FROM_EMAIL` after authenticating the `pinavia.io` sending domain, then run one scheduled synthesis email test before demos. Do not add a custom auth-confirmation flow or self-hosted mail server for V1.
 
 Sentry variables are optional — the app runs identically with no Sentry account configured (`enabled: !!process.env.SENTRY_DSN` gates initialization to a no-op). Set them once a Sentry project exists; leave them blank otherwise. `NEXUS_LLM_MODEL` should be `deepseek-v4-flash` or `deepseek-v4-pro`, not the legacy `deepseek-chat`/`deepseek-reasoner` names — DeepSeek retires those on 2026-07-24 15:59 UTC.
 

@@ -109,6 +109,8 @@ Set these in Render.
 | `OPENAI_API_KEY` | Required for embeddings when vector search is enabled |
 | `NEXUS_VECTOR_SEARCH` | Set to `enabled` to use `pgvector` retrieval |
 | `NEXUS_CRON_SECRET` | Shared secret for `POST /api/cron/synthesis` scheduled refreshes |
+| `NEXUS_RESEND_API_KEY` | Product email provider key for scheduled synthesis briefs; not used for Clerk auth email |
+| `NEXUS_FROM_EMAIL` | Authenticated sender, usually `Nexus <noreply@pinavia.io>` |
 | `NEXUS_R2_ORIGINALS` | Set to `enabled` to retain original uploads |
 | `R2_ACCOUNT_ID` | Cloudflare account id |
 | `R2_ACCESS_KEY_ID` | R2 access key |
@@ -131,7 +133,8 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 In Clerk:
 
 1. Enable Organizations.
-2. Configure sign-in and sign-up paths:
+2. Keep Clerk responsible for auth email verification, password reset, account lifecycle, and future organization invitation email.
+3. Configure sign-in and sign-up paths:
 
 | Setting | Value |
 |---|---|
@@ -140,8 +143,8 @@ In Clerk:
 | After sign-in URL | `/dashboard/ceo` |
 | After sign-up URL | `/onboarding` |
 
-3. Add the deployed app URL and custom domain to allowed redirect URLs.
-4. Configure the webhook endpoint:
+4. Add the deployed app URL and custom domain to allowed redirect URLs.
+5. Configure the webhook endpoint:
 
 ```text
 https://your-render-service.onrender.com/api/webhooks/clerk
