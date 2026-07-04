@@ -86,13 +86,18 @@ const isAgentApiRoute = createRouteMatcher([
 // Security headers
 // ---------------------------------------------------------------------------
 
+export function parseAllowedOrigins(input: string | undefined): string[] {
+  return (input ?? "")
+    .split(",")
+    .map((origin) => origin.trim().replace(/\/+$/, ""))
+    .filter(Boolean);
+}
+
 const PRODUCTION_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/+$/, "");
-const ALLOWED_ORIGINS = new Set(
-  [
-    PRODUCTION_ORIGIN,
-    process.env.NEXUS_EXTRA_CORS_ORIGIN ?? "",
-  ].filter(Boolean)
-);
+const ALLOWED_ORIGINS = new Set([
+  PRODUCTION_ORIGIN,
+  ...parseAllowedOrigins(process.env.NEXUS_EXTRA_CORS_ORIGINS ?? process.env.NEXUS_EXTRA_CORS_ORIGIN),
+].filter(Boolean));
 
 // Clerk frontend API domain — set NEXT_PUBLIC_CLERK_DOMAIN in Render env vars.
 // Defaults to the standard Clerk accounts CDN; override if using a custom domain.

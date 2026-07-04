@@ -11,7 +11,7 @@
 import { describe, expect, it, beforeAll, afterAll, vi } from "vitest";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { withSecurityHeaders, CSP_DIRECTIVES } from "@/middleware";
+import { withSecurityHeaders, CSP_DIRECTIVES, parseAllowedOrigins } from "@/middleware";
 
 function fakeRequest(path = "/dashboard/ceo"): NextRequest {
   return {
@@ -22,6 +22,15 @@ function fakeRequest(path = "/dashboard/ceo"): NextRequest {
 }
 
 describe("Security headers", () => {
+  it("parses comma-separated extra CORS origins for domain cutovers", () => {
+    expect(
+      parseAllowedOrigins(" https://app.pinavia.io/, https://nexus-mission-control.onrender.com ")
+    ).toEqual([
+      "https://app.pinavia.io",
+      "https://nexus-mission-control.onrender.com",
+    ]);
+  });
+
   it("sets the core hardening headers on every response", () => {
     const res = withSecurityHeaders(NextResponse.next(), fakeRequest());
     expect(res.headers.get("x-content-type-options")).toBe("nosniff");

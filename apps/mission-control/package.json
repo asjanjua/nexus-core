@@ -10,6 +10,7 @@
     "lint": "next lint",
     "test": "vitest run",
     "cron:synthesis": "node scripts/run-scheduled-synthesis.mjs",
+    "smoke:domain": "node scripts/smoke-domain.mjs",
     "mcp:knowledge": "node scripts/knowledge-mcp.mjs",
     "db:generate": "npx --yes drizzle-kit@0.31.10 generate",
     "db:migrate": "node scripts/db-migrate.mjs",
