@@ -1,45 +1,100 @@
-# CONFIRM_NOW.md — Ali's Action List
+# CONFIRM_NOW.md — Pinavia Nexus Action List
 
-> Distilled from `BACKLOG.md` (last reviewed 2026-06-26). This is not a new backlog, it is the subset of items that need YOUR action, login, or decision right now. Everything else in the backlog is engineering work that can proceed without you. Last generated: 2026-06-27.
+> Current target: hardened demo stage in the next 48 hours. The detailed execution plan is `docs/PINAVIA_NEXUS_48H_HARDENED_DEMO_PLAN.md`. This file is the short action list for items that need login, account access, or a go/no-go decision. Last refreshed: 2026-07-04.
+
+## 0. Current standing
+
+- Local repo is on `main`; only this action-list paperwork and the 48-hour demo plan are currently uncommitted.
+- Local HEAD is `26ae1ba` (`chore: add pinavia domain cutover smoke checks`).
+- Latest commit added demo-domain cutover support: `NEXUS_EXTRA_CORS_ORIGINS`, `smoke:domain`, Pinavia env examples, and Render blueprint visibility.
+- Live `/api/health` returned `status=ok` on 2026-07-04 with database, vector search, R2 originals, and DeepSeek configured.
+- `APP_URL=https://nexus-mission-control.onrender.com npm run smoke:domain -w @nexus/mission-control` passed locally on 2026-07-04.
+- Earlier local `tsc`, focused Vitest, and `build` commands hung silently in this shell and were stopped, so treat those gates as inconclusive until rerun cleanly.
 
 ---
 
-## 1. Push and deploy (do this first, blocks everything else)
+## 1. Confirm deploy truth (do this first, blocks demo confidence)
 
-1.1. Push the local commits from your machine. The sandbox has no GitHub network access.
+1.1. Confirm `origin/main` matches local HEAD:
 
 ```bash
 cd /Users/alijanjua/Documents/Playground/nexus-core
 git pull origin main
-git push origin main
+git rev-parse HEAD
+git rev-parse origin/main
 ```
 
-Current local HEAD is `adabfe1` (paperwork), on top of `cc64239` (Step 5 Figma) and `d3aa1ce` (Step 4 live patterns). Confirm `origin/main` matches after push.
+Expected HEAD: `26ae1ba`.
 
-1.2. Log in to Render. Confirm the `nexus-mission-control` service deployed commit matches the new `origin/main` HEAD. If it is still on an older commit (last known: `9da3411`), trigger a manual deploy from `main`.
+1.2. Log in to Render. Confirm the `nexus-mission-control` service deployed commit matches the same SHA. If it is behind, trigger a manual deploy from `main`.
 
-1.3. Once deployed, smoke test in a logged-in browser session (Clerk blocks unauthenticated curl, so this cannot be done headless):
-- `/knowledge`
-- `/workflows`
-- `/settings/connectors`
-- Ask note citations
+1.3. Re-run health after deploy:
+
+```bash
+curl -sS https://nexus-mission-control.onrender.com/api/health | jq .
+```
 
 ---
 
-## 2. Decisions only you can make
+## 2. Authenticated demo smoke
 
-2.1. **Closed — both connector batches are committed and pushed.** This section previously flagged two stacked uncommitted batches; that is now stale. Your own verification run confirmed: `npm install` clean (510 packages, 0 vulnerabilities), `npm run test` passing 239/239 across 37 files, and `npm run build` succeeding across 135 pages with all 8 connector API routes present (github, jira, hubspot, quickbooks, linkedin, gmail, outlook-mail, imap). Git history confirms both batches are committed (`fffe3d0`, `0fb0780`) and `origin/main` is at `adabfe1`, matching local HEAD exactly. No action needed here.
+Run this in a logged-in browser session because Clerk blocks unauthenticated curl:
 
-   One open item from that run: `npx tsc --noEmit` printed the TypeScript CLI's help/usage text instead of a clean pass or an error list. That is not a valid signal either way, it means the command did not run as intended (likely needs workspace targeting in this monorepo). Re-run it as:
+- `/onboarding`
+- upload/ingestion
+- `/approvals`
+- `/dashboard/ceo`
+- Ask with evidence refs
+- `/knowledge`
+- Ask with note refs separate from evidence refs
+- `/workflows`
+- `/settings/connectors`
+- `/pilot/paperwork` or Export Hub
+
+Record blockers only if they would derail the demo.
+
+---
+
+## 3. Local verification retry
+
+The right commands are still:
 
 ```bash
 cd /Users/alijanjua/Documents/Playground/nexus-core
 npm exec -w @nexus/mission-control tsc -- --noEmit
+npm run test
+npm run build
+APP_URL=https://nexus-mission-control.onrender.com npm run smoke:domain -w @nexus/mission-control
 ```
 
-   and confirm it returns clean before treating typecheck as verified.
+Today's shell hung on all three, so retry from the normal local terminal before the final demo freeze. If they hang again, diagnose the local Node/process issue separately from application correctness.
 
-2.2. **OAuth app registrations** — none of the 9 connectors now code-complete (Google Drive, SharePoint/Teams, GitHub, Jira, HubSpot, QuickBooks, LinkedIn, Gmail, Outlook Mail) has been verified against a real OAuth app yet. This requires you personally, since it is your developer accounts:
+---
+
+## 4. Operational gaps that need account access
+
+4.1. Authenticate the `pinavia.io` sender domain in Resend or the selected managed email provider.
+
+4.2. Set:
+
+```text
+NEXUS_RESEND_API_KEY=
+NEXUS_FROM_EMAIL="Nexus <noreply@pinavia.io>"
+```
+
+4.3. Run one scheduled synthesis email test. Keep Clerk responsible for auth email verification/password reset.
+
+4.4. Set up uptime monitoring for `/api/health`.
+
+4.5. Confirm support/security contact route for the demo window.
+
+4.6. Run a live security headers scan and capture the result.
+
+---
+
+## 5. Connector decisions only you can make
+
+None of the 9 code-complete OAuth connectors (Google Drive, SharePoint/Teams, GitHub, Jira, HubSpot, QuickBooks, LinkedIn, Gmail, Outlook Mail) has been verified against a real OAuth app yet. This requires your developer accounts:
 
 | Provider | Where to register | Env vars already in `render.yaml`/`CUTOVER.md` |
 |---|---|---|
@@ -53,38 +108,12 @@ npm exec -w @nexus/mission-control tsc -- --noEmit
 
    Redirect URI pattern for all: `{NEXT_PUBLIC_APP_URL}/api/connectors/{type}/callback`. Gmail and Outlook reuse the Google/Microsoft clients above, just add their own redirect URI to each.
 
-2.3. **IMAP Email connector** needs a real mailbox to test against (any IMAP-over-TLS host: Gmail, Outlook, Spacemail, Hostinger, Zoho, self-hosted). No OAuth app needed, just a mailbox and credentials.
+IMAP Email needs a real mailbox to test against. No OAuth app needed, just a mailbox and credentials.
 
-2.4. **Figma Code Connect plan tier** — already decided by you ("not upgrading"). No action needed, just flagging that this is now a closed decision, not an open one. Mappings are documented manually in `docs/UI_UX_WORKPLAN.md` instead.
-
----
-
-## 3. Operational gaps that need an owner (not urgent, but unowned)
-
-These are `open` in `BACKLOG.md` P1 and have no engineering blocker, they need a business decision or a few minutes of admin:
-
-3.1. Set up `support@` and `security@` mailboxes (or equivalent), monitored.
-
-3.2. Run securityheaders.com against the live app to confirm the A rating (header set is already built, just needs the live scan).
-
-3.3. Confirm Neon daily backups are on and run one restore test (30-day retention target).
-
-3.4. Decide if R2 bucket versioning is needed (only required if you're promising clients original-file recovery).
-
-3.5. Document and publish the pilot SLA (4-hour response / 1-hour critical is in the current task text, needs to actually be in pilot paperwork).
-
-3.6. Set up uptime monitoring on `/api/health`, dashboard, and ingestion route.
-
-None of these block a pilot conversation, but all of them block signing one with eyes open.
+Figma Code Connect plan tier is already decided: no upgrade. Mappings are documented manually in `docs/UI_UX_WORKPLAN.md`.
 
 ---
 
-## 4. What does NOT need your attention right now
+## 6. What does NOT need demo-window attention
 
 Everything else in `BACKLOG.md` (Knowledge graph filters, duplicate/contradiction audit, Ops Review Twin richer UI, design-to-code generation, connector scope expansion like aggregate Jira/HubSpot/QuickBooks rollups) is open product backlog with no external dependency. It will get worked through in normal sessions without needing your login or your accounts.
-
----
-
-## Immediate next step
-
-Push and deploy (Section 1) first, since nothing else can be confirmed until `origin/main` and Render agree on a commit. Then tell me which of Section 2's two items you want next: the connector verification cycle, or the OAuth app registrations. I'd suggest the registrations first since they unblock real data flowing through connectors that are otherwise just code sitting idle.
