@@ -5,7 +5,7 @@
 > For the visual finish-line map, see `docs/DEVELOPMENT_FINISH_LINE_VISUAL.md`.
 > For the markdown estate review, see `docs/MARKDOWN_ESTATE_REVIEW_2026-06-25.md`.
 > For typed runtime/state/effect safety rules, see `docs/ENGINEERING_GUARDRAILS.md`.
-> Last reviewed and tightened: 2026-06-26.
+> Last reviewed and tightened: 2026-07-04.
 
 ---
 
@@ -20,7 +20,7 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 
 ---
 
-## Current Status (verified 2026-06-17) -- v0.25.0
+## Current Status (re-checked 2026-07-04) -- v0.25.x
 
 **Last fully verified release:** v0.23.0 on 2026-06-13 -- 28 test files / 179 tests, build clean, 24 DB migrations.
 **Current verification:** v0.25.0 Knowledge Workspace passed TypeScript, 29 test files / 187 tests, production build, and production dependency audit. In-app/unauthenticated browser smoke is blocked by Clerk-hosted sign-in for protected routes; verify `/knowledge`, `/workflows`, and Ask note citations in the logged-in Chrome/Render session after deploy.
@@ -64,7 +64,7 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 5. [x] U7 Shadow ROI instrumentation -- measured manual-vs-Nexus comparison for the chosen workflow.
 6. [x] Build Knowledge Workspace v0.25.0 -- markdown editor, backlinks, graph, import/export, live local vault sync, MCP wrapper, and Ask `noteRefs`.
 7. [x] Align user strategy and paperwork docs -- readiness-first buyer lanes, workflow scorer bridge, sponsor/reviewer requirements, and governed value proof.
-8. [ ] Confirm Render deploy for pushed commit `9da3411` (current `origin/main` HEAD, supersedes the earlier v0.25.0 commit `3530808`), then run authenticated smoke tests in the logged-in browser session. Migrations 0025-0026 and production `/api/health` are complete.
+8. [ ] Confirm Render deploy for the latest pushed `origin/main` commit, then run authenticated smoke tests in the logged-in browser session. Production `/api/health` and public domain smoke are green as of 2026-07-04; authenticated browser smoke remains the real demo gate.
 9. [x] Add cron job entries to `render.yaml` -- dispatch runner, billing reset, and trial-to-free conversion. Three cron services added 2026-06-25: dispatch every 2 min, billing daily at midnight, synthesis daily at 1am. All auth via `NEXUS_CRON_SECRET`. Verify in Render dashboard after deploy.
 10. [x] Wire LLM routing table into execution path -- CLOSED 2026-06-25 (Task #36). `callLLM()` now executes the `model-routing.ts` policy via `callLLMWithRouting()`, wired into all 8 real call sites. Found and fixed a real bug as a byproduct: DeepSeek retires `deepseek-chat`/`deepseek-reasoner` 2026-07-24 15:59 UTC, so `DEFAULT_MODEL` and `estimateCostMicro()` now use `deepseek-v4-flash`/`deepseek-v4-pro` with correct split pricing.
 11. [x] Add workspace-level provider allow-list setting — Settings > AI Policy page now shows multi-select of 6 providers with jurisdiction flags, local-only mode toggle, and live save via existing `PATCH /api/settings/workspace`. `isProviderAllowed()` enforcement already existed; now the UI is wired.

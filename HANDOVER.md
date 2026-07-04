@@ -6,9 +6,19 @@
 
 ## Session Info
 
-- **Last updated:** 2026-07-04 (v0.25.x — session #39 with Codex. Email strategy plus voice/Whisper future-proofing aligned in paperwork: Clerk owns auth email, Nexus owns product email through a managed sender, and voice stays deferred behind a transcript-first seam.)
+- **Last updated:** 2026-07-04 (v0.25.x — session #40 with Codex. Whole-codebase re-check completed: route-auth inventory, middleware/public verifier boundaries, live health/smoke, dependency audit, and demo-hardening fixes for scoped recommendation approvals, honest R2 health, real workspace settings, and Clerk/OAuth callback middleware.)
 - **Last model:** Codex (GPT-5)
-- **Session number:** #39
+- **Session number:** #40
+- **Session #40 delivered (2026-07-04) — whole-codebase re-check and demo-hardening fixes:**
+  - **Repo state checked:** `main` matched `origin/main` before changes; latest pushed commit was `4d48fd8` (`docs: refresh pinavia demo action plan`).
+  - **Codebase surface checked:** Mission Control currently has 316 app TS/TSX/JSON files, 90+ API route files, 37 test files, and DB migrations through `0028_knowledge_embeddings.sql`.
+  - **Security fix:** `/api/approvals/:recommendationId` now calls `requireScope("write:approvals")` and uses a new workspace-scoped repository update path, so a logged-in user or bearer token cannot update a recommendation by guessed ID across workspaces.
+  - **Webhook/OAuth middleware fix:** `/api/webhooks/clerk` is now public at middleware level because the route verifies Svix signatures itself; all OAuth connector callbacks are likewise public because their routes validate signed HMAC state before storing credentials. Install/admin routes remain protected.
+  - **Health fix:** `/api/health` now includes original-file storage in top-level status when `NEXUS_R2_ORIGINALS=enabled`, while staying healthy when originals storage is intentionally disabled.
+  - **Workspace settings fix:** `/settings/workspace` no longer displays hardcoded `workspace-demo`/`tenant-demo`; it resolves the Clerk org/user workspace and renders real workspace settings/policy defaults/source surface status.
+  - **Verification completed:** route-auth inventory returned no API route without either `requireScope`/`resolveAuth` or an explicit verifier/public path; `npm audit --omit=dev --json` returned zero known production vulnerabilities; live `APP_URL=https://nexus-mission-control.onrender.com npm run smoke:domain -w @nexus/mission-control` passed all 8 checks; live `/api/health` returned `status=ok` with database, vector search, R2 originals, and DeepSeek configured.
+  - **Verification caveat:** local `tsc`, focused Vitest, `next build`, and `npm ls --workspaces --depth=0` still hang silently in this shell and were stopped cleanly. Do not record them as passing until rerun successfully from a clean local terminal or CI.
+  - **Do next:** commit/push the session #40 hardening patch, then trigger/confirm Render deploy for the new commit and run authenticated browser smoke.
 - **Session #39 delivered (2026-07-04) — auth/product email boundary and production sender paperwork:**
   - **Strategy decision recorded:** Clerk remains the owner of signup/signin verification, password reset, account lifecycle, and future organization invitation email. Nexus does not build a custom auth-confirmation flow for V1 demos.
   - **Product email boundary recorded:** Nexus sends only product email — scheduled synthesis briefs, pilot notifications, support/security notifications, and future workflow alerts — through a managed provider such as Resend or Cloudflare Email Sending.

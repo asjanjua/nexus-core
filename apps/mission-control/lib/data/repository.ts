@@ -1,4 +1,4 @@
-import { desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { verifyPassword } from "@/lib/auth";
@@ -933,6 +933,35 @@ export const repository = {
     });
     if (!updated) return store.updateRecommendationStatus(id, status, actor);
     return updated;
+  },
+
+  async updateRecommendationStatusForWorkspace(
+    workspaceId: string,
+    id: string,
+    status: RecommendationStatus,
+    actor = "system"
+  ): Promise<Recommendation | undefined> {
+    const updated = await runDb(async (db) => {
+      const rows = await db
+        .update(recommendations)
+        .set({ status: status as (typeof recommendationStatusEnum.enumValues)[number], updatedAt: new Date() })
+        .where(and(eq(recommendations.id, id), eq(recommendations.workspaceId, workspaceId)))
+        .returning();
+      if (!rows.length) return undefined;
+      await db.insert(auditEvents).values({
+        id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        workspaceId,
+        type: "recommendation_status_updated",
+        actor,
+        payload: { recommendationId: id, status }
+      });
+      return toRecommendation(rows[0]);
+    });
+    if (updated !== null) return updated;
+
+    const rec = store.getRecommendations(workspaceId).find((item) => item.id === id);
+    if (!rec) return undefined;
+    return store.updateRecommendationStatus(id, status, actor);
   },
 
   async getRoleSummary(role: string): Promise<{

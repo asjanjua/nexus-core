@@ -48,11 +48,12 @@ export async function GET() {
   const db = await repository.healthCheck();
   const llm = llmHealth();
   const vectorSearch = vectorHealth();
+  const originalsEnabled = process.env.NEXUS_R2_ORIGINALS === "enabled";
   const originalsStorage = {
-    ok: isOriginalStorageEnabled(),
-    enabled: process.env.NEXUS_R2_ORIGINALS === "enabled"
+    ok: !originalsEnabled || isOriginalStorageEnabled(),
+    enabled: originalsEnabled
   };
-  const healthy = db.ok && llm.ok && vectorSearch.ok;
+  const healthy = db.ok && llm.ok && vectorSearch.ok && originalsStorage.ok;
 
   return ok({
     status: healthy ? "ok" : "degraded",

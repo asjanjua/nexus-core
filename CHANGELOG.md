@@ -2,6 +2,18 @@
 
 ---
 
+## Unreleased — Whole-Codebase Re-check and Demo Hardening Fixes (2026-07-04)
+
+Re-checked the NexusAI Mission Control codebase from git state, API route inventory, middleware, auth, LLM routing, DB schema/migrations, storage, ingestion, recommendations, workspace settings, dependency audit, and live public smoke.
+
+**Fixes.** Scoped recommendation approvals to the authenticated workspace by adding `repository.updateRecommendationStatusForWorkspace()` and wiring `/api/approvals/:recommendationId` through `requireScope("write:approvals")`; the route no longer updates by recommendation ID alone. Updated `/api/health` so original-file storage contributes honestly to top-level health only when `NEXUS_R2_ORIGINALS=enabled`. Replaced the stale hardcoded `/settings/workspace` `workspace-demo` view with real Clerk workspace settings. Marked Clerk webhooks and all OAuth connector callbacks as public middleware routes only because each route has its own signature/state verifier.
+
+**Verification.** Route-auth inventory returned no unprotected API routes outside explicit verifier/public paths. `npm audit --omit=dev --json` returned zero known production vulnerabilities. Live domain smoke passed all 8 checks against `https://nexus-mission-control.onrender.com`, and live `/api/health` returned `status=ok` with database, vector search, R2 originals, and DeepSeek configured.
+
+**Local runner caveat.** `tsc`, focused Vitest, `next build`, and `npm ls --workspaces --depth=0` still hang silently in this local shell and were stopped cleanly. Treat those as inconclusive local-runner gates, not passing checks.
+
+---
+
 ## Unreleased — Email Boundary and Production Sender Paperwork (2026-07-04)
 
 Aligned the Nexus strategy and deployment paperwork around the auth/product email split for Pinavia demos.
