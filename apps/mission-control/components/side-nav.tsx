@@ -70,6 +70,7 @@ const navSections = [
     label: "Intelligence",
     items: [
       { href: "/ask", label: "Ask" },
+      { href: "/board", label: "Board Room" },
       { href: "/recommendations", label: "Recommendations" },
       { href: "/decisions", label: "Decisions" },
       { href: "/workflows", label: "Workflow Twins" },

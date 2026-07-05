@@ -5,7 +5,7 @@
 > For the visual finish-line map, see `docs/DEVELOPMENT_FINISH_LINE_VISUAL.md`.
 > For the markdown estate review, see `docs/MARKDOWN_ESTATE_REVIEW_2026-06-25.md`.
 > For typed runtime/state/effect safety rules, see `docs/ENGINEERING_GUARDRAILS.md`.
-> Last reviewed and tightened: 2026-07-04.
+> Last reviewed and tightened: 2026-07-05.
 
 ---
 
@@ -81,6 +81,16 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 22. [x] Add Knowledge Workspace follow-through — Note-to-entity linking UI (entity picker in sidebar), note embeddings via pgvector (migration 0028, vector search in `/api/knowledge/search`). Graph filters, duplicate audit, and daily brief automation remain open.
 23. [x] Add additional connector data flows beyond Slack: Google Drive OAuth 2.0 connector — `lib/connectors/google-drive.ts` (pure fetch client), 4 API routes (install, callback, files, ingest), Settings UI integration, `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET` in `render.yaml`. Closure note (2026-06-25, Task #40): Microsoft SharePoint/Teams connector added on the same pattern — `lib/connectors/sharepoint.ts` (Microsoft identity platform OAuth + Graph API), 4 API routes under `app/api/connectors/sharepoint/`, Settings UI catalogue entry flipped to `available: true`, `MICROSOFT_CLIENT_ID`/`MICROSOFT_CLIENT_SECRET`/`MICROSOFT_TENANT_ID` added to `render.yaml` and `CUTOVER.md`. Committed and pushed by Ali on 2026-06-25 as commit `2ff4c26` (bundled with the prior session's uncommitted batch). Code-complete; still pending real-OAuth-app verification (Azure AD app registration + end-to-end install flow test) and the npm install/tsc/test/build cycle.
 24. [x] Apply engineering guardrails before autonomous/local runner work -- typed state machines, append-only events, visible async effects, auth-mode contracts, and verifier error taxonomy. CLOSED 2026-06-25 — contract layer landed in `lib/guardrails.ts` (`RunnerState`, `AuthMode`, `EffectResult<T>`, `VerifierOutcome`, `RunnerEvent`, `assertNever`) with `tests/guardrails.test.ts`. tsc clean; 16 runtime assertions verified via tsx. Runners adopt these primitives when built.
+25. [x] Build Quorum-branded board UI screen — `/board` now renders a director-facing Board Room on top of `POST /api/board/delta`, with stable board identifier, baseline/delta states, status chips, Director Q&A cards, evidence/entity links, governance boundary copy, and side-nav entry. Verified 2026-07-05 with `tsc`, full mission-control tests, and production build.
+
+## Active Product Queue (updated 2026-07-05)
+
+These are the four pivot/product items that were explicitly reviewed after the DD checklist and board-delta backend work. Keep this queue current so implementation order stays visible.
+
+1. [ ] Connectors beyond skeletons — Drive and Gmail have real OAuth plus ingestion; Slack has delivery and inbound channel-message ingestion but no broader scheduled ingestion surface; Teams remains thin compared with SharePoint/Graph. Next step: choose one connector path to make end-to-end demoable with install, source selection, ingest, sync status, and retry/error visibility.
+2. [ ] Meridian SECP NBFI requirement library — create the Pakistan NBFI-first regulatory requirement pack for Meridian, scoped to SECP before SBP/EMI expansion. Needs domain-reviewed requirements, evidence tags, red flags, and memo sections.
+3. [ ] Nucleus methodology-pack authoring tool — let consulting partners encode proprietary frameworks into governed agent/methodology packs without per-firm engineering. Needs authoring UI, schema, validation, versioning, preview, and white-label fit.
+4. [x] Quorum-branded board UI screen — shipped `/board` Board Room UI. Backend board synthesis and between-meetings delta were already present; this adds the user-facing Quorum surface.
 
 ## Strategy Operating Plan (updated 2026-06-25)
 

@@ -7,7 +7,7 @@
 > Architecture review: `TASKS.md` § Architecture Review Action Items.
 > Distribution plan: `NexusAI_Distribution_Plan.docx` and `docs/INFRA_DECISION_MEMO.md`.
 > UI/UX workplan: `docs/UI_UX_WORKPLAN.md` (MCP-aware design-to-code pipeline).
-> Last reviewed: 2026-06-26.
+> Last reviewed: 2026-07-05.
 
 ---
 
@@ -122,6 +122,17 @@ This is the operating plan that keeps the strategy in the paperwork rather than 
 | Keep markdown estate review current | done | `docs/MARKDOWN_ESTATE_REVIEW_2026-06-25.md` | Classifies all 63 Markdown files and lists targeted cleanup work. |
 | Keep engineering guardrails current | done | `docs/ENGINEERING_GUARDRAILS.md` | Added 2026-06-25 from the FP review: typed states, auth modes, append-only events, visible async effects, and exhaustive failure categories. |
 | Translate strategy into product tickets | done | `TASKS.md` | Strategy profile (migration 0027), onboarding workflow routing, pilot paperwork API, backcast dashboard seeding all implemented. |
+
+## P2c — Pivot Product Queue
+
+These are the current pivot/product surfaces that sit above the core Nexus operating layer. The queue keeps Quorum, Meridian, Nucleus, and connector breadth visible without scattering them across old strategy notes.
+
+| Item | Status | Source | Notes |
+|---|---|---|---|
+| Quorum Board Room UI | local verified | `TASKS.md`, board synthesis/delta backend | Built 2026-07-05. `/board` renders a director-facing board intelligence screen over `POST /api/board/delta`: stable board identifier, first-run baseline state, later between-meetings delta, Director Q&A, confidence/evidence chips, source links, entity links, and governance boundary copy. Side nav includes Board Room. `tsc`, full mission-control tests, and production build passed locally; Render deploy/auth smoke still pending. |
+| Connectors beyond skeletons | open | connector backlog | Drive and Gmail have real OAuth + ingestion; Slack has delivery plus inbound channel-message ingestion but needs broader sync/ingestion UX; Teams is still thin beyond SharePoint/Graph. Next useful pass should make one connector end-to-end demoable: install, source select, ingest, sync status, retry/error visibility. |
+| Meridian SECP NBFI requirement library | open | user queue | Content curation pack for Pakistan NBFIs under SECP first, not SBP EMI first. Needs domain-reviewed requirements, evidence tags, red flags, memo sections, and tests similar to the DD checklist library. |
+| Nucleus methodology-pack authoring tool | open | user queue | Partner-facing authoring workflow for consulting firms to encode proprietary frameworks into governed methodology packs without engineering. Needs schema, UI, validation, versioning, preview, and white-label/tenant boundaries. |
 
 ## P2b — Documentation Cleanup Backlog
 

@@ -2,6 +2,20 @@
 
 ---
 
+## Unreleased — Quorum Board Room Screen (2026-07-05)
+
+Added the first Quorum-branded board intelligence screen on top of the existing board synthesis and delta APIs.
+
+**UI.** New `/board` route renders `BoardRoomPanel`: a director-facing board delta workspace with a stable board identifier, generate action, current status chips, between-meetings delta output, first-run baseline state, and Director Q&A cards with confidence, evidence refs, source links, and entity links.
+
+**Navigation.** Mission Control side nav now includes `Board Room` under Intelligence, making the board workflow discoverable without going through API-only routes.
+
+**Governance.** The screen explicitly preserves the V1 trust boundary: no board output files, sends, approves, or commits actions automatically. The surface points directors back to evidence, ingestion, and decisions for human-owned follow-through.
+
+**Verification.** `npm exec -w @nexus/mission-control tsc -- --noEmit --pretty false`, `npm test -w @nexus/mission-control`, and `npm run build -w @nexus/mission-control` all passed locally. The production build includes route `/board`.
+
+---
+
 ## Unreleased — Selected BuilderOS Workflow Skills (2026-07-05)
 
 Installed only the two BuilderOS skills selected for Nexus workflow support: `.claude/skills/design-better/SKILL.md` and `.claude/skills/build-loop-codex/SKILL.md`, plus the upstream MIT license notice at `.claude/skills/BUILDEROS_LICENSE.txt`.

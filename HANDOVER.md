@@ -6,9 +6,16 @@
 
 ## Session Info
 
-- **Last updated:** 2026-07-05 (v0.25.x — session #42 with Codex. Clarified UI baseline versioning, added UI baseline ledger, and installed selected BuilderOS workflow skills; full tsc remains inconclusive because local TypeScript runs time out in this shell.)
+- **Last updated:** 2026-07-05 (v0.25.x — session #43 with Codex. Added the Quorum Board Room UI on top of the existing board synthesis/delta backend; tsc, tests, and build passed locally.)
 - **Last model:** Codex (GPT-5)
-- **Session number:** #42
+- **Session number:** #43
+- **Session #43 delivered (2026-07-05) — Quorum Board Room screen:**
+  - **Surface added:** `/board` now renders `BoardRoomPanel`, a Quorum-branded board intelligence workspace for director-ready board-pack synthesis and between-meetings delta review.
+  - **What the screen does:** lets the user enter a stable board identifier such as `main-board`, calls `POST /api/board/delta`, shows first-run baseline vs. later delta states, renders answered/evidence/confidence status chips, and displays Director Q&A cards with confidence, evidence source links, and entity links.
+  - **Navigation:** `Board Room` added to the Intelligence section in `components/side-nav.tsx`.
+  - **Trust boundary:** the screen states that no board output is sent, filed, approved, or made canonical automatically; directors are linked back to evidence, ingestion, and decisions for human-owned follow-through.
+  - **Verification:** `npm exec -w @nexus/mission-control tsc -- --noEmit --pretty false`, `npm test -w @nexus/mission-control` (42 files / 287 tests), and `npm run build -w @nexus/mission-control` all passed. Build output includes route `/board`.
+  - **Do next:** choose the next remaining queue item: connectors beyond skeletons, Meridian SECP NBFI requirement library, or Nucleus methodology-pack authoring tool. If demo-bound, confirm Render deploy for this commit and smoke `/board` in the logged-in browser.
 - **Session #42 delivered (2026-07-05) — UI baseline versioning clarification:**
   - **Clarification captured:** Ali clarified that Nexus has moved away from Vercel. The first UI was built there, but the same design has since been pushed into Render and the new architecture. Vercel is historical provenance only, not an active deployment lane.
   - **Runbook added:** `docs/UI_BASELINE_VERSIONING.md` defines `UI V0.1 baseline`, `Render production`, `UI V0.2 proposal`, and later iterations. It explains how to preserve the original UI through git/Figma/Render references without maintaining duplicate Vercel infrastructure.
