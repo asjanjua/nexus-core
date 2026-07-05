@@ -18,6 +18,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { decodeBearerToken } from "@/lib/tokens";
 import { fail } from "@/lib/api";
+import { repository, evaluateWorkspaceAccess } from "@/lib/data/repository";
 
 export type AuthContext = {
   workspaceId: string;
@@ -66,6 +67,31 @@ export async function resolveAuth(request: Request): Promise<AuthContext | null>
   return null;
 }
 
+// ---------------------------------------------------------------------------
+// Workspace access gate (suspended / expired / cancelled workspaces)
+//
+// Short in-process TTL cache so requireScope — called on nearly every API
+// route — doesn't add a DB round-trip to every single request. Access state
+// changes (suspend, expiry, payment recovery) are not so time-sensitive that
+// a 30s staleness window matters; this mirrors the caching pattern already
+// used for token budget checks in lib/billing/budget.ts.
+// ---------------------------------------------------------------------------
+
+const accessCache = new Map<string, { blocked: boolean; reason: string | null; expiresAt: number }>();
+const ACCESS_CACHE_TTL_MS = 30 * 1000;
+
+async function checkWorkspaceAccess(workspaceId: string): Promise<{ blocked: boolean; reason: string | null }> {
+  const cached = accessCache.get(workspaceId);
+  if (cached && cached.expiresAt > Date.now()) {
+    return { blocked: cached.blocked, reason: cached.reason };
+  }
+  const record = await repository.getWorkspaceStatus(workspaceId).catch(() => null);
+  // Fail open on a lookup error — never lock everyone out because of a DB blip.
+  const result = record ? evaluateWorkspaceAccess(record) : { blocked: false, reason: null };
+  accessCache.set(workspaceId, { ...result, expiresAt: Date.now() + ACCESS_CACHE_TTL_MS });
+  return result;
+}
+
 /**
  * Resolve auth and enforce a required scope for Bearer tokens.
  *
@@ -73,10 +99,15 @@ export async function resolveAuth(request: Request): Promise<AuthContext | null>
  *   const { ctx, error } = await requireScope(request, "read:dashboard");
  *   if (error) return error;
  *   // ctx.workspaceId is safe to use
+ *
+ * Pass { allowWhenBlocked: true } for routes a suspended/expired workspace
+ * must still be able to reach — e.g. billing checkout/portal, so a customer
+ * can actually resolve the thing that's blocking them.
  */
 export async function requireScope(
   request: Request,
-  scope: string
+  scope: string,
+  options: { allowWhenBlocked?: boolean } = {}
 ): Promise<{ ctx: AuthContext; error: null } | { ctx: null; error: Response }> {
   const ctx = await resolveAuth(request);
   if (!ctx) {
@@ -89,6 +120,12 @@ export async function requireScope(
     !ctx.scopes.includes(scope)
   ) {
     return { ctx: null, error: fail("insufficient_scope", 403) };
+  }
+  if (!options.allowWhenBlocked) {
+    const access = await checkWorkspaceAccess(ctx.workspaceId);
+    if (access.blocked) {
+      return { ctx: null, error: fail(`workspace_${access.reason}`, 402) };
+    }
   }
   return { ctx, error: null };
 }

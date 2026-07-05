@@ -60,7 +60,24 @@ export type WorkspaceStatusRecord = {
   status: WorkspaceStatus;
   trialEndsAt: string | null;
   suspendedAt: string | null;
+  expiresAt: string | null;
 };
+
+export type WorkspaceAccessCheck = {
+  blocked: boolean;
+  reason: "suspended" | "expired" | "cancelled" | null;
+};
+
+/** Pure function: given a status record, is the workspace blocked and why?
+ * Kept separate from the DB read so it's trivially unit-testable. */
+export function evaluateWorkspaceAccess(record: WorkspaceStatusRecord): WorkspaceAccessCheck {
+  if (record.status === "cancelled") return { blocked: true, reason: "cancelled" };
+  if (record.suspendedAt) return { blocked: true, reason: "suspended" };
+  if (record.expiresAt && new Date(record.expiresAt).getTime() < Date.now()) {
+    return { blocked: true, reason: "expired" };
+  }
+  return { blocked: false, reason: null };
+}
 
 export type LLMUsageInput = {
   workspaceId: string;
@@ -2454,20 +2471,98 @@ export const repository = {
           status: workspaces.status,
           trialEndsAt: workspaces.trialEndsAt,
           suspendedAt: workspaces.suspendedAt,
+          expiresAt: workspaces.expiresAt,
         })
         .from(workspaces)
         .where(eq(workspaces.id, workspaceId))
         .limit(1)
     );
     if (!rows || rows.length === 0) {
-      return { status: "active", trialEndsAt: null, suspendedAt: null };
+      return { status: "active", trialEndsAt: null, suspendedAt: null, expiresAt: null };
     }
     const row = rows[0];
     return {
       status: (row.status ?? "active") as WorkspaceStatus,
       trialEndsAt: row.trialEndsAt ? row.trialEndsAt.toISOString() : null,
       suspendedAt: row.suspendedAt ? row.suspendedAt.toISOString() : null,
+      expiresAt: row.expiresAt ? row.expiresAt.toISOString() : null,
     };
+  },
+
+  /**
+   * Sets or clears a time-boxed expiry deadline on a workspace (Vantage
+   * per-deal, Meridian per-submission workspaces). Does not itself block
+   * access — convertExpiredWorkspaces() (cron) applies the block once the
+   * deadline passes, same mechanism as suspendWorkspace().
+   */
+  async setWorkspaceExpiry(workspaceId: string, expiresAt: string | null): Promise<void> {
+    await runDb((db) =>
+      db.update(workspaces)
+        .set({ expiresAt: expiresAt ? new Date(expiresAt) : null })
+        .where(eq(workspaces.id, workspaceId))
+    );
+    void this.pushAudit({
+      workspaceId,
+      type: "workspace_expiry_set",
+      actor: "system",
+      payload: { expiresAt },
+    }).catch(() => {});
+  },
+
+  /**
+   * Suspends workspaces whose expiry deadline has passed. Reuses the same
+   * suspendedAt mechanism as payment-failure suspension — deliberately does
+   * NOT delete any data. Call purgeWorkspaceData separately and explicitly
+   * if data deletion is actually wanted.
+   */
+  async convertExpiredWorkspaces(): Promise<number> {
+    const result = await runDb((db) =>
+      db.execute(
+        sql`UPDATE workspaces
+            SET suspended_at = NOW()
+            WHERE expires_at IS NOT NULL
+              AND expires_at < NOW()
+              AND suspended_at IS NULL
+              AND status NOT IN ('cancelled')`
+      )
+    );
+    const count = (result as { rowCount?: number })?.rowCount ?? 0;
+    if (count > 0) {
+      void this.pushAudit({
+        workspaceId: "_system_",
+        type: "workspaces_expired",
+        actor: "cron",
+        payload: { convertedCount: count, ranAt: new Date().toISOString() },
+      }).catch(() => {});
+    }
+    return count;
+  },
+
+  /**
+   * Deliberate, explicit data deletion for one workspace — evidence,
+   * entities, and agent outputs. NEVER called automatically by a cron; this
+   * is only for an explicit admin action (e.g. "delete this expired deal
+   * workspace now"). The workspace row itself and its audit trail are kept.
+   */
+  async purgeWorkspaceData(workspaceId: string): Promise<{ evidenceDeleted: number; entitiesDeleted: number; agentOutputsDeleted: number }> {
+    const result = await runDb((db) => db.transaction(async (tx) => {
+      const evidenceResult = await tx.delete(evidenceRecords).where(eq(evidenceRecords.workspaceId, workspaceId));
+      const entitiesResult = await tx.delete(entities).where(eq(entities.workspaceId, workspaceId));
+      const outputsResult = await tx.delete(agentOutputs).where(eq(agentOutputs.workspaceId, workspaceId));
+      return {
+        evidenceDeleted: (evidenceResult as { rowCount?: number })?.rowCount ?? 0,
+        entitiesDeleted: (entitiesResult as { rowCount?: number })?.rowCount ?? 0,
+        agentOutputsDeleted: (outputsResult as { rowCount?: number })?.rowCount ?? 0,
+      };
+    }));
+    const counts = result ?? { evidenceDeleted: 0, entitiesDeleted: 0, agentOutputsDeleted: 0 };
+    void this.pushAudit({
+      workspaceId: "_system_",
+      type: "workspace_data_purged",
+      actor: "admin",
+      payload: { purgedWorkspaceId: workspaceId, ...counts, purgedAt: new Date().toISOString() },
+    }).catch(() => {});
+    return counts;
   },
 
   /**

@@ -78,6 +78,12 @@ export const workspaces = pgTable("workspaces", {
   status: workspaceStatusEnum("status").notNull().default("trial"),
   trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
   suspendedAt: timestamp("suspended_at", { withTimezone: true }),
+  /** Time-boxed workspace deadline (Vantage per-deal, Meridian per-submission
+   * workspaces). Distinct from trialEndsAt: this is a deliberate business
+   * deadline, not a billing trial. When passed, convertExpiredWorkspaces()
+   * suspends the workspace; actual data deletion is a separate, deliberate
+   * action (purgeWorkspaceData) — never automatic. */
+  expiresAt: timestamp("expires_at", { withTimezone: true }),
   stripeCustomerId: text("stripe_customer_id"),
   stripeSubscriptionId: text("stripe_subscription_id"),
   plan: varchar("plan", { length: 32 }).notNull().default("free"),
