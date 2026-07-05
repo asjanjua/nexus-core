@@ -4,6 +4,13 @@ import { useState } from "react";
 import Link from "next/link";
 import type { ExecutiveSynthesis } from "@/lib/contracts";
 import { AiPanel, MetaChip, SecondaryLink } from "@/components/ui/nexus-primitives";
+import {
+  quorumGovernanceScreens,
+  quorumWorkflowArcLabels,
+  quorumWorkflowStages,
+  screensForArc,
+  type QuorumWorkflowArc,
+} from "@/lib/board-governance-workflow";
 
 type BoardDeltaResult = {
   brief: ExecutiveSynthesis;
@@ -79,6 +86,8 @@ function QuestionCard({
     </article>
   );
 }
+
+const governanceArcs: QuorumWorkflowArc[] = ["setup", "meeting", "record"];
 
 export function BoardRoomPanel() {
   const [department, setDepartment] = useState("main-board");
@@ -246,6 +255,57 @@ export function BoardRoomPanel() {
           </div>
         </section>
       )}
+
+      <section className="space-y-4">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wide text-nexus-brand/70">Governance workflow</p>
+            <h3 className="mt-1 text-xl font-semibold text-white">The board operating model Quorum is moving toward</h3>
+          </div>
+          <span className="badge badge-muted">{quorumGovernanceScreens.length} planned screens</span>
+        </div>
+
+        <div className="grid gap-3 lg:grid-cols-3">
+          {governanceArcs.map((arc) => {
+            const screens = screensForArc(arc);
+            return (
+              <article key={arc} className="rounded-lg border border-white/10 bg-white/[0.035] p-4">
+                <p className="text-xs font-semibold uppercase tracking-wide text-white/45">
+                  {quorumWorkflowArcLabels[arc]}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-white/62">
+                  {arc === "setup"
+                    ? "Configure the country, entity type, board, committees, TORs, policies, and meeting cadence."
+                    : arc === "meeting"
+                      ? "Build the agenda and pack, run pre-read, check quorum/conflicts, and capture decisions."
+                      : "Draft minutes, manage sign-off, track actions, and export the governance evidence file."}
+                </p>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {screens.slice(0, 6).map((screen) => (
+                    <span key={screen.id} className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-white/55">
+                      {screen.title}
+                    </span>
+                  ))}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+
+        <div className="rounded-lg border border-nexus-sky/20 bg-nexus-sky/5 p-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-wide text-nexus-sky/75">Implementation plan now in code</p>
+              <p className="mt-2 max-w-3xl text-sm leading-6 text-white/62">
+                The first six Quorum screens remain the concept layer. The typed workflow registry now tracks the next
+                board-governance build: setup, committees, TORs, agenda, quorum, conflicts, resolutions, minutes,
+                signatures, actions, and audit export.
+              </p>
+            </div>
+            <MetaChip label={`${quorumWorkflowStages.length} workflow stages`} tone="sky" />
+          </div>
+        </div>
+      </section>
     </div>
   );
 }
