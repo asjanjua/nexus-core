@@ -2,6 +2,80 @@
 
 ---
 
+## Unreleased — Vertical Input/Action Screen Guidance (2026-07-06)
+
+Built a cross-vertical Figma review board and backed it with code-level screen guidance so the next route work has explicit user inputs, action points, and human-control copy.
+
+**Figma.** Added page `11 Vertical Input Action Screens V0.2` in the Nexus Figma file with board node `87:3`: 33 editable desktop-browser frames across Quorum (17), Meridian (8), and Vantage (8). Each frame shows route candidate, arc, primary user, current gate, user inputs, action points, Ask behavior, and evidence/guardrail copy.
+
+**Guidance registry.** Added `quorumScreenGuidance`, `meridianScreenGuidance`, and `vantageScreenGuidance`, plus lookup helpers for each vertical. Tests now pin that every registered screen has guidance before it can be treated as build-ready.
+
+**Paperwork.** Updated the UI baseline ledger and the Quorum, Meridian, and Vantage workflow docs with the Figma board link and the guidance contract.
+
+**Verification.** Focused vertical workflow tests passed (3 files / 23 tests), full mission-control tests passed (47 files / 330 tests), `tsc --noEmit` passed, and `git diff --check` passed.
+
+---
+
+## Unreleased — Agent Skill Taxonomy and Pivot Catalog (2026-07-06)
+
+Added a typed agent skill system that bridges agent definitions, dispatch compatibility, and pivot-specific rosters.
+
+**Skill taxonomy.** Added `lib/agents/agent-skills.ts` with 34 skills across 5 families (ingest, browse, review, analyze, act). Each skill maps to source types; each family maps to required dispatch job types. `agentSupportsJobType()` and `missingFamiliesForJob()` enforce compatibility at dispatch time.
+
+**Agent library upgraded.** `lib/agents/agent-library.ts` now carries typed `AgentSkill[]` hints on every agent instead of raw strings. Every agent receives baseline skills (`browse sources`, `review evidence`, `analyze evidence`) automatically. 29 agents across 7 rooms, 23 role-to-agent-trio mappings.
+
+**Pivot agent catalog.** Added `lib/agents/pivot-agent-catalog.ts` with 5 suites (Nexus, Quorum, Meridian, Vantage, Nucleus), each with agent rosters, required skills, and explicit product boundaries. `validatePivotAgentCatalog()` checks that every suite references real agents and covers required skills. `buildAgentCatalog()` produces the full discoverable catalog.
+
+**Catalog API.** Added `GET /api/agents/catalog` (gated on `read:settings`) returning skill families, skills, agents with skill families, pivot suites with agent rosters, and catalog integrity status. Route pre-validates catalog integrity and returns 500 with a diagnostic message if any suite is broken.
+
+**UI surface.** Dashboard agent cards now show "Skills" instead of "Future skills" (4 hints shown). Settings → Agent Governance now renders "Pivot Skill Suites" with catalog integrity badge.
+
+**Dispatcher tightened.** `enforceAgentSkillCompatibility()` now logs `missingFamilies` in the audit trail when agent assignment is denied, so operators can see exactly which skill families an agent lacks.
+
+**Tests.** Added `tests/agent-skills.test.ts` (5 tests): skill normalization, job family compatibility, baseline skill enforcement on every library agent, catalog integrity validation, and pivot suite coverage.
+
+---
+
+## Unreleased — Vertical Workflow Boundary Correction (2026-07-06)
+
+Corrected the first pivot-workflow pass so verticals own their own domain workflows instead of being forced through one generic pivot template.
+
+**Removed shared template.** Deleted `lib/pivot-workflows.ts`, `tests/pivot-workflows.test.ts`, and `docs/PIVOT_WORKFLOW_BUILDS.md`. Quorum remains in its dedicated `lib/board-governance-workflow.ts` registry; other verticals should follow that pattern with their own domain files.
+
+**Meridian.** Added `lib/meridian-regulatory-workflow.ts`, `tests/meridian-regulatory-workflow.test.ts`, and `docs/MERIDIAN_REGULATORY_WORKFLOW.md`. Meridian now uses regulatory arcs: scope, evidence, gap, and filing.
+
+**Vantage.** Added `lib/vantage-dd-workflow.ts`, `tests/vantage-dd-workflow.test.ts`, and `docs/VANTAGE_DD_WORKFLOW.md`. Vantage now uses deal arcs: dealroom, coverage, redflags, and memo.
+
+**Design implication.** Figma page `10 Pivot Workflow Builds V0.1` (`82:3`) remains a design exploration, but it is no longer treated as the source of product architecture. Nexus-core is the shared engine for ingestion, governance, evidence, agents, billing, and approvals; verticals own their workflows.
+
+**Global-use hardening.** Formalized Quorum's governance boundaries and added jurisdiction/market-pack requirements for Quorum, Meridian, and Vantage. Added route-safe screen resolvers (`safeScreensForStage`, `safeMeridianScreensForStage`, `safeVantageScreensForStage`) plus strict integrity validators so registries can fail tests while future route code can log and continue during workflow expansion.
+
+---
+
+## Unreleased — Quorum Board Governance Workflow (2026-07-06)
+
+Expanded the Quorum product definition from a board-intelligence screen into a full board-governance workflow.
+
+**Workflow spec.** Added `docs/QUORUM_BOARD_GOVERNANCE_WORKFLOW.md`, a Pakistan-first but jurisdiction-pack-ready model for board setup, director and committee registers, terms of reference, policies, meeting calendar, agenda, board pack, pre-read Q&A, quorum, conflicts, decisions, circular resolutions, minutes, signatures, action register, and governance audit export.
+
+**Code plan.** Added `lib/board-governance-workflow.ts` with a typed Quorum workflow registry: Pakistan source pack, 17 planned screens, 10 workflow stages, three arcs, and helpers for rendering stage/screen mappings. `/board` now shows a compact governance workflow roadmap below the current Board Room intelligence flow. Added `tests/board-governance-workflow.test.ts`.
+
+**Figma.** Added page `09 Quorum Governance Workflow V0.2` in the Nexus Figma file with board node `80:3`: 17 editable desktop-browser screens covering setup wizard, board register, committee register, TOR/policy library, meeting calendar, agenda builder, board pack builder, director pre-read, attendance/quorum, conflict declarations, committee recommendations, decision/vote capture, circular resolutions, minutes drafting, minutes review/sign-off, action register, and governance audit pack.
+
+**Design implication.** The existing six-screen Figma build remains useful for concept review, but the next Quorum desktop pass should add the setup, committee, TOR, agenda, quorum, conflict, decision, minutes, signature, and action-register screens before implementation claims are made.
+
+---
+
+## Unreleased — Quorum UI/UX Figma Build (2026-07-06)
+
+Started the Quorum pivot UI/UX build around the existing `/board` Board Room route and board-delta backend.
+
+**Figma.** Added page `08 Quorum UI UX Build` in the Nexus Figma file with board node `78:3`: six editable desktop-browser screens covering baseline setup, between-meetings delta review, Director Q&A, evidence drilldown, decision handoff, and board export pack.
+
+**Registry.** Updated `docs/UI_BASELINE_VERSIONING.md` with the Quorum Figma link, current repo ref at registry time, live `/board` route, screen-set description, and route mapping.
+
+---
+
 ## Unreleased — Quorum Board Room Screen (2026-07-05)
 
 Added the first Quorum-branded board intelligence screen on top of the existing board synthesis and delta APIs.

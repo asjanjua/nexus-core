@@ -6,9 +6,45 @@
 
 ## Session Info
 
-- **Last updated:** 2026-07-05 (v0.25.x — session #43 with Codex. Added the Quorum Board Room UI on top of the existing board synthesis/delta backend; tsc, tests, and build passed locally.)
-- **Last model:** Codex (GPT-5)
-- **Session number:** #43
+- **Last updated:** 2026-07-06 (v0.25.x — session #45 follow-up. Added vertical input/action screen guidance and Figma board `87:3` across Quorum, Meridian, and Vantage.)
+- **Last model:** Hermes (DeepSeek Pro V4)
+- **Session number:** #45
+- **Session #45 delivered (2026-07-06) — Agent skill taxonomy and pivot catalog:**
+  - **Skill taxonomy added:** `lib/agents/agent-skills.ts` defines 34 skills across 5 families (ingest, browse, review, analyze, act) with source type mappings, job family requirements, and dispatch compatibility checks.
+  - **Agent library upgraded:** `lib/agents/agent-library.ts` now uses typed `AgentSkill[]` hints. Baseline skills (`browse sources`, `review evidence`, `analyze evidence`) auto-applied to every agent. 29 agents across 7 rooms.
+  - **Pivot catalog added:** `lib/agents/pivot-agent-catalog.ts` defines 5 suites (Nexus, Quorum, Meridian, Vantage, Nucleus) with agent rosters, required skills, and product boundaries. Self-validating: `validatePivotAgentCatalog()` returns `[]` when all suites are consistent.
+  - **Catalog API:** `GET /api/agents/catalog` returns full discoverable catalog with pre-validation. Returns 500 with diagnostic if any suite is broken.
+  - **UI:** Dashboard agent cards show "Skills" (not "Future skills"). Settings → Agent Governance renders "Pivot Skill Suites" with catalog integrity badge.
+  - **Dispatcher:** Now logs `missingFamilies` in audit when agent assignment is denied.
+  - **Verification:** `tsc --noEmit` passed, 47 files / 330 tests passed.
+  - **Do next:** wire pivot suites to workspace onboarding so a workspace selects its active pivot roster. Then build the first vertical route (Meridian or Quorum) against its workflow registry.
+- **Session #45 follow-up (2026-07-06) — Vertical input/action screen guidance:**
+  - **Figma board added:** Nexus Figma file `NcQ8F5a0hczwGwZua2gfun` now has page `11 Vertical Input Action Screens V0.2`, board node `87:3`: `https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=87-3`.
+  - **Screens created:** 33 editable desktop-browser frames: Quorum 17, Meridian 8, Vantage 8. Each frame shows route candidate, arc, primary user, current gate, user input needed, action points, Ask behavior, and human-control guardrail.
+  - **Guidance registries:** `quorumScreenGuidance`, `meridianScreenGuidance`, and `vantageScreenGuidance` now live beside each vertical registry with lookup helpers and tests proving every planned screen has guidance.
+  - **Paperwork updated:** `docs/UI_BASELINE_VERSIONING.md`, `docs/QUORUM_BOARD_GOVERNANCE_WORKFLOW.md`, `docs/MERIDIAN_REGULATORY_WORKFLOW.md`, `docs/VANTAGE_DD_WORKFLOW.md`, `CHANGELOG.md`, `BACKLOG.md`, and `TASKS.md`.
+  - **Verification:** focused vertical workflow tests passed (3 files / 23 tests), full mission-control tests passed (47 files / 330 tests), `npm exec -w @nexus/mission-control tsc -- --noEmit --pretty false` passed, and `git diff --check` passed.
+  - **Do next:** use board `87:3` for colleague review of wording and workflow priority, then build one vertical route slice from the selected registry instead of adding more exploratory frames.
+- **Session #44 delivered (2026-07-06) — Quorum UI/UX Figma build:**
+  - **Figma build added:** Nexus Figma file `NcQ8F5a0hczwGwZua2gfun` now has page `08 Quorum UI UX Build`, board node `78:3`: `https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=78-3`.
+  - **Screens created:** six editable desktop-browser screens for Quorum: baseline setup, between-meetings delta review, Director Q&A, evidence drilldown, decision handoff, and board export pack.
+  - **Governance workflow added:** `docs/QUORUM_BOARD_GOVERNANCE_WORKFLOW.md` now defines the fuller board operating model: Pakistan-first jurisdiction pack, board setup, director and committee registers, TOR/policy library, meeting calendar, agenda, board pack, pre-read, quorum, conflicts, decisions, circular resolutions, minutes, signatures, action register, and audit export.
+  - **Code-backed plan added:** `apps/mission-control/lib/board-governance-workflow.ts` codifies the Pakistan source pack, 17 planned screens, 10 workflow stages, and three workflow arcs. `/board` now renders a compact governance roadmap under the current intelligence flow. `tests/board-governance-workflow.test.ts` pins the registry.
+  - **Expanded Figma V0.2 added:** Figma page `09 Quorum Governance Workflow V0.2`, board node `80:3`: `https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=80-3`. It contains 17 editable desktop-browser screens for setup, registers, committees, TORs, agenda, pack, pre-read, quorum, conflicts, recommendations, decisions, circular resolutions, minutes, actions, and audit export.
+  - **Design intent:** expand the existing `/board` app surface into a full director review journey while preserving the governance boundary: no automatic filing, sending, approval, or external writeback.
+  - **Paperwork updated:** `docs/UI_BASELINE_VERSIONING.md`, `docs/QUORUM_BOARD_GOVERNANCE_WORKFLOW.md`, `CHANGELOG.md`, `BACKLOG.md`, and `TASKS.md` now register the Quorum Figma builds and code-backed governance workflow.
+  - **Verification:** focused `vitest -- tests/board-governance-workflow.test.ts --run` passed (4 tests), `npm exec -w @nexus/mission-control tsc -- --noEmit --pretty false` passed, and `git diff --check` passed before the final docs registry update.
+  - **Do next:** choose the first implementation slice. Recommended order: board profile/registers data model, then meeting/agenda, then minutes/action register. Run full mission-control test/build before commit/deploy.
+- **Session #44 follow-up corrected (2026-07-06) — Vertical workflow boundaries:**
+  - **Shared template removed:** deleted `apps/mission-control/lib/pivot-workflows.ts`, `apps/mission-control/tests/pivot-workflows.test.ts`, and `docs/PIVOT_WORKFLOW_BUILDS.md`; do not force Quorum, Meridian, Vantage, Nucleus, or connectors into one screen-arc type system.
+  - **Meridian registry added:** `apps/mission-control/lib/meridian-regulatory-workflow.ts` and `docs/MERIDIAN_REGULATORY_WORKFLOW.md` define Meridian's domain lifecycle: scope, evidence, gap, and filing.
+  - **Vantage registry added:** `apps/mission-control/lib/vantage-dd-workflow.ts` and `docs/VANTAGE_DD_WORKFLOW.md` define Vantage's domain lifecycle: dealroom, coverage, redflags, and memo.
+  - **Figma board retained as exploration:** Figma page `10 Pivot Workflow Builds V0.1`, board node `82:3`, remains useful visual exploration, but it is not the architecture source of truth.
+  - **Boundary decision:** Nexus-core handles ingestion, governance, evidence, agents, billing, and approvals. Each vertical owns its workflow and eventual product/P&L shape.
+  - **Global-use hardening:** Quorum now has formal boundaries and jurisdiction-pack requirements; Meridian has jurisdiction-pack requirements for regulator taxonomy, official sources, applicability, local review, translation, and filing channel boundaries; Vantage has market/sector-pack requirements for cross-border diligence, localization, materiality, and decision authority.
+  - **Runtime safety:** Quorum, Meridian, and Vantage keep strict `screensForStage` helpers for registry authors, plus safe route helpers that log missing draft screens and render what exists.
+  - **Verification:** focused vertical workflow/domain tests passed (5 files / 48 tests), full mission-control tests passed (46 files / 322 tests), `npm exec -w @nexus/mission-control tsc -- --noEmit --pretty false` passed, and `git diff --check` passed.
+- **Session #43 delivered (2026-07-05) — Quorum Board Room screen:**
 - **Session #43 delivered (2026-07-05) — Quorum Board Room screen:**
   - **Surface added:** `/board` now renders `BoardRoomPanel`, a Quorum-branded board intelligence workspace for director-ready board-pack synthesis and between-meetings delta review.
   - **What the screen does:** lets the user enter a stable board identifier such as `main-board`, calls `POST /api/board/delta`, shows first-run baseline vs. later delta states, renders answered/evidence/confidence status chips, and displays Director Q&A cards with confidence, evidence source links, and entity links.

@@ -7,7 +7,7 @@
 > Architecture review: `TASKS.md` § Architecture Review Action Items.
 > Distribution plan: `NexusAI_Distribution_Plan.docx` and `docs/INFRA_DECISION_MEMO.md`.
 > UI/UX workplan: `docs/UI_UX_WORKPLAN.md` (MCP-aware design-to-code pipeline).
-> Last reviewed: 2026-07-05.
+> Last reviewed: 2026-07-06.
 
 ---
 
@@ -125,14 +125,17 @@ This is the operating plan that keeps the strategy in the paperwork rather than 
 
 ## P2c — Pivot Product Queue
 
-These are the current pivot/product surfaces that sit above the core Nexus operating layer. The queue keeps Quorum, Meridian, Nucleus, and connector breadth visible without scattering them across old strategy notes.
+These are the current pivot/product surfaces that sit above the core Nexus operating layer. The queue keeps Quorum, Meridian, Vantage, Nucleus, and connector breadth visible without scattering them across old strategy notes.
 
 | Item | Status | Source | Notes |
 |---|---|---|---|
 | Quorum Board Room UI | local verified | `TASKS.md`, board synthesis/delta backend | Built 2026-07-05. `/board` renders a director-facing board intelligence screen over `POST /api/board/delta`: stable board identifier, first-run baseline state, later between-meetings delta, Director Q&A, confidence/evidence chips, source links, entity links, and governance boundary copy. Side nav includes Board Room. `tsc`, full mission-control tests, and production build passed locally; Render deploy/auth smoke still pending. |
-| Connectors beyond skeletons | open | connector backlog | Drive and Gmail have real OAuth + ingestion; Slack has delivery plus inbound channel-message ingestion but needs broader sync/ingestion UX; Teams is still thin beyond SharePoint/Graph. Next useful pass should make one connector end-to-end demoable: install, source select, ingest, sync status, retry/error visibility. |
-| Meridian SECP NBFI requirement library | open | user queue | Content curation pack for Pakistan NBFIs under SECP first, not SBP EMI first. Needs domain-reviewed requirements, evidence tags, red flags, memo sections, and tests similar to the DD checklist library. |
-| Nucleus methodology-pack authoring tool | open | user queue | Partner-facing authoring workflow for consulting firms to encode proprietary frameworks into governed methodology packs without engineering. Needs schema, UI, validation, versioning, preview, and white-label/tenant boundaries. |
+| Quorum UI/UX Figma build | done (Figma V0.1) | `docs/UI_BASELINE_VERSIONING.md`, Figma node `78:3` | Built 2026-07-06 as `08 Quorum UI UX Build`: six editable desktop screens for baseline setup, delta review, Director Q&A, evidence drilldown, decision handoff, and board export pack. Next Quorum step is choosing which candidate screens to implement beyond the live `/board` route. |
+| Quorum board governance workflow | in progress | `docs/QUORUM_BOARD_GOVERNANCE_WORKFLOW.md`, `lib/board-governance-workflow.ts`, Figma nodes `80:3` and `87:3` | Workflow spec, typed code registry, `/board` roadmap section, tests, and 17-screen Figma V0.2 board added 2026-07-06. Global-use hardening now formalizes governance boundaries, jurisdiction-pack requirements, route-safe screen resolution, and `quorumScreenGuidance` for user inputs/action points. Next implementation step is choosing the first data-model slice: board profile/registers, meeting/agenda, or minutes/action register. |
+| Meridian regulatory workflow | planned | `docs/MERIDIAN_REGULATORY_WORKFLOW.md`, `lib/meridian-regulatory-workflow.ts`, Figma node `87:3` | Meridian now owns its domain lifecycle: scope, evidence, gap, and filing. Global-use hardening adds jurisdiction-pack requirements so SECP/NBFC terms do not leak into other markets. `meridianScreenGuidance` now pins the input/action copy for all 8 planned screens. First runtime slice should wire regulator/license/status selection to the existing regulatory requirement library and evidence coverage. Regulatory content still needs domain review. |
+| Vantage DD Copilot workflow | planned | `docs/VANTAGE_DD_WORKFLOW.md`, `lib/vantage-dd-workflow.ts`, Figma node `87:3` | Vantage now owns its domain lifecycle: dealroom, coverage, redflags, and memo. Global-use hardening adds market/sector-pack requirements for cross-border and non-fintech diligence. `vantageScreenGuidance` now pins the input/action copy for all 8 planned screens. First implementation slice should create a Vantage deal workspace route that calls `coverageForDeal()`, shows gaps/red flags, and drafts IC memo sections. |
+| Connector Ops / connectors beyond skeletons | open | connector backlog, `docs/CONNECTOR_SETUP_GUIDE.md` | Connector Ops is shared infrastructure that powers verticals, not a product workflow template. Drive and Gmail have real OAuth + ingestion; Slack has delivery plus inbound channel-message ingestion but needs broader sync/ingestion UX; Teams is still thin beyond SharePoint/Graph. |
+| Nucleus methodology-pack authoring tool | open | `lib/branding/white-label.ts`, user queue | Partner-facing authoring workflow for consulting firms to encode proprietary frameworks into governed methodology packs without engineering. Needs its own domain registry when implementation begins; do not force it into Meridian/Vantage/Quorum arcs. |
 
 ## P2b — Documentation Cleanup Backlog
 

@@ -1,7 +1,7 @@
 # UI Baseline Versioning
 
 Status: Active operating note.
-Last updated: 2026-07-05.
+Last updated: 2026-07-06.
 
 Use this when we need to preserve the first Nexus UI that originally came from the Vercel-built prototype while continuing forward on the Render-hosted app and new architecture.
 
@@ -41,6 +41,10 @@ Keep this table updated when a baseline is created, moved, or superseded.
 |---|---|---|---|---|---|---|---|
 | UI V0.1 baseline | 2026-07-05 | Original Vercel-built room-based UI, now represented in Render/new architecture | `c513eee` current repo ref at registry time; confirm exact Render deploy before demo | `https://nexus-mission-control.onrender.com/dashboard/ceo` for live room-based CEO route; Render deploy id pending confirmation | `https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=40-3` | protected baseline | Full desktop-browser V0.1 prototype: 30-screen Render-aligned room-and-tool journey. |
 | UI V0.2 proposal | 2026-07-05 | Current proposed guided-routing UI on the same product surface arc | `c513eee` current repo ref at registry time; implementation parity still to confirm screen-by-screen | `https://nexus-mission-control.onrender.com/dashboard/ceo` remains current Render comparison route until V0.2 is deployed or feature-flagged | `https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=44-3` | candidate | Full desktop-browser V0.2 prototype: same 30-screen arc with guided next action, owner, trust, approval consequence, and audit-readiness cues. |
+| Quorum UI V0.1 build | 2026-07-06 | Quorum pivot UI/UX expansion from the live `/board` Board Room surface | `9872037` current repo ref at registry time; exact Render deploy id still pending confirmation | `https://nexus-mission-control.onrender.com/board` for the live Quorum route; authenticated smoke still pending | `https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=78-3` | candidate | Six-screen desktop-browser Quorum concept flow: baseline setup, delta review, Director Q&A, evidence drilldown, decision handoff, and board export pack. `docs/QUORUM_BOARD_GOVERNANCE_WORKFLOW.md` now defines the deeper board-governance screens required before Quorum is build-ready. |
+| Quorum Governance Workflow V0.2 | 2026-07-06 | Expanded Quorum board-governance workflow from `docs/QUORUM_BOARD_GOVERNANCE_WORKFLOW.md` and `lib/board-governance-workflow.ts` | Working tree code plan at registry time; commit pending | `https://nexus-mission-control.onrender.com/board` remains current runtime route; it now includes a compact code-backed governance roadmap locally | `https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=80-3` | candidate | 17-screen desktop-browser Figma board covering setup wizard, board register, committee register, TOR/policy library, meeting calendar, agenda builder, board pack builder, director pre-read, attendance/quorum, conflicts, committee recommendation, decision/vote capture, circular resolution, minutes drafting, minutes review/sign-off, action register, and governance audit pack. |
+| Vertical workflow exploration V0.1 | 2026-07-06 | Figma exploration for Meridian, Vantage, Nucleus, and Connector Ops; architecture corrected into dedicated Meridian/Vantage registries | Working tree code plan at registry time; commit pending | Runtime routes are candidates only except `/settings/connectors`; live implementation still pending | `https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=82-3` | candidate | 16-screen desktop-browser Figma board. Treat as visual exploration only, not a shared workflow architecture. Code source of truth is now domain-owned: `lib/meridian-regulatory-workflow.ts`, `lib/vantage-dd-workflow.ts`, and Quorum's existing `lib/board-governance-workflow.ts`. |
+| Vertical Input Action Screens V0.2 | 2026-07-06 | Guidance-backed Figma review board from Quorum, Meridian, and Vantage workflow registries | Working tree code plan at registry time; commit pending | Runtime routes are candidates except live `/board`; implementation still follows the registry docs before route build-out | `https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=87-3` | candidate | 33 editable desktop-browser frames: Quorum 17, Meridian 8, Vantage 8. Each frame exposes required user inputs, action points, Ask prompt behavior, route candidate, current gate, and human-control guardrail. Source copy lives in `quorumScreenGuidance`, `meridianScreenGuidance`, and `vantageScreenGuidance`. |
 
 Status values:
 
@@ -235,6 +239,8 @@ Both V0.1 and V0.2 use the same desktop-browser screen arc so reviewers compare 
 |---|---|---|---|---|
 | UI V0.1 baseline | `05 V0.1 Full Desktop Prototype`, board `40:3` | Editable Figma frames | Public entry, product brief, readiness, onboarding, executive room, Ask, ingestion, sources, review, approvals, evidence detail, recommendations, decisions, workflow twins, company memory, entity detail, knowledge, exports, connectors, settings, AI policy, weekly brief, one-pager, pilot paperwork | Current Render room experience, starting at `/dashboard/ceo` |
 | UI V0.2 proposal | `06 V0.2 Full Desktop Prototype`, board `44:3` | Editable Figma frames | Same 30-screen arc, redesigned around guided routing, next action, trust drawer, approval consequence, source coverage, and audit cues | Candidate design; implementation/deploy reference to be filled when built or feature-flagged |
+| Quorum UI V0.1 build | `08 Quorum UI UX Build`, board `78:3` | Editable Figma frames | Six focused Quorum screens: baseline setup, between-meetings delta review, Director Q&A, evidence drilldown, decision handoff, and board export pack | Current live route starts at `/board`; expanded handoff/export screens are design candidates |
+| Vertical workflow exploration V0.1 | `10 Pivot Workflow Builds V0.1`, board `82:3` | Editable Figma frames | Sixteen exploratory screens for Meridian, Vantage, Nucleus, and Connector Ops. Do not treat the common four-column board as product architecture. | Runtime route work pending; `/settings/connectors` is the only currently live route in this set |
 
 ## Route Mapping For Review
 
@@ -242,6 +248,11 @@ Use these routes when checking the live Render implementation against the Figma 
 
 | Product surface | Primary route |
 |---|---|
+| Quorum Board Room | `/board` |
+| Meridian regulatory submissions | `/meridian/scope`, `/meridian/license-profile`, `/meridian/requirements`, `/meridian/evidence-coverage`, `/meridian/gaps`, `/meridian/caveats`, `/meridian/submission-memo`, `/meridian/filing-pack` |
+| Vantage DD Copilot | `/vantage/dealroom`, `/vantage/data-room`, `/vantage/coverage`, `/vantage/evidence-depth`, `/vantage/red-flags`, `/vantage/judgment-log`, `/vantage/ic-memo`, `/vantage/decision-handoff` |
+| Nucleus methodology packs | `/nucleus/setup`, `/nucleus/packs/builder`, `/nucleus/packs/preview`, `/nucleus/packs/publish` |
+| Connector settings and ingestion ops | `/settings/connectors`, `/settings/connectors/sources`, `/settings/connectors/sync`, `/settings/connectors/audit` |
 | Public entry | `/` |
 | Product brief | `/product-brief` |
 | Readiness | `/readiness` |
