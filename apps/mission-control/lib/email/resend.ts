@@ -10,7 +10,12 @@
  * Environment variables required:
  *   NEXUS_RESEND_API_KEY    — re_... API key from resend.com
  *   NEXT_PUBLIC_APP_URL     — used for unsubscribe links
- *   NEXUS_FROM_EMAIL        — optional, defaults to "NexusAI <noreply@nexusai.io>"
+ *   NEXUS_FROM_EMAIL        — optional, defaults to "NexusAI <briefs@pinavia.io>"
+ *   NEXUS_ENV               — production boundary: sends to arbitrary recipients
+ *                             only when "pilot" or "production". In any other
+ *                             environment, recipients must match
+ *                             NEXUS_EMAIL_ALLOWLIST (comma-separated addresses
+ *                             or @domains), otherwise the send is refused.
  */
 
 // ---------------------------------------------------------------------------
@@ -30,7 +35,33 @@ export function resendConfigured(): boolean {
 }
 
 function fromEmail(): string {
-  return process.env.NEXUS_FROM_EMAIL?.trim() ?? "NexusAI <noreply@nexusai.io>";
+  return process.env.NEXUS_FROM_EMAIL?.trim() ?? "NexusAI <briefs@pinavia.io>";
+}
+
+/**
+ * Production email boundary. Real recipients are only reachable from the
+ * pilot/production environment. Everywhere else (local dev, preview deploys),
+ * a recipient must match NEXUS_EMAIL_ALLOWLIST — e.g.
+ * "ali.janjua@live.com,@pinavia.io" — or the send is refused before any
+ * network call. This prevents a dev deploy with a live API key from emailing
+ * real pilot users.
+ */
+export function emailSendAllowed(to: string | string[]): { allowed: boolean; blocked: string[] } {
+  const env = process.env.NEXUS_ENV?.trim().toLowerCase();
+  if (env === "pilot" || env === "production") return { allowed: true, blocked: [] };
+
+  const allowlist = (process.env.NEXUS_EMAIL_ALLOWLIST ?? "")
+    .split(",")
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+  const recipients = Array.isArray(to) ? to : [to];
+  const blocked = recipients.filter((r) => {
+    const addr = r.trim().toLowerCase();
+    return !allowlist.some((rule) =>
+      rule.startsWith("@") ? addr.endsWith(rule) : addr === rule
+    );
+  });
+  return { allowed: blocked.length === 0, blocked };
 }
 
 function appUrl(): string {
@@ -87,6 +118,13 @@ async function resendPost<T>(path: string, body: Record<string, unknown>): Promi
  * Send a transactional email via Resend.
  */
 export async function sendEmail(opts: EmailOptions): Promise<ResendResponse> {
+  const boundary = emailSendAllowed(opts.to);
+  if (!boundary.allowed) {
+    throw new Error(
+      `email_blocked_nonproduction: refusing to send to [${boundary.blocked.join(", ")}] outside pilot/production. Add to NEXUS_EMAIL_ALLOWLIST for testing.`
+    );
+  }
+
   const payload = {
     from: fromEmail(),
     to: opts.to,

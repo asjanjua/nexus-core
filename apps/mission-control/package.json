@@ -18,9 +18,9 @@
     "db:check": "node scripts/db-check.mjs"
   },
   "dependencies": {
-    "@codemirror/lang-markdown": "^6.3.4",
     "@aws-sdk/client-s3": "^3.1056.0",
     "@clerk/nextjs": "^6.39.5",
+    "@codemirror/lang-markdown": "^6.3.4",
     "@sentry/nextjs": "^10.0.0",
     "@uiw/react-codemirror": "^4.25.5",
     "chokidar": "^4.0.3",
@@ -29,6 +29,7 @@
     "jszip": "^3.10.1",
     "mailparser": "^3.7.4",
     "next": "^15.5.18",
+    "pdf-parse": "^1.1.1",
     "pg": "^8.21.0",
     "react": "18.3.1",
     "react-dom": "18.3.1",
@@ -38,6 +39,7 @@
   "devDependencies": {
     "@types/mailparser": "^3.4.5",
     "@types/node": "^22.10.1",
+    "@types/pdf-parse": "^1.1.5",
     "@types/pg": "^8.15.2",
     "@types/react": "^18.3.13",
     "@types/react-dom": "^18.3.1",

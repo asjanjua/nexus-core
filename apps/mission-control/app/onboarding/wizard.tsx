@@ -1487,11 +1487,22 @@ function Step6({ results, onNext }: { results: IngestionResult[]; onNext: () => 
       <div className="rounded-xl border border-white/10 bg-white/5 p-5 space-y-4">
         <div className="flex items-start gap-4">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/20 bg-white/5 text-xs font-bold text-white/60">
-            {ext}
+            {results.length === 1 ? ext : results.length}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="font-medium text-white truncate">{filename}</p>
-            <p className="text-xs text-white/40 font-mono mt-0.5 truncate">{result.id}</p>
+            {results.length === 1 ? (
+              <>
+                <p className="font-medium text-white truncate">{filename}</p>
+                <p className="text-xs text-white/40 font-mono mt-0.5 truncate">{result.id}</p>
+              </>
+            ) : (
+              <>
+                <p className="font-medium text-white">{results.length} documents ingested</p>
+                <p className="text-xs text-white/40 mt-0.5">
+                  {processedCount} cleared · {pendingCount} awaiting review · {quarantinedCount} quarantined
+                </p>
+              </>
+            )}
           </div>
           <span className={`shrink-0 inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs ${statusBadge}`}>
             {statusLabel}
@@ -1528,6 +1539,17 @@ function Step6({ results, onNext }: { results: IngestionResult[]; onNext: () => 
           <p className="text-amber-100/70">
             These files need sign-off before appearing in your dashboard.{" "}
             <a href="/approvals" className="underline hover:text-amber-50">Go to Approvals</a> after setup.
+          </p>
+        </div>
+      )}
+
+      {quarantinedCount > 0 && (
+        <div className="rounded-xl border border-red-400/40 bg-red-400/10 px-4 py-3 text-sm text-red-100 space-y-1">
+          <p className="font-medium">{quarantinedCount} file{quarantinedCount !== 1 ? "s" : ""} quarantined</p>
+          <p className="text-red-100/70">
+            Low confidence or missing provenance — Nexus will not use these in briefs. You can review or
+            re-upload cleaner versions from the{" "}
+            <a href="/ingestion" className="underline hover:text-red-50">ingestion page</a> after setup.
           </p>
         </div>
       )}

@@ -1,18 +1,19 @@
 /**
  * Document text extraction service.
  *
- * Supported formats: DOCX, PPTX, XLSX, PDF (heuristic), plain text, Markdown.
+ * Supported formats: DOCX, PPTX, XLSX, PDF (pdf-parse), plain text, Markdown.
  *
- * NOTE on PDF: Full extraction requires `pdf-parse` or `pdfjs-dist`.
- * Until those are available, we use a BT/ET operator heuristic that works on
- * uncompressed text streams. Confidence is capped at 0.62 for PDFs so anything
- * with insufficient content is quarantined automatically.
- *
- * Install `pdf-parse` and swap in the commented block below when npm access
- * is available:  npm install pdf-parse @types/pdf-parse
+ * PDF extraction uses `pdf-parse` (pure JS, no native deps, wraps pdf.js).
+ * Falls back to the BT/ET operator heuristic scanner if pdf-parse throws
+ * (e.g. malformed or encrypted PDFs), so ingestion never hard-fails on PDF.
  */
 
 import JSZip from "jszip";
+// Import the internal lib directly, not the package root. pdf-parse's index.js
+// runs a debug self-test whenever `module.parent` is falsy — which also fires
+// inside webpack/Next.js bundles that don't preserve a real require chain.
+// The internal lib has no such check.
+import pdfParse from "pdf-parse/lib/pdf-parse.js";
 
 export type ExtractionResult = {
   text: string;
@@ -26,7 +27,8 @@ export type ExtractionResult = {
 // ---------------------------------------------------------------------------
 
 const methodScore: Record<string, number> = {
-  pdf_text_scan: 0.62,   // capped — heuristic only
+  pdf_parse: 0.85,       // real extraction via pdf-parse
+  pdf_text_scan: 0.62,   // capped — heuristic fallback only
   docx_xml: 0.84,
   pptx_xml: 0.76,
   xlsx_xml: 0.74,        // improved from 0.72 now that we read cell data
@@ -153,26 +155,26 @@ async function extractFromXlsx(buffer: Buffer): Promise<ExtractionResult> {
 }
 
 // ---------------------------------------------------------------------------
-// PDF — heuristic BT/ET text operator scanner
+// PDF — real extraction via pdf-parse, with heuristic fallback
 //
-// PDF text lives between BT (begin text) and ET (end text) operators.
-// Within those blocks, text is emitted by Tj (single string) and TJ (array)
-// operators. This works on PDFs with uncompressed content streams.
-// Compressed (FlateDecode) streams cannot be decoded without zlib — those
-// PDFs will produce low confidence and get quarantined automatically.
-//
-// Replace this function with pdf-parse once npm access is available:
-//
-//   import pdfParse from "pdf-parse";
-//   async function extractFromPdf(buffer: Buffer): Promise<ExtractionResult> {
-//     const data = await pdfParse(buffer);
-//     const text = data.text.replace(/\s+/g, " ").trim();
-//     const charCount = text.length;
-//     return { text, method: "pdf_text_scan", charCount, extractionConfidence: deriveConfidence(charCount, "pdf_text_scan") };
-//   }
+// pdf-parse wraps pdf.js and handles compressed (FlateDecode) streams,
+// multi-column layouts, and standard fonts correctly. If it throws
+// (encrypted, corrupt, or otherwise unparseable PDFs), we fall back to the
+// BT/ET operator heuristic scanner so ingestion never hard-fails on PDF.
 // ---------------------------------------------------------------------------
 
-function extractFromPdf(buffer: Buffer): ExtractionResult {
+async function extractFromPdf(buffer: Buffer): Promise<ExtractionResult> {
+  try {
+    const data = await pdfParse(buffer);
+    const text = data.text.replace(/\s+/g, " ").trim();
+    const charCount = text.length;
+    return { text, method: "pdf_parse", charCount, extractionConfidence: deriveConfidence(charCount, "pdf_parse") };
+  } catch {
+    return extractFromPdfHeuristic(buffer);
+  }
+}
+
+function extractFromPdfHeuristic(buffer: Buffer): ExtractionResult {
   const raw = buffer.toString("latin1"); // latin1 preserves byte values
 
   const parts: string[] = [];
@@ -246,7 +248,7 @@ export async function extractTextFromBuffer(filename: string, buffer: Buffer): P
     if (lower.endsWith(".docx")) return await extractFromDocx(buffer);
     if (lower.endsWith(".pptx")) return await extractFromPptx(buffer);
     if (lower.endsWith(".xlsx")) return await extractFromXlsx(buffer);
-    if (lower.endsWith(".pdf")) return extractFromPdf(buffer);
+    if (lower.endsWith(".pdf")) return await extractFromPdf(buffer);
     if (lower.endsWith(".txt") || lower.endsWith(".md")) return extractFromPlainText(buffer);
   } catch {
     return unsupported;

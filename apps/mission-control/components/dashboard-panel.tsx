@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/nexus-primitives";
 import { HelpLabel } from "@/components/ui/help-dialog";
 import { EvidenceTrustLink } from "@/components/ui/trust-drawer-trigger";
+import { SourceCoverageMap } from "@/components/source-coverage-map";
 
 export async function DashboardPanel({
   role,
@@ -33,10 +34,25 @@ export async function DashboardPanel({
   department?: string;
   agentId?: string;
 }) {
-  const [cards, recs, evidence, profile] = await Promise.all([
+  const [evidence, connectorsInstalled] = await Promise.all([
+    repository.getEvidenceForWorkspace(workspaceId),
+    repository.listConnectors(workspaceId).catch(() => []),
+  ]);
+
+  // First-class empty state: no evidence at all. Do not render zeroed KPIs and
+  // low-value AI briefs — show the guided connect state instead (design system:
+  // "no evidence connected" is a designed screen, not an error message).
+  if (evidence.length === 0) {
+    return (
+      <NoEvidenceState
+        connectorCount={connectorsInstalled.length}
+      />
+    );
+  }
+
+  const [cards, recs, profile] = await Promise.all([
     cardsForRole(role, workspaceId, { department, agentId }),
     repository.getRecommendations(workspaceId),
-    repository.getEvidenceForWorkspace(workspaceId),
     repository.getWorkspaceProfile(workspaceId).catch(() => null),
   ]);
   const [decisions, actions] = await Promise.all([
@@ -104,9 +120,11 @@ export async function DashboardPanel({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-wide text-nexus-accent/80">
-              NexusAI Mission Control
+              NexusAI Mission Control · {activeRoom.label}
             </p>
-            <h2 className="mt-1 text-3xl font-semibold tracking-tight text-nexus-text">Executive Room</h2>
+            <h2 className="mt-1 text-3xl font-semibold tracking-tight text-nexus-text">
+              {labelForRole(role, profile?.companyArchetype)} Command Brief
+            </h2>
             <p className="mt-2 max-w-2xl text-base leading-6 text-nexus-muted">
               The command center sits above the rooms and tells you what to do next, with evidence and owner visible.
             </p>
@@ -272,9 +290,14 @@ export async function DashboardPanel({
           <TrustCard
             title="Source coverage"
             body="Required source types are mapped as found, weak, missing, stale, or quarantined before recommendations are trusted."
-            href="/sources"
+            href="#source-coverage"
             cta="Resolve gaps"
           />
+        </div>
+
+        {/* Live source coverage map — gaps are visible BEFORE weak outputs */}
+        <div className="mt-3">
+          <SourceCoverageMap evidence={evidence} />
         </div>
       </section>
 
@@ -463,6 +486,58 @@ export async function DashboardPanel({
 }
 
 // ---------------------------------------------------------------------------
+// No-evidence state — a designed first screen, not an error message
+// ---------------------------------------------------------------------------
+
+function NoEvidenceState({ connectorCount }: { connectorCount: number }) {
+  const hasConnectors = connectorCount > 0;
+  return (
+    <section className="rounded-xl border border-nexus-border bg-nexus-surface p-6 sm:p-8">
+      <p className="text-xs font-semibold uppercase tracking-wide text-nexus-accent/80">
+        NexusAI Mission Control
+      </p>
+      <h2 className="mt-1 text-3xl font-semibold tracking-tight text-nexus-text">
+        No evidence connected yet
+      </h2>
+      <p className="mt-3 max-w-2xl text-base leading-6 text-nexus-muted">
+        {hasConnectors
+          ? `${connectorCount} connector${connectorCount === 1 ? " is" : "s are"} configured, but nothing has been ingested and cleared yet. Nexus refuses to brief without evidence — that refusal is the product working, not failing.`
+          : "Nexus only ever briefs from evidence you connect and approve. Until the first documents are ingested, there is nothing to synthesise — and Nexus will not guess."}
+      </p>
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <a
+          href="/ingestion"
+          className="inline-flex items-center justify-center rounded-lg bg-nexus-accent px-4 py-2 text-sm font-semibold text-[#04100d] transition hover:brightness-110"
+        >
+          Upload first documents
+        </a>
+        <SecondaryLink href="/settings/connectors" label={hasConnectors ? "Check connector status" : "Configure connectors"} />
+      </div>
+      <div className="mt-6 grid gap-3 sm:grid-cols-3">
+        <TrustCard
+          title="1. Connect"
+          body="Upload documents or configure a connector. Every source is fingerprinted and classified before anything reads it."
+          href="/ingestion"
+          cta="Open ingestion"
+        />
+        <TrustCard
+          title="2. Clear"
+          body="Low-confidence or unprovenanced material is quarantined. Only cleared evidence ever reaches an agent."
+          href="/sources"
+          cta="View sources"
+        />
+        <TrustCard
+          title="3. Brief"
+          body="Specialist agents then draft source-backed briefs, with confidence, freshness, and evidence one click away."
+          href="/approvals"
+          cta="See approvals"
+        />
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Agent card grid — extracted to avoid duplication above
 // ---------------------------------------------------------------------------
 
@@ -475,19 +550,53 @@ function AgentCards({
 }) {
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      {cards.map((card) => (
-        <article key={card.id} className="panel">
+      {cards.map((card) => {
+        const gate = card.gateStatus ?? "ok";
+        const gateMeta =
+          gate === "blocked" || gate === "suspended"
+            ? { tone: "danger" as const, label: gate === "blocked" ? "Output blocked" : "Agent suspended" }
+            : gate === "held"
+              ? { tone: "warn" as const, label: "Held for review" }
+              : null;
+        return (
+        <article
+          key={card.id}
+          className={`panel ${gateMeta ? (gateMeta.tone === "danger" ? "border-nexus-danger/40" : "border-nexus-warn/40") : ""}`}
+        >
           <div className="flex flex-wrap items-start justify-between gap-2">
             <div>
               <p className="text-xs uppercase tracking-wide text-white/35">Agent Brief</p>
               <p className="mt-1 text-base font-semibold text-white">{card.agentName ?? card.title}</p>
             </div>
-            <span className="badge badge-muted">{card.outputType ?? "brief"}</span>
+            {gateMeta ? (
+              <MetaChip label={gateMeta.label} tone={gateMeta.tone} />
+            ) : (
+              <span className="badge badge-muted">{card.outputType ?? "brief"}</span>
+            )}
           </div>
           {card.mandate && (
             <p className="mt-2 text-xs leading-5 text-white/45">{card.mandate}</p>
           )}
-          <p className="mt-2 text-sm text-white/80 line-clamp-6">{card.summary}</p>
+          {gateMeta ? (
+            <div
+              className={`mt-2 rounded-md border px-3 py-2 text-sm leading-6 ${
+                gateMeta.tone === "danger"
+                  ? "border-nexus-danger/30 bg-nexus-danger/10 text-nexus-text/90"
+                  : "border-nexus-warn/30 bg-nexus-warn/10 text-nexus-text/90"
+              }`}
+            >
+              <p>{card.summary}</p>
+              <p className="mt-1 text-xs text-nexus-muted">
+                {gate === "held"
+                  ? "A human reviewer can release this brief from the approvals queue."
+                  : gate === "suspended"
+                    ? "Reactivate or review this agent's control profile in settings."
+                    : "The blocked output and its trigger are recorded in the audit log."}
+              </p>
+            </div>
+          ) : (
+            <p className="mt-2 text-sm text-white/80 line-clamp-6">{card.summary}</p>
+          )}
           <div className="mt-3 flex gap-2">
             <span className="badge">confidence {Math.round(card.confidence * 100)}%</span>
             <span className="badge">freshness {card.freshnessHours}h</span>
@@ -505,7 +614,8 @@ function AgentCards({
             </p>
           ) : null}
         </article>
-      ))}
+        );
+      })}
     </div>
   );
 }

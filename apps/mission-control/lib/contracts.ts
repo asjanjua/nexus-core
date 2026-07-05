@@ -265,7 +265,10 @@ export const dashboardCardSchema = z.object({
   freshnessHours: z.number().int().nonnegative(),
   evidenceRefs: z.array(z.string()),
   outputId: z.string().optional(),
-  outputVersion: z.number().int().positive().optional()
+  outputVersion: z.number().int().positive().optional(),
+  /** Governance outcome for this brief: ok (default), blocked (output gate /
+   * red team), held (below confidence threshold), suspended (agent passport). */
+  gateStatus: z.enum(["ok", "blocked", "held", "suspended"]).optional()
 });
 export type DashboardCard = z.infer<typeof dashboardCardSchema>;
 

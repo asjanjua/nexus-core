@@ -96,6 +96,7 @@ Task: Produce this agent's brief using only the evidence above. Include what cha
     summary = `Evidence count: ${evidenceRefs.length}. AI synthesis unavailable — verify DEEPSEEK_API_KEY (or ANTHROPIC_API_KEY) is set in your Render environment.`;
   }
 
+  let gateStatus: DashboardCard["gateStatus"] = "ok";
   const gate = passport ? evaluateOutputGate(summary, passport, passport.actionRight) : { allowed: true as const, escalationRequired: false as const };
   if (!gate.allowed) {
     await repository.pushAudit({
@@ -106,6 +107,7 @@ Task: Produce this agent's brief using only the evidence above. Include what cha
     });
     await repository.suspendAgentControlProfile(workspaceId, agent.id, "output_gate");
     summary = "NexusAI blocked this agent brief because it appears to request or imply a hard-stop action that requires human handling.";
+    gateStatus = "blocked";
   } else if (gate.escalationRequired) {
     await repository.pushAudit({
       workspaceId,
@@ -132,6 +134,7 @@ Task: Produce this agent's brief using only the evidence above. Include what cha
       payload: { route: "dashboard", role, agentKey: agent.id, violations: redTeam.violations }
     });
     summary = "NexusAI blocked this agent brief because the safety review detected sensitive data, overconfident language, or an unsafe action. A human-reviewed brief is required.";
+    gateStatus = "blocked";
   }
 
   const settings = await repository.getWorkspaceSettings(workspaceId);
@@ -148,6 +151,7 @@ Task: Produce this agent's brief using only the evidence above. Include what cha
       }
     });
     summary = "NexusAI held this agent brief for human review because evidence confidence is below the workspace threshold.";
+    if (gateStatus === "ok") gateStatus = "held";
   }
 
   const output = await repository.saveAgentOutput({
@@ -181,7 +185,8 @@ Task: Produce this agent's brief using only the evidence above. Include what cha
     freshnessHours: minFreshness,
     evidenceRefs,
     outputId: output.id,
-    outputVersion: output.outputVersion
+    outputVersion: output.outputVersion,
+    gateStatus
   };
 }
 
@@ -242,7 +247,8 @@ export async function cardsForRole(
           summary: "This agent is suspended under its Agent Control Profile. No evidence was retrieved and no brief was generated.",
           confidence: 0,
           freshnessHours: 9999,
-          evidenceRefs: []
+          evidenceRefs: [],
+          gateStatus: "suspended" as const
         };
       }
       const governedEvidence = passport
