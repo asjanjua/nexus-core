@@ -2670,6 +2670,43 @@ export const repository = {
       dataResidency: r.dataResidency,
       apiAccess: r.apiAccess,
       watermark: r.watermark,
+      stripePriceId: r.stripePriceId,
+    };
+  },
+
+  /** Reverse lookup: which plan does this Stripe price ID belong to? */
+  async getPlanDefinitionByStripePriceId(stripePriceId: string): Promise<import("@/lib/contracts").PlanDefinition | null> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(planDefinitions)
+        .where(eq(planDefinitions.stripePriceId, stripePriceId))
+        .limit(1)
+    );
+    if (!rows || !rows.length) return null;
+    const r = rows[0];
+    return {
+      planKey: r.planKey,
+      label: r.label,
+      priceCents: r.priceCents,
+      monthlyTokens: r.monthlyTokens,
+      maxRoles: r.maxRoles,
+      maxEvidence: r.maxEvidence,
+      maxTeam: r.maxTeam,
+      maxConnectors: r.maxConnectors,
+      maxApiKeys: r.maxApiKeys,
+      askDailyLimit: r.askDailyLimit,
+      scheduledSynthesis: r.scheduledSynthesis,
+      synthesisMaxCadence: r.synthesisMaxCadence,
+      emailDelivery: r.emailDelivery,
+      slackDelivery: r.slackDelivery,
+      exportsEnabled: r.exportsEnabled,
+      decisionExtraction: r.decisionExtraction,
+      customPassports: r.customPassports,
+      dataResidency: r.dataResidency,
+      apiAccess: r.apiAccess,
+      watermark: r.watermark,
+      stripePriceId: r.stripePriceId,
     };
   },
 

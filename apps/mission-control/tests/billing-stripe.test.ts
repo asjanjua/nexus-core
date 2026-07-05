@@ -55,6 +55,10 @@ vi.mock("@/lib/data/repository", () => ({
     convertExpiredTrials: vi.fn(async () => 3),
     resetAllDueMonthlyTokens: vi.fn(async () => 5),
     pushAudit: vi.fn(async () => undefined),
+    // No DB-configured Stripe prices in these tests — forces the env-var
+    // fallback path in priceIdForPlan/planFromPriceId (see stripe.ts).
+    getPlanDefinition: vi.fn(async () => null),
+    getPlanDefinitionByStripePriceId: vi.fn(async () => null),
   },
 }));
 
@@ -105,20 +109,20 @@ describe("priceIdForPlan", () => {
     delete process.env.STRIPE_PRICE_BUSINESS;
   });
 
-  it("returns pro price ID", () => {
-    expect(priceIdForPlan("pro")).toBe("price_pro_test");
+  it("returns pro price ID", async () => {
+    expect(await priceIdForPlan("pro")).toBe("price_pro_test");
   });
 
-  it("returns business price ID", () => {
-    expect(priceIdForPlan("business")).toBe("price_business_test");
+  it("returns business price ID", async () => {
+    expect(await priceIdForPlan("business")).toBe("price_business_test");
   });
 
-  it("returns null for free plan", () => {
-    expect(priceIdForPlan("free")).toBeNull();
+  it("returns null for free plan", async () => {
+    expect(await priceIdForPlan("free")).toBeNull();
   });
 
-  it("returns null for enterprise plan", () => {
-    expect(priceIdForPlan("enterprise")).toBeNull();
+  it("returns null for enterprise plan", async () => {
+    expect(await priceIdForPlan("enterprise")).toBeNull();
   });
 });
 
@@ -149,16 +153,16 @@ describe("planFromPriceId", () => {
     delete process.env.STRIPE_PRICE_BUSINESS;
   });
 
-  it("resolves pro from price ID", () => {
-    expect(planFromPriceId("price_pro_test")).toBe("pro");
+  it("resolves pro from price ID", async () => {
+    expect(await planFromPriceId("price_pro_test")).toBe("pro");
   });
 
-  it("resolves business from price ID", () => {
-    expect(planFromPriceId("price_biz_test")).toBe("business");
+  it("resolves business from price ID", async () => {
+    expect(await planFromPriceId("price_biz_test")).toBe("business");
   });
 
-  it("returns null for unknown price ID", () => {
-    expect(planFromPriceId("price_unknown_xyz")).toBeNull();
+  it("returns null for unknown price ID", async () => {
+    expect(await planFromPriceId("price_unknown_xyz")).toBeNull();
   });
 });
 
@@ -256,13 +260,13 @@ describe("getWorkspaceByStripeCustomer", () => {
 
 // Test checkout rejects unsupported plans by calling the handler logic directly
 describe("checkout endpoint validation", () => {
-  it("rejects free plan (no Stripe price exists)", () => {
+  it("rejects free plan (no Stripe price exists)", async () => {
     // priceIdForPlan("free") === null, so endpoint returns 400
-    expect(priceIdForPlan("free")).toBeNull();
+    expect(await priceIdForPlan("free")).toBeNull();
   });
 
-  it("rejects enterprise plan (no Stripe price exists)", () => {
-    expect(priceIdForPlan("enterprise")).toBeNull();
+  it("rejects enterprise plan (no Stripe price exists)", async () => {
+    expect(await priceIdForPlan("enterprise")).toBeNull();
   });
 });
 

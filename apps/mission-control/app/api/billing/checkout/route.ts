@@ -19,7 +19,9 @@ const bodySchema = z.object({
 });
 
 export async function POST(request: Request) {
-  const { ctx, error } = await requireScope(request, "read:workspace");
+  // allowWhenBlocked: a suspended/expired workspace must still be able to
+  // start checkout — otherwise there is no way to resolve the block.
+  const { ctx, error } = await requireScope(request, "read:workspace", { allowWhenBlocked: true });
   if (error) return error;
 
   if (!stripeConfigured()) {
@@ -42,7 +44,7 @@ export async function POST(request: Request) {
     return fail("unsupported_plan", 400);
   }
 
-  const priceId = priceIdForPlan(plan);
+  const priceId = await priceIdForPlan(plan);
   if (!priceId) {
     return fail("stripe_price_not_configured", 503);
   }

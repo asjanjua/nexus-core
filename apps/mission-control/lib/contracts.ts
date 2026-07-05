@@ -411,6 +411,7 @@ export const planDefinitionSchema = z.object({
   dataResidency: z.boolean(),
   apiAccess: z.boolean(),
   watermark: z.boolean(),
+  stripePriceId: z.string().nullable(),
 });
 export type PlanDefinition = z.infer<typeof planDefinitionSchema>;
 

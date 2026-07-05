@@ -115,6 +115,7 @@ export const planDefinitions = pgTable("plan_definitions", {
   dataResidency: boolean("data_residency").notNull().default(false),
   apiAccess: boolean("api_access").notNull().default(false),
   watermark: boolean("watermark").notNull().default(true),
+  stripePriceId: varchar("stripe_price_id", { length: 128 }),
 });
 
 export const users = pgTable("users", {

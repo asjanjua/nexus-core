@@ -40,7 +40,7 @@ const PLAN_FALLBACKS: Record<string, PlanDefinition> = {
     scheduledSynthesis: false, synthesisMaxCadence: null,
     emailDelivery: false, slackDelivery: false, exportsEnabled: false,
     decisionExtraction: false, customPassports: false, dataResidency: false,
-    apiAccess: false, watermark: true,
+    apiAccess: false, watermark: true, stripePriceId: null,
   },
   pro: {
     planKey: "pro", label: "Pro", priceCents: 49900,
@@ -49,7 +49,7 @@ const PLAN_FALLBACKS: Record<string, PlanDefinition> = {
     scheduledSynthesis: true, synthesisMaxCadence: "weekly",
     emailDelivery: false, slackDelivery: false, exportsEnabled: true,
     decisionExtraction: false, customPassports: false, dataResidency: false,
-    apiAccess: true, watermark: false,
+    apiAccess: true, watermark: false, stripePriceId: null,
   },
   business: {
     planKey: "business", label: "Business", priceCents: 250000,
@@ -58,7 +58,7 @@ const PLAN_FALLBACKS: Record<string, PlanDefinition> = {
     scheduledSynthesis: true, synthesisMaxCadence: "daily",
     emailDelivery: true, slackDelivery: false, exportsEnabled: true,
     decisionExtraction: true, customPassports: true, dataResidency: false,
-    apiAccess: true, watermark: false,
+    apiAccess: true, watermark: false, stripePriceId: null,
   },
   enterprise: {
     planKey: "enterprise", label: "Enterprise", priceCents: 0,
@@ -67,7 +67,7 @@ const PLAN_FALLBACKS: Record<string, PlanDefinition> = {
     scheduledSynthesis: true, synthesisMaxCadence: "daily",
     emailDelivery: true, slackDelivery: true, exportsEnabled: true,
     decisionExtraction: true, customPassports: true, dataResidency: true,
-    apiAccess: true, watermark: false,
+    apiAccess: true, watermark: false, stripePriceId: null,
   },
 };
 

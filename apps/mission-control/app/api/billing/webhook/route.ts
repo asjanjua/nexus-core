@@ -166,7 +166,7 @@ async function onSubscriptionUpdated(subscription: StripeSubscription): Promise<
 
 async function handleSubscriptionUpdate(workspaceId: string, subscription: StripeSubscription): Promise<void> {
   const priceId = subscription.items.data[0]?.price?.id ?? "";
-  const plan = planFromPriceId(priceId) ?? "free";
+  const plan = (await planFromPriceId(priceId)) ?? "free";
   const monthlyTokenLimit = PLAN_TOKEN_LIMITS[plan];
 
   await repository.handleSubscriptionChange(

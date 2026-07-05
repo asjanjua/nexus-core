@@ -25,7 +25,7 @@ const mockPlanDef = {
   scheduledSynthesis: false, synthesisMaxCadence: null,
   emailDelivery: false, slackDelivery: false, exportsEnabled: false,
   decisionExtraction: false, customPassports: false, dataResidency: false,
-  apiAccess: false, watermark: true,
+  apiAccess: false, watermark: true, stripePriceId: null,
 };
 
 const mockProPlanDef = {

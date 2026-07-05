@@ -19,6 +19,7 @@
  */
 
 import type { BillingPlan } from "@/lib/contracts";
+import { repository } from "@/lib/data/repository";
 
 // ---------------------------------------------------------------------------
 // Config
@@ -36,11 +37,20 @@ export function stripeConfigured(): boolean {
   return Boolean(process.env.STRIPE_SECRET_KEY?.trim());
 }
 
-/** Stripe Price ID for a given plan. Enterprise has no self-serve Stripe price. */
-export function priceIdForPlan(plan: BillingPlan): string | null {
+/**
+ * Stripe Price ID for a given plan. Enterprise has no self-serve Stripe price.
+ * Reads from plan_definitions.stripePriceId first; falls back to the legacy
+ * env vars (STRIPE_PRICE_PRO / STRIPE_PRICE_BUSINESS) if the DB column is
+ * unset, so existing deployments keep working until the column is populated.
+ */
+export async function priceIdForPlan(plan: BillingPlan): Promise<string | null> {
+  if (plan !== "pro" && plan !== "business") return null; // free and enterprise have no Stripe price
+
+  const def = await repository.getPlanDefinition(plan).catch(() => null);
+  if (def?.stripePriceId) return def.stripePriceId;
+
   if (plan === "pro") return process.env.STRIPE_PRICE_PRO?.trim() ?? null;
-  if (plan === "business") return process.env.STRIPE_PRICE_BUSINESS?.trim() ?? null;
-  return null; // free and enterprise have no Stripe price
+  return process.env.STRIPE_PRICE_BUSINESS?.trim() ?? null;
 }
 
 /** Monthly token limit per plan (mirrors plan_definitions seed). */
@@ -142,7 +152,7 @@ export interface StripeCheckoutSession {
  * Returns the hosted URL to redirect the user to.
  */
 export async function createCheckoutSession(opts: CheckoutSessionOptions): Promise<StripeCheckoutSession> {
-  const priceId = priceIdForPlan(opts.plan);
+  const priceId = await priceIdForPlan(opts.plan);
   if (!priceId) {
     throw new Error(`stripe_no_price: No Stripe price configured for plan "${opts.plan}"`);
   }
@@ -300,10 +310,14 @@ export async function getSubscription(subscriptionId: string): Promise<StripeSub
 }
 
 /**
- * Resolve which NexusAI plan a Stripe subscription belongs to,
- * by matching the price ID against our configured plan prices.
+ * Resolve which NexusAI plan a Stripe subscription belongs to, by matching
+ * the price ID against plan_definitions.stripePriceId first, then falling
+ * back to the legacy env vars if no DB row matches.
  */
-export function planFromPriceId(priceId: string): BillingPlan | null {
+export async function planFromPriceId(priceId: string): Promise<BillingPlan | null> {
+  const def = await repository.getPlanDefinitionByStripePriceId(priceId).catch(() => null);
+  if (def) return def.planKey as BillingPlan;
+
   if (priceId === process.env.STRIPE_PRICE_PRO?.trim()) return "pro";
   if (priceId === process.env.STRIPE_PRICE_BUSINESS?.trim()) return "business";
   return null;
