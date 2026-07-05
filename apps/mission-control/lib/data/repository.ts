@@ -2248,6 +2248,7 @@ export const repository = {
             sensitivityCeiling: next.sensitivityCeiling,
             approvalRequiredThreshold: Math.round(next.approvalRequiredThreshold * 100),
             demoMode: next.demoMode ?? false,
+            whiteLabelBrand: next.whiteLabelBrand ?? null,
             updatedAt: new Date()
           }
         });
