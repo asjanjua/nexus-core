@@ -90,6 +90,16 @@ const GENERIC_QUESTIONS = [
   "What would you escalate upward today?",
 ];
 
+// Board Intelligence (Quorum): questions a director asks of a board pack,
+// scoped via the `department` option to a specific pack (see synthesiseForRole).
+const BOARD_QUESTIONS = [
+  "What is the single most important thing the board needs to know from this pack?",
+  "What decisions are open, and who owns each one?",
+  "What risk has materially changed since the last pack?",
+  "Where does the evidence not support a claim made in the pack?",
+  "What should the chair raise with management before the meeting?",
+];
+
 const ROLE_QUESTIONS: Record<string, string[]> = {
   ceo: CEO_QUESTIONS,
   coo: COO_QUESTIONS,
@@ -99,6 +109,7 @@ const ROLE_QUESTIONS: Record<string, string[]> = {
   cbo: CBO_QUESTIONS,
   cmo: CBO_QUESTIONS,
   chro: CHRO_QUESTIONS,
+  board: BOARD_QUESTIONS,
 };
 
 export function questionsForRole(role: string): string[] {
@@ -289,6 +300,7 @@ export async function synthesiseForRole(
       agentId: `synthesis_${role}`,
       agentVersion: 1,
       roleKey: role,
+      department: options.department ?? null,
       content: JSON.stringify(synthesis),
       inputSummary: `Executive synthesis refresh for ${role}${options.department ? ` / ${options.department}` : ""}`,
       evidenceRefs: allEvidenceRefs,
@@ -298,4 +310,106 @@ export async function synthesiseForRole(
   }
 
   return synthesis;
+}
+
+// ---------------------------------------------------------------------------
+// Board delta — the "between-meetings brief" (Quorum / Board Intelligence)
+//
+// Compares the current board synthesis against the last persisted one for
+// the same board and produces a short "what changed" brief. Reuses
+// synthesiseForRole with role="board".
+//
+// `department` here must be a STABLE identifier for the board itself (e.g.
+// "main-board", "subsidiary-x-board") — NOT a per-cycle label like "Q2 2026
+// pack". saveAgentOutput/listAgentOutputs now version on
+// (workspaceId, agentId, roleKey, department), so passing the same
+// department across quarterly runs is what lets this function find "last
+// time's brief" for that board; passing a different department starts a
+// fresh, independent chain (used for a second board in the same workspace).
+//
+// STILL OPEN: if a workspace also wants each quarter's evidence Q&A scoped
+// to just that quarter's uploaded pack (so a director's question about "this
+// quarter's pack" doesn't pull last quarter's evidence), that needs a
+// separate per-cycle tag on the *evidence* records — distinct from the
+// board-stable `department` used here for version continuity. Not solved in
+// this pass; flagging so it isn't silently assumed away.
+// ---------------------------------------------------------------------------
+
+export type BoardDeltaResult = {
+  brief: ExecutiveSynthesis;
+  delta: string | null;
+  hasPrevious: boolean;
+};
+
+const BOARD_AGENT_ID = "synthesis_board";
+
+function summariseBrief(synthesis: ExecutiveSynthesis): string {
+  return synthesis.questions
+    .map((q) => `Q: ${q.question}\nA: ${q.answer}`)
+    .join("\n\n");
+}
+
+/**
+ * Runs a fresh board synthesis for `department` (a stable board identifier —
+ * see module note above), then diffs it against the last persisted brief for
+ * that same board. Returns the fresh brief plus a short delta ("what changed
+ * since last time"), or delta: null if this is the first brief for this board.
+ */
+export async function synthesiseBoardDelta(
+  workspaceId: string,
+  department?: string
+): Promise<BoardDeltaResult> {
+  // Fetch the previous brief BEFORE generating a new one — saveAgentOutput
+  // deactivates the current active row once the fresh brief is persisted.
+  // department filter here must match the one passed to synthesiseForRole
+  // below, or this will look in the wrong board's version chain.
+  const priorOutputs = await repository
+    .listAgentOutputs({ workspaceId, agentId: BOARD_AGENT_ID, department: department ?? null, limit: 1 })
+    .catch(() => []);
+  const priorOutput = priorOutputs[0] ?? null;
+
+  const brief = await synthesiseForRole("board", workspaceId, { department, persist: true });
+
+  if (!priorOutput) {
+    return { brief, delta: null, hasPrevious: false };
+  }
+
+  let priorBrief: ExecutiveSynthesis | null = null;
+  try {
+    priorBrief = JSON.parse(priorOutput.content) as ExecutiveSynthesis;
+  } catch {
+    priorBrief = null;
+  }
+
+  if (!priorBrief) {
+    return { brief, delta: null, hasPrevious: false };
+  }
+
+  const prompt = `Previous board brief (from ${priorOutput.createdAt}):\n\n${summariseBrief(priorBrief)}\n\nCurrent board brief:\n\n${summariseBrief(brief)}\n\nIn under 150 words, summarise what materially changed between the previous and current brief: new risks, slipping actions, financial movements. If nothing material changed, say so plainly.`;
+
+  let delta: string;
+  try {
+    delta = await ask(prompt, SYNTHESIS_SYSTEM_PROMPT, {
+      maxTokens: 250,
+      temperature: 0.1,
+      workspaceId,
+      route: "synthesis",
+      surfaceId: "daily_executive_brief",
+    });
+  } catch {
+    delta = "Delta unavailable — verify AI provider credentials in your Render environment.";
+  }
+
+  const redTeam = checkOutput(delta, { roleKey: "synthesis", workspaceId, maxSensitivity: "confidential" });
+  if (!redTeam.passed) {
+    void repository.pushAudit({
+      workspaceId,
+      type: "red_team_violation",
+      actor: "synthesis_service",
+      payload: { question: "board_delta", violations: redTeam.violations }
+    });
+    delta = "NexusAI blocked this delta brief because the safety review detected sensitive data, overconfident language, or an unsafe action.";
+  }
+
+  return { brief, delta, hasPrevious: true };
 }

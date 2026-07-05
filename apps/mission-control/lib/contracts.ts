@@ -278,6 +278,11 @@ export const agentOutputSchema = z.object({
   agentId: z.string(),
   agentVersion: z.number().int().positive(),
   roleKey: z.string(),
+  /** Scopes the version chain alongside workspaceId+agentId+roleKey — e.g. a
+   * board pack identifier, so two departments/packs don't overwrite each
+   * other's "active" output. null/undefined behaves as before this field
+   * existed (matches only other untagged outputs). */
+  department: z.string().nullable().optional(),
   content: z.string(),
   inputSummary: z.string(),
   evidenceRefs: z.array(z.string()),

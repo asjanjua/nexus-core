@@ -416,6 +416,7 @@ export const agentOutputs = pgTable("agent_outputs", {
   agentId: varchar("agent_id", { length: 120 }).notNull(),
   agentVersion: integer("agent_version").notNull().default(1),
   roleKey: varchar("role_key", { length: 64 }).notNull(),
+  department: varchar("department", { length: 120 }),
   content: text("content").notNull(),
   inputSummary: text("input_summary").notNull(),
   evidenceRefs: jsonb("evidence_refs").$type<string[]>().default([]).notNull(),

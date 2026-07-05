@@ -527,6 +527,8 @@ export const store = {
   listAgentOutputs(input: {
     workspaceId: string;
     agentId?: string;
+    /** undefined = don't filter by department; null = match untagged rows only. */
+    department?: string | null;
     actionType?: string;
     since?: string;
     limit?: number;
@@ -535,6 +537,7 @@ export const store = {
     return agentOutputs
       .filter((output) => output.workspaceId === input.workspaceId)
       .filter((output) => !input.agentId || output.agentId === input.agentId)
+      .filter((output) => input.department === undefined || (output.department ?? null) === (input.department ?? null))
       .filter((output) => !sinceTime || new Date(output.createdAt).getTime() >= sinceTime)
       .filter((output) => !input.actionType || input.actionType === "agent_output_created")
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
@@ -542,17 +545,20 @@ export const store = {
   },
   saveAgentOutput(input: AgentOutputInput): AgentOutput {
     const { processingMs, ...recordInput } = input;
+    const department = recordInput.department ?? null;
     const prior = agentOutputs
       .filter((output) =>
         output.workspaceId === recordInput.workspaceId &&
         output.agentId === recordInput.agentId &&
-        output.roleKey === recordInput.roleKey
+        output.roleKey === recordInput.roleKey &&
+        (output.department ?? null) === department
       )
       .sort((a, b) => b.outputVersion - a.outputVersion)[0];
     const version = prior ? prior.outputVersion + 1 : 1;
     const record: AgentOutput = {
       id: `out-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
       ...recordInput,
+      department,
       outputVersion: version,
       isActive: true,
       replacedById: null,
@@ -563,6 +569,7 @@ export const store = {
         output.workspaceId === recordInput.workspaceId &&
         output.agentId === recordInput.agentId &&
         output.roleKey === recordInput.roleKey &&
+        (output.department ?? null) === department &&
         output.isActive
       ) {
         output.isActive = false;

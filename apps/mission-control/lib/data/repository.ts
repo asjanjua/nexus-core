@@ -233,6 +233,7 @@ function toAgentOutput(row: typeof agentOutputs.$inferSelect): AgentOutput {
     agentId: row.agentId,
     agentVersion: row.agentVersion,
     roleKey: row.roleKey,
+    department: row.department ?? null,
     content: row.content,
     inputSummary: row.inputSummary,
     evidenceRefs: (row.evidenceRefs as string[]) ?? [],
@@ -1120,6 +1121,8 @@ export const repository = {
   async listAgentOutputs(input: {
     workspaceId: string;
     agentId?: string;
+    /** undefined = don't filter by department; null = match untagged rows only. */
+    department?: string | null;
     actionType?: string;
     since?: string;
     limit?: number;
@@ -1131,6 +1134,7 @@ export const repository = {
         .from(agentOutputs)
         .where(sql`${agentOutputs.workspaceId} = ${input.workspaceId}
           ${input.agentId ? sql`AND ${agentOutputs.agentId} = ${input.agentId}` : sql``}
+          ${input.department !== undefined ? sql`AND ${agentOutputs.department} IS NOT DISTINCT FROM ${input.department}` : sql``}
           ${input.since ? sql`AND ${agentOutputs.createdAt} >= ${new Date(input.since)}` : sql``}`)
         .orderBy(desc(agentOutputs.createdAt))
         .limit(limit)
@@ -1145,12 +1149,14 @@ export const repository = {
     const id = `out-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     const now = new Date();
     const saved = await runDb(async (db) => db.transaction(async (tx) => {
+      const department = recordInput.department ?? null;
       const priorRows = await tx
         .select({ outputVersion: agentOutputs.outputVersion })
         .from(agentOutputs)
         .where(sql`${agentOutputs.workspaceId} = ${recordInput.workspaceId}
           AND ${agentOutputs.agentId} = ${recordInput.agentId}
-          AND ${agentOutputs.roleKey} = ${recordInput.roleKey}`)
+          AND ${agentOutputs.roleKey} = ${recordInput.roleKey}
+          AND ${agentOutputs.department} IS NOT DISTINCT FROM ${department}`)
         .orderBy(desc(agentOutputs.outputVersion))
         .limit(1);
       const outputVersion = (priorRows[0]?.outputVersion ?? 0) + 1;
@@ -1161,6 +1167,7 @@ export const repository = {
         .where(sql`${agentOutputs.workspaceId} = ${recordInput.workspaceId}
           AND ${agentOutputs.agentId} = ${recordInput.agentId}
           AND ${agentOutputs.roleKey} = ${recordInput.roleKey}
+          AND ${agentOutputs.department} IS NOT DISTINCT FROM ${department}
           AND ${agentOutputs.isActive} = true`);
 
       const [row] = await tx
