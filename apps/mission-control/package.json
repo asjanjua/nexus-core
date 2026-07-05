@@ -15,6 +15,7 @@
     "db:generate": "npx --yes drizzle-kit@0.31.10 generate",
     "db:migrate": "node scripts/db-migrate.mjs",
     "db:seed": "node scripts/db-seed.mjs",
+    "db:seed:demo": "node scripts/seed-demo-workspace.mjs",
     "db:check": "node scripts/db-check.mjs"
   },
   "dependencies": {
