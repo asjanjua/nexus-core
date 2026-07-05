@@ -846,6 +846,17 @@ export type LearningSignalSummary = z.infer<typeof learningSignalSummarySchema>;
 // Workspace settings contract
 // ---------------------------------------------------------------------------
 
+export const whiteLabelBrandSchema = z.object({
+  logoUrl: z.string().url().nullable(),
+  accentColor: z.string().regex(/^#[0-9a-fA-F]{6}$/, "expected 6-digit hex colour").nullable(),
+  fontFamily: z
+    .string()
+    .max(200)
+    .regex(/^[A-Za-z0-9\s"',.-]+$/, "font family may only contain names, spaces, commas, quotes, dots, and hyphens")
+    .nullable(),
+});
+export type WhiteLabelBrand = z.infer<typeof whiteLabelBrandSchema>;
+
 export const workspaceSettingsSchema = z.object({
   workspaceId: z.string(),
   name: z.string(),
@@ -861,6 +872,10 @@ export const workspaceSettingsSchema = z.object({
   sensitivityCeiling: sensitivitySchema.default("confidential"),
   approvalRequiredThreshold: z.number().min(0).max(1).default(0.7),
   demoMode: z.boolean().default(false),
+  /** Level-3 white-label override (Nucleus deployments). Optional so every
+   * existing WorkspaceSettings object literal (tests, in-memory defaults)
+   * stays valid without changes; null/undefined = default Pinavia branding. */
+  whiteLabelBrand: whiteLabelBrandSchema.nullable().optional(),
   updatedAt: z.string()
 });
 export type WorkspaceSettings = z.infer<typeof workspaceSettingsSchema>;

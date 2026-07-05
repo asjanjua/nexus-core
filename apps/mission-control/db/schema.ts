@@ -271,6 +271,14 @@ export const workspaceSettings = pgTable("workspace_settings", {
   approvalRequiredThreshold: integer("approval_required_threshold").notNull().default(70),
   /** Demo mode: disables real ingestion and shows a "Demo" badge. Used during sales demos. */
   demoMode: boolean("demo_mode").notNull().default(false),
+  /** Level-3 white-label brand override (Nucleus client deployments only).
+   * Swaps ONLY logo/accent/font — core status colours and trust patterns are
+   * never part of this override. Null = use Pinavia default branding. */
+  whiteLabelBrand: jsonb("white_label_brand").$type<{
+    logoUrl: string | null;
+    accentColor: string | null;
+    fontFamily: string | null;
+  }>(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 });
 

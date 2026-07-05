@@ -4,6 +4,12 @@
 
 :root {
   color-scheme: dark;
+  /* Brand-layer defaults (Pinavia). Overridden per-workspace for white-label
+     (Nucleus) deployments — see lib/branding/white-label.ts. Never used for
+     status/operational colour; those tokens (nexus.accent/warn/danger/ai)
+     are core and are not CSS variables. */
+  --nexus-brand-accent: #86bc25;
+  --nexus-brand-font: 'Inter', system-ui, sans-serif;
 }
 
 body {

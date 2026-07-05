@@ -21,8 +21,21 @@ const config: Config = {
           warn: "#f3c969",    // Figma: Amber — human review / approval gate
           danger: "#f08aa0",  // Figma: Rose — escalation / blocked / high risk
           sky: "#8fc5ff",     // Figma: Sky — evidence / metric highlight (NEW)
-          ai: "#7a3ff2"       // Philosophy v1.5: Violet — AI-generated only (NEW)
+          ai: "#7a3ff2",      // Philosophy v1.5: Violet — AI-generated only (NEW)
+          // Brand-layer token (Level 2/3, see Design Philosophy v1.5 §4.1 and
+          // Pinavia_Brand_and_Domain_Architecture.md §4). NOT a status colour —
+          // never used for operational meaning (that's nexus.accent/warn/
+          // danger/ai above, which are core and locked). Used only for logo
+          // wordmarks and brand-identity chrome. Defaults to Pinavia lime;
+          // overridden per-workspace via CSS variable for white-label
+          // (Nucleus) client deployments — see lib/branding/white-label.ts.
+          brand: "var(--nexus-brand-accent, #86bc25)"
         }
+      },
+      fontFamily: {
+        // Same override mechanism as nexus.brand — default Pinavia typeface,
+        // swappable per white-label deployment.
+        brand: "var(--nexus-brand-font, 'Inter', system-ui, sans-serif)"
       }
     }
   },

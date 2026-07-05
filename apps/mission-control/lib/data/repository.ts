@@ -1171,6 +1171,7 @@ export const repository = {
           agentId: recordInput.agentId,
           agentVersion: recordInput.agentVersion,
           roleKey: recordInput.roleKey,
+          department,
           content: recordInput.content,
           inputSummary: recordInput.inputSummary,
           evidenceRefs: recordInput.evidenceRefs,
@@ -2196,6 +2197,7 @@ export const repository = {
         sensitivityCeiling: r.sensitivityCeiling ?? "confidential",
         approvalRequiredThreshold: decodeStoredPercent(r.approvalRequiredThreshold ?? 70),
         demoMode: r.demoMode ?? false,
+        whiteLabelBrand: r.whiteLabelBrand ?? null,
         updatedAt: r.updatedAt.toISOString()
       };
     }
@@ -2227,6 +2229,7 @@ export const repository = {
           sensitivityCeiling: next.sensitivityCeiling,
           approvalRequiredThreshold: Math.round(next.approvalRequiredThreshold * 100),
           demoMode: next.demoMode ?? false,
+          whiteLabelBrand: next.whiteLabelBrand ?? null,
           updatedAt: new Date()
         })
         .onConflictDoUpdate({
