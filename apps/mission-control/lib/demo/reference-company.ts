@@ -38,7 +38,7 @@ export type ReferenceCompany = {
 
 export const REFERENCE_COMPANY: ReferenceCompany = {
   key: "reference-emi",
-  workspaceName: "Meridian Pay",
+  workspaceName: "Qasr Pay",
   companyDescription:
     "GCC-licensed Electronic Money Institution offering wallets, merchant acquiring, and payroll cards. " +
     "1.8M active wallets, AED 640M annualised TPV, 74 staff, regulated by the central bank. " +
@@ -54,7 +54,7 @@ export const REFERENCE_COMPANY: ReferenceCompany = {
   ],
 
   profile: {
-    companyName: "Meridian Pay",
+    companyName: "Qasr Pay",
     sector: "financial_services",
     subsector: "Electronic Money Institution / Payments",
     businessModel: "b2b2c",
@@ -78,9 +78,9 @@ export const REFERENCE_COMPANY: ReferenceCompany = {
     companySize: "51_200",
     priority: "high",
     sponsorName: "Nadia Al-Farsi",
-    sponsorEmail: "nadia.alfarsi@meridianpay.example",
+    sponsorEmail: "nadia.alfarsi@qasrpay.example",
     reviewerName: "Omar Haddad",
-    reviewerEmail: "omar.haddad@meridianpay.example",
+    reviewerEmail: "omar.haddad@qasrpay.example",
     governancePosture: "regulated",
     selectedWorkflow: "Merchant Onboarding Risk Review",
     readinessScores: {
@@ -117,7 +117,7 @@ export const REFERENCE_COMPANY: ReferenceCompany = {
       sensitivity: "confidential",
       freshnessHours: 72,
       text:
-        "Meridian Pay Board Pack, Q3 2026. Active wallets 1.82M (+9% QoQ). Annualised TPV AED 640M. " +
+        "Qasr Pay Board Pack, Q3 2026. Active wallets 1.82M (+9% QoQ). Annualised TPV AED 640M. " +
         "Net revenue AED 41.2M, take rate 0.64%. Cash runway 14 months. KEY DECISION FOR THE BOARD: approve a " +
         "revised interchange strategy for merchant acquiring — current blended margin after interchange and fraud " +
         "is 11 bps, below the 18 bps plan. Two open strategic risks: (1) merchant onboarding backlog now at 430 " +

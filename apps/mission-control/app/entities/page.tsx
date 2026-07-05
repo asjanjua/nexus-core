@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { auth } from "@clerk/nextjs/server";
+import { safeAuth } from "@/lib/safe-auth";
 import { PageShell } from "@/components/page-shell";
 import { repository } from "@/lib/data/repository";
 import { entityTypeSchema } from "@/lib/contracts";
@@ -19,7 +19,7 @@ export default async function EntitiesPage({
   searchParams: Promise<{ type?: string; q?: string }>;
 }) {
   const filters = await searchParams;
-  const { orgId, userId } = await auth();
+  const { orgId, userId } = await safeAuth();
   const workspaceId = orgId ?? userId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
   const parsedType = entityTypeSchema.safeParse(filters.type);
   const entities = await repository.listEntities(workspaceId, {

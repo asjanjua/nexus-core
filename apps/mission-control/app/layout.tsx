@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { PwaRegister } from "@/components/pwa-register";
 import { SideNav } from "@/components/side-nav";
 import { TrialBanner } from "@/components/trial-banner";
 import { FeedbackButton } from "@/components/feedback-button";
@@ -14,14 +15,34 @@ import {
   SignedIn,
   SignedOut
 } from "@clerk/nextjs";
-import { auth } from "@clerk/nextjs/server";
+import { safeAuth } from "@/lib/safe-auth";
 import { headers } from "next/headers";
 import { repository } from "@/lib/data/repository";
 import { isDbRequired } from "@/lib/data/db-policy";
 
 export const metadata: Metadata = {
   title: "NexusAI Mission Control",
-  description: "Executive intelligence pilot control surface"
+  description: "Executive intelligence pilot control surface",
+  applicationName: "NexusAI Mission Control",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "NexusAI"
+  },
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icons/icon.svg", type: "image/svg+xml" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+      { url: "/icons/icon-512.png", sizes: "512x512", type: "image/png" }
+    ],
+    apple: [{ url: "/icons/apple-touch-icon.png", sizes: "180x180" }]
+  }
+};
+
+export const viewport: Viewport = {
+  themeColor: "#080d18"
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -44,6 +65,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     return (
       <html lang="en">
         <body>
+          <PwaRegister />
           <ClerkProvider
             signInUrl="/sign-in"
             signUpUrl="/sign-up"
@@ -88,6 +110,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     return (
       <html lang="en">
         <body>
+          <PwaRegister />
           <ClerkProvider
             signInUrl="/sign-in"
             signUpUrl="/sign-up"
@@ -109,19 +132,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     );
   }
 
-  // Defensive auth call — Clerk v6 throws ClerkAuthError on malformed/stale
-  // session tokens rather than returning {userId:null}. Catching here prevents
-  // that from crashing the root layout and triggering global-error.tsx.
-  let userId: string | null = null;
-  let orgId: string | null = null;
-  try {
-    const authResult = await auth();
-    userId = authResult.userId ?? null;
-    orgId = authResult.orgId ?? null;
-  } catch {
-    // Session verification failed — treat as unauthenticated. Middleware will
-    // redirect on the next navigation; for now show the bare sign-in frame.
-  }
+  const { userId, orgId } = await safeAuth();
   const workspaceId = orgId ?? userId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
 
   // Unauthenticated shell — middleware redirects to /sign-in but we render
@@ -130,6 +141,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     return (
       <html lang="en">
         <body>
+          <PwaRegister />
           <ClerkProvider
             signInUrl="/sign-in"
             signUpUrl="/sign-up"
@@ -162,6 +174,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en">
       <body>
+        <PwaRegister />
         <ClerkProvider
           signInUrl="/sign-in"
           signUpUrl="/sign-up"

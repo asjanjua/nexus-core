@@ -1,10 +1,10 @@
 import { PageShell } from "@/components/page-shell";
 import { RecommendationList } from "@/components/recommendation-list";
 import { repository } from "@/lib/data/repository";
-import { auth } from "@clerk/nextjs/server";
+import { safeAuth } from "@/lib/safe-auth";
 
 export default async function RecommendationsPage() {
-  const { orgId, userId } = await auth();
+  const { orgId, userId } = await safeAuth();
   const workspaceId = orgId ?? userId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
   const recs = await repository.getRecommendations(workspaceId);
 

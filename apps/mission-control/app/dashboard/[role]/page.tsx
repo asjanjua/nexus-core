@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
-import { auth } from "@clerk/nextjs/server";
+import { safeAuth } from "@/lib/safe-auth";
 import { DashboardPanel } from "@/components/dashboard-panel";
 import { DashboardSkeleton } from "@/components/dashboard-skeleton";
 import { PageShell } from "@/components/page-shell";
@@ -48,7 +48,7 @@ export default async function DashboardPage({
   const parsed = roleSchema.safeParse(role);
   if (!parsed.success) notFound();
 
-  const { orgId, userId } = await auth();
+  const { orgId, userId } = await safeAuth();
   const workspaceId = orgId ?? userId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
   const profile = await repository.getWorkspaceProfile(workspaceId).catch(() => null);
   const archetype = profile?.companyArchetype ?? null;

@@ -1,8 +1,8 @@
-import { auth } from "@clerk/nextjs/server";
+import { safeAuth } from "@/lib/safe-auth";
 import { OnboardingWizard } from "./wizard";
 
 export default async function OnboardingPage() {
-  const { userId, orgId, orgSlug } = await auth();
+  const { userId, orgId, orgSlug } = await safeAuth();
 
   // Use orgId as workspaceId (same mapping as the rest of the app)
   const workspaceId = orgId ?? userId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";

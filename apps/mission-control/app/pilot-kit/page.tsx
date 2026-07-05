@@ -5,11 +5,11 @@
  * Given to the pilot sponsor at kickoff. Not a product tutorial — a business readiness guide.
  */
 
-import { auth } from "@clerk/nextjs/server";
+import { safeAuth } from "@/lib/safe-auth";
 import { repository } from "@/lib/data/repository";
 
 export default async function PilotKitPage() {
-  const { userId, orgId } = await auth();
+  const { userId, orgId } = await safeAuth();
   const workspaceId = orgId ?? userId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
   const settings = await repository.getWorkspaceSettings(workspaceId);
   const workspaceName = settings?.name ?? "Your Organisation";
