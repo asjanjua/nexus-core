@@ -610,7 +610,7 @@ function AgentCards({
           <EvidenceSourceList records={evidence} ids={card.evidenceRefs} compact />
           {card.skillHints?.length ? (
             <p className="mt-2 text-xs text-white/30">
-              Future skills: {card.skillHints.slice(0, 3).join(", ")}
+              Skills: {card.skillHints.slice(0, 4).join(", ")}
             </p>
           ) : null}
         </article>

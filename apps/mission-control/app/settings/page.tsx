@@ -95,6 +95,28 @@ type AgentOutput = {
   createdAt: string;
 };
 
+type AgentCatalogSuite = {
+  id: string;
+  name: string;
+  productLine: string;
+  requiredSkills: string[];
+  skillFamilies: string[];
+  agents: Array<{
+    id: string;
+    name: string;
+    approvalPolicy: string;
+    skillHints: string[];
+  }>;
+  boundary: string;
+};
+
+type AgentCatalog = {
+  pivotSuites: AgentCatalogSuite[];
+  integrity: {
+    issues: Array<{ suiteId: string; reason: string; missingSkills?: string[]; agentId?: string }>;
+  };
+};
+
 type SynthesisSchedule = {
   id: string;
   workspaceId: string;
@@ -1811,6 +1833,7 @@ type LearningSignalType = "approve" | "edit" | "reject" | "thumbs_up" | "thumbs_
 function AgentGovernanceTab() {
   const [profiles, setProfiles] = useState<AgentControlProfile[]>([]);
   const [outputs, setOutputs] = useState<AgentOutput[]>([]);
+  const [catalog, setCatalog] = useState<AgentCatalog | null>(null);
   const [outputAgent, setOutputAgent] = useState("");
   const [outputDays, setOutputDays] = useState("7");
   const [loading, setLoading] = useState(true);
@@ -1826,6 +1849,9 @@ function AgentGovernanceTab() {
       const json = await res.json();
       if (!json.ok) throw new Error(json.error ?? "load_failed");
       setProfiles(json.data.profiles ?? []);
+      const catalogRes = await fetch("/api/agents/catalog");
+      const catalogJson = await catalogRes.json();
+      if (catalogJson.ok) setCatalog(catalogJson.data);
       await loadOutputs();
     } catch (err) {
       setError(err instanceof Error ? err.message : "unknown_error");
@@ -1982,6 +2008,53 @@ function AgentGovernanceTab() {
         Agent passports answer four reviewer questions: what can this agent see, what can it do,
         when does it escalate, and who is accountable. Every edit creates a new version.
       </div>
+
+      {catalog && (
+        <section className="panel space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-white">Pivot Skill Suites</p>
+              <p className="mt-1 text-xs text-white/45">
+                Nexus and pivot agents grouped by active skill bundles.
+              </p>
+            </div>
+            <span className={`badge ${catalog.integrity.issues.length === 0 ? "badge-green" : "badge-muted"}`}>
+              {catalog.integrity.issues.length === 0 ? "catalog clean" : `${catalog.integrity.issues.length} issue(s)`}
+            </span>
+          </div>
+          <div className="grid gap-3 lg:grid-cols-2">
+            {catalog.pivotSuites.map((suite) => (
+              <article key={suite.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-medium text-white">{suite.name}</p>
+                    <p className="mt-1 text-xs text-white/40">{suite.productLine}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {suite.skillFamilies.map((family) => (
+                      <span key={family} className="badge">{family}</span>
+                    ))}
+                  </div>
+                </div>
+                <p className="mt-3 text-xs text-white/45">{suite.boundary}</p>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {suite.requiredSkills.map((skill) => (
+                    <span key={skill} className="badge badge-muted">{skill}</span>
+                  ))}
+                </div>
+                <div className="mt-3 space-y-1.5">
+                  {suite.agents.map((agent) => (
+                    <div key={agent.id} className="flex items-center justify-between gap-2 text-xs">
+                      <span className="text-white/70">{agent.name}</span>
+                      <span className="text-white/35">{agent.skillHints.slice(0, 3).join(", ")}</span>
+                    </div>
+                  ))}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+      )}
 
       {error && <div className="panel border-red-400/30 text-sm text-red-300">{error}</div>}
 

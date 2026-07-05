@@ -19,7 +19,7 @@ import { synthesiseForRole } from "@/lib/services/synthesis";
 import { buildWorkflowTwinRunInput } from "@/lib/services/workflow-twins";
 import { proposeDecisionsFromAgentOutputs } from "@/lib/services/decision-extraction";
 import { AGENT_LIBRARY } from "@/lib/agents/agent-library";
-import { agentSupportsJobType, requiredFamiliesForJob } from "@/lib/agents/agent-skills";
+import { agentSupportsJobType, missingFamiliesForJob, requiredFamiliesForJob } from "@/lib/agents/agent-skills";
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -171,6 +171,7 @@ async function enforceAgentSkillCompatibility(job: DispatchJob, agentId?: string
 
   if (agentSupportsJobType(agent.skillHints, job.jobType)) return;
 
+  const missingFamilies = missingFamiliesForJob(agent.skillHints, job.jobType);
   await repository.pushAudit({
     workspaceId: job.workspaceId,
     type: "dispatch_agent_assignment_denied",
@@ -181,6 +182,7 @@ async function enforceAgentSkillCompatibility(job: DispatchJob, agentId?: string
       agentId,
       agentSkills: agent.skillHints,
       requiredFamilies: requiredFamiliesForJob(job.jobType),
+      missingFamilies,
       reason: "agent_missing_required_skill_family"
     }
   });

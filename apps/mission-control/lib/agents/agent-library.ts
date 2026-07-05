@@ -29,6 +29,10 @@ export type NexusAgent = {
   suggestedNextAction: string;
 };
 
+type RawNexusAgent = Omit<NexusAgent, "skillHints"> & {
+  skillHints: AgentSkill[];
+};
+
 export type AgentRoom = {
   id: AgentRoomId;
   label: string;
@@ -89,7 +93,16 @@ export const AGENT_ROOMS: AgentRoom[] = [
   },
 ];
 
-export const AGENT_LIBRARY: Record<string, NexusAgent> = {
+const BASELINE_AGENT_SKILLS: AgentSkill[] = ["browse sources", "review evidence", "analyze evidence"];
+
+function normalizeAgent(agent: RawNexusAgent): NexusAgent {
+  return {
+    ...agent,
+    skillHints: Array.from(new Set([...BASELINE_AGENT_SKILLS, ...agent.skillHints])),
+  };
+}
+
+const RAW_AGENT_LIBRARY: Record<string, RawNexusAgent> = {
   strategy_agent: {
     id: "strategy_agent",
     name: "Strategy Agent",
@@ -123,7 +136,7 @@ export const AGENT_LIBRARY: Record<string, NexusAgent> = {
     evidenceScope: ["decision", "meeting", "board", "status", "owner"],
     outputType: "decision",
     approvalPolicy: "draft_only",
-    skillHints: ["search memory", "draft memo", "extract action items"],
+    skillHints: ["review approvals", "search memory", "draft memo", "extract action items"],
     suggestedNextAction: "Create or update the linked decision record with owner and rationale.",
   },
   execution_agent: {
@@ -147,7 +160,7 @@ export const AGENT_LIBRARY: Record<string, NexusAgent> = {
     evidenceScope: ["process", "handoff", "owner", "operations", "incident"],
     outputType: "brief",
     approvalPolicy: "draft_only",
-    skillHints: ["compare documents", "extract action items", "draft memo"],
+    skillHints: ["compare documents", "extract action items", "draft memo", "draft recommendation"],
     suggestedNextAction: "Draft a process-fix recommendation for review.",
   },
   blocker_agent: {
@@ -219,7 +232,7 @@ export const AGENT_LIBRARY: Record<string, NexusAgent> = {
     evidenceScope: ["data", "quality", "governance", "pipeline", "freshness"],
     outputType: "brief",
     approvalPolicy: "read_only",
-    skillHints: ["extract metadata", "search evidence", "prepare approval packet"],
+    skillHints: ["ingest sources", "extract metadata", "search evidence", "prepare approval packet"],
     suggestedNextAction: "Route weak or stale evidence back into review before executive synthesis.",
   },
   security_agent: {
@@ -291,7 +304,7 @@ export const AGENT_LIBRARY: Record<string, NexusAgent> = {
     evidenceScope: ["regulatory", "policy", "filing", "obligation", "compliance", "supervisory"],
     outputType: "risk",
     approvalPolicy: "approval_required",
-    skillHints: ["extract obligations", "search evidence", "prepare approval packet"],
+    skillHints: ["review compliance", "extract obligations", "search evidence", "prepare approval packet"],
     suggestedNextAction: "Escalate obligations with unclear owner, date, or evidence.",
   },
   audit_findings_agent: {
@@ -439,6 +452,10 @@ export const AGENT_LIBRARY: Record<string, NexusAgent> = {
     suggestedNextAction: "Draft a location-performance brief with review, demand, and service signals.",
   },
 };
+
+export const AGENT_LIBRARY: Record<string, NexusAgent> = Object.fromEntries(
+  Object.entries(RAW_AGENT_LIBRARY).map(([agentId, agent]) => [agentId, normalizeAgent(agent)])
+) as Record<string, NexusAgent>;
 
 export const ROLE_AGENT_BRIEFS: Partial<Record<string, string[]>> = {
   ceo: ["strategy_agent", "risk_agent", "decision_agent"],
