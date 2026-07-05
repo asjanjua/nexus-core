@@ -109,7 +109,19 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     );
   }
 
-  const { userId, orgId } = await auth();
+  // Defensive auth call — Clerk v6 throws ClerkAuthError on malformed/stale
+  // session tokens rather than returning {userId:null}. Catching here prevents
+  // that from crashing the root layout and triggering global-error.tsx.
+  let userId: string | null = null;
+  let orgId: string | null = null;
+  try {
+    const authResult = await auth();
+    userId = authResult.userId ?? null;
+    orgId = authResult.orgId ?? null;
+  } catch {
+    // Session verification failed — treat as unauthenticated. Middleware will
+    // redirect on the next navigation; for now show the bare sign-in frame.
+  }
   const workspaceId = orgId ?? userId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
 
   // Unauthenticated shell — middleware redirects to /sign-in but we render
