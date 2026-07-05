@@ -16,6 +16,7 @@
  */
 
 import type { ReactNode } from "react";
+import { HelpDialog } from "@/components/ui/help-dialog";
 
 // ---------------------------------------------------------------------------
 // Shared types
@@ -53,17 +54,25 @@ export function KpiHero({
   helper,
   barPct,
   tone,
+  help,
 }: {
   label: string;
   value: string;
   helper: string;
   barPct: number;
   tone: Tone;
+  help?: {
+    title: string;
+    body: ReactNode;
+  };
 }) {
   return (
     <div className="rounded-lg border border-nexus-border bg-nexus-panel p-4">
       <p className="text-4xl font-bold leading-none text-nexus-text">{value}</p>
-      <p className="mt-2 text-xs font-medium uppercase tracking-wide text-nexus-muted">{label}</p>
+      <p className="mt-2 inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-nexus-muted">
+        <span>{label}</span>
+        {help && <HelpDialog title={help.title}>{help.body}</HelpDialog>}
+      </p>
       <div className="mt-3 h-1 rounded-full bg-white/10">
         <div
           className={`h-full rounded-full ${TONE_BG[tone]}`}

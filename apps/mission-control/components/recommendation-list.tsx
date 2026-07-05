@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ConfidenceBadge } from "@/components/ui/trust-drawer-trigger";
 import { ConsequencePreview, useConsequencePreview } from "@/components/ui/consequence-preview";
+import { HelpLabel } from "@/components/ui/help-dialog";
 
 type Recommendation = {
   id: string;
@@ -48,7 +49,14 @@ export function RecommendationList({
 
   return (
     <section className="panel">
-      <p className="panel-title">Recommendation Queue</p>
+      <p className="panel-title">
+        <HelpLabel
+          title="Recommendation queue"
+          help="Recommendations are generated from approved evidence. Review the confidence and source trail, then approve only when the recommendation is useful and safe to act on."
+        >
+          Recommendation Queue
+        </HelpLabel>
+      </p>
 
       {error && (
         <p className="mt-2 rounded-lg border border-red-300/40 bg-red-300/10 px-3 py-2 text-xs text-red-300">

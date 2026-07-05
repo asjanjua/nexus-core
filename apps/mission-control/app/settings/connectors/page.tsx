@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { PageShell } from "@/components/page-shell";
+import { HelpLabel } from "@/components/ui/help-dialog";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,8 +40,15 @@ type ConnectorDef = {
   description: string;
   icon: React.ReactNode;
   installHref: string;
+  setupHref?: string;
+  docsHref?: string;
   available: boolean;
   lane: "saas" | "warehouse" | "private";
+  envVars?: string[];
+  redirectPath?: string;
+  scopes?: string[];
+  dataScope: string;
+  setupNotes: string[];
   /** "oauth" (default) renders an Install link. "manual" renders an inline connect form (IMAP). */
   connectKind?: "oauth" | "manual";
 };
@@ -56,8 +64,19 @@ const CONNECTOR_CATALOGUE: ConnectorDef[] = [
       </svg>
     ),
     installHref: "/api/connectors/slack/install",
+    setupHref: "https://api.slack.com/apps",
+    docsHref: "https://docs.slack.dev/authentication/installing-with-oauth",
     available: true,
     lane: "saas",
+    envVars: ["SLACK_CLIENT_ID", "SLACK_CLIENT_SECRET", "SLACK_SIGNING_SECRET", "NEXT_PUBLIC_APP_URL"],
+    redirectPath: "/api/connectors/slack/callback",
+    scopes: ["channels:history", "channels:read", "groups:history", "groups:read", "users:read", "files:read"],
+    dataScope: "Team messages, threads, and files from allowed channels only. DMs are blocked by policy.",
+    setupNotes: [
+      "Create a Slack app, add the OAuth redirect URL, and install it to the target workspace.",
+      "Add only the scopes Nexus needs for read-only evidence ingestion.",
+      "After install, configure allowed channel IDs before enabling broad ingestion.",
+    ],
   },
   {
     type: "google-drive",
@@ -69,8 +88,19 @@ const CONNECTOR_CATALOGUE: ConnectorDef[] = [
       </svg>
     ),
     installHref: "/api/connectors/google-drive/install",
+    setupHref: "https://console.cloud.google.com/apis/credentials",
+    docsHref: "https://developers.google.com/identity/protocols/oauth2/web-server",
     available: true,
     lane: "saas",
+    envVars: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "NEXT_PUBLIC_APP_URL"],
+    redirectPath: "/api/connectors/google-drive/callback",
+    scopes: ["drive.readonly", "userinfo.email"],
+    dataScope: "Google Docs, Sheets, Slides, PDFs, and other files the installing user can read.",
+    setupNotes: [
+      "Create or reuse a Google Cloud OAuth web client.",
+      "Add the Google Drive redirect URI exactly as shown below.",
+      "Keep the app in testing mode for early demos, or complete Google verification before broad customer use.",
+    ],
   },
   {
     type: "sharepoint",
@@ -82,8 +112,19 @@ const CONNECTOR_CATALOGUE: ConnectorDef[] = [
       </svg>
     ),
     installHref: "/api/connectors/sharepoint/install",
+    setupHref: "https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade",
+    docsHref: "https://learn.microsoft.com/en-us/entra/identity-platform/quickstart-register-app",
     available: true,
     lane: "saas",
+    envVars: ["MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET", "MICROSOFT_TENANT_ID", "NEXT_PUBLIC_APP_URL"],
+    redirectPath: "/api/connectors/sharepoint/callback",
+    scopes: ["Files.Read", "offline_access", "User.Read"],
+    dataScope: "Microsoft 365 files visible through the connected user's OneDrive/SharePoint drive access.",
+    setupNotes: [
+      "Register an app in Microsoft Entra ID and add a Web redirect URI.",
+      "Create a client secret and copy the client ID, secret, and tenant setting into Render.",
+      "Use tenant-specific IDs for controlled pilots; use common only when multi-tenant install is intentional.",
+    ],
   },
   {
     type: "github",
@@ -95,8 +136,19 @@ const CONNECTOR_CATALOGUE: ConnectorDef[] = [
       </svg>
     ),
     installHref: "/api/connectors/github/install",
+    setupHref: "https://github.com/settings/developers",
+    docsHref: "https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app",
     available: true,
     lane: "saas",
+    envVars: ["GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET", "NEXT_PUBLIC_APP_URL"],
+    redirectPath: "/api/connectors/github/callback",
+    scopes: ["repo"],
+    dataScope: "Repository list plus issue and pull-request evidence for repositories the installing user can access.",
+    setupNotes: [
+      "Create a GitHub OAuth app and set the Authorization callback URL to the Nexus redirect URI.",
+      "Use the narrowest repo access that fits the pilot account.",
+      "Current Nexus scope is issue/PR evidence; CI and deployment rollups are still future work.",
+    ],
   },
   {
     type: "jira",
@@ -108,8 +160,19 @@ const CONNECTOR_CATALOGUE: ConnectorDef[] = [
       </svg>
     ),
     installHref: "/api/connectors/jira/install",
+    setupHref: "https://developer.atlassian.com/console/myapps/",
+    docsHref: "https://developer.atlassian.com/cloud/oauth/getting-started/enabling-oauth-3lo/",
     available: true,
     lane: "saas",
+    envVars: ["JIRA_CLIENT_ID", "JIRA_CLIENT_SECRET", "NEXT_PUBLIC_APP_URL"],
+    redirectPath: "/api/connectors/jira/callback",
+    scopes: ["read:jira-work", "read:jira-user", "offline_access"],
+    dataScope: "Jira Cloud issue metadata and descriptions from accessible Jira sites.",
+    setupNotes: [
+      "Create an Atlassian OAuth 2.0 (3LO) app and enable Jira API scopes.",
+      "Add the callback URL under Authorization for OAuth 2.0 (3LO).",
+      "The first install resolves an accessible cloud site; users without Jira site access cannot ingest issues.",
+    ],
   },
   {
     type: "hubspot",
@@ -121,8 +184,19 @@ const CONNECTOR_CATALOGUE: ConnectorDef[] = [
       </svg>
     ),
     installHref: "/api/connectors/hubspot/install",
+    setupHref: "https://app.hubspot.com/developer",
+    docsHref: "https://developers.hubspot.com/docs/apps/legacy-apps/authentication/working-with-oauth",
     available: true,
     lane: "saas",
+    envVars: ["HUBSPOT_CLIENT_ID", "HUBSPOT_CLIENT_SECRET", "NEXT_PUBLIC_APP_URL"],
+    redirectPath: "/api/connectors/hubspot/callback",
+    scopes: ["crm.objects.deals.read"],
+    dataScope: "HubSpot deal records for CRM evidence. Contact and activity history remain future scope.",
+    setupNotes: [
+      "Create a HubSpot public app, add the redirect URL, and request read access for CRM deal objects.",
+      "Use a test/developer account first so the consent screen and scopes are correct before demos.",
+      "Current Nexus scope is deals only; do not present this as full CRM ingestion yet.",
+    ],
   },
   {
     type: "quickbooks",
@@ -134,8 +208,19 @@ const CONNECTOR_CATALOGUE: ConnectorDef[] = [
       </svg>
     ),
     installHref: "/api/connectors/quickbooks/install",
+    setupHref: "https://developer.intuit.com/app/developer/myapps",
+    docsHref: "https://developer.intuit.com/app/developer/qbo/docs/develop/authentication-and-authorization/set-redirect-uri",
     available: true,
     lane: "saas",
+    envVars: ["QUICKBOOKS_CLIENT_ID", "QUICKBOOKS_CLIENT_SECRET", "QUICKBOOKS_ENVIRONMENT", "NEXT_PUBLIC_APP_URL"],
+    redirectPath: "/api/connectors/quickbooks/callback",
+    scopes: ["com.intuit.quickbooks.accounting"],
+    dataScope: "QuickBooks Online invoice evidence from the connected company file. Full P&L/AR/AP reports are future scope.",
+    setupNotes: [
+      "Create an Intuit app and choose QuickBooks Online Accounting access.",
+      "Set the redirect URI in both development and production settings as needed.",
+      "Use sandbox for test files; switch QUICKBOOKS_ENVIRONMENT to production only for real customer companies.",
+    ],
   },
   {
     type: "linkedin",
@@ -147,8 +232,19 @@ const CONNECTOR_CATALOGUE: ConnectorDef[] = [
       </svg>
     ),
     installHref: "/api/connectors/linkedin/install",
+    setupHref: "https://www.linkedin.com/developers/apps",
+    docsHref: "https://learn.microsoft.com/en-us/linkedin/shared/authentication/authorization-code-flow",
     available: true,
     lane: "saas",
+    envVars: ["LINKEDIN_CLIENT_ID", "LINKEDIN_CLIENT_SECRET", "NEXT_PUBLIC_APP_URL"],
+    redirectPath: "/api/connectors/linkedin/callback",
+    scopes: ["openid", "profile", "w_organization_social"],
+    dataScope: "Company-page social posts and signals when LinkedIn product approval allows access.",
+    setupNotes: [
+      "Create a LinkedIn developer app and add the redirect URL in Auth settings.",
+      "Request the LinkedIn product needed for organization/community management access before expecting post ingestion to work.",
+      "OAuth install can succeed before data access is approved; files/ingest may still fail with LinkedIn permission errors.",
+    ],
   },
   {
     type: "gmail",
@@ -160,8 +256,19 @@ const CONNECTOR_CATALOGUE: ConnectorDef[] = [
       </svg>
     ),
     installHref: "/api/connectors/gmail/install",
+    setupHref: "https://console.cloud.google.com/apis/credentials",
+    docsHref: "https://developers.google.com/workspace/gmail/api/auth/scopes",
     available: true,
     lane: "saas",
+    envVars: ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", "NEXT_PUBLIC_APP_URL"],
+    redirectPath: "/api/connectors/gmail/callback",
+    scopes: ["gmail.readonly", "userinfo.email"],
+    dataScope: "Read-only Gmail messages from the connected mailbox. Attachments and thread rollups are future scope.",
+    setupNotes: [
+      "Reuse the Google OAuth client used for Google Drive, then add this Gmail callback URI too.",
+      "Enable the Gmail API and request the read-only Gmail scope.",
+      "Gmail scopes can trigger Google verification requirements before broad production use.",
+    ],
   },
   {
     type: "outlook-mail",
@@ -173,8 +280,19 @@ const CONNECTOR_CATALOGUE: ConnectorDef[] = [
       </svg>
     ),
     installHref: "/api/connectors/outlook-mail/install",
+    setupHref: "https://entra.microsoft.com/#view/Microsoft_AAD_RegisteredApps/ApplicationsListBlade",
+    docsHref: "https://learn.microsoft.com/en-us/graph/permissions-reference",
     available: true,
     lane: "saas",
+    envVars: ["MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET", "MICROSOFT_TENANT_ID", "NEXT_PUBLIC_APP_URL"],
+    redirectPath: "/api/connectors/outlook-mail/callback",
+    scopes: ["Mail.Read", "offline_access", "User.Read"],
+    dataScope: "Read-only Outlook.com or Microsoft 365 mailbox messages for the signed-in user.",
+    setupNotes: [
+      "Reuse the Azure app registration used for SharePoint, then add this Outlook callback URI too.",
+      "Add delegated Microsoft Graph Mail.Read permission and grant admin consent if your tenant requires it.",
+      "For shared mailbox or all-mailbox access, scope and policy need a separate enterprise design pass.",
+    ],
   },
   {
     type: "imap",
@@ -186,8 +304,17 @@ const CONNECTOR_CATALOGUE: ConnectorDef[] = [
       </svg>
     ),
     installHref: "",
+    docsHref: "https://www.rfc-editor.org/rfc/rfc9051.html",
     available: true,
     lane: "saas",
+    envVars: [],
+    scopes: ["Mailbox username/password or app password"],
+    dataScope: "Any standards-compliant IMAP-over-TLS mailbox. Nexus stores credentials encrypted at rest.",
+    setupNotes: [
+      "No OAuth app or environment variables are required.",
+      "Use the mail host's IMAP server, port 993, TLS enabled, and an app password where available.",
+      "Do not use POP3; the connector is intentionally IMAP-only.",
+    ],
     connectKind: "manual",
   },
   {
@@ -200,8 +327,19 @@ const CONNECTOR_CATALOGUE: ConnectorDef[] = [
       </svg>
     ),
     installHref: "/api/connectors/snowflake/install",
+    setupHref: "https://docs.snowflake.com/en/user-guide/oauth-custom",
+    docsHref: "https://docs.snowflake.com/en/user-guide/oauth-custom",
     available: false,
     lane: "warehouse",
+    envVars: [],
+    redirectPath: "/api/connectors/snowflake/callback",
+    scopes: ["Warehouse/database role to be defined"],
+    dataScope: "Future structured warehouse ingestion for governed tables and analytics data.",
+    setupNotes: [
+      "Not implemented in Nexus yet; do not use the internal install path for demos.",
+      "Snowflake setup will require a security integration, redirect URI, role mapping, and query allow-list.",
+      "Scope this only after the first pilot has a clear table-level data need.",
+    ],
   },
   {
     type: "bigquery",
@@ -213,8 +351,19 @@ const CONNECTOR_CATALOGUE: ConnectorDef[] = [
       </svg>
     ),
     installHref: "/api/connectors/bigquery/install",
+    setupHref: "https://console.cloud.google.com/apis/credentials",
+    docsHref: "https://docs.cloud.google.com/bigquery/docs/authentication",
     available: false,
     lane: "warehouse",
+    envVars: [],
+    redirectPath: "/api/connectors/bigquery/callback",
+    scopes: ["BigQuery read scope to be defined"],
+    dataScope: "Future structured analytics ingestion from selected BigQuery datasets.",
+    setupNotes: [
+      "Not implemented in Nexus yet; do not use the internal install path for demos.",
+      "BigQuery setup will need a Google Cloud OAuth client or service-account architecture decision.",
+      "Add only after table selection, data classification, and query boundaries are designed.",
+    ],
   },
   {
     type: "private",
@@ -226,8 +375,17 @@ const CONNECTOR_CATALOGUE: ConnectorDef[] = [
       </svg>
     ),
     installHref: "/api/connectors/private/install",
+    setupHref: "mailto:hello@pinavia.io?subject=Nexus%20Private%20Connector%20Scoping",
     available: false,
     lane: "private",
+    envVars: [],
+    scopes: ["Custom per client"],
+    dataScope: "Future private sidecar connector for internal databases and proprietary systems.",
+    setupNotes: [
+      "Not implemented as a self-serve connector.",
+      "Requires architecture scoping: network location, credential handling, query allow-list, audit logging, and deployment model.",
+      "Use this only for enterprise/on-prem pilots after the cloud workflow is proven.",
+    ],
   },
 ];
 
@@ -323,6 +481,7 @@ function ConnectorRow({
   });
   const [imapDraft, setImapDraft] = useState<ImapConnectDraft>(EMPTY_IMAP_DRAFT);
   const [imapFormOpen, setImapFormOpen] = useState(false);
+  const externalAttrs = { target: "_blank", rel: "noreferrer" };
 
   return (
     <div className="flex items-start gap-4 rounded-xl border border-white/10 bg-white/5 p-4">
@@ -361,7 +520,14 @@ function ConnectorRow({
               <span>
                 Last sync: {record.lastSyncAt ? new Date(record.lastSyncAt).toLocaleString() : "Not yet synced"}
               </span>
-              <span>Max sensitivity: {String(record.config?.maxSensitivity ?? "confidential")}</span>
+              <span>
+                <HelpLabel
+                  title="Connector max sensitivity"
+                  help="This is the highest sensitivity level this connector may ingest. Anything above the limit should be blocked or held back by policy."
+                >
+                  Max sensitivity: {String(record.config?.maxSensitivity ?? "confidential")}
+                </HelpLabel>
+              </span>
               <span>
                 Channels: {Array.isArray(record.config?.allowedChannels) && record.config.allowedChannels.length
                   ? record.config.allowedChannels.join(", ")
@@ -378,16 +544,24 @@ function ConnectorRow({
               <div className="mt-3 grid gap-3 rounded-xl border border-white/10 bg-black/20 p-3 text-xs">
                 {def.type === "slack" && (
                   <>
-                    <label className="space-y-1">
-                      <span className="text-white/50">Allowed Slack channel IDs</span>
+                    <div className="space-y-1">
+                      <span className="text-white/50">
+                        <HelpLabel
+                          title="Allowed Slack channel IDs"
+                          help="Only messages from these Slack channels can become evidence. Use this to keep pilots focused and avoid pulling unrelated conversations into Nexus."
+                        >
+                          Allowed Slack channel IDs
+                        </HelpLabel>
+                      </span>
                       <input
+                        aria-label="Allowed Slack channel IDs"
                         className="input"
                         value={draft.allowedChannels}
                         onChange={(event) => setDraft({ ...draft, allowedChannels: event.target.value })}
                         placeholder="C0123, C0456"
                       />
                       <span className="block text-white/30">Only these channels become evidence. DMs are always blocked.</span>
-                    </label>
+                    </div>
                     <label className="flex items-center gap-2 text-white/60">
                       <input
                         type="checkbox"
@@ -399,9 +573,17 @@ function ConnectorRow({
                   </>
                 )}
                 <div className="grid gap-3 md:grid-cols-3">
-                  <label className="space-y-1">
-                    <span className="text-white/50">Default sensitivity</span>
+                  <div className="space-y-1">
+                    <span className="text-white/50">
+                      <HelpLabel
+                        title="Default sensitivity"
+                        help="This label is applied to new evidence from the connector unless a more specific rule overrides it."
+                      >
+                        Default sensitivity
+                      </HelpLabel>
+                    </span>
                     <select
+                      aria-label="Default sensitivity"
                       className="input"
                       value={draft.defaultSensitivity}
                       onChange={(event) => setDraft({ ...draft, defaultSensitivity: event.target.value as ConnectorPolicyDraft["defaultSensitivity"] })}
@@ -411,10 +593,18 @@ function ConnectorRow({
                       <option value="confidential">Confidential</option>
                       <option value="restricted">Restricted</option>
                     </select>
-                  </label>
-                  <label className="space-y-1">
-                    <span className="text-white/50">Max sensitivity</span>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-white/50">
+                      <HelpLabel
+                        title="Max sensitivity"
+                        help="This caps the sensitivity level this connector is allowed to ingest. Use a lower cap for channels or systems that should never bring restricted material into Nexus."
+                      >
+                        Max sensitivity
+                      </HelpLabel>
+                    </span>
                     <select
+                      aria-label="Max sensitivity"
                       className="input"
                       value={draft.maxSensitivity}
                       onChange={(event) => setDraft({ ...draft, maxSensitivity: event.target.value as ConnectorPolicyDraft["maxSensitivity"] })}
@@ -424,10 +614,18 @@ function ConnectorRow({
                       <option value="confidential">Confidential</option>
                       <option value="restricted">Restricted</option>
                     </select>
-                  </label>
-                  <label className="space-y-1">
-                    <span className="text-white/50">Source policy</span>
+                  </div>
+                  <div className="space-y-1">
+                    <span className="text-white/50">
+                      <HelpLabel
+                        title="Source policy"
+                        help="Source policy controls how Nexus treats incoming data from this connector: ingest automatically, prefer manual review, or disable the source."
+                      >
+                        Source policy
+                      </HelpLabel>
+                    </span>
                     <select
+                      aria-label="Source policy"
                       className="input"
                       value={draft.sourcePolicy}
                       onChange={(event) => setDraft({ ...draft, sourcePolicy: event.target.value as ConnectorPolicyDraft["sourcePolicy"] })}
@@ -436,7 +634,7 @@ function ConnectorRow({
                       <option value="manual_review">Manual review preferred</option>
                       <option value="disabled">Disabled</option>
                     </select>
-                  </label>
+                  </div>
                 </div>
                 <label className="space-y-1">
                   <span className="text-white/50">Admin notes</span>
@@ -465,7 +663,7 @@ function ConnectorRow({
       </div>
 
       {/* Actions */}
-      <div className="shrink-0">
+      <div className="flex shrink-0 flex-col items-end gap-2">
         {!isInstalled && def.available && def.connectKind === "manual" && (
           <button
             className="btn-primary text-xs"
@@ -477,6 +675,20 @@ function ConnectorRow({
         {!isInstalled && def.available && def.connectKind !== "manual" && (
           <a href={def.installHref} className="btn-primary text-xs">
             Install →
+          </a>
+        )}
+        {def.setupHref && (
+          <a
+            href={def.setupHref}
+            {...externalAttrs}
+            className="btn-subtle text-xs"
+          >
+            {def.available ? "Provider setup" : def.type === "private" ? "Scope connector" : "Setup guide"}
+          </a>
+        )}
+        {def.docsHref && def.docsHref !== def.setupHref && (
+          <a href={def.docsHref} {...externalAttrs} className="text-xs text-white/35 transition hover:text-white/65">
+            Docs
           </a>
         )}
         {isActive && (
@@ -501,24 +713,29 @@ function ConnectorRow({
             Reinstall
           </a>
         )}
-        {!def.available && (
-          <span className="text-xs text-white/20">—</span>
-        )}
       </div>
 
       {/* Inline IMAP connect form — manual server settings, no OAuth */}
       {def.connectKind === "manual" && imapFormOpen && !isInstalled && (
         <div className="mt-3 w-full basis-full grid gap-3 rounded-xl border border-white/10 bg-black/20 p-3 text-xs">
           <div className="grid gap-3 md:grid-cols-2">
-            <label className="space-y-1">
-              <span className="text-white/50">IMAP host</span>
+            <div className="space-y-1">
+              <span className="text-white/50">
+                <HelpLabel
+                  title="IMAP host"
+                  help="The IMAP host is the mail server address provided by your email host, such as imap.example.com. Nexus uses it to read mailbox messages after you connect."
+                >
+                  IMAP host
+                </HelpLabel>
+              </span>
               <input
+                aria-label="IMAP host"
                 className="input"
                 value={imapDraft.host}
                 onChange={(e) => setImapDraft({ ...imapDraft, host: e.target.value })}
                 placeholder="imap.example.com"
               />
-            </label>
+            </div>
             <label className="space-y-1">
               <span className="text-white/50">Port</span>
               <input
@@ -586,6 +803,96 @@ const LANE_LABELS: Record<ConnectorDef["lane"], string> = {
   warehouse: "Data Warehouse Connectors",
   private: "Private / On-Premises",
 };
+
+function ConnectorSetupGuide() {
+  return (
+    <section className="rounded-xl border border-white/10 bg-black/20 p-4">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <p className="text-sm font-semibold text-white/80">
+            <HelpLabel
+              title="Connector setup guide"
+              help="This is the complete connector list for this workspace. Use it to see which connectors are live, which are future, what credentials are required, and which provider setup page to open before clicking Install."
+            >
+              Connector setup guide
+            </HelpLabel>
+          </p>
+          <p className="mt-1 max-w-3xl text-xs leading-5 text-white/45">
+            OAuth connectors need provider credentials and an exact redirect URI before the in-app Install button will work.
+            Manual connectors collect settings in Nexus. Future connectors show planning links instead of fake install actions.
+          </p>
+        </div>
+        <span className="text-xs text-white/35">
+          docs/CONNECTOR_SETUP_GUIDE.md
+        </span>
+      </div>
+
+      <div className="mt-4 grid gap-3 xl:grid-cols-2">
+        {CONNECTOR_CATALOGUE.map((connector) => {
+          const redirectUri = connector.redirectPath
+            ? `{NEXT_PUBLIC_APP_URL}${connector.redirectPath}`
+            : connector.connectKind === "manual"
+              ? "No redirect URI"
+              : "Not defined yet";
+          return (
+            <article key={connector.type} className="rounded-lg border border-white/10 bg-white/[0.025] p-3">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium text-white">{connector.name}</p>
+                  <p className="mt-1 text-xs leading-5 text-white/45">{connector.dataScope}</p>
+                </div>
+                <span className={`badge ${connector.available ? "badge-green" : "badge-muted"}`}>
+                  {connector.available ? connector.connectKind === "manual" ? "Manual live" : "OAuth live" : "Future"}
+                </span>
+              </div>
+
+              <dl className="mt-3 grid gap-2 text-xs sm:grid-cols-2">
+                <div>
+                  <dt className="text-white/30">Environment</dt>
+                  <dd className="mt-0.5 font-mono text-white/55">
+                    {connector.envVars?.length ? connector.envVars.join(", ") : "None"}
+                  </dd>
+                </div>
+                <div>
+                  <dt className="text-white/30">Redirect URI</dt>
+                  <dd className="mt-0.5 break-all font-mono text-white/55">{redirectUri}</dd>
+                </div>
+                <div className="sm:col-span-2">
+                  <dt className="text-white/30">Scopes / access</dt>
+                  <dd className="mt-0.5 text-white/55">{connector.scopes?.join(", ") || "To be defined"}</dd>
+                </div>
+              </dl>
+
+              <ol className="mt-3 list-decimal space-y-1 pl-4 text-xs leading-5 text-white/50">
+                {connector.setupNotes.map((note) => (
+                  <li key={note}>{note}</li>
+                ))}
+              </ol>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                {connector.setupHref && (
+                  <a
+                    href={connector.setupHref}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn-subtle text-xs"
+                  >
+                    {connector.type === "private" ? "Scope connector" : "Open provider setup"}
+                  </a>
+                )}
+                {connector.docsHref && (
+                  <a href={connector.docsHref} target="_blank" rel="noreferrer" className="btn-subtle text-xs">
+                    Official docs
+                  </a>
+                )}
+              </div>
+            </article>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Main page
@@ -760,6 +1067,8 @@ export default function ConnectorsPage() {
         </div>
       )}
 
+      <ConnectorSetupGuide />
+
       {loading ? (
         <div className="py-12 text-center text-sm text-white/40">Loading connectors...</div>
       ) : (
@@ -792,40 +1101,10 @@ export default function ConnectorsPage() {
         </div>
       )}
 
-      {/* Env-var hint for admins */}
-      <div className="mt-8 rounded-xl border border-white/10 bg-black/20 p-4 text-xs text-white/40 space-y-1">
-        <p className="font-medium text-white/60">To enable Slack:</p>
-        <p>Set <code className="text-nexus-accent/70">SLACK_CLIENT_ID</code>, <code className="text-nexus-accent/70">SLACK_CLIENT_SECRET</code>, and <code className="text-nexus-accent/70">NEXT_PUBLIC_APP_URL</code> in your environment, then add your redirect URI to the Slack app manifest.</p>
-        <p className="mt-1">Redirect URI: <code className="text-white/50">{"{NEXT_PUBLIC_APP_URL}"}/api/connectors/slack/callback</code></p>
-        <p className="font-medium text-white/60 mt-4">To enable Google Drive:</p>
-        <p>Set <code className="text-nexus-accent/70">GOOGLE_CLIENT_ID</code>, <code className="text-nexus-accent/70">GOOGLE_CLIENT_SECRET</code>, and <code className="text-nexus-accent/70">NEXT_PUBLIC_APP_URL</code> in your environment, then add your redirect URI in the Google Cloud Console.</p>
-        <p className="mt-1">Redirect URI: <code className="text-white/50">{"{NEXT_PUBLIC_APP_URL}"}/api/connectors/google-drive/callback</code></p>
-        <p className="font-medium text-white/60 mt-4">To enable SharePoint / Teams:</p>
-        <p>Register an app in Azure AD, then set <code className="text-nexus-accent/70">MICROSOFT_CLIENT_ID</code>, <code className="text-nexus-accent/70">MICROSOFT_CLIENT_SECRET</code>, and optionally <code className="text-nexus-accent/70">MICROSOFT_TENANT_ID</code> (defaults to "common") in your environment.</p>
-        <p className="mt-1">Redirect URI: <code className="text-white/50">{"{NEXT_PUBLIC_APP_URL}"}/api/connectors/sharepoint/callback</code></p>
-        <p className="font-medium text-white/60 mt-4">To enable GitHub:</p>
-        <p>Register an OAuth app at github.com/settings/developers, then set <code className="text-nexus-accent/70">GITHUB_CLIENT_ID</code> and <code className="text-nexus-accent/70">GITHUB_CLIENT_SECRET</code> in your environment.</p>
-        <p className="mt-1">Redirect URI: <code className="text-white/50">{"{NEXT_PUBLIC_APP_URL}"}/api/connectors/github/callback</code></p>
-        <p className="font-medium text-white/60 mt-4">To enable Jira:</p>
-        <p>Register an OAuth 2.0 (3LO) app at developer.atlassian.com, then set <code className="text-nexus-accent/70">JIRA_CLIENT_ID</code> and <code className="text-nexus-accent/70">JIRA_CLIENT_SECRET</code> in your environment.</p>
-        <p className="mt-1">Redirect URI: <code className="text-white/50">{"{NEXT_PUBLIC_APP_URL}"}/api/connectors/jira/callback</code></p>
-        <p className="font-medium text-white/60 mt-4">To enable HubSpot:</p>
-        <p>Create a public app at developers.hubspot.com, then set <code className="text-nexus-accent/70">HUBSPOT_CLIENT_ID</code> and <code className="text-nexus-accent/70">HUBSPOT_CLIENT_SECRET</code> in your environment.</p>
-        <p className="mt-1">Redirect URI: <code className="text-white/50">{"{NEXT_PUBLIC_APP_URL}"}/api/connectors/hubspot/callback</code></p>
-        <p className="font-medium text-white/60 mt-4">To enable QuickBooks:</p>
-        <p>Register an app at developer.intuit.com, then set <code className="text-nexus-accent/70">QUICKBOOKS_CLIENT_ID</code>, <code className="text-nexus-accent/70">QUICKBOOKS_CLIENT_SECRET</code>, and optionally <code className="text-nexus-accent/70">QUICKBOOKS_ENVIRONMENT</code> ("sandbox" or "production", defaults to "production") in your environment.</p>
-        <p className="mt-1">Redirect URI: <code className="text-white/50">{"{NEXT_PUBLIC_APP_URL}"}/api/connectors/quickbooks/callback</code></p>
-        <p className="font-medium text-white/60 mt-4">To enable LinkedIn:</p>
-        <p>Create an app at developer.linkedin.com, then set <code className="text-nexus-accent/70">LINKEDIN_CLIENT_ID</code> and <code className="text-nexus-accent/70">LINKEDIN_CLIENT_SECRET</code> in your environment. Posting/reading company-page data also requires LinkedIn's Community Management API product, which needs separate partner approval.</p>
-        <p className="mt-1">Redirect URI: <code className="text-white/50">{"{NEXT_PUBLIC_APP_URL}"}/api/connectors/linkedin/callback</code></p>
-        <p className="font-medium text-white/60 mt-4">To enable Gmail:</p>
-        <p>Reuses the same Google Cloud OAuth client as Google Drive — set <code className="text-nexus-accent/70">GOOGLE_CLIENT_ID</code> and <code className="text-nexus-accent/70">GOOGLE_CLIENT_SECRET</code>, and add the Gmail redirect URI below to the same OAuth client's allowed redirect URIs.</p>
-        <p className="mt-1">Redirect URI: <code className="text-white/50">{"{NEXT_PUBLIC_APP_URL}"}/api/connectors/gmail/callback</code></p>
-        <p className="font-medium text-white/60 mt-4">To enable Outlook Mail:</p>
-        <p>Reuses the same Azure AD app registration as SharePoint — set <code className="text-nexus-accent/70">MICROSOFT_CLIENT_ID</code>, <code className="text-nexus-accent/70">MICROSOFT_CLIENT_SECRET</code>, and optionally <code className="text-nexus-accent/70">MICROSOFT_TENANT_ID</code>, and add the Mail.Read scope plus the redirect URI below to that registration.</p>
-        <p className="mt-1">Redirect URI: <code className="text-white/50">{"{NEXT_PUBLIC_APP_URL}"}/api/connectors/outlook-mail/callback</code></p>
-        <p className="font-medium text-white/60 mt-4">To enable IMAP Email:</p>
-        <p>No environment variables or OAuth app needed. Click Connect above and enter the mailbox's IMAP host, port, username, and password directly — works with any standards-compliant IMAP server (Spacemail, Hostinger, Zoho, self-hosted, etc). Credentials are encrypted at rest the same way OAuth tokens are. POP3 is not supported.</p>
+      <div className="mt-8 rounded-xl border border-white/10 bg-black/20 p-4 text-xs leading-5 text-white/45">
+        Connector credentials are stored separately from source policy. After any connector is installed, open
+        <span className="text-white/65"> Configure source policy </span>
+        before ingesting production data so sensitivity limits, review preference, and allowed source boundaries are explicit.
       </div>
     </PageShell>
   );

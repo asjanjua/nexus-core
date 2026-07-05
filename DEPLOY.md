@@ -5,6 +5,7 @@ Use this when you are setting up or understanding the Render deployment path fro
 For release-day cutover, use `CUTOVER.md`.
 For the final go/no-go checklist, use `docs/PRODUCTION_HEALTH_CHECKLIST.md`.
 For detailed Render-specific environment and smoke notes, use `docs/RENDER_DEPLOY.md`.
+For preserving the original Vercel-origin UI as a design/product baseline, use `docs/UI_BASELINE_VERSIONING.md`.
 
 This document covers the current production pilot path for NexusAI Mission Control.
 
@@ -222,6 +223,10 @@ Render rollback path:
 
 Database migrations are forward-only. If a schema migration needs reversal, create a new migration that restores the prior behavior without deleting history.
 
+UI baseline note:
+
+The original Vercel-built UI is historical design provenance, not the active deployment path. Preserve it as `UI V0.1 baseline` in git/Figma/docs using `docs/UI_BASELINE_VERSIONING.md`. Render remains the runtime rollback path.
+
 ---
 
 ## 9. Operational Notes
@@ -232,3 +237,4 @@ For deeper production checks, see:
 
 - `CUTOVER.md`
 - `docs/PRODUCTION_HEALTH_CHECKLIST.md`
+- `docs/UI_BASELINE_VERSIONING.md`

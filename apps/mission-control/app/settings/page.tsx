@@ -8,6 +8,7 @@
 import { useState, useEffect } from "react";
 import { PageShell } from "@/components/page-shell";
 import { MetaChip } from "@/components/ui/nexus-primitives";
+import { HelpLabel } from "@/components/ui/help-dialog";
 import {
   briefLanguageModeForArchetype,
   getAllSectors,
@@ -412,7 +413,14 @@ function PlanTab({ workspaceId }: { workspaceId: string }) {
 
       {/* AI Budget */}
       <section className="panel space-y-3">
-        <p className="panel-title">AI Budget This Month</p>
+        <p className="panel-title">
+          <HelpLabel
+            title="AI budget"
+            help="This shows how much of the monthly model-token allowance the workspace has used. If it reaches the limit, AI features may pause or become restricted until the next reset."
+          >
+            AI Budget This Month
+          </HelpLabel>
+        </p>
         {unlimited ? (
           <p className="text-sm text-white/60">Unlimited AI budget on your plan. Resets {resetDate}.</p>
         ) : (
@@ -428,7 +436,14 @@ function PlanTab({ workspaceId }: { workspaceId: string }) {
 
       {/* Resource limits */}
       <section className="panel space-y-1">
-        <p className="panel-title mb-2">Resource Limits</p>
+        <p className="panel-title mb-2">
+          <HelpLabel
+            title="Resource limits"
+            help="These are plan limits for roles, evidence, team members, API keys, and Ask usage. They help prevent a pilot workspace from growing beyond the current subscription."
+          >
+            Resource Limits
+          </HelpLabel>
+        </p>
         <LimitRow label="Active roles" used={limits.roles.used} limit={limits.roles.limit} />
         <LimitRow label="Evidence records" used={limits.evidence.used} limit={limits.evidence.limit} />
         <LimitRow label="Team members" used={limits.team.used} limit={limits.team.limit} />
@@ -441,7 +456,14 @@ function PlanTab({ workspaceId }: { workspaceId: string }) {
 
       {/* Features */}
       <section className="panel space-y-1">
-        <p className="panel-title mb-2">Features</p>
+        <p className="panel-title mb-2">
+          <HelpLabel
+            title="Plan features"
+            help="This list shows which product capabilities are enabled on the current plan and which require an upgrade."
+          >
+            Features
+          </HelpLabel>
+        </p>
         <FeatureRow label="Scheduled synthesis" enabled={features.scheduledSynthesis} requiredPlan="Pro" />
         <FeatureRow label="Email delivery" enabled={features.emailDelivery} requiredPlan="Business" />
         <FeatureRow label="Slack delivery" enabled={features.slackDelivery} requiredPlan="Enterprise" />
@@ -1019,12 +1041,20 @@ function PoliciesTab({ workspaceId }: { workspaceId: string }) {
         is excluded from all executive outputs.
       </div>
       <div>
-        <label className="label">Quarantine Threshold</label>
+        <div className="label">
+          <HelpLabel
+            title="Quarantine threshold"
+            help="Evidence below this confidence level is blocked from answers and briefs. Raising it is safer but may send more sources to review; lowering it allows more sources through."
+          >
+            Quarantine Threshold
+          </HelpLabel>
+        </div>
         <p className="text-white/50 text-xs mb-2">
           Evidence with extraction confidence below this value is quarantined.
           Current: {Math.round(settings.quarantineThreshold * 100)}%
         </p>
         <input
+          aria-label="Quarantine threshold"
           type="range"
           min={0}
           max={100}
@@ -1040,8 +1070,16 @@ function PoliciesTab({ workspaceId }: { workspaceId: string }) {
         </div>
       </div>
       <div>
-        <label className="label">Default Upload Sensitivity</label>
+        <div className="label">
+          <HelpLabel
+            title="Default upload sensitivity"
+            help="This is the default classification for newly uploaded files. Use Internal for normal operating files, Confidential for sensitive business material, and Restricted for content that should rarely leave tight controls."
+          >
+            Default Upload Sensitivity
+          </HelpLabel>
+        </div>
         <select
+          aria-label="Default upload sensitivity"
           className="input"
           value={settings.defaultSensitivity}
           onChange={(e) => setSettings({ ...settings, defaultSensitivity: e.target.value })}
@@ -1053,9 +1091,17 @@ function PoliciesTab({ workspaceId }: { workspaceId: string }) {
         </select>
       </div>
       <div>
-        <label className="label">Slack Integration</label>
+        <div className="label">
+          <HelpLabel
+            title="Slack integration"
+            help="When enabled, Nexus can receive approved Slack events and files according to connector policy. Leave it off until the workspace has a Slack app and clear channel rules."
+          >
+            Slack Integration
+          </HelpLabel>
+        </div>
         <label className="flex items-center gap-2 mt-1 cursor-pointer">
           <input
+            aria-label="Enable Slack event listener"
             type="checkbox"
             checked={settings.slackEnabled}
             onChange={(e) => setSettings({ ...settings, slackEnabled: e.target.checked })}
@@ -1124,7 +1170,14 @@ function AIPolicyTab({ workspaceId }: { workspaceId: string }) {
         and when low-confidence outputs should route to human review.
       </div>
       <div className="panel space-y-3">
-        <p className="panel-title">Allowed providers</p>
+        <p className="panel-title">
+          <HelpLabel
+            title="Allowed AI providers"
+            help="These are the model providers this workspace is allowed to use. Regulated or sensitive clients may restrict the list to approved providers only."
+          >
+            Allowed providers
+          </HelpLabel>
+        </p>
         <div className="grid gap-2 sm:grid-cols-2">
           {providers.map((provider) => (
             <label key={provider} className="flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-sm">
@@ -1138,20 +1191,36 @@ function AIPolicyTab({ workspaceId }: { workspaceId: string }) {
           ))}
         </div>
       </div>
-      <label className="panel flex items-center justify-between gap-4 text-sm">
+      <div className="panel flex items-center justify-between gap-4 text-sm">
         <span>
-          <span className="block font-medium text-white/85">Local-only mode</span>
+          <span className="block font-medium text-white/85">
+            <HelpLabel
+              title="Local-only mode"
+              help="Local-only mode blocks cloud model calls for this workspace. Use it only when the client requires local or controlled processing and the local runtime is ready."
+            >
+              Local-only mode
+            </HelpLabel>
+          </span>
           <span className="text-white/45">Blocks cloud LLM calls for this workspace.</span>
         </span>
         <input
+          aria-label="Local-only mode"
           type="checkbox"
           checked={settings.localOnlyMode}
           onChange={(e) => setSettings({ ...settings, localOnlyMode: e.target.checked })}
         />
-      </label>
+      </div>
       <div>
-        <label className="label">Sensitivity ceiling</label>
+        <div className="label">
+          <HelpLabel
+            title="Sensitivity ceiling"
+            help="The ceiling is the highest sensitivity level AI providers may process. If a source is more sensitive than the ceiling, Nexus should block it from model context."
+          >
+            Sensitivity ceiling
+          </HelpLabel>
+        </div>
         <select
+          aria-label="Sensitivity ceiling"
           className="input"
           value={settings.sensitivityCeiling}
           onChange={(e) => setSettings({ ...settings, sensitivityCeiling: e.target.value as WorkspaceSettings["sensitivityCeiling"] })}
@@ -1163,9 +1232,17 @@ function AIPolicyTab({ workspaceId }: { workspaceId: string }) {
         </select>
       </div>
       <div>
-        <label className="label">Human-review threshold</label>
+        <div className="label">
+          <HelpLabel
+            title="Human-review threshold"
+            help="Outputs below this confidence level should be reviewed before use. Raising it increases caution; lowering it reduces review volume."
+          >
+            Human-review threshold
+          </HelpLabel>
+        </div>
         <p className="text-white/50 text-xs mb-2">Outputs below {Math.round(settings.approvalRequiredThreshold * 100)}% confidence should be reviewed before use.</p>
         <input
+          aria-label="Human-review threshold"
           type="range"
           min={0}
           max={100}
@@ -1408,7 +1485,14 @@ function SynthesisScheduleTab() {
       <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
           <div>
-            <p className="text-sm uppercase tracking-[0.2em] text-white/40">Scheduled Synthesis</p>
+            <p className="text-sm uppercase tracking-[0.2em] text-white/40">
+              <HelpLabel
+                title="Scheduled synthesis"
+                help="Scheduled synthesis automatically refreshes selected leadership briefs on a cadence. It is useful for weekly reviews and recurring executive updates."
+              >
+                Scheduled Synthesis
+              </HelpLabel>
+            </p>
             <h3 className="mt-2 text-xl font-semibold text-white">Refresh leadership briefs automatically</h3>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/60">
               Nexus will regenerate selected executive synthesis briefs on a cadence and store each run in
@@ -1430,7 +1514,14 @@ function SynthesisScheduleTab() {
       <div className="grid gap-4 lg:grid-cols-2">
         <div className="panel space-y-4">
           <div>
-            <p className="panel-title">Cadence</p>
+            <p className="panel-title">
+              <HelpLabel
+                title="Cadence"
+                help="Cadence controls when Nexus refreshes the selected briefs. Use a simple preset unless you need a custom cron schedule."
+              >
+                Cadence
+              </HelpLabel>
+            </p>
             <p className="mt-1 text-sm text-white/50">Use a preset or enter a five-field cron expression.</p>
           </div>
           <select
@@ -1468,7 +1559,14 @@ function SynthesisScheduleTab() {
 
         <div className="panel space-y-4">
           <div>
-            <p className="panel-title">Roles to refresh</p>
+            <p className="panel-title">
+              <HelpLabel
+                title="Roles to refresh"
+                help="Choose which leadership lenses should be regenerated on schedule. Start with the CEO or sponsor role for demos, then add more roles once evidence coverage improves."
+              >
+                Roles to refresh
+              </HelpLabel>
+            </p>
             <p className="mt-1 text-sm text-white/50">Pick the leadership lenses Nexus should regenerate.</p>
           </div>
           <div className="grid gap-2 sm:grid-cols-2">
@@ -1491,7 +1589,14 @@ function SynthesisScheduleTab() {
 
       <div className="panel space-y-4">
         <div>
-          <p className="panel-title">Delivery</p>
+          <p className="panel-title">
+            <HelpLabel
+              title="Delivery channels"
+              help="Delivery controls where scheduled briefs appear. In-app history is active now; email and Slack depend on provider configuration and workspace policy."
+            >
+              Delivery
+            </HelpLabel>
+          </p>
           <p className="mt-1 text-sm text-white/50">In-app history is live. Email and Slack delivery are next-pass channels.</p>
         </div>
         <div className="grid gap-3 md:grid-cols-3">

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ConfidenceBadge } from "@/components/ui/trust-drawer-trigger";
 import { ConsequencePreview, useConsequencePreview } from "@/components/ui/consequence-preview";
+import { HelpLabel } from "@/components/ui/help-dialog";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -39,7 +40,14 @@ function ConfidenceBar({ value }: { value: number }) {
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between text-xs">
-        <span className="text-white/40">Confidence</span>
+        <span className="text-white/40">
+          <HelpLabel
+            title="Review confidence"
+            help="Confidence shows how clearly Nexus extracted and understood this source. Medium-confidence items need human review before they can influence briefs or recommendations."
+          >
+            Confidence
+          </HelpLabel>
+        </span>
         <span className={labelColor}>{label} · {pct}%</span>
       </div>
       <div className="h-1 w-full overflow-hidden rounded-full bg-white/10">
@@ -265,7 +273,14 @@ export default function ApprovalsPage() {
       {/* Page header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-xl font-semibold text-white">Evidence Approval Queue</h1>
+          <h1 className="text-xl font-semibold text-white">
+            <HelpLabel
+              title="Evidence approval queue"
+              help="This queue holds evidence that is usable enough to review, but not safe enough to approve automatically. Approve only sources you are comfortable letting Nexus use in answers and briefs."
+            >
+              Evidence Approval Queue
+            </HelpLabel>
+          </h1>
           <p className="mt-1 text-sm text-white/50">
             Records with moderate extraction confidence require human sign-off before entering LLM synthesis.
           </p>

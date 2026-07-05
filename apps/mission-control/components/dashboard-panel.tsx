@@ -19,6 +19,7 @@ import {
   type RoomStatus,
   type RouteStatus,
 } from "@/components/ui/nexus-primitives";
+import { HelpLabel } from "@/components/ui/help-dialog";
 import { EvidenceTrustLink } from "@/components/ui/trust-drawer-trigger";
 
 export async function DashboardPanel({
@@ -129,6 +130,10 @@ export async function DashboardPanel({
               barPct={evidence.length ? avgEvidenceConfidence : 0}
               tone="accent"
               helper={`${processedEvidence.length}/${evidence.length || 0} sources cleared`}
+              help={{
+                title: "Evidence confidence",
+                body: "This is the average confidence score across the evidence in this workspace. Higher confidence means Nexus has cleaner, more usable sources. Use it to decide whether the brief is ready to trust or whether evidence needs review first.",
+              }}
             />
             {evidence.length > 0 && (
               <div className="mt-2">
@@ -147,6 +152,10 @@ export async function DashboardPanel({
             barPct={Math.min(100, openDecisionCount * 20)}
             tone="sky"
             helper="Human-owned decision records"
+            help={{
+              title: "Open decisions",
+              body: "These are decisions that still need a human owner to resolve them. Nexus can draft and suggest, but the decision stays human-owned.",
+            }}
           />
           <KpiHero
             label="Blockers"
@@ -154,6 +163,10 @@ export async function DashboardPanel({
             barPct={Math.min(100, blockerCount * 25)}
             tone={blockerCount > 0 ? "danger" : "accent"}
             helper={blockerCount > 0 ? "Needs executive attention" : "None flagged"}
+            help={{
+              title: "Blockers",
+              body: "Blockers are open actions marked as preventing progress. Treat these first because new synthesis or exports may be less useful until the blocker is cleared.",
+            }}
           />
           <KpiHero
             label="Hours back"
@@ -161,6 +174,10 @@ export async function DashboardPanel({
             barPct={Math.min(100, Math.round((estimatedHoursReturned / 126) * 100))}
             tone="sky"
             helper="Estimated from evidence and active agents"
+            help={{
+              title: "Hours back",
+              body: "This is a directional estimate of time returned by using approved evidence and active agent briefs. It is not a billing number; use it as a pilot value signal.",
+            }}
           />
         </div>
 
@@ -168,7 +185,14 @@ export async function DashboardPanel({
         <div className="mt-4 grid gap-3 lg:grid-cols-3">
           {/* Today's executive route */}
           <div className="rounded-lg border border-nexus-border bg-nexus-panel p-4">
-            <p className="text-sm font-semibold text-nexus-text">Today&apos;s executive route</p>
+            <p className="text-sm font-semibold text-nexus-text">
+              <HelpLabel
+                title="Today's executive route"
+                help="This is the short list of work Nexus thinks matters next. It combines blockers, open decisions, and recommendations so executives do not need to inspect every room first."
+              >
+                Today&apos;s executive route
+              </HelpLabel>
+            </p>
             <p className="mt-1 text-xs leading-5 text-nexus-muted">
               Prioritised by business consequence, evidence strength, and approval readiness.
             </p>
@@ -188,7 +212,14 @@ export async function DashboardPanel({
 
           {/* Mission health */}
           <div className="rounded-lg border border-nexus-border bg-nexus-panel p-4">
-            <p className="text-sm font-semibold text-nexus-text">Mission health</p>
+            <p className="text-sm font-semibold text-nexus-text">
+              <HelpLabel
+                title="Mission health"
+                help="Mission health shows whether each room has enough cleared evidence and whether there are visible blockers. Use it as a scan before drilling into a room."
+              >
+                Mission health
+              </HelpLabel>
+            </p>
             <p className="mt-1 text-xs leading-5 text-nexus-muted">
               Rooms remain available, but the executive sees one route through them.
             </p>
@@ -204,7 +235,14 @@ export async function DashboardPanel({
 
           {/* Guided next action — AI-generated, marked in violet */}
           <AiPanel>
-            <p className="text-sm font-semibold text-nexus-text">Guided next action</p>
+            <p className="text-sm font-semibold text-nexus-text">
+              <HelpLabel
+                title="Guided next action"
+                help="This is an AI-generated suggestion for the next practical step. It should guide attention, not replace judgment. The owner and audit chips show who should act and how it is tracked."
+              >
+                Guided next action
+              </HelpLabel>
+            </p>
             <p className="mt-1 text-xs leading-5 text-nexus-muted">{guidedText}</p>
             <div className="mt-4 flex flex-wrap gap-1.5">
               <MetaChip label={`Owner: ${guidedOwner}`} tone="sky" />
@@ -374,7 +412,14 @@ export async function DashboardPanel({
 
       {/* Recommendations */}
       <section className="panel">
-        <p className="panel-title">Active Recommendations</p>
+        <p className="panel-title">
+          <HelpLabel
+            title="Active recommendations"
+            help="Recommendations are AI-drafted suggestions based on approved evidence. They are not actions until a human approves, rejects, or turns them into a decision."
+          >
+            Active Recommendations
+          </HelpLabel>
+        </p>
         <ul className="mt-3 space-y-2 text-sm text-white/80">
           {recs.length ? (
             recs.map((rec) => {

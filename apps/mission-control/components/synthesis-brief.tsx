@@ -13,6 +13,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import type { ExecutiveSynthesis } from "@/lib/contracts";
 import { ConfidenceBadge } from "@/components/ui/trust-drawer-trigger";
+import { HelpLabel } from "@/components/ui/help-dialog";
 
 // Confidence badge moved to components/ui/trust-drawer-trigger.tsx — it now
 // opens the Trust Drawer on click and uses locked design tokens instead of
@@ -156,7 +157,12 @@ export function ExecutiveSynthesisBrief({
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-wide text-nexus-accent/70">
-            Executive Brief
+            <HelpLabel
+              title="Executive brief"
+              help="This brief answers the questions that matter to this role using specialist agent briefs and approved evidence. Use it as the top-level summary before drilling into sources or decisions."
+            >
+              Executive Brief
+            </HelpLabel>
           </p>
           <h2 className="mt-1 text-xl font-semibold text-white">{roleLabel} Intelligence Brief</h2>
           <p className="mt-1 max-w-2xl text-sm leading-6 text-white/50">
@@ -177,9 +183,21 @@ export function ExecutiveSynthesisBrief({
             sources={synthesis.totalEvidenceRefs.map((id) => ({ id }))}
           />
           <span className="badge badge-muted">
-            {answeredCount}/{synthesis.questions.length} answered
+            <HelpLabel
+              title="Answered questions"
+              help="This shows how many role-specific questions had enough usable evidence for Nexus to answer. If the count is low, upload or approve more relevant sources."
+            >
+              {answeredCount}/{synthesis.questions.length} answered
+            </HelpLabel>
           </span>
-          <span className="badge badge-green">Human-approved actions only</span>
+          <span className="badge badge-green">
+            <HelpLabel
+              title="Human-approved actions only"
+              help="Nexus can recommend or draft next steps, but it does not take external action automatically. A human must approve anything that becomes a real decision or workflow step."
+            >
+              Human-approved actions only
+            </HelpLabel>
+          </span>
           <button
             type="button"
             className="badge badge-muted hover:border-nexus-accent/50 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"

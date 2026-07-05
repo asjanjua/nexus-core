@@ -6,9 +6,25 @@
 
 ## Session Info
 
-- **Last updated:** 2026-07-04 (v0.25.x — session #40 with Codex. Whole-codebase re-check completed: route-auth inventory, middleware/public verifier boundaries, live health/smoke, dependency audit, and demo-hardening fixes for scoped recommendation approvals, honest R2 health, real workspace settings, and Clerk/OAuth callback middleware.)
+- **Last updated:** 2026-07-05 (v0.25.x — session #42 with Codex. Clarified UI baseline versioning, added UI baseline ledger, and installed selected BuilderOS workflow skills; full tsc remains inconclusive because local TypeScript runs time out in this shell.)
 - **Last model:** Codex (GPT-5)
-- **Session number:** #40
+- **Session number:** #42
+- **Session #42 delivered (2026-07-05) — UI baseline versioning clarification:**
+  - **Clarification captured:** Ali clarified that Nexus has moved away from Vercel. The first UI was built there, but the same design has since been pushed into Render and the new architecture. Vercel is historical provenance only, not an active deployment lane.
+  - **Runbook added:** `docs/UI_BASELINE_VERSIONING.md` defines `UI V0.1 baseline`, `Render production`, `UI V0.2 proposal`, and later iterations. It explains how to preserve the original UI through git/Figma/Render references without maintaining duplicate Vercel infrastructure.
+  - **Baseline refs captured:** `docs/UI_BASELINE_VERSIONING.md` now includes V0.1 Figma node `40:3`, V0.2 Figma node `44:3`, current git ref `c513eee` at registry time, Render comparison route `/dashboard/ceo`, screen source formats, the 30-screen set description, and live route mapping.
+  - **Selected BuilderOS skills installed:** added `.claude/skills/design-better/SKILL.md` and `.claude/skills/build-loop-codex/SKILL.md`, plus `.claude/skills/BUILDEROS_LICENSE.txt`. Full BuilderOS was intentionally not installed; these are workflow aids only, not runtime dependencies.
+  - **Installer note:** `npx --yes skills add BuildGreatProducts/builder-os/skills/design-better` and `.../build-loop-codex` hung without output and were stopped cleanly. The two skill folders were then copied manually from a shallow clone of `BuildGreatProducts/builder-os`.
+  - **Paperwork updated:** `DEPLOY.md`, `docs/PRODUCTION_HEALTH_CHECKLIST.md`, `docs/INFRA_DECISION_MEMO.md`, `BACKLOG.md`, `TASKS.md`, and `CHANGELOG.md` now say Render/new architecture is the app path and the Vercel-origin UI should be preserved as a named baseline only.
+  - **Do next:** confirm the exact Render deploy ID/commit from the Render dashboard before demos; the UI baseline design refs are captured, but live deploy confirmation remains part of the existing authenticated smoke task.
+- **Session #41 delivered (2026-07-05) — contextual help icons and dialogs:**
+  - **Reusable component:** added `components/ui/help-dialog.tsx` with `HelpDialog` and `HelpLabel`. The trigger is a subtle encircled `?`; the dialog has a title, plain-language body, OK close button, Escape close, outside-click close, focus return, and ARIA title/body wiring.
+  - **Shared primitive integration:** `KpiHero` in `components/ui/nexus-primitives.tsx` now accepts optional help metadata, so metric cards can show help without copy-pasted modal code.
+  - **Coverage added:** Executive Room metrics/route panels, Ask, ingestion, executive synthesis, approvals, recommendations, workflows, Settings plan/policy/scheduled synthesis, and connector source-policy/IMAP controls now have contextual explanations.
+  - **Help copy registry:** added `docs/CONTEXTUAL_HELP_COPY.md`, listing all current contextual help titles and explanations in one edit-friendly file.
+  - **Connector setup upgrade:** added `docs/CONNECTOR_SETUP_GUIDE.md`; Settings > Connectors now shows every connector with status, setup/docs links, environment variables, redirect URI, scopes/access, data scope, and setup notes. Row CTAs now use real provider setup/docs links; future connectors no longer expose dead install actions.
+  - **Verification:** fast TypeScript compiler-API syntax pass over all touched TSX files passed; targeted `git diff --check` over touched files passed. Full project `tsc` and touched-file `tsc` both timed out after 120 seconds without diagnostics, consistent with the session #40 local-runner caveat.
+  - **Do next:** run full `npm exec -w @nexus/mission-control tsc -- --noEmit`, `npm test`, and `npm run build` from a clean terminal or CI before deploy, then authenticated browser smoke the help dialog on desktop and mobile widths.
 - **Session #40 delivered (2026-07-04) — whole-codebase re-check and demo-hardening fixes:**
   - **Repo state checked:** `main` matched `origin/main` before changes; latest pushed commit was `4d48fd8` (`docs: refresh pinavia demo action plan`).
   - **Codebase surface checked:** Mission Control currently has 316 app TS/TSX/JSON files, 90+ API route files, 37 test files, and DB migrations through `0028_knowledge_embeddings.sql`.

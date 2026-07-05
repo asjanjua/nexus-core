@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback } from "react";
+import { HelpLabel } from "@/components/ui/help-dialog";
 
 type IngestionResult = {
   id: string;
@@ -43,7 +44,14 @@ function ConfidenceBar({ value }: { value: number }) {
   return (
     <div className="space-y-1">
       <div className="flex items-center justify-between text-xs">
-        <span className="text-white/40">Extraction confidence</span>
+        <span className="text-white/40">
+          <HelpLabel
+            title="Extraction confidence"
+            help="This estimates how reliably Nexus understood the file text and metadata. High confidence can enter synthesis automatically; medium confidence needs review; low confidence is quarantined."
+          >
+            Extraction confidence
+          </HelpLabel>
+        </span>
         <span className={labelColor}>{label} ({pct}%)</span>
       </div>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-white/10">
@@ -147,7 +155,14 @@ export function IngestionUpload({ workspaceId }: { workspaceId?: string }) {
   return (
     <section className="panel space-y-4">
       <div className="flex items-center justify-between">
-        <p className="panel-title">Upload and Ingest</p>
+        <p className="panel-title">
+          <HelpLabel
+            title="Upload and ingest"
+            help="Upload adds files to Nexus as evidence. Nexus extracts text, checks confidence and provenance, then either clears the source, sends it to approval, or quarantines it."
+          >
+            Upload and Ingest
+          </HelpLabel>
+        </p>
         <span className="text-xs text-white/30">Up to {MAX_FILES} files · 50 MB each</span>
       </div>
 
@@ -248,7 +263,12 @@ export function IngestionUpload({ workspaceId }: { workspaceId?: string }) {
           </button>
         )}
         <span className="text-xs text-white/40">
-          Low confidence or missing provenance is quarantined for review.
+          <HelpLabel
+            title="Quarantine"
+            help="Quarantine means Nexus will not use the file in answers or briefs. This protects the workspace when a source is unclear, incomplete, or missing reliable provenance."
+          >
+            Low confidence or missing provenance is quarantined for review.
+          </HelpLabel>
         </span>
       </div>
 

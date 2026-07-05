@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { ConfidenceBadge } from "@/components/ui/trust-drawer-trigger";
+import { HelpLabel } from "@/components/ui/help-dialog";
 
 type AskResult = {
   answer: string;
@@ -141,8 +142,16 @@ export function AskPanel({
   return (
     <div className="space-y-4">
       <section className="panel">
-        <label className="mb-2 block text-sm text-white/80">Ask a workspace-scoped question</label>
+        <div className="mb-2 block text-sm text-white/80">
+          <HelpLabel
+            title="Workspace-scoped question"
+            help="Ask uses only this workspace's approved evidence, notes, and allowed agent context. It should answer business questions with sources, not general internet questions."
+          >
+            Ask a workspace-scoped question
+          </HelpLabel>
+        </div>
         <textarea
+          aria-label="Ask a workspace-scoped question"
           className="min-h-24 w-full rounded-lg border border-white/20 bg-black/20 p-3 text-sm outline-none focus:border-nexus-accent/50"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
@@ -164,10 +173,16 @@ export function AskPanel({
 
         {/* Department filter — chips when available, text input fallback */}
         <div className="mt-3 max-w-sm">
-          <label className="mb-1 block text-xs uppercase tracking-wide text-white/40">
-            Agent governance lens
-          </label>
+          <div className="mb-1 block text-xs uppercase tracking-wide text-white/40">
+            <HelpLabel
+              title="Agent governance lens"
+              help="The lens chooses which agent passport and rules apply before evidence reaches the model. Use General Ask for broad questions, or choose a specialist when the question belongs to risk, strategy, finance, security, or governance."
+            >
+              Agent governance lens
+            </HelpLabel>
+          </div>
           <select
+            aria-label="Agent governance lens"
             className="input"
             value={agentKey}
             onChange={(e) => setAgentKey(e.target.value)}
@@ -186,7 +201,14 @@ export function AskPanel({
         {/* Department filter — chips when available, text input fallback */}
         {departments.length > 0 ? (
           <div className="mt-3 space-y-1.5">
-            <p className="text-xs uppercase tracking-wide text-white/40">Filter by department</p>
+            <p className="text-xs uppercase tracking-wide text-white/40">
+              <HelpLabel
+                title="Department filter"
+                help="This narrows Ask to evidence from one department. Use it when you want Finance, Risk, Operations, or another team view instead of a company-wide answer."
+              >
+                Filter by department
+              </HelpLabel>
+            </p>
             <div className="flex flex-wrap gap-2">
               <button
                 type="button"
@@ -219,10 +241,16 @@ export function AskPanel({
           </div>
         ) : (
           <div className="mt-3">
-            <label className="mb-1 block text-xs uppercase tracking-wide text-white/40">
-              Department filter
-            </label>
+            <div className="mb-1 block text-xs uppercase tracking-wide text-white/40">
+              <HelpLabel
+                title="Department filter"
+                help="This optional filter narrows Ask to one department. Leave it blank when you want Nexus to search across the full workspace."
+              >
+                Department filter
+              </HelpLabel>
+            </div>
             <input
+              aria-label="Department filter"
               className="input max-w-sm"
               value={department}
               onChange={(e) => setDepartment(e.target.value)}
@@ -257,7 +285,14 @@ export function AskPanel({
 
       {result ? (
         <section className="panel space-y-3">
-          <p className="panel-title">Answer</p>
+          <p className="panel-title">
+            <HelpLabel
+              title="Ask answer"
+              help="The answer is generated from approved workspace evidence. Check the confidence badge and source list before using it in a client, board, or operating decision."
+            >
+              Answer
+            </HelpLabel>
+          </p>
 
           {result.answer ? (
             <p className="whitespace-pre-wrap text-sm leading-relaxed text-white/85">{result.answer}</p>
@@ -273,7 +308,14 @@ export function AskPanel({
               title={query}
               sources={result.evidenceRefs.map((id) => ({ id }))}
             />
-            <span className="badge">freshness {result.freshnessHours}h</span>
+            <span className="badge">
+              <HelpLabel
+                title="Freshness"
+                help="Freshness shows the age of the newest relevant source used in this answer. Lower is generally better for fast-moving risks or operating updates."
+              >
+                freshness {result.freshnessHours}h
+              </HelpLabel>
+            </span>
             <span className="badge">{result.evidenceRefs.length} ref{result.evidenceRefs.length !== 1 ? "s" : ""}</span>
             {result.refused && (
               <span className="badge border-amber-300/60 text-amber-200">refused</span>

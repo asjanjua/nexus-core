@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { PageShell } from "@/components/page-shell";
+import { HelpLabel } from "@/components/ui/help-dialog";
 
 type TwinType = "decision_action" | "workflow_scorer" | "ops_review";
 type TwinStatus = "draft" | "active" | "paused" | "archived";
@@ -254,7 +255,14 @@ export default function WorkflowsPage() {
         <section className="panel space-y-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="panel-title">Workflow Twin Scorer</p>
+              <p className="panel-title">
+                <HelpLabel
+                  title="Workflow Twin Scorer"
+                  help="The scorer ranks possible pilot workflows by pain, data readiness, risk, speed benefit, and executive judgment. Use the top recommendation to choose a practical first pilot."
+                >
+                  Workflow Twin Scorer
+                </HelpLabel>
+              </p>
               <p className="mt-1 text-sm text-white/55">
                 Scores candidate workflows by pain, data readiness, risk, speed benefit, and executive judgment.
               </p>
@@ -289,10 +297,26 @@ export default function WorkflowsPage() {
                   <thead className="bg-white/[0.04] text-xs uppercase text-white/40">
                     <tr>
                       <th className="px-3 py-2">Workflow</th>
-                      <th className="px-3 py-2">Score</th>
-                      <th className="px-3 py-2">Data</th>
-                      <th className="px-3 py-2">Risk</th>
-                      <th className="px-3 py-2">Speed</th>
+                      <th className="px-3 py-2">
+                        <HelpLabel title="Workflow score" help="The overall score combines readiness, pain, risk, and benefit into one ranking. Higher means this workflow is a better first pilot candidate.">
+                          Score
+                        </HelpLabel>
+                      </th>
+                      <th className="px-3 py-2">
+                        <HelpLabel title="Data readiness" help="Data readiness shows whether Nexus has enough usable evidence to support this workflow. Low data readiness usually means more uploads or connectors are needed first.">
+                          Data
+                        </HelpLabel>
+                      </th>
+                      <th className="px-3 py-2">
+                        <HelpLabel title="Workflow risk" help="Risk captures compliance, operational, or judgment risk. High-risk workflows may still be valuable, but they need clearer approval boundaries.">
+                          Risk
+                        </HelpLabel>
+                      </th>
+                      <th className="px-3 py-2">
+                        <HelpLabel title="Speed benefit" help="Speed estimates how much faster this workflow could become with Nexus support. Use it as a practical value signal, not a final ROI claim.">
+                          Speed
+                        </HelpLabel>
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/10">
@@ -354,7 +378,14 @@ export default function WorkflowsPage() {
       <div className="grid gap-4 xl:grid-cols-2">
         <section className="panel space-y-4">
           <div>
-            <p className="panel-title">Backcast the Pilot</p>
+            <p className="panel-title">
+              <HelpLabel
+                title="Backcast the pilot"
+                help="Backcasting starts with the outcome you want at the end of the pilot, then works backward to define scope, milestones, evidence, approvals, and success metrics."
+              >
+                Backcast the Pilot
+              </HelpLabel>
+            </p>
             <p className="mt-1 text-sm text-white/55">
               Start from the sponsor-visible outcome, then define the scope, evidence, approvals, and success metrics.
             </p>
@@ -399,7 +430,14 @@ export default function WorkflowsPage() {
 
         <section className="panel space-y-4">
           <div>
-            <p className="panel-title">Shadow ROI</p>
+            <p className="panel-title">
+              <HelpLabel
+                title="Shadow ROI"
+                help="Shadow ROI compares the current manual process against a Nexus-assisted run before making commercial claims. It helps prove value with observed time saved and rework reduced."
+              >
+                Shadow ROI
+              </HelpLabel>
+            </p>
             <p className="mt-1 text-sm text-white/55">
               Compare one manual run against one Nexus-assisted run before making any commercial ROI claim.
             </p>
@@ -410,12 +448,20 @@ export default function WorkflowsPage() {
               <input className="input" value={roiForm.workflowName} onChange={(e) => setRoiForm((f) => ({ ...f, workflowName: e.target.value }))} />
             </div>
             <div>
-              <label className="label">Manual minutes</label>
-              <input className="input" type="number" min="0" value={roiForm.manualMinutes} onChange={(e) => setRoiForm((f) => ({ ...f, manualMinutes: e.target.value }))} />
+              <div className="label">
+                <HelpLabel title="Manual minutes" help="How long this workflow usually takes without Nexus. Use the best honest estimate or an observed baseline from a recent run.">
+                  Manual minutes
+                </HelpLabel>
+              </div>
+              <input aria-label="Manual minutes" className="input" type="number" min="0" value={roiForm.manualMinutes} onChange={(e) => setRoiForm((f) => ({ ...f, manualMinutes: e.target.value }))} />
             </div>
             <div>
-              <label className="label">Nexus minutes</label>
-              <input className="input" type="number" min="0" value={roiForm.nexusMinutes} onChange={(e) => setRoiForm((f) => ({ ...f, nexusMinutes: e.target.value }))} />
+              <div className="label">
+                <HelpLabel title="Nexus minutes" help="How long the same workflow takes with Nexus assisting. This should include human review time, not just AI processing time.">
+                  Nexus minutes
+                </HelpLabel>
+              </div>
+              <input aria-label="Nexus minutes" className="input" type="number" min="0" value={roiForm.nexusMinutes} onChange={(e) => setRoiForm((f) => ({ ...f, nexusMinutes: e.target.value }))} />
             </div>
             <div>
               <label className="label">Manual rework count</label>

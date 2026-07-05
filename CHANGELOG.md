@@ -2,6 +2,44 @@
 
 ---
 
+## Unreleased — Selected BuilderOS Workflow Skills (2026-07-05)
+
+Installed only the two BuilderOS skills selected for Nexus workflow support: `.claude/skills/design-better/SKILL.md` and `.claude/skills/build-loop-codex/SKILL.md`, plus the upstream MIT license notice at `.claude/skills/BUILDEROS_LICENSE.txt`.
+
+These are project-local agent workflow aids, not runtime app dependencies. They are intended to support the Figma -> Render UI improvement loop through design-craft review and build/review/test discipline. The full BuilderOS bundle was not installed.
+
+---
+
+## Unreleased — UI Baseline Versioning Clarification (2026-07-05)
+
+Clarified that the original Vercel-built UI is historical design provenance, not an active deployment lane.
+
+**Runbook.** New `docs/UI_BASELINE_VERSIONING.md` defines `UI V0.1 baseline`, `Render production`, `UI V0.2 proposal`, and later UI iterations. It records how to preserve the original Vercel-origin UI through Figma, git tags, Render deploy references, and docs without maintaining duplicate Vercel infrastructure.
+
+**Screen registry.** The baseline ledger now captures V0.1/V0.2 Figma refs, current git ref at registry time, Render comparison route, source formats, screen sets, and route mapping for live Render review.
+
+**Iteration loop.** Added the recursive Figma-to-Render improvement loop: capture current app, update Figma, improve design, implement in React/Next.js, verify, deploy on Render, commit the version record, then repeat from the accepted baseline.
+
+**Paperwork.** `DEPLOY.md`, `docs/PRODUCTION_HEALTH_CHECKLIST.md`, and `docs/INFRA_DECISION_MEMO.md` now say Render is the runtime path and Vercel is only the historical origin of the first UI baseline.
+
+---
+
+## Unreleased — Contextual Help Dialog Pattern (2026-07-05)
+
+Added a reusable contextual help pattern for non-technical explanations across Mission Control.
+
+**Component.** New `components/ui/help-dialog.tsx` exports `HelpDialog` and `HelpLabel`: a small encircled question-mark trigger, accessible dialog title/body, OK close button, Escape close, outside-click close, focus return to trigger, and screen-reader labelling. `KpiHero` now accepts optional help metadata so metric cards can carry the same pattern without one-off markup.
+
+**Coverage.** Added contextual help to high-confusion surfaces: Executive Room metrics and route panels, Ask question/lens/department/result metadata, ingestion confidence/quarantine, executive synthesis badges, evidence approvals, recommendation queue, workflow scorer/backcast/shadow ROI, Settings plan/policy/scheduled synthesis controls, and connector source-policy/IMAP settings.
+
+**Copy registry.** Added `docs/CONTEXTUAL_HELP_COPY.md` so every current help title and explanation is visible in one edit-friendly place for future features.
+
+**Connector setup.** Added `docs/CONNECTOR_SETUP_GUIDE.md` and expanded Settings > Connectors with a full setup guide: every connector, live/future status, provider setup/docs links, environment variables, redirect URI, scopes/access, data scope, and setup notes. Future connectors now point to setup/planning links instead of dead in-app install routes.
+
+**Verification.** Fast TypeScript compiler-API syntax pass over all touched TSX files passed. Targeted `git diff --check` passed. Full project `tsc` and touched-file `tsc` both timed out after 120 seconds in the local shell without returning diagnostics, matching the current local-runner caveat already recorded in `HANDOVER.md`.
+
+---
+
 ## Unreleased — Whole-Codebase Re-check and Demo Hardening Fixes (2026-07-04)
 
 Re-checked the NexusAI Mission Control codebase from git state, API route inventory, middleware, auth, LLM routing, DB schema/migrations, storage, ingestion, recommendations, workspace settings, dependency audit, and live public smoke.

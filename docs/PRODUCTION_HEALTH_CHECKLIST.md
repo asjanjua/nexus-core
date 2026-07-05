@@ -160,6 +160,16 @@ Expected:
 - [ ] Confirm preview and graph modes render without layout breakage.
 - [ ] Ask about note content and confirm note references are returned separately from evidence references.
 
+## 5A. UI Baseline Gate
+
+Use this when comparing the original Vercel-origin UI with the newer Render/new-architecture experience.
+
+- [ ] `UI V0.1 baseline` is captured in `docs/UI_BASELINE_VERSIONING.md` with git ref, Render deploy/ref if available, and Figma link.
+- [ ] `UI V0.2 proposal` is captured separately before colleague review.
+- [ ] The demo label says whether the viewer is seeing `UI V0.1 baseline`, `UI V0.2 proposal`, or `Render production`.
+- [ ] The newer Render-hosted experience has passed signed-in browser smoke for dashboard, Ask, ingestion, approvals, recommendations, connectors, and `/api/health`.
+- [ ] Any colleague preference or rejection notes are recorded before marking a UI version as preferred or superseded.
+
 ---
 
 ## 6. Security Baseline

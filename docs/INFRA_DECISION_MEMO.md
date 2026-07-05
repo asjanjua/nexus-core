@@ -117,6 +117,16 @@ Primary deployment path:
 5. Neon pooled URL is used by the app at runtime.
 6. Clerk and Slack callback URLs point to the deployed Render domain.
 
+Historical Vercel-origin UI baseline:
+
+1. Vercel is not the current deployment direction for Nexus.
+2. The first UI was built in Vercel, then carried into the Render-hosted app and new architecture.
+3. Preserve that experience as `UI V0.1 baseline`, not as a parallel Vercel deployment lane.
+4. Compare newer work as `UI V0.2 proposal`, `UI V0.3`, and so on.
+5. Keep the UI baseline ledger in `docs/UI_BASELINE_VERSIONING.md` updated before colleague demos.
+
+Use explicit names in discussions and paperwork: `Render production`, `UI V0.1 baseline`, and `UI V0.2 proposal`. Do not use "Vercel version" unless referring to historical origin.
+
 ## Cost and Scale Notes
 
 Render free services may sleep when idle. That is acceptable for demos and early pilots. Paid Render instances should be used when:
