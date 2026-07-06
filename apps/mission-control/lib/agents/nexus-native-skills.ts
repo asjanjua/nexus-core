@@ -130,8 +130,8 @@ export const NEXUS_NATIVE_SKILLS: NexusNativeSkill[] = [
     outputs: ["diligence_coverage", "red_flags", "model_tie_outs", "ic_memo_sections"],
     approvalRequired: true,
     auditEvents: ["native_skill.vantage_diligence_analysis.started", "native_skill.vantage_diligence_analysis.completed"],
-    runtimeStatus: "planned",
-    externalReferences: ["anthropics/financial-services:private-equity"],
+    runtimeStatus: "runtime_ready",
+    externalReferences: [],
   },
   {
     id: "quorum_governance_review",

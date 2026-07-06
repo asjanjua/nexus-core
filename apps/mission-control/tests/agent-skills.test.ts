@@ -186,6 +186,14 @@ describe("Nexus native skills", () => {
     expect(validateNexusNativeSkills()).toEqual([]);
   });
 
+  it("promotes vantage diligence analysis to a first-party runtime with no external dependency", () => {
+    const vantage = NEXUS_NATIVE_SKILLS.find((skill) => skill.id === "vantage_diligence_analysis");
+
+    expect(vantage?.runtimeStatus).toBe("runtime_ready");
+    expect(vantage?.externalReferences).toEqual([]);
+    expect(validateNexusNativeSkills()).toEqual([]);
+  });
+
   it("requires review and action-capable native skills to be approval-gated and auditable", () => {
     const highImpactSkills = NEXUS_NATIVE_SKILLS.filter(
       (skill) => skill.family === "review" || skill.mappedAgentSkills.some((mappedSkill) => mappedSkill.startsWith("draft") || mappedSkill === "prepare approval packet")

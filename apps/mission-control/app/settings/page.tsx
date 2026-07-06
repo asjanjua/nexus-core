@@ -228,6 +228,24 @@ type DocumentIntegrityReviewResult = {
   deniedByPassport: number;
 };
 
+type VantageDiligenceResult = {
+  reviewId: string;
+  dealType: string;
+  coverage: Array<{ itemId: string; category: string; requirement: string; severity: string; covered: boolean; citations: Array<{ evidenceId: string; sourcePath: string }> }>;
+  redFlags: Array<{ itemId: string; category: string; severity: string; requirement: string; indicator: string; reason: string }>;
+  modelTieOuts: Array<{ itemId: string; requirement: string; status: string; evidenceIds: string[] }>;
+  icMemoSections: Array<{ key: string; title: string; status: string; content: string[] }>;
+  summary: {
+    items: number;
+    covered: number;
+    gaps: number;
+    criticalGaps: number;
+    redFlags: number;
+    recommendation: string;
+  };
+  deniedByPassport: number;
+};
+
 // Starter board-review spec: lets a reviewer run evidence_grid_review against
 // the workspace's governed evidence in one click, then edit dimensions later.
 const EVIDENCE_GRID_STARTER_DIMENSIONS = [
@@ -1969,6 +1987,9 @@ function AgentGovernanceTab() {
   const [integrityResult, setIntegrityResult] = useState<DocumentIntegrityReviewResult | null>(null);
   const [runningIntegrity, setRunningIntegrity] = useState(false);
   const [integrityError, setIntegrityError] = useState<string | null>(null);
+  const [vantageResult, setVantageResult] = useState<VantageDiligenceResult | null>(null);
+  const [runningVantage, setRunningVantage] = useState(false);
+  const [vantageError, setVantageError] = useState<string | null>(null);
 
   async function runEvidenceGridReview() {
     setRunningReview(true);
@@ -2010,6 +2031,28 @@ function AgentGovernanceTab() {
       setIntegrityError(err instanceof Error ? err.message : "unknown_error");
     } finally {
       setRunningIntegrity(false);
+    }
+  }
+
+  async function runVantageDiligenceAnalysis() {
+    setRunningVantage(true);
+    setVantageError(null);
+    try {
+      const res = await fetch("/api/agents/native-skills/vantage-diligence-analysis", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reviewId: `diligence-${new Date().toISOString().slice(0, 10)}`,
+          dealType: "fintech_ma",
+        }),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error ?? "review_failed");
+      setVantageResult(json.data);
+    } catch (err) {
+      setVantageError(err instanceof Error ? err.message : "unknown_error");
+    } finally {
+      setRunningVantage(false);
     }
   }
 
@@ -2263,6 +2306,14 @@ function AgentGovernanceTab() {
               >
                 {runningIntegrity ? "Running review..." : "Run document integrity review"}
               </button>
+              <button
+                className="btn-secondary text-xs"
+                onClick={runVantageDiligenceAnalysis}
+                disabled={runningVantage}
+                title="Run vantage_diligence_analysis (fintech M&A checklist) against this deal workspace's governed evidence"
+              >
+                {runningVantage ? "Running analysis..." : "Run diligence analysis"}
+              </button>
             </div>
           </div>
 
@@ -2440,6 +2491,70 @@ function AgentGovernanceTab() {
                   </ul>
                 </div>
               )}
+            </div>
+          )}
+
+          {vantageError && (
+            <div className="rounded-lg border border-red-400/30 bg-red-500/[0.05] px-3 py-2 text-xs text-red-300">
+              {vantageError}
+            </div>
+          )}
+
+          {vantageResult && (
+            <div className="space-y-3 rounded-lg border border-white/10 bg-white/[0.02] p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-medium text-white">Diligence analysis — {vantageResult.reviewId}</p>
+                  <p className="mt-1 text-xs text-white/45">
+                    {vantageResult.dealType.replaceAll("_", " ")} · {vantageResult.summary.covered}/{vantageResult.summary.items} covered · {vantageResult.summary.gaps} gaps ({vantageResult.summary.criticalGaps} critical) · {vantageResult.summary.redFlags} red flags
+                    {vantageResult.deniedByPassport > 0 ? ` · ${vantageResult.deniedByPassport} denied by passport` : ""}
+                  </p>
+                </div>
+                <span className={`badge ${vantageResult.summary.recommendation === "proceed" ? "badge-green" : "badge-muted"}`}>
+                  {vantageResult.summary.recommendation.replaceAll("_", " ")}
+                </span>
+              </div>
+
+              {vantageResult.redFlags.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-white/70">Red flags</p>
+                  <ul className="mt-2 space-y-1.5">
+                    {vantageResult.redFlags.map((flag) => (
+                      <li key={flag.itemId} className="flex flex-wrap items-start gap-2 text-xs">
+                        <span className={`badge ${flag.severity === "critical" ? "badge-muted" : "badge"}`}>{flag.severity}</span>
+                        <span className="text-white/55">
+                          {flag.category}: {flag.requirement} <span className="text-white/35">— watch for: {flag.indicator}</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              <div className="grid gap-3 lg:grid-cols-2">
+                <div>
+                  <p className="text-xs font-medium text-white/70">Coverage</p>
+                  <ul className="mt-2 space-y-1 text-xs">
+                    {vantageResult.coverage.map((row) => (
+                      <li key={row.itemId} className="flex items-start justify-between gap-2">
+                        <span className={row.covered ? "text-white/60" : "text-white/40"}>{row.requirement}</span>
+                        <span className={`badge ${row.covered ? "badge-green" : "badge-muted"}`}>{row.covered ? "covered" : "gap"}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-white/70">IC memo sections</p>
+                  <ul className="mt-2 space-y-1 text-xs text-white/55">
+                    {vantageResult.icMemoSections.map((section) => (
+                      <li key={section.key} className="flex items-center justify-between gap-2">
+                        <span className="text-white/70">{section.title}</span>
+                        <span className="badge badge-muted">{section.status.replaceAll("_", " ")}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
             </div>
           )}
           <div className="overflow-x-auto rounded-lg border border-white/10">
