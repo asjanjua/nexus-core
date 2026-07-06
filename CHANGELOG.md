@@ -2,6 +2,20 @@
 
 ---
 
+## Unreleased — Meridian Compliance Review Runtime (2026-07-06)
+
+Promoted `meridian_compliance_review` to an executable runtime, giving the Meridian pivot suite a native skill. Six of seven native skills are now runtime-ready.
+
+**Engine.** Added `lib/agents/meridian-compliance-review.ts`, which maps a regulator license type's requirements (from `lib/domain/regulatory-requirement-library.ts`) to a submission's governed evidence. Outputs requirement coverage (each requirement covered or not, cited via department-tag match with source spans), compliance gaps (uncovered requirements most-severe-first, each with the library's gap indicator), a qualified-reviewer packet (critical/high requirements plus the standing "qualified reviewer required" boundary — Meridian never files or certifies compliance itself), and filing caveats (missing critical/high requirements plus not-legal-advice and jurisdiction-review boundaries). Pure and deterministic; only `processed` evidence is cited.
+
+**Runner + executor.** Added `lib/services/meridian-compliance-review-runner.ts` (passport gate + audit events) and `POST /api/agents/native-skills/meridian-compliance-review` (session tenant, zod-validated license type/status, `read:evidence` scope).
+
+**Settings action.** Settings → Agent Governance now has a "Run compliance review" button rendering filing-ready status, requirement coverage, compliance gaps with indicators, and filing caveats.
+
+**Catalog + tests.** `meridian_compliance_review` is now `runtime_ready` with `externalReferences: []`. Added `tests/meridian-compliance-review.test.ts` (6 cases) and extended `agent-skills.test.ts`. Full suite 53 files / 393 tests, tsc clean.
+
+---
+
 ## Unreleased — Quorum Governance Review Runtime (2026-07-06)
 
 Promoted `quorum_governance_review` to an executable runtime, giving the Quorum pivot suite a native skill.

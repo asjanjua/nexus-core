@@ -6,9 +6,17 @@
 
 ## Session Info
 
-- **Last updated:** 2026-07-06 (v0.25.x — session #51. Shipped quorum_governance_review; four native runtimes now executable and UI-runnable.)
+- **Last updated:** 2026-07-06 (v0.25.x — session #52. Shipped meridian_compliance_review; five native runtimes executable and UI-runnable, one skill left.)
 - **Last model:** Claude (Opus 4.8)
-- **Session number:** #51
+- **Session number:** #52
+- **Session #52 delivered (2026-07-06) — Meridian compliance review runtime:**
+  - **Engine:** `lib/agents/meridian-compliance-review.ts` maps regulator license-type requirements (`lib/domain/regulatory-requirement-library.ts`, via `requirementsFor`) to governed evidence. Outputs requirement coverage (cited via department-tag match), compliance gaps (severity-sorted with the library's gap indicator), qualified-reviewer packet (critical/high requirements + standing "qualified reviewer required" boundary), and filing caveats (missing critical/high + not-legal-advice + jurisdiction-review). Pure/deterministic; only `processed` evidence cited.
+  - **Runner + endpoint:** `lib/services/meridian-compliance-review-runner.ts` (passport gate + audit events) + `POST /api/agents/native-skills/meridian-compliance-review` (session tenant, zod-validated licenseTypeKey/status).
+  - **Settings action:** "Run compliance review" button renders filing-ready status, requirement coverage, compliance gaps with indicators, and filing caveats. Five native runtimes (grid, integrity, vantage, quorum, meridian) UI-runnable.
+  - **Catalog:** `meridian_compliance_review` now `runtime_ready`, `externalReferences: []`.
+  - **Tests:** `tests/meridian-compliance-review.test.ts` (6 cases) + extended `agent-skills.test.ts`. Full suite 53 files / 393 tests. tsc clean for our code (stale `.next/types` duplicate-file TS6053 noise persists — clear with `rm -rf apps/mission-control/.next` locally).
+  - **Not yet committed** at handover — commit + build + push pending.
+  - **Next slice:** `knowledge_workspace_synthesis`, the last `planned` native skill (analyze family, not approval-gated).
 - **Session #51 delivered (2026-07-06) — Quorum governance review runtime:**
   - **Engine:** `lib/agents/quorum-governance-review.ts` reviews board evidence + decisions + actions. Board-pack completeness checklist (notice, agenda, quorum, conflicts, prior minutes, resolutions, financials) cited via department-tag match, composed with the standing Quorum boundaries from `lib/board-governance-workflow.ts`. Outputs governance findings, decision gaps (overdue open decisions, decided-with-no-action, actions missing owner/due date, open blockers), approval packet (decided decisions + human-approval boundary), and board-pack caveats. Pure/deterministic; only `processed` evidence cited.
   - **Runner + endpoint:** `lib/services/quorum-governance-review-runner.ts` (loads evidence/decisions/actions, passport gate, audit events) + `POST /api/agents/native-skills/quorum-governance-review`.
