@@ -263,6 +263,26 @@ type QuorumGovernanceResult = {
   deniedByPassport: number;
 };
 
+type MeridianComplianceResult = {
+  reviewId: string;
+  licenseTypeKey: string;
+  status: string;
+  jurisdiction: string;
+  requirementCoverage: Array<{ itemId: string; requirement: string; severity: string; covered: boolean; citations: Array<{ evidenceId: string; sourcePath: string }> }>;
+  complianceGaps: Array<{ itemId: string; requirement: string; severity: string; indicator: string }>;
+  qualifiedReviewerPacket: Array<{ kind: string; refId: string; severity: string; covered: boolean; summary: string }>;
+  filingCaveats: Array<{ source: string; refId: string; detail: string; severity: string }>;
+  summary: {
+    requirements: number;
+    covered: number;
+    gaps: number;
+    criticalGaps: number;
+    reviewerItems: number;
+    filingReady: boolean;
+  };
+  deniedByPassport: number;
+};
+
 // Starter board-review spec: lets a reviewer run evidence_grid_review against
 // the workspace's governed evidence in one click, then edit dimensions later.
 const EVIDENCE_GRID_STARTER_DIMENSIONS = [
@@ -2010,6 +2030,9 @@ function AgentGovernanceTab() {
   const [quorumResult, setQuorumResult] = useState<QuorumGovernanceResult | null>(null);
   const [runningQuorum, setRunningQuorum] = useState(false);
   const [quorumError, setQuorumError] = useState<string | null>(null);
+  const [meridianResult, setMeridianResult] = useState<MeridianComplianceResult | null>(null);
+  const [runningMeridian, setRunningMeridian] = useState(false);
+  const [meridianError, setMeridianError] = useState<string | null>(null);
 
   async function runEvidenceGridReview() {
     setRunningReview(true);
@@ -2094,6 +2117,29 @@ function AgentGovernanceTab() {
       setQuorumError(err instanceof Error ? err.message : "unknown_error");
     } finally {
       setRunningQuorum(false);
+    }
+  }
+
+  async function runMeridianComplianceReview() {
+    setRunningMeridian(true);
+    setMeridianError(null);
+    try {
+      const res = await fetch("/api/agents/native-skills/meridian-compliance-review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reviewId: `compliance-${new Date().toISOString().slice(0, 10)}`,
+          licenseTypeKey: "secp_nbfc_investment_finance",
+          status: "aspirational",
+        }),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error ?? "review_failed");
+      setMeridianResult(json.data);
+    } catch (err) {
+      setMeridianError(err instanceof Error ? err.message : "unknown_error");
+    } finally {
+      setRunningMeridian(false);
     }
   }
 
@@ -2362,6 +2408,14 @@ function AgentGovernanceTab() {
                 title="Run quorum_governance_review against this board workspace's evidence, decisions, and actions"
               >
                 {runningQuorum ? "Running review..." : "Run governance review"}
+              </button>
+              <button
+                className="btn-secondary text-xs"
+                onClick={runMeridianComplianceReview}
+                disabled={runningMeridian}
+                title="Run meridian_compliance_review (SECP NBFC Investment Finance) against this workspace's governed evidence"
+              >
+                {runningMeridian ? "Running review..." : "Run compliance review"}
               </button>
             </div>
           </div>
@@ -2661,6 +2715,66 @@ function AgentGovernanceTab() {
                 <ul className="mt-2 space-y-1 text-xs text-white/55">
                   {quorumResult.approvalPacket.map((item, index) => (
                     <li key={`${item.refId}-${index}`}>{item.summary}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
+
+          {meridianError && (
+            <div className="rounded-lg border border-red-400/30 bg-red-500/[0.05] px-3 py-2 text-xs text-red-300">
+              {meridianError}
+            </div>
+          )}
+
+          {meridianResult && (
+            <div className="space-y-3 rounded-lg border border-white/10 bg-white/[0.02] p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-medium text-white">Compliance review — {meridianResult.reviewId}</p>
+                  <p className="mt-1 text-xs text-white/45">
+                    {meridianResult.licenseTypeKey.replaceAll("_", " ")} ({meridianResult.status}, {meridianResult.jurisdiction}) · {meridianResult.summary.covered}/{meridianResult.summary.requirements} requirements · {meridianResult.summary.gaps} gaps ({meridianResult.summary.criticalGaps} critical)
+                    {meridianResult.deniedByPassport > 0 ? ` · ${meridianResult.deniedByPassport} denied by passport` : ""}
+                  </p>
+                </div>
+                <span className={`badge ${meridianResult.summary.filingReady ? "badge-green" : "badge-muted"}`}>
+                  {meridianResult.summary.filingReady ? "filing ready" : "not ready"}
+                </span>
+              </div>
+
+              <div className="grid gap-3 lg:grid-cols-2">
+                <div>
+                  <p className="text-xs font-medium text-white/70">Requirement coverage</p>
+                  <ul className="mt-2 space-y-1 text-xs">
+                    {meridianResult.requirementCoverage.map((row) => (
+                      <li key={row.itemId} className="flex items-start justify-between gap-2">
+                        <span className={row.covered ? "text-white/60" : "text-white/40"}>{row.requirement}</span>
+                        <span className={`badge ${row.covered ? "badge-green" : "badge-muted"}`}>{row.covered ? "covered" : row.severity}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-white/70">Compliance gaps</p>
+                  {meridianResult.complianceGaps.length ? (
+                    <ul className="mt-2 space-y-1 text-xs text-white/55">
+                      {meridianResult.complianceGaps.map((gap) => (
+                        <li key={gap.itemId}>
+                          <span className="text-white/70">[{gap.severity}] {gap.requirement}</span> <span className="text-white/35">— {gap.indicator}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-2 text-xs text-white/35">No compliance gaps.</p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-medium text-white/70">Filing caveats</p>
+                <ul className="mt-2 space-y-1 text-xs text-white/55">
+                  {meridianResult.filingCaveats.map((caveat, index) => (
+                    <li key={`${caveat.refId}-${index}`}>{caveat.detail}</li>
                   ))}
                 </ul>
               </div>

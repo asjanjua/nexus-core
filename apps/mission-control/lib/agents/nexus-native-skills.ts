@@ -178,8 +178,8 @@ export const NEXUS_NATIVE_SKILLS: NexusNativeSkill[] = [
     outputs: ["requirement_coverage", "compliance_gaps", "qualified_reviewer_packet", "filing_caveats"],
     approvalRequired: true,
     auditEvents: ["native_skill.meridian_compliance_review.started", "native_skill.meridian_compliance_review.completed"],
-    runtimeStatus: "planned",
-    externalReferences: ["anthropics/knowledge-work-plugins:compliance-check"],
+    runtimeStatus: "runtime_ready",
+    externalReferences: [],
   },
   {
     id: "document_integrity_review",

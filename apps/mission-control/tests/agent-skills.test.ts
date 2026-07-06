@@ -202,6 +202,14 @@ describe("Nexus native skills", () => {
     expect(validateNexusNativeSkills()).toEqual([]);
   });
 
+  it("promotes meridian compliance review to a first-party runtime with no external dependency", () => {
+    const meridian = NEXUS_NATIVE_SKILLS.find((skill) => skill.id === "meridian_compliance_review");
+
+    expect(meridian?.runtimeStatus).toBe("runtime_ready");
+    expect(meridian?.externalReferences).toEqual([]);
+    expect(validateNexusNativeSkills()).toEqual([]);
+  });
+
   it("requires review and action-capable native skills to be approval-gated and auditable", () => {
     const highImpactSkills = NEXUS_NATIVE_SKILLS.filter(
       (skill) => skill.family === "review" || skill.mappedAgentSkills.some((mappedSkill) => mappedSkill.startsWith("draft") || mappedSkill === "prepare approval packet")
