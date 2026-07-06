@@ -2,6 +2,12 @@
 
 ---
 
+## Unreleased — Clerk Production Domain Cutover Hygiene (2026-07-06)
+
+Removed legacy `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL` and `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL` from the Render blueprint and env template. The app already uses Clerk's newer `signInFallbackRedirectUrl` and `signUpFallbackRedirectUrl` props in `apps/mission-control/app/layout.tsx`; keeping the old env vars set in production caused Clerk redirect deprecation warnings on the live `pinavia.co` sign-in/sign-up pages.
+
+---
+
 ## Unreleased — API Auth-Bypass Sweep (2026-07-06)
 
 Completed the full manual API auth-bypass review (was BACKLOG "spot-verified only"). Enumerated all 135 route handlers under `app/api/` and classified each by auth mechanism and caller-supplied `workspaceId` handling. Found five routes where an authenticated caller could pass `?workspaceId=` or a body `workspaceId` to reach another workspace's data, and fixed all five:

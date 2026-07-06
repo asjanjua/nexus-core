@@ -32,10 +32,6 @@ services:
         value: /sign-in
       - key: NEXT_PUBLIC_CLERK_SIGN_UP_URL
         value: /sign-up
-      - key: NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL
-        value: /dashboard/ceo
-      - key: NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL
-        value: /onboarding
       - key: NEXT_PUBLIC_APP_NAME
         value: NexusAI Mission Control
       - key: DATABASE_URL
