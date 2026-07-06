@@ -117,6 +117,127 @@ type AgentCatalog = {
   };
 };
 
+type WorkflowSkillAnalysisWorkflow = {
+  id: string;
+  name: string;
+  status: "live" | "partial" | "planned";
+  purpose: string;
+  entrypoints: string[];
+  services: string[];
+  dataObjects: string[];
+  skills: string[];
+  skillFamilies: string[];
+  agents: Array<{ id: string; name: string; approvalPolicy: string; skillHints: string[] }>;
+  pivotSuites: Array<{ id: string; name: string; productLine: string }>;
+};
+
+type WorkflowSkillAnalysis = {
+  workflows: WorkflowSkillAnalysisWorkflow[];
+  integrity: {
+    issues: Array<{ workflowId: string; reason: string; value?: string; missingFamilies?: string[] }>;
+  };
+};
+
+type NexusNativeSkillCatalogSkill = {
+  id: string;
+  name: string;
+  family: string;
+  purpose: string;
+  mappedAgentSkills: string[];
+  mappedWorkflows: string[];
+  pivotSuiteIds: string[];
+  requiredData: string[];
+  outputs: string[];
+  approvalRequired: boolean;
+  auditEvents: string[];
+  runtimeStatus: "planned" | "designed" | "runtime_ready";
+  externalReferences: string[];
+  skillFamilies: string[];
+  workflows: Array<{ id: string; name: string; status: string }>;
+  pivotSuites: Array<{ id: string; name: string; productLine: string }>;
+};
+
+type NexusNativeSkillCatalog = {
+  skills: NexusNativeSkillCatalogSkill[];
+  integrity: {
+    issues: Array<{ skillId?: string; suiteId?: string; workflowId?: string; reason: string; value?: string }>;
+  };
+};
+
+type EvidenceGridReviewResult = {
+  reviewId: string;
+  grid: Array<{
+    dimensionId: string;
+    label: string;
+    required: boolean;
+    status: "supported" | "weak" | "unsupported" | "blocked";
+    coverageConfidence: number;
+    citations: Array<{
+      evidenceId: string;
+      sourcePath: string;
+      sourceType: string;
+      sourceSpan: string;
+      confidence: number;
+      freshnessHours: number;
+      sensitivity: string;
+      governed: boolean;
+    }>;
+  }>;
+  issueFlags: Array<{ dimensionId: string; evidenceId: string; reason: string; detail: string }>;
+  missingEvidence: Array<{ dimensionId: string; label: string; required: boolean; requirement: string; reason: string }>;
+  reviewerEscalations: Array<{
+    severity: "high" | "medium" | "low";
+    reason: string;
+    dimensionId: string;
+    evidenceId?: string;
+    recommendedReviewer: string;
+    detail: string;
+  }>;
+  summary: {
+    dimensions: number;
+    supported: number;
+    weak: number;
+    unsupported: number;
+    blocked: number;
+    issueCount: number;
+    escalationCount: number;
+    approvalRequired: boolean;
+  };
+  deniedByPassport: number;
+};
+
+type DocumentIntegrityReviewResult = {
+  reviewId: string;
+  records: Array<{
+    evidenceId: string;
+    sourcePath: string;
+    sourceType: string;
+    sourceSpan: string | null;
+    parseQuality: number;
+    findings: Array<{ reason: string; detail: string }>;
+  }>;
+  missingSourceSpans: string[];
+  repairRecommendations: Array<{ evidenceId: string; recommendation: string }>;
+  summary: {
+    documents: number;
+    clean: number;
+    withFindings: number;
+    parseQualityScore: number;
+    findingCount: number;
+  };
+  deniedByPassport: number;
+};
+
+// Starter board-review spec: lets a reviewer run evidence_grid_review against
+// the workspace's governed evidence in one click, then edit dimensions later.
+const EVIDENCE_GRID_STARTER_DIMENSIONS = [
+  { id: "revenue_actuals", label: "Revenue actuals", requirement: "Board-ready revenue figure with source.", keywords: ["revenue", "turnover", "sales"], required: true },
+  { id: "cash_runway", label: "Cash and runway", requirement: "Cash position and months of runway at current burn.", keywords: ["cash", "runway", "burn", "liquidity"], required: true },
+  { id: "key_risks", label: "Key risks", requirement: "Material risks with owners and mitigation.", keywords: ["risk", "exposure", "mitigation", "incident"], required: true },
+  { id: "compliance_status", label: "Compliance status", requirement: "Regulatory or compliance obligations and status.", keywords: ["compliance", "regulator", "regulatory", "obligation", "filing"], required: true },
+  { id: "pipeline_growth", label: "Pipeline and growth", requirement: "Sales pipeline, retention, or growth signal.", keywords: ["pipeline", "growth", "retention", "churn", "customers"], required: false },
+];
+
 type SynthesisSchedule = {
   id: string;
   workspaceId: string;
@@ -1834,12 +1955,63 @@ function AgentGovernanceTab() {
   const [profiles, setProfiles] = useState<AgentControlProfile[]>([]);
   const [outputs, setOutputs] = useState<AgentOutput[]>([]);
   const [catalog, setCatalog] = useState<AgentCatalog | null>(null);
+  const [nativeSkills, setNativeSkills] = useState<NexusNativeSkillCatalog | null>(null);
+  const [workflowAnalysis, setWorkflowAnalysis] = useState<WorkflowSkillAnalysis | null>(null);
   const [outputAgent, setOutputAgent] = useState("");
   const [outputDays, setOutputDays] = useState("7");
   const [loading, setLoading] = useState(true);
   const [savingKey, setSavingKey] = useState<string | null>(null);
   const [signalSent, setSignalSent] = useState<Record<string, LearningSignalType>>({});
   const [error, setError] = useState<string | null>(null);
+  const [reviewResult, setReviewResult] = useState<EvidenceGridReviewResult | null>(null);
+  const [runningReview, setRunningReview] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
+  const [integrityResult, setIntegrityResult] = useState<DocumentIntegrityReviewResult | null>(null);
+  const [runningIntegrity, setRunningIntegrity] = useState(false);
+  const [integrityError, setIntegrityError] = useState<string | null>(null);
+
+  async function runEvidenceGridReview() {
+    setRunningReview(true);
+    setReviewError(null);
+    try {
+      const res = await fetch("/api/agents/native-skills/evidence-grid-review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reviewId: `board-review-${new Date().toISOString().slice(0, 10)}`,
+          dimensions: EVIDENCE_GRID_STARTER_DIMENSIONS,
+        }),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error ?? "review_failed");
+      setReviewResult(json.data);
+    } catch (err) {
+      setReviewError(err instanceof Error ? err.message : "unknown_error");
+    } finally {
+      setRunningReview(false);
+    }
+  }
+
+  async function runDocumentIntegrityReview() {
+    setRunningIntegrity(true);
+    setIntegrityError(null);
+    try {
+      const res = await fetch("/api/agents/native-skills/document-integrity-review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reviewId: `integrity-${new Date().toISOString().slice(0, 10)}`,
+        }),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error ?? "review_failed");
+      setIntegrityResult(json.data);
+    } catch (err) {
+      setIntegrityError(err instanceof Error ? err.message : "unknown_error");
+    } finally {
+      setRunningIntegrity(false);
+    }
+  }
 
   async function load() {
     setLoading(true);
@@ -1852,6 +2024,12 @@ function AgentGovernanceTab() {
       const catalogRes = await fetch("/api/agents/catalog");
       const catalogJson = await catalogRes.json();
       if (catalogJson.ok) setCatalog(catalogJson.data);
+      const nativeSkillRes = await fetch("/api/agents/native-skills");
+      const nativeSkillJson = await nativeSkillRes.json();
+      if (nativeSkillJson.ok) setNativeSkills(nativeSkillJson.data);
+      const workflowRes = await fetch("/api/agents/workflow-analysis");
+      const workflowJson = await workflowRes.json();
+      if (workflowJson.ok) setWorkflowAnalysis(workflowJson.data);
       await loadOutputs();
     } catch (err) {
       setError(err instanceof Error ? err.message : "unknown_error");
@@ -2051,6 +2229,324 @@ function AgentGovernanceTab() {
                   ))}
                 </div>
               </article>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {nativeSkills && (
+        <section className="panel space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-white">Nexus Native Skills</p>
+              <p className="mt-1 text-xs text-white/45">
+                First-party skill pack mapped to workflows, pivots, approval gates, and audit events.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`badge ${nativeSkills.integrity.issues.length === 0 ? "badge-green" : "badge-muted"}`}>
+                {nativeSkills.integrity.issues.length === 0 ? "native catalog clean" : `${nativeSkills.integrity.issues.length} issue(s)`}
+              </span>
+              <button
+                className="btn-secondary text-xs"
+                onClick={runEvidenceGridReview}
+                disabled={runningReview}
+                title="Run evidence_grid_review against this workspace's governed evidence"
+              >
+                {runningReview ? "Running review..." : "Run evidence grid review"}
+              </button>
+              <button
+                className="btn-secondary text-xs"
+                onClick={runDocumentIntegrityReview}
+                disabled={runningIntegrity}
+                title="Run document_integrity_review across this workspace's evidence"
+              >
+                {runningIntegrity ? "Running review..." : "Run document integrity review"}
+              </button>
+            </div>
+          </div>
+
+          {reviewError && (
+            <div className="rounded-lg border border-red-400/30 bg-red-500/[0.05] px-3 py-2 text-xs text-red-300">
+              {reviewError}
+            </div>
+          )}
+
+          {reviewResult && (
+            <div className="space-y-3 rounded-lg border border-white/10 bg-white/[0.02] p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-medium text-white">Evidence grid review — {reviewResult.reviewId}</p>
+                  <p className="mt-1 text-xs text-white/45">
+                    {reviewResult.summary.supported} supported · {reviewResult.summary.weak} weak · {reviewResult.summary.unsupported} unsupported · {reviewResult.summary.blocked} blocked
+                    {reviewResult.deniedByPassport > 0 ? ` · ${reviewResult.deniedByPassport} denied by passport` : ""}
+                  </p>
+                </div>
+                <span className={`badge ${reviewResult.summary.approvalRequired ? "badge-muted" : "badge-green"}`}>
+                  {reviewResult.summary.approvalRequired ? `${reviewResult.summary.escalationCount} escalation(s)` : "no escalation"}
+                </span>
+              </div>
+
+              <div className="overflow-x-auto rounded-lg border border-white/10">
+                <table className="min-w-full divide-y divide-white/10 text-left text-xs">
+                  <thead className="bg-white/[0.03] text-white/45">
+                    <tr>
+                      <th className="px-3 py-2 font-medium">Dimension</th>
+                      <th className="px-3 py-2 font-medium">Status</th>
+                      <th className="px-3 py-2 font-medium">Coverage</th>
+                      <th className="px-3 py-2 font-medium">Cited evidence</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/10">
+                    {reviewResult.grid.map((row) => (
+                      <tr key={row.dimensionId} className="align-top">
+                        <td className="px-3 py-3">
+                          <p className="font-medium text-white">{row.label}</p>
+                          {row.required && <span className="mt-1 inline-block text-white/35">required</span>}
+                        </td>
+                        <td className="px-3 py-3">
+                          <span className={`badge ${row.status === "supported" ? "badge-green" : "badge-muted"}`}>{row.status}</span>
+                        </td>
+                        <td className="px-3 py-3 text-white/50">
+                          {row.citations.length ? `${Math.round(row.coverageConfidence * 100)}%` : "—"}
+                        </td>
+                        <td className="max-w-md px-3 py-3">
+                          {row.citations.length ? (
+                            <ul className="space-y-1.5">
+                              {row.citations.map((citation) => (
+                                <li key={citation.evidenceId} className="text-white/55">
+                                  <span className="text-white/70">{citation.sourcePath}</span>
+                                  <span className="text-white/35"> · {Math.round(citation.confidence * 100)}% · {citation.freshnessHours}h</span>
+                                  <p className="mt-0.5 text-white/40">“{citation.sourceSpan}”</p>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <span className="text-white/35">no governed citation</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {reviewResult.reviewerEscalations.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-white/70">Reviewer escalations</p>
+                  <ul className="mt-2 space-y-1.5">
+                    {reviewResult.reviewerEscalations.map((escalation, index) => (
+                      <li key={`${escalation.dimensionId}-${escalation.reason}-${index}`} className="flex flex-wrap items-start gap-2 text-xs">
+                        <span className={`badge ${escalation.severity === "high" ? "badge-muted" : "badge"}`}>{escalation.severity}</span>
+                        <span className="text-white/55">
+                          {escalation.detail} <span className="text-white/35">→ {escalation.recommendedReviewer}</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {reviewResult.missingEvidence.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-white/70">Missing evidence</p>
+                  <ul className="mt-2 space-y-1 text-xs text-white/50">
+                    {reviewResult.missingEvidence.map((note) => (
+                      <li key={note.dimensionId}>
+                        <span className="text-white/70">{note.label}</span> · {note.reason.replaceAll("_", " ")} — {note.requirement}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          {integrityError && (
+            <div className="rounded-lg border border-red-400/30 bg-red-500/[0.05] px-3 py-2 text-xs text-red-300">
+              {integrityError}
+            </div>
+          )}
+
+          {integrityResult && (
+            <div className="space-y-3 rounded-lg border border-white/10 bg-white/[0.02] p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-medium text-white">Document integrity review — {integrityResult.reviewId}</p>
+                  <p className="mt-1 text-xs text-white/45">
+                    {integrityResult.summary.documents} document{integrityResult.summary.documents === 1 ? "" : "s"} · {integrityResult.summary.clean} clean · {integrityResult.summary.withFindings} with findings
+                    {integrityResult.deniedByPassport > 0 ? ` · ${integrityResult.deniedByPassport} denied by passport` : ""}
+                  </p>
+                </div>
+                <span className={`badge ${integrityResult.summary.withFindings === 0 ? "badge-green" : "badge-muted"}`}>
+                  parse quality {Math.round(integrityResult.summary.parseQualityScore * 100)}%
+                </span>
+              </div>
+
+              {integrityResult.records.length === 0 ? (
+                <p className="text-xs text-white/40">No evidence records to inspect in this workspace.</p>
+              ) : (
+                <div className="overflow-x-auto rounded-lg border border-white/10">
+                  <table className="min-w-full divide-y divide-white/10 text-left text-xs">
+                    <thead className="bg-white/[0.03] text-white/45">
+                      <tr>
+                        <th className="px-3 py-2 font-medium">Document</th>
+                        <th className="px-3 py-2 font-medium">Quality</th>
+                        <th className="px-3 py-2 font-medium">Findings</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/10">
+                      {integrityResult.records.map((record) => (
+                        <tr key={record.evidenceId} className="align-top">
+                          <td className="max-w-xs px-3 py-3">
+                            <p className="font-medium text-white">{record.sourcePath}</p>
+                            <p className="mt-1 text-white/35">{record.sourceType}</p>
+                          </td>
+                          <td className="px-3 py-3">
+                            <span className={`badge ${record.findings.length === 0 ? "badge-green" : "badge-muted"}`}>
+                              {Math.round(record.parseQuality * 100)}%
+                            </span>
+                          </td>
+                          <td className="max-w-md px-3 py-3">
+                            {record.findings.length ? (
+                              <ul className="space-y-1">
+                                {record.findings.map((finding) => (
+                                  <li key={finding.reason} className="text-white/55">
+                                    <span className="text-white/70">{finding.reason.replaceAll("_", " ")}</span>
+                                    <span className="text-white/40"> — {finding.detail}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <span className="text-white/35">clean</span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {integrityResult.repairRecommendations.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-white/70">Repair recommendations</p>
+                  <ul className="mt-2 space-y-1 text-xs text-white/50">
+                    {integrityResult.repairRecommendations.slice(0, 12).map((rec, index) => (
+                      <li key={`${rec.evidenceId}-${index}`}>
+                        <span className="text-white/70">{rec.evidenceId}</span> — {rec.recommendation}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+          <div className="overflow-x-auto rounded-lg border border-white/10">
+            <table className="min-w-full divide-y divide-white/10 text-left text-xs">
+              <thead className="bg-white/[0.03] text-white/45">
+                <tr>
+                  <th className="px-3 py-2 font-medium">Skill</th>
+                  <th className="px-3 py-2 font-medium">Status</th>
+                  <th className="px-3 py-2 font-medium">Pivots</th>
+                  <th className="px-3 py-2 font-medium">Workflows</th>
+                  <th className="px-3 py-2 font-medium">Controls</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/10">
+                {nativeSkills.skills.map((skill) => (
+                  <tr key={skill.id} className="align-top">
+                    <td className="max-w-sm px-3 py-3">
+                      <p className="font-medium text-white">{skill.name}</p>
+                      <p className="mt-1 text-white/45">{skill.purpose}</p>
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {skill.skillFamilies.map((family) => (
+                          <span key={family} className="badge">{family}</span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-3 py-3">
+                      <span className={`badge ${skill.runtimeStatus === "runtime_ready" ? "badge-green" : "badge-muted"}`}>
+                        {skill.runtimeStatus.replaceAll("_", " ")}
+                      </span>
+                      <p className="mt-2 text-white/35">
+                        {skill.externalReferences.length > 0 ? "reference informed" : "fully internal"}
+                      </p>
+                    </td>
+                    <td className="max-w-[12rem] px-3 py-3 text-white/50">
+                      {skill.pivotSuites.map((suite) => suite.name).join(", ")}
+                    </td>
+                    <td className="max-w-xs px-3 py-3 text-white/50">
+                      {skill.workflows.map((workflow) => workflow.name).join(", ")}
+                    </td>
+                    <td className="px-3 py-3">
+                      <div className="flex flex-wrap gap-1.5">
+                        <span className={`badge ${skill.approvalRequired ? "badge-green" : "badge-muted"}`}>
+                          {skill.approvalRequired ? "approval gated" : "no approval gate"}
+                        </span>
+                        <span className="badge badge-muted">{skill.auditEvents.length} audit event{skill.auditEvents.length === 1 ? "" : "s"}</span>
+                      </div>
+                      <p className="mt-2 text-white/35">{skill.outputs.slice(0, 3).join(", ")}</p>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      {workflowAnalysis && (
+        <section className="panel space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-white">Workflow Skill Analysis</p>
+              <p className="mt-1 text-xs text-white/45">
+                Major Nexus workflows mapped to active skills, agents, and code paths.
+              </p>
+            </div>
+            <span className={`badge ${workflowAnalysis.integrity.issues.length === 0 ? "badge-green" : "badge-muted"}`}>
+              {workflowAnalysis.integrity.issues.length === 0 ? "analysis clean" : `${workflowAnalysis.integrity.issues.length} issue(s)`}
+            </span>
+          </div>
+          <div className="space-y-2">
+            {workflowAnalysis.workflows.map((workflow) => (
+              <details key={workflow.id} className="rounded-lg border border-white/10 bg-white/[0.03] p-3">
+                <summary className="flex cursor-pointer list-none flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-white">{workflow.name}</p>
+                    <p className="mt-1 max-w-3xl text-xs text-white/45">{workflow.purpose}</p>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    <span className={`badge ${workflow.status === "live" ? "badge-green" : "badge-muted"}`}>{workflow.status}</span>
+                    {workflow.skillFamilies.map((family) => (
+                      <span key={family} className="badge">{family}</span>
+                    ))}
+                  </div>
+                </summary>
+                <div className="mt-3 grid gap-3 lg:grid-cols-3">
+                  <div>
+                    <p className="text-xs font-medium text-white/70">Skills</p>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {workflow.skills.map((skill) => <span key={skill} className="badge badge-muted">{skill}</span>)}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-white/70">Agents and pivots</p>
+                    <p className="mt-2 text-xs text-white/45">
+                      {workflow.agents.map((agent) => agent.name).join(", ") || "none"}
+                    </p>
+                    <p className="mt-1 text-xs text-white/35">
+                      {workflow.pivotSuites.map((suite) => suite.name).join(", ") || "core"}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-white/70">Where used</p>
+                    <p className="mt-2 text-xs text-white/45">{workflow.entrypoints.join(", ")}</p>
+                    <p className="mt-1 text-xs text-white/35">{workflow.services.join(", ")}</p>
+                  </div>
+                </div>
+              </details>
             ))}
           </div>
         </section>
