@@ -6,9 +6,18 @@
 
 ## Session Info
 
-- **Last updated:** 2026-07-06 (v0.25.x — session #50. Shipped vantage_diligence_analysis, the first executable pivot-suite runtime.)
+- **Last updated:** 2026-07-06 (v0.25.x — session #51. Shipped quorum_governance_review; four native runtimes now executable and UI-runnable.)
 - **Last model:** Claude (Opus 4.8)
-- **Session number:** #50
+- **Session number:** #51
+- **Session #51 delivered (2026-07-06) — Quorum governance review runtime:**
+  - **Engine:** `lib/agents/quorum-governance-review.ts` reviews board evidence + decisions + actions. Board-pack completeness checklist (notice, agenda, quorum, conflicts, prior minutes, resolutions, financials) cited via department-tag match, composed with the standing Quorum boundaries from `lib/board-governance-workflow.ts`. Outputs governance findings, decision gaps (overdue open decisions, decided-with-no-action, actions missing owner/due date, open blockers), approval packet (decided decisions + human-approval boundary), and board-pack caveats. Pure/deterministic; only `processed` evidence cited.
+  - **Runner + endpoint:** `lib/services/quorum-governance-review-runner.ts` (loads evidence/decisions/actions, passport gate, audit events) + `POST /api/agents/native-skills/quorum-governance-review`.
+  - **Settings action:** "Run governance review" button renders record-ready status, board-pack completeness, decision gaps, and the human-approval packet. Four native runtimes (grid, integrity, vantage, quorum) are all UI-runnable.
+  - **Catalog:** `quorum_governance_review` now `runtime_ready`, `externalReferences: []`.
+  - **Tests:** `tests/quorum-governance-review.test.ts` (8 cases) + extended `agent-skills.test.ts`. Full suite 52 files / 386 tests. tsc clean for our code.
+  - **Environment note:** the mounted `.next/types` has stale duplicate files (e.g. `route 4.ts`) from a local build that the sandbox cannot delete; they produce TS6053 "file not found" noise unrelated to our code. Cleared by `rm -rf apps/mission-control/.next` locally before the next `next build`.
+  - **Not yet committed** at handover — commit + build + push pending.
+  - **Next slice:** `meridian_compliance_review` (reuse `lib/domain/regulatory-requirement-library.ts`), then `knowledge_workspace_synthesis`.
 - **Session #50 delivered (2026-07-06) — Vantage diligence analysis runtime:**
   - **Engine:** `lib/agents/vantage-diligence-analysis.ts` composes the DD checklist library (`lib/domain/dd-checklist-library.ts`) with the grid engine's `extractSourceSpan` citation model. Outputs diligence coverage (cited via department-tag match), red flags (uncovered critical/high items + the item's red-flag indicator), model tie-outs (financial items tied-to-source vs. unverifiable by numeric content), IC memo sections (template populated from findings/gaps), and a coverage-signal recommendation (do_not_proceed on any critical gap). Pure/deterministic; only `processed` evidence cited.
   - **Runner + endpoint:** `lib/services/vantage-diligence-analysis-runner.ts` (passport gate + audit events) and `POST /api/agents/native-skills/vantage-diligence-analysis` (session tenant, zod-validated dealType/options, `read:evidence`).

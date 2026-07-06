@@ -2,6 +2,20 @@
 
 ---
 
+## Unreleased — Quorum Governance Review Runtime (2026-07-06)
+
+Promoted `quorum_governance_review` to an executable runtime, giving the Quorum pivot suite a native skill.
+
+**Engine.** Added `lib/agents/quorum-governance-review.ts`, which reviews a board meeting's governed evidence together with its decisions and actions. It composes a board-pack completeness checklist (notice, agenda, quorum, conflicts, prior minutes, resolutions, financials) cited via department-tag match with the standing Quorum governance boundaries from `lib/board-governance-workflow.ts`. Outputs governance findings (each requirement covered or not, with cited source spans), decision gaps (overdue open decisions, decided decisions with no follow-through action, actions missing an owner or due date, open blocker actions), an approval packet (decided decisions plus the human-approval boundary — Quorum never signs or finalizes automatically), and board-pack caveats (missing requirements plus the no-legal-authority / human-approval / jurisdiction-review boundaries). Pure and deterministic; only `processed` evidence is cited.
+
+**Runner + executor.** Added `lib/services/quorum-governance-review-runner.ts` (loads evidence, decisions, and actions; passport gate; audit events) and `POST /api/agents/native-skills/quorum-governance-review` (session tenant, zod-validated, `read:evidence` scope).
+
+**Settings action.** Settings → Agent Governance now has a "Run governance review" button rendering the record-ready status, board-pack completeness, decision gaps, and the human-approval packet.
+
+**Catalog + tests.** `quorum_governance_review` is now `runtime_ready` with `externalReferences: []`. Added `tests/quorum-governance-review.test.ts` (8 cases) and extended `agent-skills.test.ts`. Full suite 52 files / 386 tests, tsc clean (excluding pre-existing stale `.next/types` duplicate-file noise from a local build).
+
+---
+
 ## Unreleased — Vantage Diligence Analysis Runtime (2026-07-06)
 
 Promoted `vantage_diligence_analysis` to the first executable pivot-suite runtime, giving the Vantage product line a real native skill.
