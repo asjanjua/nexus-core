@@ -246,6 +246,23 @@ type VantageDiligenceResult = {
   deniedByPassport: number;
 };
 
+type QuorumGovernanceResult = {
+  reviewId: string;
+  governanceFindings: Array<{ requirementId: string; label: string; severity: string; covered: boolean; citations: Array<{ evidenceId: string; sourcePath: string }> }>;
+  decisionGaps: Array<{ decisionId: string; title: string; reason: string; detail: string }>;
+  approvalPacket: Array<{ kind: string; refId: string; summary: string }>;
+  boardPackCaveats: Array<{ source: string; refId: string; detail: string; severity: string }>;
+  summary: {
+    requirements: number;
+    covered: number;
+    criticalGaps: number;
+    decisionGaps: number;
+    approvalItems: number;
+    recordReady: boolean;
+  };
+  deniedByPassport: number;
+};
+
 // Starter board-review spec: lets a reviewer run evidence_grid_review against
 // the workspace's governed evidence in one click, then edit dimensions later.
 const EVIDENCE_GRID_STARTER_DIMENSIONS = [
@@ -1990,6 +2007,9 @@ function AgentGovernanceTab() {
   const [vantageResult, setVantageResult] = useState<VantageDiligenceResult | null>(null);
   const [runningVantage, setRunningVantage] = useState(false);
   const [vantageError, setVantageError] = useState<string | null>(null);
+  const [quorumResult, setQuorumResult] = useState<QuorumGovernanceResult | null>(null);
+  const [runningQuorum, setRunningQuorum] = useState(false);
+  const [quorumError, setQuorumError] = useState<string | null>(null);
 
   async function runEvidenceGridReview() {
     setRunningReview(true);
@@ -2053,6 +2073,27 @@ function AgentGovernanceTab() {
       setVantageError(err instanceof Error ? err.message : "unknown_error");
     } finally {
       setRunningVantage(false);
+    }
+  }
+
+  async function runQuorumGovernanceReview() {
+    setRunningQuorum(true);
+    setQuorumError(null);
+    try {
+      const res = await fetch("/api/agents/native-skills/quorum-governance-review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          reviewId: `governance-${new Date().toISOString().slice(0, 10)}`,
+        }),
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error ?? "review_failed");
+      setQuorumResult(json.data);
+    } catch (err) {
+      setQuorumError(err instanceof Error ? err.message : "unknown_error");
+    } finally {
+      setRunningQuorum(false);
     }
   }
 
@@ -2314,6 +2355,14 @@ function AgentGovernanceTab() {
               >
                 {runningVantage ? "Running analysis..." : "Run diligence analysis"}
               </button>
+              <button
+                className="btn-secondary text-xs"
+                onClick={runQuorumGovernanceReview}
+                disabled={runningQuorum}
+                title="Run quorum_governance_review against this board workspace's evidence, decisions, and actions"
+              >
+                {runningQuorum ? "Running review..." : "Run governance review"}
+              </button>
             </div>
           </div>
 
@@ -2554,6 +2603,66 @@ function AgentGovernanceTab() {
                     ))}
                   </ul>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {quorumError && (
+            <div className="rounded-lg border border-red-400/30 bg-red-500/[0.05] px-3 py-2 text-xs text-red-300">
+              {quorumError}
+            </div>
+          )}
+
+          {quorumResult && (
+            <div className="space-y-3 rounded-lg border border-white/10 bg-white/[0.02] p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <p className="text-sm font-medium text-white">Governance review — {quorumResult.reviewId}</p>
+                  <p className="mt-1 text-xs text-white/45">
+                    {quorumResult.summary.covered}/{quorumResult.summary.requirements} requirements ({quorumResult.summary.criticalGaps} critical gaps) · {quorumResult.summary.decisionGaps} decision gaps · {quorumResult.summary.approvalItems} approval items
+                    {quorumResult.deniedByPassport > 0 ? ` · ${quorumResult.deniedByPassport} denied by passport` : ""}
+                  </p>
+                </div>
+                <span className={`badge ${quorumResult.summary.recordReady ? "badge-green" : "badge-muted"}`}>
+                  {quorumResult.summary.recordReady ? "record ready" : "not ready"}
+                </span>
+              </div>
+
+              <div className="grid gap-3 lg:grid-cols-2">
+                <div>
+                  <p className="text-xs font-medium text-white/70">Board-pack completeness</p>
+                  <ul className="mt-2 space-y-1 text-xs">
+                    {quorumResult.governanceFindings.map((finding) => (
+                      <li key={finding.requirementId} className="flex items-start justify-between gap-2">
+                        <span className={finding.covered ? "text-white/60" : "text-white/40"}>{finding.label}</span>
+                        <span className={`badge ${finding.covered ? "badge-green" : "badge-muted"}`}>{finding.covered ? "tabled" : "missing"}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-white/70">Decision gaps</p>
+                  {quorumResult.decisionGaps.length ? (
+                    <ul className="mt-2 space-y-1 text-xs text-white/55">
+                      {quorumResult.decisionGaps.map((gap, index) => (
+                        <li key={`${gap.decisionId}-${gap.reason}-${index}`}>
+                          <span className="text-white/70">{gap.title}</span> · {gap.reason.replaceAll("_", " ")} — {gap.detail}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-2 text-xs text-white/35">No decision or action gaps.</p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-medium text-white/70">Requires human approval</p>
+                <ul className="mt-2 space-y-1 text-xs text-white/55">
+                  {quorumResult.approvalPacket.map((item, index) => (
+                    <li key={`${item.refId}-${index}`}>{item.summary}</li>
+                  ))}
+                </ul>
               </div>
             </div>
           )}

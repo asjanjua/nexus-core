@@ -154,8 +154,8 @@ export const NEXUS_NATIVE_SKILLS: NexusNativeSkill[] = [
     outputs: ["governance_findings", "decision_gaps", "approval_packet", "board_pack_caveats"],
     approvalRequired: true,
     auditEvents: ["native_skill.quorum_governance_review.started", "native_skill.quorum_governance_review.completed"],
-    runtimeStatus: "planned",
-    externalReferences: ["anthropics/knowledge-work-plugins:legal-review"],
+    runtimeStatus: "runtime_ready",
+    externalReferences: [],
   },
   {
     id: "meridian_compliance_review",
