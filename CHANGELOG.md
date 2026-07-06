@@ -2,6 +2,80 @@
 
 ---
 
+## Unreleased — Document Integrity Executor (2026-07-06)
+
+Closed the runtime/UI gap: `document_integrity_review` was `runtime_ready` but had no way to trigger it outside code.
+
+**Executor endpoint.** Added `POST /api/agents/native-skills/document-integrity-review`, mirroring the grid executor (session tenant never from body, zod-validated options, `read:evidence` scope). It runs the integrity engine and returns per-document findings, parse-quality score, missing source spans, and repair recommendations.
+
+**Settings action.** Settings → Agent Governance now has a "Run document integrity review" button next to the grid button. It renders a per-document table (source path, type, parse-quality badge, findings) plus repair recommendations. Both native runtimes are now runnable from the UI.
+
+---
+
+## Unreleased — Evidence Grid Review Executor + Document Integrity Runtime (2026-07-06)
+
+Made `evidence_grid_review` runnable on demand and promoted `document_integrity_review` to an executable first-party runtime.
+
+**Executor endpoint.** Added `POST /api/agents/native-skills/evidence-grid-review`. It validates a review spec (dimensions with keywords and required flags), derives the tenant from the authenticated session, runs the engine against the workspace's governed evidence, and returns the cited grid, issue flags, missing-evidence notes, and reviewer escalations. Gated on `read:evidence` like Ask; it reads evidence and writes audit events only.
+
+**Settings action.** Settings → Agent Governance now has a "Run evidence grid review" button that executes a starter board-review spec against governed evidence and renders cited rows (source path, confidence, freshness, quoted span), reviewer escalations, and missing-evidence notes inline.
+
+**Document integrity runtime.** Added `lib/agents/document-integrity-review.ts`, a per-document engine that reuses the grid engine's `extractSourceSpan` helper. It scores parse quality per record and flags `empty_text`, `weak_extraction`, `stale_evidence`, `missing_source_span`, `unverified_provenance`, `ungoverned_status`, and `missing_tabular_structure` (for spreadsheet sources), then turns findings into concrete repair recommendations. Its runner (`lib/services/document-integrity-review-runner.ts`) deliberately does not pre-filter to `processed` evidence, since integrity review exists to inspect documents that have not yet cleared governance. `document_integrity_review` is now `runtime_ready` with `externalReferences: []`.
+
+**Tests.** Added `tests/document-integrity-review.test.ts` (7 cases) and extended `tests/agent-skills.test.ts` for the second runtime_ready promotion. Full suite 50 files / 369 tests, tsc clean.
+
+---
+
+## Unreleased — Evidence Grid Review Runtime (2026-07-06)
+
+Promoted `evidence_grid_review` from a designed native skill to a first-party executable runtime.
+
+**Engine.** Added `lib/agents/evidence-grid-review.ts`, a pure, deterministic engine that turns governed evidence records plus a review spec into a cited grid: one row per review dimension, each cited to source spans with provenance, confidence, and freshness. Cells are scored `supported`, `weak`, `unsupported`, or `blocked`. It emits issue flags (`low_confidence`, `stale_evidence`, `unverified_provenance`, `ungoverned_status`, `restricted_sensitivity`), missing-evidence notes, and reviewer escalations, plus started/completed audit events. No I/O, no LLM, no wall-clock reads, so it is fully unit-testable.
+
+**Governance boundary.** Restricted evidence is never cited and is escalated to the data owner. Only `processed` evidence is citable; `pending_approval`/`quarantined` matches are flagged and block the cell. Sensitive regulatory, legal, or data-protection content in cited text is escalated to a qualified reviewer (compliance officer, legal counsel, data protection officer).
+
+**Runner.** Added `lib/services/evidence-grid-review-runner.ts`, which loads the governed evidence pool, applies the agent passport gate exactly like Ask retrieval, runs the engine, and writes the `native_skill.evidence_grid_review.started`/`.completed` audit events with passport-denial counts.
+
+**Catalog.** `evidence_grid_review` is now `runtime_status: "runtime_ready"` with `externalReferences: []`; the tabular-review reference remains recorded in the sourcing review as design provenance only.
+
+**Tests.** Added `tests/evidence-grid-review.test.ts` (9 cases) covering citation with source spans, weak/stale downgrades, missing-evidence notes, restricted and ungoverned blocking, sensitive-content escalation, provenance flags, citation capping, and audit events. Updated `tests/agent-skills.test.ts` for the runtime_ready promotion.
+
+---
+
+## Unreleased — Agent Skill Sourcing Review (2026-07-06)
+
+Added a GitHub/Skills CLI sourcing review for the Nexus agent skill taxonomy.
+
+**Review doc.** Added `docs/AGENT_SKILL_SOURCING_REVIEW.md`, mapping every current Nexus skill across ingest, browse, review, analyze, and act to a build/adopt decision.
+
+**External candidates.** Shortlisted GitHub-sourced references including `github/awesome-copilot@agent-governance`, `anthropics/knowledge-work-plugins` legal/compliance skills, `anthropics/financial-services` diligence workflows, `anthropics/claude-for-legal` tabular review, `anthropics/skills` document skills, `kepano/obsidian-skills`, `adhikasp/mcp-git-ingest`, and `browser-use/browser-use`.
+
+**Boundary.** The review keeps runtime skills Nexus-native when they touch tenant evidence, approvals, audit, legal/regulatory judgment, or source-system writeback. Public GitHub skills are treated as references or operator aids until code/license/security review is complete.
+
+**Fine-tooth review started.** Added the first detailed candidate review for `github/awesome-copilot@agent-governance`: MIT-licensed, single `SKILL.md`, strong governance reference, but reference-only for now because Nexus should adapt the policy, pre-flight intent, tool-gate, and audit patterns into its TypeScript passport/dispatcher architecture.
+
+**Legal workflow candidate reviewed.** Added a fine-tooth review of `anthropics/knowledge-work-plugins` legal skills (`review-contract` and `compliance-check`): Apache-2.0, strong playbook and compliance-packet structure, reference-only until Nexus has jurisdiction packs, evidence IDs, reviewer gates, and connector permission manifests.
+
+**Vantage candidate reviewed.** Added a fine-tooth review of `anthropics/financial-services` private-equity skills (`dd-checklist` and `ic-memo`): Apache-2.0, strong Vantage blueprint for diligence coverage, red-flag escalation, sector overlays, and IC memo packets, but not a runtime dependency because the full repo is broad, connector-heavy, and finance-advice sensitive.
+
+**Evidence-grid candidate reviewed.** Added a fine-tooth review of `anthropics/claude-for-legal@tabular-review`: Apache-2.0 and the strongest reusable runtime pattern so far for one-row-per-document evidence grids with typed columns, source quotes, locations, explicit review states, normalization, and reviewer verification.
+
+**Document skills reviewed.** Added a fine-tooth review of `anthropics/skills` document skills (`pdf`, `docx`, `xlsx`): useful quality-bar references for extraction, exports, workbook integrity, and source-span handling, but source-available/proprietary rather than installable or vendorable.
+
+**Operator/tool candidates reviewed.** Added fine-tooth reviews for `kepano/obsidian-skills`, `adhikasp/mcp-git-ingest`, and `browser-use/browser-use`: Obsidian skills are plausible local operator aids; GitHub ingestion and browser automation are future tool candidates only, requiring sandboxing, allowlists, auth boundaries, and audit trails before any Nexus use.
+
+**Shortlist tests started.** Added `lib/agents/external-skill-candidates.ts` with typed ranking, license, risk, workflow, skill, verdict, and blocker metadata for the reviewed shortlist. Expanded `tests/agent-skills.test.ts` to assert candidate integrity, ranking, no runtime-ready GitHub candidates, proprietary-skill guards, and sandbox gates for tool candidates.
+
+**Nexus-native skill build started.** Added `lib/agents/nexus-native-skills.ts` with first-party skill definitions for evidence-grid review, agent-governance review, Vantage diligence, Quorum governance, Meridian compliance, document integrity, and Knowledge Workspace synthesis. The catalog validates against known Nexus skills, workflows, pivot suites, approval gates, audit events, and external-reference boundaries.
+
+**Native skill API/UI.** Added `GET /api/agents/native-skills` and surfaced the native skill pack in Settings → Agent Governance with runtime status, pivot/workflow coverage, approval gates, audit events, and reference-informed status.
+
+**Native skill tests.** Expanded `tests/agent-skills.test.ts` to pin the first native skill pack, full pivot/workflow coverage, evidence-grid mapping, high-impact approval/audit rules, and the rule that reference-informed native skills are not external runtime installs.
+
+**Next step.** Implement the first executable native skill: `evidence_grid_review`, producing source-backed review grids, issue flags, missing-evidence notes, and reviewer escalations from governed evidence records.
+
+---
+
 ## Unreleased — Product Subdomain Detection (2026-07-06)
 
 Added the code layer for Pinavia's endorsed house-of-brands routing across NexusAI, Quorum, Meridian, Vantage, and Nucleus.
