@@ -2,6 +2,20 @@
 
 ---
 
+## Unreleased — Vantage Diligence Analysis Runtime (2026-07-06)
+
+Promoted `vantage_diligence_analysis` to the first executable pivot-suite runtime, giving the Vantage product line a real native skill.
+
+**Engine.** Added `lib/agents/vantage-diligence-analysis.ts`, which composes the DD checklist library (`lib/domain/dd-checklist-library.ts`) with the grid engine's citation model. Given a deal's governed evidence pool and a deal type, it produces diligence coverage (every checklist item, covered or not, with cited evidence via department-tag match), red flags (uncovered critical/high items, each carrying the item's specific red-flag indicator), model tie-outs (financial items marked tied-to-source vs. unverifiable based on whether cited evidence carries numbers), and IC memo sections (the template populated deterministically from findings and gaps). It also derives a coverage-signal recommendation: `do_not_proceed` on any critical gap, `proceed_with_conditions` on any gap, else `proceed`. Pure and deterministic; only `processed` evidence is ever cited.
+
+**Runner + executor.** Added `lib/services/vantage-diligence-analysis-runner.ts` (passport gate + audit events) and `POST /api/agents/native-skills/vantage-diligence-analysis` (session tenant, zod-validated deal type and options, `read:evidence` scope).
+
+**Settings action.** Settings → Agent Governance now has a "Run diligence analysis" button rendering the recommendation, red flags with indicators, per-item coverage, and IC memo section statuses. All three pivot-relevant runtimes are UI-runnable.
+
+**Catalog + tests.** `vantage_diligence_analysis` is now `runtime_ready` with `externalReferences: []`. Added `tests/vantage-diligence-analysis.test.ts` (7 cases) and extended `agent-skills.test.ts`. Full suite 51 files / 377 tests, tsc clean.
+
+---
+
 ## Unreleased — Document Integrity Executor (2026-07-06)
 
 Closed the runtime/UI gap: `document_integrity_review` was `runtime_ready` but had no way to trigger it outside code.

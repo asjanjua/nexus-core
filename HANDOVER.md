@@ -6,9 +6,17 @@
 
 ## Session Info
 
-- **Last updated:** 2026-07-06 (v0.25.x — session #49. Executor endpoints + Settings actions for both native runtimes; document_integrity_review is now runnable from the UI.)
+- **Last updated:** 2026-07-06 (v0.25.x — session #50. Shipped vantage_diligence_analysis, the first executable pivot-suite runtime.)
 - **Last model:** Claude (Opus 4.8)
-- **Session number:** #49
+- **Session number:** #50
+- **Session #50 delivered (2026-07-06) — Vantage diligence analysis runtime:**
+  - **Engine:** `lib/agents/vantage-diligence-analysis.ts` composes the DD checklist library (`lib/domain/dd-checklist-library.ts`) with the grid engine's `extractSourceSpan` citation model. Outputs diligence coverage (cited via department-tag match), red flags (uncovered critical/high items + the item's red-flag indicator), model tie-outs (financial items tied-to-source vs. unverifiable by numeric content), IC memo sections (template populated from findings/gaps), and a coverage-signal recommendation (do_not_proceed on any critical gap). Pure/deterministic; only `processed` evidence cited.
+  - **Runner + endpoint:** `lib/services/vantage-diligence-analysis-runner.ts` (passport gate + audit events) and `POST /api/agents/native-skills/vantage-diligence-analysis` (session tenant, zod-validated dealType/options, `read:evidence`).
+  - **Settings action:** "Run diligence analysis" button renders recommendation, red flags, coverage, and IC memo section statuses. All three pivot-relevant runtimes are UI-runnable.
+  - **Catalog:** `vantage_diligence_analysis` now `runtime_ready`, `externalReferences: []`.
+  - **Tests:** `tests/vantage-diligence-analysis.test.ts` (7 cases) + extended `agent-skills.test.ts`. Full suite 51 files / 377 tests, tsc clean.
+  - **Not yet committed** at handover time — commit + build + push pending.
+  - **Next slice:** `quorum_governance_review`, then `meridian_compliance_review`, reusing the checklist/citation pattern.
 - **Session #49 addendum (2026-07-06) — closed the document-integrity executor gap:**
   - **Endpoint:** `POST /api/agents/native-skills/document-integrity-review` mirrors the grid executor (session tenant never from body, zod-validated options, `read:evidence`). Returns per-document findings, parse-quality score, missing source spans, and repair recommendations.
   - **Settings action:** "Run document integrity review" button + per-document results table and repair-recommendations list in `app/settings/page.tsx`. Both native runtimes are now UI-runnable.
