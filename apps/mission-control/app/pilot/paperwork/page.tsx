@@ -12,7 +12,8 @@
  * (paste into email or Word) — match the consulting send workflow.
  *
  * Auth: the API requires read:admin scope and resolves the workspace from the
- * session; an optional ?workspaceId= override is passed through for admins.
+ * caller's session only. A ?workspaceId= query param is ignored server-side
+ * (see docs/SECURITY_REVIEW.md — 2026-07-06 auth-bypass sweep).
  */
 
 import { useEffect, useMemo, useState } from "react";

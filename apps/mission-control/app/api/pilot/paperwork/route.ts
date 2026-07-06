@@ -1,5 +1,5 @@
 /**
- * GET /api/pilot/paperwork?workspaceId=...
+ * GET /api/pilot/paperwork
  *
  * Generates a pre-filled pilot paperwork pack from the workspace's strategy profile.
  * Returns: SOW fields, onboarding checklist, success scorecard, billing trigger checklist,
@@ -8,13 +8,16 @@
  * Requires: read:admin scope.
  */
 import { fail, ok } from "@/lib/api";
-import { resolveAuth, DEFAULT_WORKSPACE } from "@/lib/api-auth";
+import { requireScope } from "@/lib/api-auth";
 import { repository } from "@/lib/data/repository";
 
 export async function GET(request: Request) {
-  const auth = await resolveAuth(request);
-  const url = new URL(request.url);
-  const workspaceId = url.searchParams.get("workspaceId") ?? auth?.workspaceId ?? DEFAULT_WORKSPACE;
+  // Enforce the read:admin scope declared in the route contract, and authz to
+  // the caller's own workspace only — a caller-supplied workspaceId must never
+  // widen access to another workspace's strategy profile, settings, or workflows.
+  const { ctx, error } = await requireScope(request, "read:admin");
+  if (error) return error;
+  const workspaceId = ctx.workspaceId;
 
   const [profile, settings, workflows] = await Promise.all([
     repository.getStrategyProfile(workspaceId),

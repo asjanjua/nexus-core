@@ -2,6 +2,20 @@
 
 ---
 
+## Unreleased — API Auth-Bypass Sweep (2026-07-06)
+
+Completed the full manual API auth-bypass review (was BACKLOG "spot-verified only"). Enumerated all 135 route handlers under `app/api/` and classified each by auth mechanism and caller-supplied `workspaceId` handling. Found five routes where an authenticated caller could pass `?workspaceId=` or a body `workspaceId` to reach another workspace's data, and fixed all five:
+
+- `GET /api/recommendations` — cross-tenant read; now pinned to the caller's workspace.
+- `GET /api/pilot/paperwork` — cross-tenant read and no scope gate despite a documented `read:admin` requirement; now enforces `requireScope("read:admin")` and pins the workspace.
+- `GET/PATCH /api/settings/workspace` — cross-tenant read and write of security-relevant settings (LLM provider, sensitivity ceiling, approval threshold), plus a bearer-token scope gap; now pinned, `workspaceId` removed from the PATCH schema, and `read:settings` / `write:settings` enforced.
+- `GET /api/ingestion/status` — bearer tokens could override the workspace (sessions were already pinned); now pinned for all auth types.
+- `GET/PATCH /api/strategy-profile` — fixed earlier the same day with the lane inheritance change; included here for completeness.
+
+New regression suite `tests/api-workspace-authz.test.ts` (6 cases). `docs/SECURITY_REVIEW.md` §1.1 records the full findings table; the overstated "all routes use requireScope" claim was corrected. Verified with the focused authz test, full suite (57 files / 415 tests), and production build. Standalone `tsc` was inconclusive in this PTY.
+
+---
+
 ## Unreleased — Readiness-to-Onboarding Lane Inheritance (2026-07-06)
 
 Implemented the missing bridge in the canonical user strategy: readiness assessment -> buyer lane -> signup/onboarding -> first workflow pilot. Spec: `docs/LANE_ASSIGNMENT_SPEC.md`.

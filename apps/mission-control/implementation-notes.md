@@ -68,6 +68,28 @@ strategy-profile API authz hole is closed.
   regulated-exit audit payload enrichment).
 - End-to-end smoke of readiness -> Clerk signup -> claim -> wizard requires a
   deployed environment with migration 0033 applied; traced in code only here.
+
+## Follow-up slice — API auth-bypass sweep (same day)
+
+- Classified all 135 app/api route handlers by auth mechanism + caller-supplied
+  workspaceId handling. Five cross-tenant routes fixed: recommendations,
+  pilot/paperwork (+ added the missing read:admin scope gate), settings/workspace
+  (read AND write of security settings + read/write settings scopes),
+  ingestion/status (bearer only),
+  strategy-profile (already fixed earlier).
+- Conservative choice: no operator/admin multi-tenant read path was preserved.
+  The old `?workspaceId=` "admin override" comments were aspirational, not gated
+  by any scope, so keeping them would have been the vulnerability. If real
+  cross-workspace tooling is needed, add an explicit operator scope check.
+- Client callers (settings page, paperwork page) still send `?workspaceId=` but
+  the value is the caller's own session workspace, so pinning server-side is
+  behavior-identical for legitimate use. Stale "admin override" comment on the
+  paperwork page corrected.
+- Verified: tests/api-workspace-authz.test.ts (6), full suite 57 files / 415
+  tests, and production build. Standalone tsc was inconclusive in this PTY.
+- Open question: `ingestion/status` still accepts a `workspaceId` form field in
+  its POST schema even though the write forces ctx.workspaceId. Harmless but
+  misleading; left as-is to keep the change surgical.
 - Current Codex PTY: `npm exec -w @nexus/mission-control tsc -- --noEmit`
   stayed silent for ~90s and was stopped as inconclusive. Previous handoff
   reported tsc clean before this hardening slice; Vitest is the verified gate

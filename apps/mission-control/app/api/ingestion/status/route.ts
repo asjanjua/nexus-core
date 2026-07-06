@@ -30,12 +30,9 @@ function asOptionalString(value: FormDataEntryValue | null): string | undefined 
 export async function GET(request: Request) {
   const { ctx, error } = await requireScope(request, "read:evidence");
   if (error) return error;
-  const url = new URL(request.url);
-  const requestedWorkspaceId = url.searchParams.get("workspaceId");
-  const workspaceId =
-    ctx.authType === "session"
-      ? ctx.workspaceId
-      : requestedWorkspaceId ?? ctx.workspaceId;
+  // Authz: always the caller's own workspace. Bearer tokens are already scoped
+  // to a workspace; a caller-supplied workspaceId must never override it.
+  const workspaceId = ctx.workspaceId;
   const rows = await repository.getEvidenceForWorkspace(workspaceId);
   const byStatus = rows.reduce<Record<string, number>>((acc, row) => {
     acc[row.ingestionStatus] = (acc[row.ingestionStatus] ?? 0) + 1;
