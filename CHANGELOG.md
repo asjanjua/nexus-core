@@ -2,6 +2,24 @@
 
 ---
 
+## Unreleased — Readiness-to-Onboarding Lane Inheritance (2026-07-06)
+
+Implemented the missing bridge in the canonical user strategy: readiness assessment -> buyer lane -> signup/onboarding -> first workflow pilot. Spec: `docs/LANE_ASSIGNMENT_SPEC.md`.
+
+**Lane assignment.** Added `lib/services/lane-assignment.ts`, a server-side pure function mapping sector, company size, role, and readiness band to a buyer lane with confidence and a human-readable reason. Regulated sectors (financial services, healthcare, government) always route to `regulated_enterprise`.
+
+**Public readiness page.** `/readiness` now captures three optional profile dropdowns (sector, size, role) after scoring, and the result card shows a lane-framed continue path. Submission stores a pending record in the new `readiness_submissions` table (migration 0033) and returns a single-use claim code (SHA-256 hash stored, 72h TTL). The signup CTA carries `?readiness=<code>`; sessionStorage backs up the token only, never the payload.
+
+**Claim endpoint.** `POST /api/readiness/claim` (authenticated) consumes the code atomically and writes the strategy profile: lane, write-once `initialLane`, scores, band, sector, size, role, `laneConfidence`, `externalRef` (previously unused), and `governancePosture: regulated` for regulated enterprise. Audited as `readiness.claim_redeemed` — the "buyer lane assigned" funnel stage is now measurable.
+
+**Onboarding inheritance.** The wizard claims the token on mount, loads the strategy profile, and shows a lane banner: "use this profile" prefill (skips Discover), a governed reclassification checkpoint at profile confirmation (reason required, audited, leaving regulated requires extra confirmation), and lane-fit first-workflow examples at Go Live. Lane-change rules are enforced server-side by `PATCH /api/strategy-profile`; audit payloads include old lane, new lane, reason metadata, and regulated-exit confirmation where relevant. Lane lifecycle fields added to `strategy_profiles`: `initial_lane`, `lane_change_reason`, `lane_confidence`, `lane_changed_by`, `lane_changed_at`. Lane rule: readiness sets the initial lane; onboarding adapts within it; changes are rare, explainable, confirmed, and audited.
+
+**Security fix.** `GET/PATCH /api/strategy-profile` previously honored a caller-supplied `workspaceId` (query or body), letting any authenticated caller read or write another workspace's strategy profile. Both now use the authenticated workspace only. Regression test added.
+
+**Tests.** `tests/lane-assignment.test.ts` (8 cases), `tests/strategy-profile-authz.test.ts` (7 cases), and `tests/strategy-profile-repository.test.ts` (1 case). tsc clean for our code.
+
+---
+
 ## Unreleased — Meridian Compliance Review Runtime (2026-07-06)
 
 Promoted `meridian_compliance_review` to an executable runtime, giving the Meridian pivot suite a native skill. Six of seven native skills are now runtime-ready.

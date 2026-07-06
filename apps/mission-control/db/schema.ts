@@ -586,6 +586,37 @@ export const strategyProfiles = pgTable("strategy_profiles", {
   readinessScores:   jsonb("readiness_scores").$type<Record<string, number>>().default({}),
   readinessBand:     varchar("readiness_band", { length: 16 }),
   externalRef:       varchar("external_ref", { length: 255 }),
+  // Lane lifecycle (migration 0033). buyerLane is the CURRENT lane; initialLane
+  // preserves the lane assigned at readiness claim. Changes are audited, rare,
+  // and human-confirmed. See docs/LANE_ASSIGNMENT_SPEC.md.
+  initialLane:       varchar("initial_lane", { length: 32 }),
+  laneChangeReason:  varchar("lane_change_reason", { length: 255 }),
+  laneConfidence:    varchar("lane_confidence", { length: 16 }),
+  laneChangedBy:     varchar("lane_changed_by", { length: 32 }),
+  laneChangedAt:     timestamp("lane_changed_at", { withTimezone: true }),
   createdAt:         timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt:         timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+/**
+ * Readiness submissions — pending anonymous assessment records from the public
+ * /readiness page. Claimed post-auth via a single-use claim code, which writes
+ * the strategy profile. Migration 0033. See docs/LANE_ASSIGNMENT_SPEC.md.
+ */
+export const readinessSubmissions = pgTable("readiness_submissions", {
+  id:                    text("id").primaryKey(),
+  claimCodeHash:         varchar("claim_code_hash", { length: 64 }).notNull(),
+  scores:                jsonb("scores").$type<Record<string, number>>().notNull().default({}),
+  total:                 integer("total").notNull(),
+  band:                  varchar("band", { length: 32 }).notNull(),
+  sector:                varchar("sector", { length: 64 }),
+  companySize:           varchar("company_size", { length: 32 }),
+  role:                  varchar("role", { length: 64 }),
+  assignedLane:          varchar("assigned_lane", { length: 32 }).notNull().default("evaluator"),
+  laneConfidence:        varchar("lane_confidence", { length: 16 }).notNull().default("low"),
+  email:                 varchar("email", { length: 320 }),
+  consumedAt:            timestamp("consumed_at", { withTimezone: true }),
+  consumedByWorkspaceId: text("consumed_by_workspace_id"),
+  expiresAt:             timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt:             timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });

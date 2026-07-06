@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { getAllSectors, getSector } from "@/lib/domain/sector-library";
 import { labelForRole, ROLE_REGISTRY } from "@/lib/domain/role-registry";
@@ -1762,6 +1762,189 @@ function Step7({ selectedRoles }: { selectedRoles: WizardRole[] }) {
 }
 
 // ---------------------------------------------------------------------------
+// Readiness inheritance + lane reclassification checkpoint
+//
+// Readiness sets the initial lane. Onboarding adapts within that lane.
+// Lane changes require explicit reason, user confirmation, and an audit note.
+// Leaving regulated_enterprise requires an extra confirmation because the
+// human-approval / no-autonomous-writeback boundary depends on it.
+// See docs/LANE_ASSIGNMENT_SPEC.md.
+// ---------------------------------------------------------------------------
+
+type WizardStrategyProfile = {
+  buyerLane: string;
+  initialLane?: string | null;
+  sector?: string | null;
+  companySize?: string | null;
+  role?: string | null;
+  readinessBand?: string | null;
+  laneConfidence?: string | null;
+  governancePosture?: string | null;
+};
+
+const LANE_LABELS: Record<string, string> = {
+  evaluator: "Guided evaluation",
+  sme_self_serve: "Owner-led self-serve",
+  business_advisory: "Sponsored pilot",
+  regulated_enterprise: "Governed deployment (regulated)",
+};
+
+const LANE_WORKFLOW_EXAMPLES: Record<string, string[]> = {
+  evaluator: ["Weekly owner brief", "Cash/runway review", "Customer issue review", "Ops blocker report"],
+  sme_self_serve: ["Weekly owner brief", "Cash/runway review", "Customer issue review", "Ops blocker report"],
+  business_advisory: ["Proposal pipeline review", "Project delay report", "Board-pack variance summary", "Executive risk brief"],
+  regulated_enterprise: ["Regulatory issue tracker summary", "Supplier risk review", "Risk/control evidence pack", "Board risk brief"],
+};
+
+function LaneBanner({
+  profile,
+  step,
+  onUseProfile,
+  onLaneChanged,
+}: {
+  profile: WizardStrategyProfile;
+  step: Step;
+  onUseProfile: () => void;
+  onLaneChanged: (lane: string) => void;
+}) {
+  const [changing, setChanging] = useState(false);
+  const [newLane, setNewLane] = useState(profile.buyerLane);
+  const [reason, setReason] = useState("");
+  const [confirmRegulatedExit, setConfirmRegulatedExit] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const leavingRegulated = profile.buyerLane === "regulated_enterprise" && newLane !== "regulated_enterprise";
+  const canSave =
+    newLane !== profile.buyerLane &&
+    reason.trim().length >= 8 &&
+    (!leavingRegulated || confirmRegulatedExit);
+
+  async function saveLaneChange() {
+    setSaving(true);
+    try {
+      const res = await fetch("/api/strategy-profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          buyerLane: newLane,
+          laneChangeReason: reason.trim(),
+          laneChangedBy: "user_confirmation",
+          laneChangedAt: new Date().toISOString(),
+          regulatedExitConfirmed: leavingRegulated ? confirmRegulatedExit : undefined,
+          governancePosture: newLane === "regulated_enterprise" ? "regulated" : undefined,
+        }),
+      });
+      if (res.ok) {
+        onLaneChanged(newLane);
+        setChanging(false);
+        setReason("");
+        setConfirmRegulatedExit(false);
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="mb-4 rounded-xl border border-nexus-accent/20 bg-nexus-accent/5 px-5 py-4 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-nexus-accent/70">
+            From your readiness assessment
+          </p>
+          <p className="mt-1 text-white/80">
+            {LANE_LABELS[profile.buyerLane] ?? profile.buyerLane}
+            {profile.readinessBand ? ` · ${profile.readinessBand} readiness` : ""}
+            {profile.sector ? ` · ${profile.sector.replace(/_/g, " ")}` : ""}
+          </p>
+        </div>
+        <div className="flex gap-2">
+          {step <= 2 && profile.sector && (
+            <button
+              type="button"
+              onClick={onUseProfile}
+              className="rounded-lg bg-nexus-accent/20 px-3 py-1.5 text-xs font-semibold text-nexus-accent hover:bg-nexus-accent/30"
+            >
+              Use this profile — skip ahead
+            </button>
+          )}
+          {step === 3 && !changing && (
+            <button
+              type="button"
+              onClick={() => setChanging(true)}
+              className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-white/60 hover:text-white/90"
+            >
+              This doesn&apos;t look right
+            </button>
+          )}
+        </div>
+      </div>
+
+      {step === 7 && (
+        <div className="mt-3 border-t border-white/10 pt-3">
+          <p className="text-xs text-white/50 mb-1.5">First workflows that fit your path:</p>
+          <div className="flex flex-wrap gap-1.5">
+            {(LANE_WORKFLOW_EXAMPLES[profile.buyerLane] ?? []).map((w) => (
+              <span key={w} className="rounded-full border border-white/10 bg-white/5 px-2.5 py-1 text-xs text-white/70">{w}</span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {changing && (
+        <div className="mt-3 space-y-2 border-t border-white/10 pt-3">
+          <p className="text-xs text-white/50">
+            Changing your path is deliberate: it needs a reason and is recorded in the audit trail.
+          </p>
+          <select
+            value={newLane}
+            onChange={(e) => setNewLane(e.target.value)}
+            className="w-full rounded-lg border border-white/15 bg-[#0d1526] px-3 py-2 text-sm text-white/80"
+          >
+            {Object.entries(LANE_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          </select>
+          <input
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Why is this the right path? (e.g. company size was wrong)"
+            className="w-full rounded-lg border border-white/15 bg-[#0d1526] px-3 py-2 text-sm text-white/80 placeholder:text-white/25"
+          />
+          {leavingRegulated && (
+            <label className="flex items-start gap-2 text-xs text-amber-300/90">
+              <input
+                type="checkbox"
+                checked={confirmRegulatedExit}
+                onChange={(e) => setConfirmRegulatedExit(e.target.checked)}
+                className="mt-0.5"
+              />
+              I confirm this organisation does not require the regulated governance boundary
+              (human approval gates and no autonomous writeback still apply everywhere).
+            </label>
+          )}
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={!canSave || saving}
+              onClick={saveLaneChange}
+              className={`rounded-lg px-3 py-1.5 text-xs font-semibold ${canSave ? "bg-nexus-accent/20 text-nexus-accent hover:bg-nexus-accent/30" : "bg-white/5 text-white/25 cursor-not-allowed"}`}
+            >
+              {saving ? "Saving..." : "Confirm change"}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setChanging(false); setNewLane(profile.buyerLane); setReason(""); }}
+              className="rounded-lg px-3 py-1.5 text-xs text-white/50 hover:text-white/80"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Root wizard — state machine
 // ---------------------------------------------------------------------------
 
@@ -1770,6 +1953,37 @@ export function OnboardingWizard({ workspaceId, displayName, isAuthenticated }: 
   const [detectedProfile, setDetectedProfile] = useState<DetectedProfile | null>(null);
   const [selectedRoles, setSelectedRoles] = useState<WizardRole[]>(ALL_ROLES.slice(0, 2));
   const [ingestionResults, setIngestionResults] = useState<IngestionResult[]>([]);
+  const [strategyProfile, setStrategyProfile] = useState<WizardStrategyProfile | null>(null);
+
+  // Claim readiness context (URL token primary, sessionStorage backup), then
+  // load the strategy profile so onboarding inherits instead of restarting.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const url = new URL(window.location.href);
+        const claimCode =
+          url.searchParams.get("readiness") ??
+          sessionStorage.getItem("nexus_readiness_claim");
+        if (claimCode) {
+          await fetch("/api/readiness/claim", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ claimCode }),
+          }).catch(() => null);
+          try { sessionStorage.removeItem("nexus_readiness_claim"); } catch { /* ignore */ }
+        }
+        const res = await fetch("/api/strategy-profile");
+        const json = await res.json().catch(() => null);
+        const data = json?.data ?? json;
+        if (!cancelled && data?.buyerLane) setStrategyProfile(data as WizardStrategyProfile);
+      } catch {
+        // Inheritance is an enhancement; onboarding must work without it.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [isAuthenticated]);
 
   // Fallback profile for manual sector selection (no AI detection)
   function buildManualProfile(sector: string, subsector: string): DetectedProfile {
@@ -1835,6 +2049,22 @@ export function OnboardingWizard({ workspaceId, displayName, isAuthenticated }: 
       </div>
 
       <StepIndicator current={step} />
+
+      {strategyProfile && (step === 2 || step === 3 || step === 7) && (
+        <LaneBanner
+          profile={strategyProfile}
+          step={step}
+          onUseProfile={() => {
+            if (strategyProfile.sector) {
+              setDetectedProfile(buildManualProfile(strategyProfile.sector, ""));
+              setStep(3);
+            }
+          }}
+          onLaneChanged={(lane) =>
+            setStrategyProfile((prev) => (prev ? { ...prev, buyerLane: lane } : prev))
+          }
+        />
+      )}
 
       <div className="rounded-xl border border-white/10 bg-[#0d1526] p-8 min-h-[380px]">
         {step === 1 && (

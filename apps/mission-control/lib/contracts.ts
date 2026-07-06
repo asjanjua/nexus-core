@@ -1034,6 +1034,16 @@ export const governancePostureSchema = z.enum([
 ]);
 export type GovernancePosture = z.infer<typeof governancePostureSchema>;
 
+export const laneConfidenceSchema = z.enum(["high", "medium", "low"]);
+export type LaneConfidence = z.infer<typeof laneConfidenceSchema>;
+
+export const laneChangedBySchema = z.enum([
+  "system_suggestion",
+  "user_confirmation",
+  "admin_override",
+]);
+export type LaneChangedBy = z.infer<typeof laneChangedBySchema>;
+
 export const strategyProfileSchema = z.object({
   id: z.string(),
   workspaceId: z.string(),
@@ -1051,6 +1061,13 @@ export const strategyProfileSchema = z.object({
   readinessScores: z.record(z.number().min(1).max(7)).default({}),
   readinessBand: z.string().nullable().optional(),
   externalRef: z.string().nullable().optional(),
+  // Lane lifecycle (migration 0033). buyerLane is the CURRENT lane.
+  // Changes are rare, explainable, and human-confirmed (docs/LANE_ASSIGNMENT_SPEC.md).
+  initialLane: buyerLaneSchema.nullable().optional(),
+  laneChangeReason: z.string().max(255).nullable().optional(),
+  laneConfidence: laneConfidenceSchema.nullable().optional(),
+  laneChangedBy: laneChangedBySchema.nullable().optional(),
+  laneChangedAt: z.string().nullable().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
@@ -1071,5 +1088,36 @@ export const strategyProfileInputSchema = strategyProfileSchema.pick({
   readinessScores: true,
   readinessBand: true,
   externalRef: true,
-}).partial();
+  initialLane: true,
+  laneChangeReason: true,
+  laneConfidence: true,
+  laneChangedBy: true,
+  laneChangedAt: true,
+}).partial().extend({
+  // API-only guardrail flag. It is required by PATCH when the current lane is
+  // regulated_enterprise and the requested lane exits that boundary.
+  regulatedExitConfirmed: z.boolean().optional(),
+});
 export type StrategyProfileInput = z.infer<typeof strategyProfileInputSchema>;
+
+// ---------------------------------------------------------------------------
+// Readiness submissions (migration 0033)
+// ---------------------------------------------------------------------------
+
+export const readinessSubmissionSchema = z.object({
+  id: z.string(),
+  scores: z.record(z.number().int().min(1).max(7)),
+  total: z.number().int().min(7).max(49),
+  band: z.string().min(1).max(32),
+  sector: z.string().max(64).nullable().optional(),
+  companySize: z.string().max(32).nullable().optional(),
+  role: z.string().max(64).nullable().optional(),
+  assignedLane: buyerLaneSchema,
+  laneConfidence: laneConfidenceSchema,
+  email: z.string().email().max(320).nullable().optional(),
+  consumedAt: z.string().nullable().optional(),
+  consumedByWorkspaceId: z.string().nullable().optional(),
+  expiresAt: z.string(),
+  createdAt: z.string(),
+});
+export type ReadinessSubmission = z.infer<typeof readinessSubmissionSchema>;

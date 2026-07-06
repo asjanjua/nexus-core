@@ -190,6 +190,65 @@ function getBand(total: number): Band {
 }
 
 // ---------------------------------------------------------------------------
+// Profile options (fed to server-side lane assignment; keys align with
+// lib/domain/sector-library.ts plus government/other)
+// ---------------------------------------------------------------------------
+
+const SECTOR_OPTIONS = [
+  { key: "", label: "Select sector (optional)" },
+  { key: "financial_services", label: "Financial Services / Fintech" },
+  { key: "healthcare", label: "Healthcare" },
+  { key: "government_public", label: "Government / Public Sector" },
+  { key: "professional_services", label: "Professional Services / Consulting" },
+  { key: "technology_saas", label: "Technology / SaaS" },
+  { key: "manufacturing", label: "Manufacturing / Industrial" },
+  { key: "retail_commerce", label: "Retail / Commerce" },
+  { key: "real_estate_construction", label: "Real Estate / Construction" },
+  { key: "education_training", label: "Education / Training" },
+  { key: "other", label: "Other" },
+];
+
+const SIZE_OPTIONS = [
+  { key: "", label: "Company size (optional)" },
+  { key: "1-20", label: "1–20 people" },
+  { key: "21-50", label: "21–50 people" },
+  { key: "51-200", label: "51–200 people" },
+  { key: "200+", label: "More than 200 people" },
+];
+
+const ROLE_OPTIONS = [
+  { key: "", label: "Your role (optional)" },
+  { key: "founder_owner", label: "Founder / Owner" },
+  { key: "executive", label: "C-level / Executive" },
+  { key: "manager", label: "Department / Function Lead" },
+  { key: "consultant", label: "Consultant / Advisor" },
+  { key: "transformation_lead", label: "Transformation / AI Lead" },
+  { key: "other", label: "Other" },
+];
+
+// Human framing per lane on the result card. Internal lane names stay internal.
+const LANE_FRAMING: Record<string, { title: string; next: string }> = {
+  evaluator: {
+    title: "Guided evaluation path",
+    next: "Create a free workspace and try one guided workflow with your own documents.",
+  },
+  sme_self_serve: {
+    title: "Owner-led workflow path",
+    next: "Create a workspace, upload a small source bundle, and get your first operating brief.",
+  },
+  business_advisory: {
+    title: "Sponsored pilot path",
+    next: "Create a workspace and scope a first workflow pilot with a named sponsor and reviewer.",
+  },
+  regulated_enterprise: {
+    title: "Governed deployment path",
+    next: "Create a governed workspace with approval boundaries, audit trail, and human review built in. No autonomous writeback.",
+  },
+};
+
+const CLAIM_STORAGE_KEY = "nexus_readiness_claim";
+
+// ---------------------------------------------------------------------------
 // Components
 // ---------------------------------------------------------------------------
 
@@ -217,6 +276,11 @@ export default function ReadinessPage() {
   const [submitting, setSubmitting] = useState(false);
   const [email, setEmail] = useState("");
   const [emailSent, setEmailSent] = useState(false);
+  const [sector, setSector] = useState("");
+  const [companySize, setCompanySize] = useState("");
+  const [role, setRole] = useState("");
+  const [lane, setLane] = useState<string | null>(null);
+  const [claimCode, setClaimCode] = useState<string | null>(null);
 
   const answered = Object.keys(answers).length;
   const total = Object.values(answers).reduce((s, v) => s + v, 0);
@@ -231,11 +295,27 @@ export default function ReadinessPage() {
     if (answered < DIMENSIONS.length) return;
     setSubmitting(true);
     try {
-      await fetch("/api/readiness/submit", {
+      const res = await fetch("/api/readiness/submit", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ scores: answers, total, band: band?.label, email: email || null }),
+        body: JSON.stringify({
+          scores: answers,
+          total,
+          band: band?.label,
+          email: email || null,
+          sector: sector || null,
+          companySize: companySize || null,
+          role: role || null,
+        }),
       });
+      const json = await res.json().catch(() => null);
+      const data = json?.data ?? json;
+      if (data?.lane) setLane(data.lane);
+      if (data?.claimCode) {
+        setClaimCode(data.claimCode);
+        // Backup carry: token only, never the readiness payload itself.
+        try { sessionStorage.setItem(CLAIM_STORAGE_KEY, data.claimCode); } catch { /* private mode */ }
+      }
     } catch {
       // non-blocking — audit write failure should not break the result
     }
@@ -332,6 +412,39 @@ export default function ReadinessPage() {
           );
         })}
 
+        {/* Profile — three optional dropdowns that sharpen the recommended path */}
+        {!submitted && answered === DIMENSIONS.length && (
+          <div className="space-y-3 pt-4 border-t border-gray-100">
+            <p className="text-xs font-semibold uppercase tracking-wider text-gray-400">About your organisation</p>
+            <p className="text-sm text-gray-500">
+              Optional, but it makes the recommended next step specific to you rather than generic.
+            </p>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <select
+                value={sector}
+                onChange={(e) => setSector(e.target.value)}
+                className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 outline-none focus:border-gray-400 bg-white"
+              >
+                {SECTOR_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+              </select>
+              <select
+                value={companySize}
+                onChange={(e) => setCompanySize(e.target.value)}
+                className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 outline-none focus:border-gray-400 bg-white"
+              >
+                {SIZE_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+              </select>
+              <select
+                value={role}
+                onChange={(e) => setRole(e.target.value)}
+                className="rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-700 outline-none focus:border-gray-400 bg-white"
+              >
+                {ROLE_OPTIONS.map((o) => <option key={o.key} value={o.key}>{o.label}</option>)}
+              </select>
+            </div>
+          </div>
+        )}
+
         {/* Submit */}
         {!submitted && (
           <div className="space-y-4 pt-4 border-t border-gray-100">
@@ -385,12 +498,33 @@ export default function ReadinessPage() {
               ))}
             </div>
 
+            {/* Lane-framed continue path (claim code carries readiness into signup) */}
+            {lane && LANE_FRAMING[lane] && (
+              <div className="space-y-2 pt-2 border-t border-gray-200">
+                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                  {LANE_FRAMING[lane].title}
+                </p>
+                <p className="text-sm text-gray-700">{LANE_FRAMING[lane].next}</p>
+                <a
+                  href={claimCode ? `/sign-up?readiness=${encodeURIComponent(claimCode)}` : "/sign-up"}
+                  className="inline-block rounded-lg bg-gray-900 px-5 py-3 text-sm font-semibold text-white hover:bg-gray-700 transition-colors"
+                >
+                  Continue — your result carries over →
+                </a>
+                <p className="text-xs text-gray-400">
+                  Your assessment travels with you. You will not repeat these questions after signing up.
+                </p>
+              </div>
+            )}
+
             {/* CTA */}
             <div className="space-y-3 pt-2 border-t border-gray-200">
-              <p className="text-xs text-gray-500">Recommended next step</p>
+              <p className="text-xs text-gray-500">{lane ? "Prefer to talk first?" : "Recommended next step"}</p>
               <a
                 href={band.ctaHref}
-                className="inline-block rounded-lg bg-gray-900 px-5 py-3 text-sm font-semibold text-white hover:bg-gray-700 transition-colors"
+                className={lane
+                  ? "inline-block rounded-lg border border-gray-300 bg-white px-5 py-3 text-sm font-semibold text-gray-700 hover:border-gray-500 transition-colors"
+                  : "inline-block rounded-lg bg-gray-900 px-5 py-3 text-sm font-semibold text-white hover:bg-gray-700 transition-colors"}
               >
                 {band.cta}
               </a>
@@ -439,7 +573,7 @@ export default function ReadinessPage() {
 
             {/* Restart */}
             <button
-              onClick={() => { setAnswers({}); setSubmitted(false); setEmail(""); setEmailSent(false); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+              onClick={() => { setAnswers({}); setSubmitted(false); setEmail(""); setEmailSent(false); setLane(null); setClaimCode(null); setSector(""); setCompanySize(""); setRole(""); window.scrollTo({ top: 0, behavior: "smooth" }); }}
               className="text-xs text-gray-400 underline underline-offset-2 hover:text-gray-600"
             >
               Start over

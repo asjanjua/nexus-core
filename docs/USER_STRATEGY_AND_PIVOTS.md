@@ -139,7 +139,7 @@ Track the strategy as a funnel:
 ## Implementation Implications
 
 - Docs and sales materials should describe readiness-first routing consistently.
-- App implementation should eventually persist a Nexus strategy profile alongside Clerk identity.
+- App implementation persists a Nexus strategy profile alongside Clerk identity (implemented; see `docs/LANE_ASSIGNMENT_SPEC.md` for lane assignment and reclassification rules).
 - Billing and paperwork should not assume one generic buyer.
 - Public-facing copy should avoid internal "pivot" language, but internal docs should name the pivot clearly.
 - Regulated-buyer language must preserve the human-approval and no-autonomous-writeback boundary.
@@ -150,8 +150,8 @@ Track the strategy as a funnel:
 1. **Finish the v0.25.0 release gate.**
    Confirm Render is serving the pushed commit, then run authenticated smoke for `/knowledge`, `/workflows`, `/settings/connectors`, and Ask note citations.
 
-2. **Productize the strategy profile.**
-   Persist readiness assessment context, buyer lane, role, sector, company size, priority, and governance posture so signup and onboarding inherit the strategy instead of restarting from scratch.
+2. **Productize the strategy profile.** — DONE 2026-07-06.
+   Implemented: `/readiness` assigns a buyer lane server-side (`lib/services/lane-assignment.ts`), a single-use claim code carries the context through signup (`readiness_submissions`, migration 0033), and onboarding inherits it with a governed lane-reclassification checkpoint. Canonical rules and lifecycle: `docs/LANE_ASSIGNMENT_SPEC.md`. Lane rule: readiness sets the initial lane, onboarding adapts within it, changes require reason + confirmation + audit note, and regulated enterprise is sticky.
 
 3. **Route onboarding into the first workflow.**
    Use the workflow scorer and backcasting output to choose one pilot workflow, name the sponsor/reviewer, attach the evidence bundle, and define the shadow ROI metric.

@@ -74,6 +74,7 @@ These are the minimum trust and operations items before a paid pilot contract sh
 | R2 bucket versioning if originals storage is promised | open | `TASKS.md`, `docs/PRODUCTION_HEALTH_CHECKLIST.md` | Required for original-file recovery commitments. |
 | Support/security mailbox monitored | open | `TASKS.md`, `docs/SECURITY_REVIEW.md` | `support@...` and `security@...` or equivalent before paid pilot. |
 | Pilot SLA documented and linked in paperwork | open | `TASKS.md` | 4-hour response, 1-hour critical target in current task text. |
+| Readiness-to-onboarding lane inheritance | local verified | `docs/LANE_ASSIGNMENT_SPEC.md`, `CHANGELOG.md` | Shipped 2026-07-06 (session #53): server-side lane assignment, single-use claim codes (migration 0033), wizard inheritance + server-enforced reclassification checkpoint, enriched lane-change audit payloads, strategy-profile authz fix. Production pending: run migration 0033, deploy, smoke the public readiness -> signup -> onboarding path. Follow-ups: submissions pruning job, claim-link product email, Mission Control lane card, in-product workflow scorer. |
 
 ---
 

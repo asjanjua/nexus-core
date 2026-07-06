@@ -6,9 +6,19 @@
 
 ## Session Info
 
-- **Last updated:** 2026-07-06 (v0.25.x — session #52. Shipped meridian_compliance_review; five native runtimes executable and UI-runnable, one skill left.)
-- **Last model:** Claude (Opus 4.8)
-- **Session number:** #52
+- **Last updated:** 2026-07-06 (v0.25.x — session #53. Shipped readiness-to-onboarding lane inheritance + strategy-profile authz fix.)
+- **Last model:** Claude (Fable 5)
+- **Session number:** #53
+- **Session #53 delivered (2026-07-06) — Readiness-to-onboarding lane inheritance (unknowns-first session):**
+  - **Blindspot findings:** wizard had zero readiness/buyerLane references; `/readiness` never assigned a lane; `externalRef` unused; `buyerLane` never set to non-default anywhere; `GET/PATCH /api/strategy-profile` honored caller-supplied workspaceId (authz hole); "buyer lane assigned" funnel stage could never fire.
+  - **Lane rules:** `lib/services/lane-assignment.ts` — server-side pure function (sector/size/role/band -> lane + confidence + reason). Regulated sectors sticky. Spec: `docs/LANE_ASSIGNMENT_SPEC.md` (canonical for assignment + reclassification lifecycle).
+  - **Handoff:** migration `0033_readiness_submissions.sql` — pending submissions with SHA-256-hashed single-use claim codes, 72h TTL; `POST /api/readiness/submit` issues the code; `POST /api/readiness/claim` consumes atomically and writes the strategy profile (initialLane write-once, governancePosture regulated for regulated_enterprise, externalRef = submission id). Carry: URL token primary, sessionStorage token-only backup, email manual recovery.
+  - **Wizard:** claims token on mount, LaneBanner shows inherited context at steps 2/3/7 — prefill skip, governed reclassification checkpoint (reason required, leaving regulated needs extra confirm, PATCH audited), lane-fit workflow examples at Go Live.
+  - **Authz fix:** strategy-profile GET/PATCH now ignore caller-supplied workspaceId. Regression test `tests/strategy-profile-authz.test.ts`.
+  - **Server-side reclassification hardening (same session, follow-up slice):** PATCH now enforces the lane-change rules itself — reason required (min 8 chars, `lane_change_reason_required`), regulated exit requires `regulatedExitConfirmed: true` (`regulated_exit_confirmation_required`), server stamps `laneChangedBy`/`laneChangedAt` defaults; `strategy_profile_updated` audit carries oldBuyerLane/newBuyerLane/reason/actor/regulated-exit flag. Spec §5.1. Tests: authz suite extended to 7 cases + `tests/strategy-profile-repository.test.ts`. Full suite 57 files / 409 tests.
+  - **Tests:** `tests/lane-assignment.test.ts` (8) + authz (3), tsc clean for our code. `implementation-notes.md` in apps/mission-control logs assumptions/deviations (delete after review).
+  - **Not yet committed** at handover — migration 0033 must run before deploy; commit + build + push pending.
+  - **Next slice:** Option D (Mission Control lane/strategy card) or in-product workflow scorer (Option E); pruning job for expired submissions; claim-link product email via Resend.
 - **Session #52 delivered (2026-07-06) — Meridian compliance review runtime:**
   - **Engine:** `lib/agents/meridian-compliance-review.ts` maps regulator license-type requirements (`lib/domain/regulatory-requirement-library.ts`, via `requirementsFor`) to governed evidence. Outputs requirement coverage (cited via department-tag match), compliance gaps (severity-sorted with the library's gap indicator), qualified-reviewer packet (critical/high requirements + standing "qualified reviewer required" boundary), and filing caveats (missing critical/high + not-legal-advice + jurisdiction-review). Pure/deterministic; only `processed` evidence cited.
   - **Runner + endpoint:** `lib/services/meridian-compliance-review-runner.ts` (passport gate + audit events) + `POST /api/agents/native-skills/meridian-compliance-review` (session tenant, zod-validated licenseTypeKey/status).

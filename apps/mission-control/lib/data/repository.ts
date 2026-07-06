@@ -1,10 +1,10 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { verifyPassword } from "@/lib/auth";
 import { store } from "@/lib/data/store";
 import { evidenceSourceTypeSchema } from "@/lib/contracts";
-import type { Action, ActionInput, ActionStatus, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, DispatchJob, DispatchJobInput, DispatchJobStatus, Entity, EntityInput, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, KnowledgeLink, KnowledgeNote, KnowledgeNoteInput, KnowledgeSearchResult, KnowledgeSyncEvent, LearningSignal, LearningSignalInput, LearningSignalSummary, PromptRegistryEntry, Recommendation, RecommendationStatus, Role, StrategyProfile, StrategyProfileInput, SynthesisSchedule, SynthesisScheduleInput, SynthesisScheduleStatus, WorkflowTwin, WorkflowTwinInput, WorkflowTwinRun, WorkflowTwinRunInput, WorkflowTwinRunStatus, WorkflowTwinStatus, WorkflowTwinType, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
+import type { Action, ActionInput, ActionStatus, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, DispatchJob, DispatchJobInput, DispatchJobStatus, Entity, EntityInput, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, KnowledgeLink, KnowledgeNote, KnowledgeNoteInput, KnowledgeSearchResult, KnowledgeSyncEvent, LearningSignal, LearningSignalInput, LearningSignalSummary, PromptRegistryEntry, ReadinessSubmission, Recommendation, RecommendationStatus, Role, StrategyProfile, StrategyProfileInput, SynthesisSchedule, SynthesisScheduleInput, SynthesisScheduleStatus, WorkflowTwin, WorkflowTwinInput, WorkflowTwinRun, WorkflowTwinRunInput, WorkflowTwinRunStatus, WorkflowTwinStatus, WorkflowTwinType, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
 import { assertDbConfigured, isDbRequired } from "@/lib/data/db-policy";
 
 // In-memory idempotency cache for Stripe events (fallback when DB is unavailable).
@@ -47,6 +47,7 @@ import {
   planDefinitions,
   dispatchJobs,
   stripeProcessedEvents,
+  readinessSubmissions,
   strategyProfiles,
   type recommendationStatusEnum,
   type ingestionStatusEnum
@@ -3613,6 +3614,11 @@ export const repository = {
         readinessScores: (r.readinessScores ?? {}) as StrategyProfile["readinessScores"],
         readinessBand: r.readinessBand ?? null,
         externalRef: r.externalRef ?? null,
+        initialLane: (r.initialLane ?? null) as StrategyProfile["initialLane"],
+        laneChangeReason: r.laneChangeReason ?? null,
+        laneConfidence: (r.laneConfidence ?? null) as StrategyProfile["laneConfidence"],
+        laneChangedBy: (r.laneChangedBy ?? null) as StrategyProfile["laneChangedBy"],
+        laneChangedAt: r.laneChangedAt instanceof Date ? r.laneChangedAt.toISOString() : r.laneChangedAt ? String(r.laneChangedAt) : null,
         createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
         updatedAt: r.updatedAt instanceof Date ? r.updatedAt.toISOString() : String(r.updatedAt),
       };
@@ -3627,11 +3633,18 @@ export const repository = {
     const existing = await repository.getStrategyProfile(workspaceId);
     const now = new Date();
     const id = existing?.id ?? `sp_${workspaceId}`;
+    const oldBuyerLane = existing?.buyerLane ?? null;
+    const newBuyerLane = (input.buyerLane ?? existing?.buyerLane ?? "evaluator") as StrategyProfile["buyerLane"];
+    const laneChanged = Boolean(oldBuyerLane && newBuyerLane !== oldBuyerLane);
+    const regulatedExitConfirmed =
+      laneChanged && oldBuyerLane === "regulated_enterprise" && newBuyerLane !== "regulated_enterprise"
+        ? input.regulatedExitConfirmed === true
+        : undefined;
 
     const profile: StrategyProfile = {
       id,
       workspaceId,
-      buyerLane: (input.buyerLane ?? existing?.buyerLane ?? "evaluator") as StrategyProfile["buyerLane"],
+      buyerLane: newBuyerLane,
       role: input.role ?? existing?.role ?? null,
       sector: input.sector ?? existing?.sector ?? null,
       companySize: input.companySize ?? existing?.companySize ?? null,
@@ -3645,6 +3658,12 @@ export const repository = {
       readinessScores: input.readinessScores ?? existing?.readinessScores ?? {},
       readinessBand: input.readinessBand ?? existing?.readinessBand ?? null,
       externalRef: input.externalRef ?? existing?.externalRef ?? null,
+      // initialLane is write-once: set on first claim, never overwritten after.
+      initialLane: existing?.initialLane ?? input.initialLane ?? null,
+      laneChangeReason: input.laneChangeReason ?? existing?.laneChangeReason ?? null,
+      laneConfidence: input.laneConfidence ?? existing?.laneConfidence ?? null,
+      laneChangedBy: input.laneChangedBy ?? existing?.laneChangedBy ?? null,
+      laneChangedAt: input.laneChangedAt ?? existing?.laneChangedAt ?? null,
       createdAt: existing?.createdAt ?? now.toISOString(),
       updatedAt: now.toISOString(),
     };
@@ -3669,6 +3688,11 @@ export const repository = {
           readinessScores: profile.readinessScores,
           readinessBand: profile.readinessBand,
           externalRef: profile.externalRef,
+          initialLane: profile.initialLane,
+          laneChangeReason: profile.laneChangeReason,
+          laneConfidence: profile.laneConfidence,
+          laneChangedBy: profile.laneChangedBy,
+          laneChangedAt: profile.laneChangedAt ? new Date(profile.laneChangedAt) : null,
           createdAt: new Date(profile.createdAt),
           updatedAt: now,
         })
@@ -3689,6 +3713,11 @@ export const repository = {
             readinessScores: profile.readinessScores,
             readinessBand: profile.readinessBand,
             externalRef: profile.externalRef,
+            initialLane: profile.initialLane,
+            laneChangeReason: profile.laneChangeReason,
+            laneConfidence: profile.laneConfidence,
+            laneChangedBy: profile.laneChangedBy,
+            laneChangedAt: profile.laneChangedAt ? new Date(profile.laneChangedAt) : null,
             updatedAt: now,
           },
         });
@@ -3700,6 +3729,12 @@ export const repository = {
       actor: "system",
       payload: {
         buyerLane: profile.buyerLane,
+        oldBuyerLane,
+        newBuyerLane: profile.buyerLane,
+        laneChangeReason: laneChanged ? profile.laneChangeReason : null,
+        laneChangedBy: laneChanged ? profile.laneChangedBy : null,
+        laneChangedAt: laneChanged ? profile.laneChangedAt : null,
+        ...(regulatedExitConfirmed === undefined ? {} : { regulatedExitConfirmed }),
         role: profile.role,
         sector: profile.sector,
         selectedWorkflow: profile.selectedWorkflow,
@@ -3708,6 +3743,85 @@ export const repository = {
     }).catch(() => {});
 
     return profile;
+  },
+
+  // -------------------------------------------------------------------------
+  // Readiness submissions (migration 0033) — anonymous assessment records with
+  // single-use claim codes. See docs/LANE_ASSIGNMENT_SPEC.md.
+  // -------------------------------------------------------------------------
+
+  async createReadinessSubmission(input: {
+    id: string;
+    claimCodeHash: string;
+    scores: Record<string, number>;
+    total: number;
+    band: string;
+    sector?: string | null;
+    companySize?: string | null;
+    role?: string | null;
+    assignedLane: string;
+    laneConfidence: string;
+    email?: string | null;
+    expiresAt: Date;
+  }): Promise<void> {
+    await runDb((db) =>
+      db.insert(readinessSubmissions).values({
+        id: input.id,
+        claimCodeHash: input.claimCodeHash,
+        scores: input.scores,
+        total: input.total,
+        band: input.band,
+        sector: input.sector ?? null,
+        companySize: input.companySize ?? null,
+        role: input.role ?? null,
+        assignedLane: input.assignedLane,
+        laneConfidence: input.laneConfidence,
+        email: input.email ?? null,
+        expiresAt: input.expiresAt,
+      })
+    );
+  },
+
+  /**
+   * Atomically consume a readiness submission by claim-code hash.
+   * Returns the submission if it was valid (unconsumed, unexpired), else null.
+   * Single UPDATE ... RETURNING prevents double-claim races.
+   */
+  async claimReadinessSubmission(
+    claimCodeHash: string,
+    workspaceId: string
+  ): Promise<ReadinessSubmission | null> {
+    const rows = await runDb((db) =>
+      db
+        .update(readinessSubmissions)
+        .set({ consumedAt: new Date(), consumedByWorkspaceId: workspaceId })
+        .where(
+          and(
+            eq(readinessSubmissions.claimCodeHash, claimCodeHash),
+            isNull(readinessSubmissions.consumedAt),
+            gt(readinessSubmissions.expiresAt, new Date())
+          )
+        )
+        .returning()
+    );
+    if (!rows || rows.length === 0) return null;
+    const r = rows[0];
+    return {
+      id: r.id,
+      scores: (r.scores ?? {}) as Record<string, number>,
+      total: r.total,
+      band: r.band,
+      sector: r.sector ?? null,
+      companySize: r.companySize ?? null,
+      role: r.role ?? null,
+      assignedLane: r.assignedLane as ReadinessSubmission["assignedLane"],
+      laneConfidence: r.laneConfidence as ReadinessSubmission["laneConfidence"],
+      email: r.email ?? null,
+      consumedAt: r.consumedAt instanceof Date ? r.consumedAt.toISOString() : null,
+      consumedByWorkspaceId: r.consumedByWorkspaceId ?? null,
+      expiresAt: r.expiresAt instanceof Date ? r.expiresAt.toISOString() : String(r.expiresAt),
+      createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
+    };
   },
 
   async storeKnowledgeEmbedding(noteId: string, embedding: number[]): Promise<void> {
