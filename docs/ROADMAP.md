@@ -59,6 +59,7 @@ The product is demo-ready and pilot-ready. v0.25.0 adds the Nexus Knowledge Work
 - **Exports:** Weekly brief, risk radar CSV, reco register CSV, one-pager. Export hub.
 - **Demo/Sales:** 3 CEO-grade demo sector packs, demo mode with reset, pilot kit, product brief page, readiness assessment (public), SOW templates, demo scripts, ROI calculator.
 - **Auth:** Clerk SSO, scope-based API keys, workspace status (trial/pilot/active/suspended), LLM cost tracking.
+- **Product subdomains:** shared Render runtime with hostname-based product shell detection for `app`, `nexus`, `quorum`, `meridian`, `vantage`, and `nucleus.pinavia.io`. `quorum.pinavia.io` can route to `/board`; Meridian, Vantage, and Nucleus keep a core-dashboard fallback until product-specific routes ship. DNS, Render custom domains, Clerk redirects, and product-domain smoke remain production cutover work.
 
 **What is confirmed missing (2026-06-17 audit):**
 
@@ -90,6 +91,9 @@ The product strategy is now documented as readiness-first buyer routing, not gen
 **Email Boundary** (strategy alignment)
 Clerk owns authentication email: signup/signin verification, password reset, account lifecycle, and future organization invitations. Nexus owns product email only: scheduled synthesis briefs, cron-driven notifications, pilot communications, and support/security notifications through a managed delivery provider. Do not build a custom auth confirmation flow or self-host a mail server for V1 demos.
 
+**Product Subdomain Layer** (house-of-brands alignment)
+Pinavia product domains are now a hostname-routed entry layer over the shared Render app. This lets demos show NexusAI, Quorum, Meridian, Vantage, and Nucleus as distinct product surfaces without prematurely splitting infrastructure. Treat the subdomain as brand/navigation readiness only; each product still needs its own route, data model, test gate, and smoke gate before being sold as live.
+
 **Voice and Local Whisper Boundary** (strategy alignment)
 Voice remains a future channel, not a first-demo dependency. Keep browser microphone capture disabled for V1 demos. Future-proof the seam as local OS dictation or local Whisper on the user's PC producing a transcript that Nexus treats as a normal Ask query, note, or evidence transcript. Nexus-owned audio processing comes later with explicit consent, audit logging, sensitivity gating, and transcript retention rules.
 
@@ -103,7 +107,7 @@ The dashboard starts with one evidence-backed leadership brief per role, with so
 
 **Infrastructure and wiring (do first, unblocks everything):**
 
-1. **v0.25.0 deploy/smoke:** confirm Render is serving commit `3530808`, then smoke `/knowledge`, `/workflows`, `/settings/connectors`, and Ask note citations in a logged-in browser session. Migrations 0025-0026 and production `/api/health` are already confirmed.
+1. **Current deploy/smoke:** confirm Render is serving commit `c55417e` or newer, then smoke `/knowledge`, `/workflows`, `/settings/connectors`, `/board`, product subdomains, and Ask note citations in a logged-in browser session. Migrations 0025-0026 and production `/api/health` were previously confirmed, but the current SHA still needs live confirmation.
 2. **Add cron entries to `render.yaml`:** dispatch runner, billing reset, trial-to-free conversion. Cron handlers exist in code but are not declared in the Render blueprint. Without these: no auto-synthesis, no monthly token budget reset, no trial conversion. Single-file change.
 3. **Wire LLM routing table into execution path:** `model-routing.ts` defines a 10-surface routing policy with provider fallback chains. `llm.ts` ignores it and uses a single env var. Connect `routePolicyFor(surfaceId)` into `callLLM()` so executive briefs use premium models, ingestion triage uses economy models, and fallback fires when a provider is down.
 4. **Configure production email delivery:** keep Clerk responsible for auth email verification, configure `pinavia.io` sender authentication for Nexus product email, set `NEXUS_RESEND_API_KEY`/`NEXUS_FROM_EMAIL` or an equivalent managed-provider adapter, then run one scheduled synthesis email test.

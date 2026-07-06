@@ -11,6 +11,9 @@ Neon, Cloudflare, Clerk, GitHub, or the command line.
 - [ ] Render web service is deployed from the intended Git commit.
 - [ ] Render service has `NODE_ENV=production`.
 - [ ] Clerk sign-in and sign-up URLs point to the live app URL.
+- [ ] Product custom domains are attached in Render if demoing `app`, `nexus`, `quorum`, `meridian`, `vantage`, or `nucleus.pinavia.io`.
+- [ ] Cloudflare DNS records for product custom domains are proxied/active and resolve to the Render service.
+- [ ] Clerk allowed origins and redirect URLs include every product domain used in the demo.
 - [ ] Neon/Postgres is reachable from the app.
 - [ ] Cloudflare R2 bucket exists if original-file storage is enabled.
 - [ ] LLM provider key is configured for the selected provider.
@@ -73,6 +76,14 @@ SLACK_INGEST_CHANNELS
 NEXUS_SLACK_INGEST_ALL=disabled
 CLERK_WEBHOOK_SECRET
 ```
+
+Optional product-domain CORS extension:
+
+```text
+NEXUS_EXTRA_CORS_ORIGINS=
+```
+
+Leave this blank for the standard Pinavia product domains. `app.pinavia.io`, `nexus.pinavia.io`, `quorum.pinavia.io`, `meridian.pinavia.io`, `vantage.pinavia.io`, and `nucleus.pinavia.io` are already allowed by code. Use `NEXUS_EXTRA_CORS_ORIGINS` only for additional non-Pinavia origins.
 
 Knowledge Workspace local sync variables:
 
@@ -169,6 +180,22 @@ Use this when comparing the original Vercel-origin UI with the newer Render/new-
 - [ ] The demo label says whether the viewer is seeing `UI V0.1 baseline`, `UI V0.2 proposal`, or `Render production`.
 - [ ] The newer Render-hosted experience has passed signed-in browser smoke for dashboard, Ask, ingestion, approvals, recommendations, connectors, and `/api/health`.
 - [ ] Any colleague preference or rejection notes are recorded before marking a UI version as preferred or superseded.
+
+---
+
+## 5B. Product Subdomain Gate
+
+Use this before any house-of-brands demo.
+
+- [ ] `origin/main` commit deployed by Render includes `lib/product-detection.ts`.
+- [ ] `https://app.pinavia.io` renders NexusAI public-shell branding and signs in to `/dashboard/ceo`.
+- [ ] `https://nexus.pinavia.io` renders NexusAI public-shell branding and signs in to `/dashboard/ceo`.
+- [ ] `https://quorum.pinavia.io` renders Quorum public-shell branding and signs in to `/board`.
+- [ ] `https://meridian.pinavia.io` renders Meridian public-shell branding and signs in to `/dashboard/ceo` until Meridian routes ship.
+- [ ] `https://vantage.pinavia.io` renders Vantage public-shell branding and signs in to `/dashboard/ceo` until Vantage routes ship.
+- [ ] `https://nucleus.pinavia.io` renders Nucleus public-shell branding and signs in to `/dashboard/ceo` until Nucleus routes ship.
+- [ ] Clerk sign-in and sign-up complete successfully from every product domain used in the demo.
+- [ ] Product-specific claims in demo copy match shipped routes; do not imply Meridian/Vantage/Nucleus workflows are live solely because their subdomains resolve.
 
 ---
 

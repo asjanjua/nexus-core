@@ -12,6 +12,7 @@ NexusAI should run on a pragmatic managed-cloud stack for V1 pilots:
 - Clerk for browser authentication and organization tenancy
 - Cloudflare R2 for original document retention
 - Cloudflare selective services for DNS, WAF, CDN, and optional AI Gateway
+- Pinavia product subdomains as a hostname-routed house-of-brands layer on the same Render app
 
 The goal is not infrastructure purity. The goal is a reliable, understandable pilot stack that supports self-signup, governed evidence ingestion, agent output history, and human approval workflows without introducing avoidable platform rewrites.
 
@@ -22,6 +23,7 @@ The goal is not infrastructure purity. The goal is a reliable, understandable pi
 | Layer | Choice | Reason |
 |---|---|---|
 | Web runtime | Render Web Service | Simple managed Node runtime for the current Next.js app |
+| Product routing | Shared Render app + hostname detection | Keeps Quorum, Meridian, Vantage, Nucleus, and NexusAI on one runtime until isolation is commercially required |
 | Database | Neon Postgres | Managed Postgres, direct migration URL, good pilot fit |
 | Vector search | `pgvector` | Keeps semantic search close to evidence and governance joins |
 | Auth | Clerk | Already integrated for signup, login, and organizations |
@@ -38,6 +40,7 @@ The goal is not infrastructure purity. The goal is a reliable, understandable pi
 - No autonomous writeback to enterprise systems
 - No replacement of Clerk during pilot packaging
 - No custom auth-email confirmation flow or self-hosted mail server for V1 demos
+- No separate infrastructure per product until a product needs dedicated region, database, compliance boundary, or scale profile
 
 ## Why This Fits NexusAI
 
@@ -63,7 +66,8 @@ flowchart LR
   App --> LLM["LLM Provider"]
   App --> Slack["Slack Adapter"]
   App --> Audit["Audit + Approval Flows"]
-  CF["Cloudflare DNS / WAF / CDN"] --> App
+  CF["Cloudflare DNS / WAF / CDN"] --> DomainRouter["Product Hostname Detection"]
+  DomainRouter --> App
 ```
 
 ## Decision Drivers
@@ -116,6 +120,17 @@ Primary deployment path:
 4. Neon direct URL is used for migrations.
 5. Neon pooled URL is used by the app at runtime.
 6. Clerk and Slack callback URLs point to the deployed Render domain.
+7. Cloudflare DNS maps `app`, `nexus`, `quorum`, `meridian`, `vantage`, and `nucleus.pinavia.io` to the same Render service.
+8. Render custom domains attach those hostnames to the service.
+9. Clerk allowed origins and redirect URLs include every product domain that appears in demos.
+10. Product-domain smoke verifies branding, sign-in, redirect target, and route maturity per host.
+
+Product subdomain policy:
+
+- `app.pinavia.io` and `nexus.pinavia.io` are NexusAI entrypoints.
+- `quorum.pinavia.io` is the board-governance entrypoint and can route signed-in users to `/board`.
+- `meridian.pinavia.io`, `vantage.pinavia.io`, and `nucleus.pinavia.io` are reserved product entrypoints that may show product-aware branding, but should route to the core dashboard until their dedicated runtime routes ship.
+- The subdomain layer is a positioning and navigation layer. It does not replace feature-readiness gates for each product.
 
 Historical Vercel-origin UI baseline:
 

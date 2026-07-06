@@ -2,6 +2,22 @@
 
 ---
 
+## Unreleased — Product Subdomain Detection (2026-07-06)
+
+Added the code layer for Pinavia's endorsed house-of-brands routing across NexusAI, Quorum, Meridian, Vantage, and Nucleus.
+
+**Detection.** New `lib/product-detection.ts` maps request hostnames to product keys: `app.pinavia.io`, `nexus.pinavia.io`, and local dev resolve to NexusAI; `quorum.pinavia.io`, `meridian.pinavia.io`, `vantage.pinavia.io`, and `nucleus.pinavia.io` resolve to their product surfaces. Unknown hosts safely fall back to NexusAI.
+
+**Middleware.** `middleware.ts` now attaches `x-nexus-product` to every request and includes the HTTPS product subdomains in the CORS allow-list. This keeps the current shared Render/Next.js app as the runtime while allowing product-aware branding and routing.
+
+**Public shell.** The public/auth shell in `app/layout.tsx` now renders the product name/Pinavia lockup from hostname metadata. Clerk sign-in fallbacks are route-safe: Quorum redirects to the live `/board` route; Meridian, Vantage, and Nucleus fall back to `/dashboard/ceo` until their dedicated product routes ship.
+
+**Tests.** Added `tests/product-detection.test.ts` covering hostname mapping, product origins, route prefixes, route-safe sign-in redirects, and Pinavia metadata coverage.
+
+**Operational follow-up.** Before custom domains are shown externally, configure Cloudflare DNS records, attach the product domains to the Render service, add all product URLs to Clerk allowed origins/redirects, then smoke each product domain after deploy.
+
+---
+
 ## Unreleased — Vertical Input/Action Screen Guidance (2026-07-06)
 
 Built a cross-vertical Figma review board and backed it with code-level screen guidance so the next route work has explicit user inputs, action points, and human-control copy.

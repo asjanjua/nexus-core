@@ -5,7 +5,7 @@
 > For the visual finish-line map, see `docs/DEVELOPMENT_FINISH_LINE_VISUAL.md`.
 > For the markdown estate review, see `docs/MARKDOWN_ESTATE_REVIEW_2026-06-25.md`.
 > For typed runtime/state/effect safety rules, see `docs/ENGINEERING_GUARDRAILS.md`.
-> Last reviewed and tightened: 2026-07-05.
+> Last reviewed and tightened: 2026-07-06.
 
 ---
 
@@ -84,6 +84,8 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 25. [x] Build Quorum-branded board UI screen — `/board` now renders a director-facing Board Room on top of `POST /api/board/delta`, with stable board identifier, baseline/delta states, status chips, Director Q&A cards, evidence/entity links, governance boundary copy, and side-nav entry. Verified 2026-07-05 with `tsc`, full mission-control tests, and production build.
 26. [x] Build Quorum UI/UX Figma V0.1 — Figma page `08 Quorum UI UX Build`, board `78:3`, now contains six editable desktop-browser screens for baseline setup, between-meetings delta review, Director Q&A, evidence drilldown, decision handoff, and board export pack. Registered in `docs/UI_BASELINE_VERSIONING.md`.
 27. [x] Plan Quorum full board governance workflow in code and Figma — `docs/QUORUM_BOARD_GOVERNANCE_WORKFLOW.md` defines the Pakistan-first / jurisdiction-pack-ready model; `lib/board-governance-workflow.ts` codifies the source pack, 17 planned screens, 10 workflow stages, and three arcs; `/board` renders the compact roadmap; `tests/board-governance-workflow.test.ts` pins the registry; Figma page `09 Quorum Governance Workflow V0.2` (`80:3`) contains the 17-screen desktop flow. Next step is implementation, not planning.
+28. [x] Add product subdomain detection for the Pinavia house-of-brands — `lib/product-detection.ts`, middleware `x-nexus-product`, product CORS origins, public/auth shell product lockup, and route-safe sign-in redirects. `quorum.pinavia.io` can land on `/board`; `meridian`, `vantage`, and `nucleus` fall back to `/dashboard/ceo` until their routes ship. Pushed as `c55417e`.
+29. [ ] Configure product subdomains operationally — Cloudflare DNS records for `app`, `nexus`, `quorum`, `meridian`, `vantage`, `nucleus`; Render custom domains on the current service; Clerk allowed origins and redirect URLs for each product; authenticated smoke per domain after deploy.
 
 ## Active Product Queue (updated 2026-07-06)
 
@@ -100,6 +102,8 @@ These are the pivot/product items that were explicitly reviewed after the DD che
 9. [x] Quorum UI/UX Figma build — shipped Figma board `08 Quorum UI UX Build` (`78:3`) with six desktop screens for the broader Quorum review flow.
 10. [x] Quorum board governance workflow plan — expanded beyond the current six concept screens into a code-backed and Figma-backed board operating model: jurisdiction/entity setup, directors, committees, TORs, agenda, quorum, conflicts, decision capture, minutes, signatures, action register, and audit pack.
 11. [ ] Quorum governance implementation slice — choose and build the first data-model/UI slice from the planned workflow. Recommended sequence: board profile/registers first, then meeting/agenda, then minutes/action register.
+12. [x] Product subdomain code layer — shared Render app can now detect product hostnames and adjust public-shell branding/redirects without separate deployments.
+13. [ ] Product subdomain infrastructure — DNS, Render custom domains, Clerk allowed origins/redirects, and product-domain smoke tests remain external setup work.
 
 ## Strategy Operating Plan (updated 2026-06-25)
 

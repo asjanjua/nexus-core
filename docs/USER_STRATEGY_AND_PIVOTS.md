@@ -1,7 +1,7 @@
 # NexusAI User Strategy and Pivot Map
 
 Status: Canonical strategy note for paperwork, roadmap, backlog, and user-flow alignment.
-Last updated: 2026-07-04.
+Last updated: 2026-07-06.
 
 ## Core Pivot
 
@@ -22,6 +22,21 @@ Clerk owns authentication email flows. NexusAI should not build a custom email-c
 - Product email should use a managed delivery provider such as Resend or Cloudflare Email Sending, configured through `NEXUS_RESEND_API_KEY` and `NEXUS_FROM_EMAIL` or an equivalent provider adapter.
 - Pinavia/Nexus sender identity should use a domain-authenticated address such as `Nexus <noreply@pinavia.io>` or `Pinavia <hello@pinavia.io>`.
 - Do not self-host a mail server for V1 demos or early pilots. Email reliability is a deliverability and reputation problem, not just an SMTP implementation problem.
+
+## Product Domain Boundary
+
+Pinavia now uses a house-of-brands entry layer over the same governed NexusAI operating core. The product subdomains are useful for positioning, demos, and buyer-specific navigation, but they must not be treated as proof that every product workflow is complete.
+
+| Domain | Public product promise | Current routing boundary |
+| --- | --- | --- |
+| `app.pinavia.io` | Pinavia/NexusAI command layer | NexusAI shell and `/dashboard/ceo` |
+| `nexus.pinavia.io` | NexusAI governed intelligence layer | NexusAI shell and `/dashboard/ceo` |
+| `quorum.pinavia.io` | Board governance and director intelligence | Quorum shell and `/board` |
+| `meridian.pinavia.io` | Regulatory workflow intelligence | Meridian shell; fallback to `/dashboard/ceo` until Meridian routes ship |
+| `vantage.pinavia.io` | Due diligence and deal intelligence | Vantage shell; fallback to `/dashboard/ceo` until Vantage routes ship |
+| `nucleus.pinavia.io` | Methodology-pack and advisory operating layer | Nucleus shell; fallback to `/dashboard/ceo` until Nucleus routes ship |
+
+Strategic rule: product subdomains are an entry and framing layer; product-specific workflows still need their own route, data model, tests, and smoke gate before being sold as live.
 
 ## Voice and Local Whisper Boundary
 
@@ -149,3 +164,6 @@ Track the strategy as a funnel:
 
 6. **Configure production email deliberately.**
    Before demos use custom domains, confirm Clerk email verification is enabled, set the product sender domain (`pinavia.io`), configure the product email provider credentials in Render, and send one scheduled synthesis test email end to end.
+
+7. **Configure product subdomains deliberately.**
+   Before house-of-brands demos, attach each `pinavia.io` product domain in Render, create the Cloudflare DNS records, add Clerk allowed origins and redirect URLs, and run the product-domain smoke gate in `docs/PRODUCTION_HEALTH_CHECKLIST.md`.

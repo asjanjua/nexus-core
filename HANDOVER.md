@@ -6,9 +6,16 @@
 
 ## Session Info
 
-- **Last updated:** 2026-07-06 (v0.25.x — session #45 follow-up. Added vertical input/action screen guidance and Figma board `87:3` across Quorum, Meridian, and Vantage.)
-- **Last model:** Hermes (DeepSeek Pro V4)
-- **Session number:** #45
+- **Last updated:** 2026-07-06 (v0.25.x — session #46 with Codex. Added product subdomain detection for the Pinavia house-of-brands and updated deployment paperwork.)
+- **Last model:** Codex (GPT-5)
+- **Session number:** #46
+- **Session #46 delivered (2026-07-06) — Product subdomain detection:**
+  - **Code shipped:** `lib/product-detection.ts` maps `app.pinavia.io`/`nexus.pinavia.io` to NexusAI and maps `quorum.pinavia.io`, `meridian.pinavia.io`, `vantage.pinavia.io`, and `nucleus.pinavia.io` to their product keys. Unknown hosts and local dev fall back to NexusAI.
+  - **Middleware:** `middleware.ts` now sets `x-nexus-product` and includes HTTPS product subdomains in the CORS allow-list. Keep this as a shared Render runtime unless a product later needs isolated infrastructure.
+  - **Public shell:** `app/layout.tsx` renders product-aware public/auth branding. Clerk sign-in redirects are route-safe: Quorum goes to `/board`; Meridian, Vantage, and Nucleus go to `/dashboard/ceo` until their routes exist.
+  - **Tests/verification:** `tests/product-detection.test.ts` added. Focused product test passed (9 tests), full mission-control suite passed (48 files / 339 tests), and production build passed. Standalone `tsc` was inconclusive once due to the local silent-runner quirk, but Next build completed type/bundle validation.
+  - **Pushed commit:** `c55417e` (`feat: add product subdomain detection`) is on `origin/main`.
+  - **Operational follow-up:** in Cloudflare, create DNS records for `app`, `nexus`, `quorum`, `meridian`, `vantage`, and `nucleus`; in Render, attach those as custom domains to the current service; in Clerk, add matching allowed origins and sign-in/sign-up redirects; smoke each domain after deploy.
 - **Session #45 delivered (2026-07-06) — Agent skill taxonomy and pivot catalog:**
   - **Skill taxonomy added:** `lib/agents/agent-skills.ts` defines 34 skills across 5 families (ingest, browse, review, analyze, act) with source type mappings, job family requirements, and dispatch compatibility checks.
   - **Agent library upgraded:** `lib/agents/agent-library.ts` now uses typed `AgentSkill[]` hints. Baseline skills (`browse sources`, `review evidence`, `analyze evidence`) auto-applied to every agent. 29 agents across 7 rooms.
@@ -146,14 +153,14 @@
   - **Task #36 (LLM routing wiring):** `callLLM()` now executes the `model-routing.ts` 10-surface fallback-chain policy via the new `callLLMWithRouting()`, wired into all 8 real call sites (retrieval, synthesis, dashboard, decision-extraction, recommendations, exports, company-detection x2). Found and fixed a real production bug as a byproduct: DeepSeek retires `deepseek-chat`/`deepseek-reasoner` on **2026-07-24 15:59 UTC** -- `DEFAULT_MODEL` now falls back to `deepseek-v4-flash`, and `estimateCostMicro()` uses correct split pricing (v4-flash $0.14/$0.28 per M tokens, v4-pro $0.435/$0.87 per M).
   - **Task #32 (Sentry):** wired via `instrumentation.ts`'s `onRequestError` hook (covers all ~36 API routes automatically), plus `app/global-error.tsx`, `app/error.tsx`, and `lib/observability/sentry.ts` manual-capture helpers for the catch-and-continue paths the hook can't see (Stripe webhook, LLM fallback exhaustion). Ships disabled (no-op) until `SENTRY_DSN` is set.
   - **Task #37 (Queen's Review fixes):** an external review of Task #32 raised 5 findings; 4 confirmed and fixed (workspaceId fallback tagging via query-param/`"unknown"`, 3 stray `deepseek-chat` refs cleaned up across `CUTOVER.md`/`settings/page.tsx`/`ai-policy.test.ts`, `tracesSampleRate` raised 0.2→1.0 for pilot volume, `tests/observability/sentry.test.ts` added); 1 finding (claimed `app/error.tsx` was missing) was a false positive -- verified the file already existed with Sentry wiring. Lesson logged: verify external/automated review findings against current file state before acting, same standard as any other source.
-- **Last commit:** `9da3411` -- "Add engineering guardrails module, pilot paperwork page, prompt registry updates; correct HANDOVER/TASKS docs" -- on top of `2ff4c26` ("Add Microsoft SharePoint/Teams connector (OAuth + Graph API)", which itself bundled the entire session #31 batch: Tasks #35/#36/#32/#37, cron jobs, provider UI, Resend email, Mode Indicator, strategy profile, Google Drive connector, knowledge embeddings, onboarding routing, pilot paperwork generation). Both commits made and pushed by Ali on 2026-06-25; confirmed `origin/main` matches local `HEAD` at `9da3411`. NOT yet verified with `npm install`/`tsc`/`npm test`/`npm run build` -- run that cycle next.
-- **Remote status:** `9da3411` pushed to `origin/main`. Render deployed-commit confirmation and authenticated smoke remain pending for this commit.
+- **Last code commit:** `c55417e` -- "feat: add product subdomain detection" -- is pushed to `origin/main`. It adds hostname-based product detection for `app`, `nexus`, `quorum`, `meridian`, `vantage`, and `nucleus.pinavia.io`, plus middleware headers/CORS and public-shell product branding. Verification before commit: focused product test passed, full mission-control tests passed (48 files / 339 tests), and production build passed. Standalone `tsc` hung silently in the PTY and was treated as inconclusive; the production build was the final bundle/type gate.
+- **Remote status:** `c55417e` pushed to `origin/main`. Render deployed-commit confirmation, DNS/custom-domain setup, Clerk redirect configuration, and authenticated product-domain smoke remain pending.
 - **Production DB:** migrations 0001-0026 applied to Neon/production database. Migrations 0025-0026 were applied on 2026-06-25 and `db:check` returned `ok=true` against `neondb`.
 - **Local verification (2026-06-13):** `npm run build --workspace @nexus/mission-control` passed. `npm test --workspace @nexus/mission-control` passed: 28 test files / 179 tests.
 - **Local verification (2026-06-15):** Browser CTA/auth checks passed for v0.23.1. For v0.24.0, `npm exec -w @nexus/mission-control tsc -- --noEmit` passed, `npm run test` passed: 28 test files / 183 tests, and `npm run build` passed. In-app browser `/workflows` smoke redirects to Clerk sign-in and cannot authenticate in that browser session; verify authenticated `/workflows` in logged-in Chrome/Render after deploy.
 - **Local verification (2026-06-25):** For session #29 (Jarvis/DeepSeek Pro V4 through Hermes), all gates pass: `npx tsc --noEmit` clean, `npm run test` passed (32 files / 199 tests), `npm run build` passed. New routes confirmed built: `/api/email/unsubscribe`, `/api/strategy-profile`, `/settings/policies`.
-- **Production health (2026-06-25):** `https://nexus-mission-control.onrender.com/api/health` returned `status=ok` with database, vector search, R2 originals, and DeepSeek LLM checks healthy. Unauthenticated `/knowledge` and `/api/knowledge/search` still returned signed-out 404s, that health check predates `9da3411` — confirm Render's deployed commit is `9da3411` (the current `origin/main` HEAD) before smoke.
-- **Strategy docs (updated 2026-06-25):** `docs/USER_STRATEGY_AND_PIVOTS.md` is the canonical user strategy and now includes the operating paper trail plus current plan. Future product work should start from readiness -> buyer lane -> signup/onboarding -> first workflow pilot -> governed value proof.
+- **Production health (2026-06-25):** `https://nexus-mission-control.onrender.com/api/health` returned `status=ok` with database, vector search, R2 originals, and DeepSeek LLM checks healthy. That health check predates `c55417e`; confirm Render's deployed commit is `c55417e` or newer before product-domain smoke.
+- **Strategy docs (updated 2026-07-06):** `docs/USER_STRATEGY_AND_PIVOTS.md` is the canonical user strategy and now includes the operating paper trail, product-domain boundary, and house-of-brands routing guardrails. Future product work should start from readiness -> buyer lane -> signup/onboarding -> first workflow pilot -> governed value proof.
 - **Backlog map (2026-06-25):** `BACKLOG.md` is now the cross-document backlog view. Use it with `TASKS.md`, `HANDOVER.md`, and `docs/ROADMAP.md` before starting a new phase.
 - **Strategy operating plan (2026-06-25):** `TASKS.md` and `BACKLOG.md` now carry the plan for release smoke, strategy profile persistence, onboarding-to-workflow routing, pilot paperwork generation, Knowledge Workspace follow-through, and backlog hygiene.
 - **Markdown cleanup (2026-06-25):** `docs/MARKDOWN_ESTATE_REVIEW_2026-06-25.md` classifies all 63 Markdown files. First cleanup pass is complete: stale spec headers updated, runbook roles clarified, launch/demo copy refreshed, v0.25.0 smoke checks added, and active UX review ideas promoted into `BACKLOG.md`.
@@ -235,9 +242,11 @@ The codebase now has both **agent governance** (who can do what, under what limi
 - Browser/API note: protected `/knowledge` and `/api/knowledge/*` block unauthenticated curl via Clerk; verify in logged-in Chrome/Render after deploy.
 
 **Immediate next step:**
-1. Log in to Render and confirm the `nexus-mission-control` service deployed commit is `9da3411` (current `origin/main` HEAD).
+1. Log in to Render and confirm the `nexus-mission-control` service deployed commit is `c55417e` or newer.
 2. If Render is still on an older commit, trigger a manual deploy from `main`.
-3. Smoke `/knowledge`, `/workflows`, `/settings/connectors`, and Ask note citations while logged in.
+3. Configure product custom domains in this order: Cloudflare DNS -> Render custom domains -> Clerk allowed origins/redirect URLs.
+4. Smoke `/knowledge`, `/workflows`, `/settings/connectors`, `/board`, and Ask note citations while logged in.
+5. Run the product-domain gate in `docs/PRODUCTION_HEALTH_CHECKLIST.md` before demoing `app`, `nexus`, `quorum`, `meridian`, `vantage`, or `nucleus.pinavia.io`.
 
 ### Session #25 -- Connector Settings + Workflow Pilot Productization (v0.24.0, 2026-06-15)
 
@@ -992,7 +1001,7 @@ Before doing anything else, read:
 4. BACKLOG.md
 5. AGENTS.md
 
-Current version: `origin/main` is at commit `9da3411` -- "Add engineering guardrails module, pilot paperwork page, prompt registry updates; correct HANDOVER/TASKS docs", on top of `2ff4c26` -- "Add Microsoft SharePoint/Teams connector (OAuth + Graph API)" (which bundled the full session #31 batch: Task #35 DB transactions, Task #36 LLM routing + DeepSeek V4 migration, Task #32 Sentry, Task #37 Queen's Review fixes, cron jobs, provider UI, Resend email, Mode Indicator, strategy profile, Google Drive connector, knowledge embeddings, onboarding routing, pilot paperwork generation, plus SharePoint/Teams itself, Task #40).
+Current version: `origin/main` is at commit `c55417e` -- "feat: add product subdomain detection". The live Render service still needs deploy-SHA confirmation before relying on the product-subdomain layer in demos.
 
 NOT YET COMMITTED OR PUSHED as of this writing: TWO uncommitted batches stacked in the sandbox's working tree, oldest first:
 1. Session #33 (2026-06-25) -- 5 OAuth connectors: GitHub, Jira, HubSpot, QuickBooks, LinkedIn (Tasks #55-59).
@@ -1033,14 +1042,14 @@ Protected `/knowledge` and `/api/knowledge/*` block unauthenticated curl via Cle
 Phases 1-8 + 9D complete. V1.1 Tier 1 (U1-U4) complete. U5 Workflow Twin Scorer, U6 backcasting, and U7 shadow ROI are committed in v0.24.0. Billing Tiers + Stripe full integration (v0.20.0-v0.21.0), Orchestration Dispatcher (v0.22.0), Company Memory UI, first Slack connector data flow (v0.23.0), and Connector Settings policy UX (v0.24.0) complete.
 Migrations 0001-0026 applied to Neon production. `db:check` passed on 2026-06-25.
 
-What is built: onboarding, ingestion, retrieval, 7 agent rooms, 20 role dashboards, Ask, governance (passports, output gates, learning signals), Decision Twin, entity extraction, Company Memory pages/backlinks, eval harness, Executive Synthesis, scheduled synthesis, billing tiers, Stripe, orchestration dispatcher, first Slack inbound ingestion path, Connector Settings policy UX, Workflow Twin Scorer, backcasting, shadow ROI, the v0.25.0 Knowledge Workspace, transaction-safe multi-table repository writes (Task #35), policy-driven LLM routing with fallback chains (Task #36), Sentry error tracking wired but disabled pending a DSN (Task #32/#37), a full Google Drive OAuth connector, a full Microsoft SharePoint/Teams OAuth connector via Graph API (Task #40), an engineering guardrails module (Task #19), a pilot paperwork page -- all committed and pushed at `9da3411`. PLUS, built this session but NOT yet committed: GitHub, Jira, HubSpot, QuickBooks, and LinkedIn OAuth connectors (Tasks #55-59) -- each code-complete with narrower scope than originally specced for Jira/HubSpot/GitHub/QuickBooks (per-record list+ingest, not aggregate/rollup signals -- exact gaps documented in `TASKS.md` and `CHANGELOG.md`), and LinkedIn additionally gated on a separate LinkedIn Community Management API partner-approval step.
+What is built: onboarding, ingestion, retrieval, 7 agent rooms, 20 role dashboards, Ask, governance (passports, output gates, learning signals), Decision Twin, entity extraction, Company Memory pages/backlinks, eval harness, Executive Synthesis, scheduled synthesis, billing tiers, Stripe, orchestration dispatcher, first Slack inbound ingestion path, Connector Settings policy UX, Workflow Twin Scorer, backcasting, shadow ROI, the v0.25.0 Knowledge Workspace, transaction-safe multi-table repository writes (Task #35), policy-driven LLM routing with fallback chains (Task #36), Sentry error tracking wired but disabled pending a DSN (Task #32/#37), Google Drive OAuth, Microsoft SharePoint/Teams OAuth, Gmail, Outlook Mail, IMAP Email, GitHub, Jira, HubSpot, QuickBooks, LinkedIn, engineering guardrails, pilot paperwork, and the product-subdomain code layer. Current `origin/main` is `c55417e`; confirm Render is deployed to `c55417e` or newer before demoing product domains.
 
 Immediate next build:
-1. Ali runs `npm install`/`npx tsc --noEmit`/`npm test`/`npm run build` (commands above), fixes anything that breaks (most likely candidate: IMAP/mailparser type issues, since neither has compiled in this environment yet), then commits/pushes both stacked batches together.
-2. Run a real-mailbox IMAP connection test against `/api/connectors/imap/connect` (any IMAP host -- Gmail, Outlook, Spacemail, Hostinger, etc. all work since it's protocol-level) to confirm `imapflow` behaves as expected outside the sandbox.
-3. Create a Sentry project, set the 5 Sentry env vars in Render (listed in `CUTOVER.md` Step 2), trigger a test error, confirm it lands in the dashboard.
-4. Log in to Render and confirm `nexus-mission-control` deployed commit matches the new `origin/main` HEAD; trigger manual deploy from `main` if stale, then run authenticated smoke.
-5. Register OAuth apps with all 9 providers now in play (7 from the prior batch plus Gmail/Outlook reusing existing clients) and set their env vars in Render (all already listed in `render.yaml` and `CUTOVER.md` Step 2), then run each connector's install flow end-to-end:
+1. Log in to Render and confirm `nexus-mission-control` deployed commit matches `c55417e` or newer; trigger manual deploy from `main` if stale.
+2. Configure product domains in order: Cloudflare DNS -> Render custom domains -> Clerk allowed origins/redirect URLs.
+3. Run authenticated smoke for `/knowledge`, `/workflows`, `/settings/connectors`, `/board`, and Ask note citations.
+4. Run product-domain smoke for `app`, `nexus`, `quorum`, `meridian`, `vantage`, and `nucleus.pinavia.io` using `docs/PRODUCTION_HEALTH_CHECKLIST.md`.
+5. Continue connector OAuth registration and live install-flow tests as needed; the code layer is broader than the external provider approvals.
    - Google Cloud OAuth client -- `GOOGLE_CLIENT_ID`/`GOOGLE_CLIENT_SECRET`
    - Azure AD app -- `MICROSOFT_CLIENT_ID`/`MICROSOFT_CLIENT_SECRET`/`MICROSOFT_TENANT_ID`
    - GitHub OAuth app (github.com/settings/developers) -- `GITHUB_CLIENT_ID`/`GITHUB_CLIENT_SECRET`
