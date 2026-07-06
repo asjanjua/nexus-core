@@ -1,10 +1,16 @@
 import { SignIn } from "@clerk/nextjs";
+import { headers } from "next/headers";
+import { productFromHost, productSignInRedirect } from "@/lib/product-detection";
 
-export default function SignInPage() {
+export default async function SignInPage() {
+  const hdrs = await headers();
+  const productKey = productFromHost(hdrs.get("x-nexus-product") ?? hdrs.get("host") ?? "");
+  const fallbackRedirectUrl = productSignInRedirect(productKey);
+
   return (
     <div className="flex min-h-screen items-center justify-center">
       <SignIn
-        fallbackRedirectUrl="/dashboard/ceo"
+        fallbackRedirectUrl={fallbackRedirectUrl}
         appearance={{
           elements: {
             rootBox: "mx-auto",

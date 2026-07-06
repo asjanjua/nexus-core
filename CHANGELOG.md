@@ -4,7 +4,7 @@
 
 ## Unreleased — Clerk Production Domain Cutover Hygiene (2026-07-06)
 
-Removed legacy `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL` and `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL` from the Render blueprint and env template. The app already uses Clerk's newer `signInFallbackRedirectUrl` and `signUpFallbackRedirectUrl` props in `apps/mission-control/app/layout.tsx`; keeping the old env vars set in production caused Clerk redirect deprecation warnings on the live `pinavia.co` sign-in/sign-up pages.
+Removed legacy `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL` and `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL` from the Render blueprint and env template, and removed global `signInFallbackRedirectUrl` / `signUpFallbackRedirectUrl` props from `ClerkProvider`. Sign-in and sign-up redirects now live on the Clerk auth components themselves, which preserves the post-auth landing behavior without serializing deprecated redirect fields on the live `pinavia.co` sign-in/sign-up pages.
 
 ---
 
