@@ -19,6 +19,7 @@ import { safeAuth } from "@/lib/safe-auth";
 import { headers } from "next/headers";
 import { repository } from "@/lib/data/repository";
 import { isDbRequired } from "@/lib/data/db-policy";
+import { PRODUCT_META, productFromHost, productSignInRedirect, type ProductKey } from "@/lib/product-detection";
 
 export const metadata: Metadata = {
   title: "NexusAI Mission Control",
@@ -46,7 +47,10 @@ export const viewport: Viewport = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const pathname = (await headers()).get("x-nexus-pathname") ?? "";
+  const hdrs = await headers();
+  const pathname = hdrs.get("x-nexus-pathname") ?? "";
+  const productKey: ProductKey = productFromHost(hdrs.get("x-nexus-product") ?? hdrs.get("host") ?? "");
+  const product = PRODUCT_META[productKey];
   const isPublicShell =
     pathname === "/" ||
     pathname.startsWith("/sign-in") ||
@@ -62,6 +66,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     pathname.startsWith("/product-brief");
 
   if (isPublicShell) {
+    const signInRedirect = productSignInRedirect(productKey);
+    const logoInitial = product.name.charAt(0);
     return (
       <html lang="en">
         <body>
@@ -69,16 +75,19 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <ClerkProvider
             signInUrl="/sign-in"
             signUpUrl="/sign-up"
-            signInFallbackRedirectUrl="/dashboard/ceo"
+            signInFallbackRedirectUrl={signInRedirect}
             signUpFallbackRedirectUrl="/onboarding"
           >
             <header className="sticky top-0 z-20 border-b border-white/10 bg-[#090f1b]/88 backdrop-blur">
               <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
                 <a href="/" className="flex items-center gap-3 text-white">
                   <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-nexus-accent text-sm font-semibold text-[#04100d]">
-                    N
+                    {logoInitial}
                   </span>
-                  <span className="font-semibold">Nexus Core</span>
+                  <div className="flex flex-col">
+                    <span className="font-semibold leading-tight">{product.name}</span>
+                    <span className="text-[10px] leading-tight text-white/35">{product.subtitle}</span>
+                  </div>
                 </a>
                 <div className="flex items-center gap-2">
                   <a href="/product-brief" className="hidden rounded-lg px-3 py-2 text-sm text-white/60 transition hover:bg-white/[0.06] hover:text-white sm:inline-flex">

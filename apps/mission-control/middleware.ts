@@ -25,6 +25,7 @@
 
 import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 import { NextRequest, NextResponse } from "next/server";
+import { productFromHost, productOrigins } from "@/lib/product-detection";
 
 // Routes that are always public (no auth required at all)
 const isPublicRoute = createRouteMatcher([
@@ -107,6 +108,9 @@ const PRODUCTION_ORIGIN = (process.env.NEXT_PUBLIC_APP_URL ?? "").replace(/\/+$/
 const ALLOWED_ORIGINS = new Set([
   PRODUCTION_ORIGIN,
   ...parseAllowedOrigins(process.env.NEXUS_EXTRA_CORS_ORIGINS ?? process.env.NEXUS_EXTRA_CORS_ORIGIN),
+  // Product subdomains for shared app/API surfaces. Production origins must
+  // stay HTTPS-only; local development already allows any origin below.
+  ...productOrigins().map((origin) => `https://${origin}`),
 ].filter(Boolean));
 
 // Clerk frontend API domain — set NEXT_PUBLIC_CLERK_DOMAIN in Render env vars.
@@ -116,6 +120,7 @@ const CLERK_DOMAIN = (process.env.NEXT_PUBLIC_CLERK_DOMAIN ?? "clerk.accounts.de
 function nextWithPath(request: NextRequest): NextResponse {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nexus-pathname", request.nextUrl.pathname);
+  requestHeaders.set("x-nexus-product", productFromHost(request.headers.get("host") ?? ""));
   return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
