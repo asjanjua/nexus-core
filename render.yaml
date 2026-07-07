@@ -155,3 +155,16 @@ services:
         sync: false
       - key: NEXUS_CRON_SECRET
         sync: false
+  - type: cron
+    name: nexus-readiness-prune-cron
+    runtime: node
+    plan: free
+    region: oregon
+    schedule: "30 1 * * *"
+    buildCommand: npm ci --production
+    startCommand: node -e "fetch(process.env.NEXT_PUBLIC_APP_URL+'/api/cron/readiness-prune',{method:'POST',headers:{Authorization:'Bearer '+process.env.NEXUS_CRON_SECRET,'Content-Type':'application/json'}}).then(r=>{if(!r.ok){console.error(r.status);process.exit(1)}r.json().then(d=>{console.log(JSON.stringify(d));process.exit(0)})}).catch(e=>{console.error(e);process.exit(1)})"
+    envVars:
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+      - key: NEXUS_CRON_SECRET
+        sync: false
