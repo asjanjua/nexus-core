@@ -4,7 +4,7 @@
  * Demo-domain smoke check.
  *
  * Usage:
- *   APP_URL=https://app.pinavia.io npm run smoke:domain -w @nexus/mission-control
+ *   APP_URL=https://app.pinavia.co npm run smoke:domain -w @nexus/mission-control
  *
  * This intentionally avoids authenticated routes. It verifies the public edge
  * layer that most often breaks during a custom-domain cutover: health, HTTPS,

@@ -12,6 +12,10 @@ export default async function SignInPage() {
       <SignIn
         fallbackRedirectUrl={fallbackRedirectUrl}
         appearance={{
+          layout: {
+            socialButtonsPlacement: "top",
+            socialButtonsVariant: "blockButton",
+          },
           elements: {
             rootBox: "mx-auto",
             card: "bg-[#101a2f] border border-white/10 shadow-none",
