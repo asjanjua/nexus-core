@@ -8,6 +8,18 @@ Removed legacy `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL` and `NEXT_PUBLIC_CLERK_AFTE
 
 ---
 
+## Unreleased — Unified Pilot-Gate Enforcement + Strategy-Profile Store Fallback (2026-07-06)
+
+Closed two follow-ups from the scorer slice: split gate enforcement and the DB-only strategy profile.
+
+**One source of truth for pilot gates.** Previously `PATCH /api/strategy-profile` re-checked sponsor and reviewer while the scorer separately computed evidence readiness — a state where the UI said "blocked" but the API could accept a direct write. Now the scorer owns gate evaluation and persists a single server-owned snapshot (`pilot_ready`, `pilot_gates`, migration 0034) on the strategy profile after each run. The route enforces that one field: committing a `selectedWorkflow` while `pilotReady !== true` is rejected with `pilot_gates_unmet` plus the blocked gates in the response body. `pilotReady`/`pilotGates` are deliberately absent from the client input schema, so they cannot be forged through PATCH.
+
+**Strategy-profile store fallback.** `getStrategyProfile`, `upsertStrategyProfile`, and the new `setPilotReadiness` now fall back to the in-memory store when no database is configured, matching the pattern used by twins and decisions. No-database demos now exercise the full lane-aware scorer and pilot confirmation instead of always reading the profile as null. The fallback is ephemeral and is not production storage.
+
+**Tests.** New `tests/strategy-profile-store.test.ts` (no-DB round-trip, pilot-readiness persistence, minimal-profile creation); `strategy-profile-authz.test.ts` updated to the `pilotReady` enforcement model with `blockedGates`. Full suite 58 files / 423 tests, tsc clean. Requires migrations 0033 and 0034 on database deployments.
+
+---
+
 ## Unreleased — Workflow Scorer: Lane Fit + Pilot Gates (2026-07-06)
 
 Turned the workflow scorer from a ranking display into the governed pilot bridge the strategy calls for, closing the funnel from "workspace provisioned" to "first workflow selected".
