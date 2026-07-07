@@ -49,6 +49,7 @@ const isPublicRoute = createRouteMatcher([
   "/api/cron/synthesis",                // protected by NEXUS_CRON_SECRET inside route
   "/api/cron/billing",                  // protected by NEXUS_CRON_SECRET inside route
   "/api/cron/dispatch",                 // protected by NEXUS_CRON_SECRET inside route
+  "/api/cron/readiness-prune",          // protected by NEXUS_CRON_SECRET inside route
   "/api/billing/webhook",               // protected by Stripe-Signature HMAC inside route
   "/api/webhooks/clerk",                // protected by Svix signature inside route
   "/api/connectors/github/callback(.*)",       // OAuth redirects validate signed state inside route
