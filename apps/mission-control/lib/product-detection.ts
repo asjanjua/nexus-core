@@ -5,13 +5,17 @@
  * can switch branding, metadata, and behavior per product without separate
  * deployments. Clerk auth is shared — workspace isolation handles tenancy.
  *
- *  nexus.pinavia.io     → nexusai  (flagship)
- *  quorum.pinavia.io    → quorum   (board intelligence)
- *  meridian.pinavia.io  → meridian (regulatory submissions)
- *  vantage.pinavia.io   → vantage  (due diligence copilot)
- *  nucleus.pinavia.io   → nucleus  (white-label platform)
- *  app.pinavia.io       → nexusai  (app root, for demos)
+ *  nexus.<product-domain>     → nexusai  (flagship)
+ *  quorum.<product-domain>    → quorum   (board intelligence)
+ *  meridian.<product-domain>  → meridian (regulatory submissions)
+ *  vantage.<product-domain>   → vantage  (due diligence copilot)
+ *  nucleus.<product-domain>   → nucleus  (white-label platform)
+ *  app.<product-domain>       → nexusai  (app root, for demos)
  *  localhost            → nexusai  (dev default)
+ *
+ * Product domains are intentionally configurable because the pilot host may
+ * move. Set NEXUS_PRODUCT_DOMAINS to a comma-separated list such as
+ * "pinavia.co,pinavia.com". Defaults keep the current and prior Pinavia hosts.
  */
 
 export type ProductKey = "nexusai" | "quorum" | "meridian" | "vantage" | "nucleus";
@@ -72,6 +76,19 @@ const SUBDOMAIN_PRODUCT: Record<string, ProductKey> = {
   nucleus: "nucleus",
 };
 
+const DEFAULT_PRODUCT_DOMAINS = ["pinavia.co", "pinavia.io"];
+
+export function productDomains(): string[] {
+  const configured = process.env.NEXUS_PRODUCT_DOMAINS?.split(",") ?? DEFAULT_PRODUCT_DOMAINS;
+  return [
+    ...new Set(
+      configured
+        .map((domain) => domain.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, ""))
+        .filter(Boolean)
+    ),
+  ];
+}
+
 /**
  * Detect product from the request hostname.
  * Falls back to "nexusai" for localhost or unrecognized hosts.
@@ -84,10 +101,12 @@ export function productFromHost(host: string): ProductKey {
     return "nexusai";
   }
 
-  // pinavia.io subdomains
-  if (hostname.endsWith(".pinavia.io")) {
-    const subdomain = hostname.replace(".pinavia.io", "").split(".").pop() ?? "";
-    return SUBDOMAIN_PRODUCT[subdomain] ?? "nexusai";
+  // Configured product-domain subdomains.
+  for (const domain of productDomains()) {
+    if (hostname.endsWith(`.${domain}`)) {
+      const subdomain = hostname.slice(0, -1 * (`.${domain}`.length)).split(".").pop() ?? "";
+      return SUBDOMAIN_PRODUCT[subdomain] ?? "nexusai";
+    }
   }
 
   // Render preview URLs — treat as nexusai by default
@@ -103,10 +122,13 @@ export function productFromHost(host: string): ProductKey {
  * All product origins for CORS and Clerk configuration.
  */
 export function productOrigins(): string[] {
-  const origins = ["app.pinavia.io", "nexus.pinavia.io"];
-  for (const key of Object.keys(SUBDOMAIN_PRODUCT)) {
-    if (key !== "app" && key !== "nexus" && key !== "nexusai") {
-      origins.push(`${key}.pinavia.io`);
+  const origins: string[] = [];
+  for (const domain of productDomains()) {
+    origins.push(`app.${domain}`, `nexus.${domain}`);
+    for (const key of Object.keys(SUBDOMAIN_PRODUCT)) {
+      if (key !== "app" && key !== "nexus" && key !== "nexusai") {
+        origins.push(`${key}.${domain}`);
+      }
     }
   }
   // Deduplicate

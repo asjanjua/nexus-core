@@ -49,6 +49,13 @@ describe("Security headers", () => {
     expect(CSP_DIRECTIVES).toContain("default-src 'self'");
   });
 
+  it("CSP allows Clerk's Cloudflare challenge resources for social auth", () => {
+    expect(CSP_DIRECTIVES).toContain("script-src");
+    expect(CSP_DIRECTIVES).toContain("https://challenges.cloudflare.com");
+    expect(CSP_DIRECTIVES).toContain("frame-src https://challenges.cloudflare.com");
+    expect(CSP_DIRECTIVES).toContain("worker-src 'self' blob:");
+  });
+
   describe("in production", () => {
     beforeAll(() => {
       vi.stubEnv("NODE_ENV", "production");

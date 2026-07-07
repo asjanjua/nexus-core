@@ -133,12 +133,14 @@ export const CSP_DIRECTIVES = [
   // Next.js App Router and Clerk both need client-side bootstrap scripts.
   // Keep 'unsafe-inline' until we implement nonce-based CSP for the app shell.
   process.env.NODE_ENV === "production"
-    ? `script-src 'self' 'unsafe-inline' https://${CLERK_DOMAIN} https://*.clerk.accounts.dev`
-    : `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://${CLERK_DOMAIN} https://*.clerk.accounts.dev`,
+    ? `script-src 'self' 'unsafe-inline' https://${CLERK_DOMAIN} https://*.clerk.accounts.dev https://challenges.cloudflare.com`
+    : `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://${CLERK_DOMAIN} https://*.clerk.accounts.dev https://challenges.cloudflare.com`,
   "style-src 'self' 'unsafe-inline'",   // Tailwind generates inline styles
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
   `connect-src 'self' https://api.anthropic.com https://api.deepseek.com https://*.clerk.accounts.dev https://${CLERK_DOMAIN} https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io wss:`,
+  "frame-src https://challenges.cloudflare.com",
+  "worker-src 'self' blob:",
   "frame-ancestors 'none'",
   "object-src 'none'",
   "base-uri 'self'",

@@ -1,5 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
+  productDomains,
   productFromHost,
   productOrigins,
   productRoutePrefix,
@@ -8,6 +9,16 @@ import {
   type ProductKey,
 } from "@/lib/product-detection";
 
+const ORIGINAL_PRODUCT_DOMAINS = process.env.NEXUS_PRODUCT_DOMAINS;
+
+afterEach(() => {
+  if (ORIGINAL_PRODUCT_DOMAINS === undefined) {
+    delete process.env.NEXUS_PRODUCT_DOMAINS;
+  } else {
+    process.env.NEXUS_PRODUCT_DOMAINS = ORIGINAL_PRODUCT_DOMAINS;
+  }
+});
+
 describe("productFromHost", () => {
   it("returns nexusai for localhost", () => {
     expect(productFromHost("localhost:3000")).toBe("nexusai");
@@ -15,7 +26,8 @@ describe("productFromHost", () => {
     expect(productFromHost("192.168.1.1:3000")).toBe("nexusai");
   });
 
-  it("maps pinavia.io subdomains to products", () => {
+  it("maps default Pinavia subdomains to products without hardcoding the current app host", () => {
+    expect(productFromHost("app.pinavia.co")).toBe("nexusai");
     expect(productFromHost("nexus.pinavia.io")).toBe("nexusai");
     expect(productFromHost("nexusai.pinavia.io")).toBe("nexusai");
     expect(productFromHost("app.pinavia.io")).toBe("nexusai");
@@ -26,8 +38,18 @@ describe("productFromHost", () => {
   });
 
   it("handles port numbers", () => {
+    expect(productFromHost("app.pinavia.co:443")).toBe("nexusai");
     expect(productFromHost("quorum.pinavia.io:443")).toBe("quorum");
     expect(productFromHost("localhost:3000")).toBe("nexusai");
+  });
+
+  it("allows later product-domain changes through NEXUS_PRODUCT_DOMAINS", () => {
+    process.env.NEXUS_PRODUCT_DOMAINS = "example.app,pinavia.test";
+
+    expect(productDomains()).toEqual(["example.app", "pinavia.test"]);
+    expect(productFromHost("app.example.app")).toBe("nexusai");
+    expect(productFromHost("quorum.pinavia.test")).toBe("quorum");
+    expect(productFromHost("quorum.pinavia.co")).toBe("nexusai");
   });
 
   it("falls back to nexusai for unrecognized hosts", () => {
@@ -59,12 +81,26 @@ describe("productSignInRedirect", () => {
 describe("productOrigins", () => {
   it("includes all pivot subdomains", () => {
     const origins = productOrigins();
+    expect(origins).toContain("app.pinavia.co");
     expect(origins).toContain("app.pinavia.io");
     expect(origins).toContain("nexus.pinavia.io");
     expect(origins).toContain("quorum.pinavia.io");
     expect(origins).toContain("meridian.pinavia.io");
     expect(origins).toContain("vantage.pinavia.io");
     expect(origins).toContain("nucleus.pinavia.io");
+  });
+
+  it("derives origins from configured product domains", () => {
+    process.env.NEXUS_PRODUCT_DOMAINS = "example.app";
+
+    expect(productOrigins()).toEqual([
+      "app.example.app",
+      "nexus.example.app",
+      "quorum.example.app",
+      "meridian.example.app",
+      "vantage.example.app",
+      "nucleus.example.app",
+    ]);
   });
 });
 

@@ -39,7 +39,8 @@ Open the `nexus-mission-control` service. These must be set for this release. It
 
 ```text
 DATABASE_URL=                     # Neon pooled connection string
-NEXT_PUBLIC_APP_URL=              # NEW-critical: e.g. https://nexus.pinavia.io — used to build the readiness claim link
+NEXT_PUBLIC_APP_URL=              # NEW-critical: canonical deployed app URL, e.g. https://app.pinavia.co — used to build readiness claim links
+NEXUS_PRODUCT_DOMAINS=            # Optional comma-separated product-domain bases. Defaults include pinavia.co and pinavia.io.
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 CLERK_SECRET_KEY=
 CLERK_WEBHOOK_SECRET=
@@ -53,6 +54,7 @@ NEXUS_FROM_EMAIL=                 # NEW-optional: defaults to "NexusAI <briefs@p
 
 Two deliberate behaviours to know:
 
+- Do not hardcode `app.pinavia.co` in product logic or future runbooks. It is the current pilot host only and may change after this month. Runtime code should use `NEXT_PUBLIC_APP_URL` for canonical links and `NEXUS_PRODUCT_DOMAINS` for allowed product-domain host detection/CORS.
 - With `NEXUS_DB_REQUIRED=true`, the strategy-profile store fallback is bypassed and the app uses Postgres only. The fallback is for no-database demos, never production.
 - If `NEXUS_RESEND_API_KEY` is unset, readiness still works; the claim travels by URL and sessionStorage, and the email step is skipped and logged. Set it only when the `pinavia.io` sender domain is verified in Resend.
 
