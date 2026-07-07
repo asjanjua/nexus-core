@@ -1,3 +1,78 @@
+# Implementation Notes — 2026-07-07 Demo Week Package (B + A + C)
+
+Unknowns-first session #2. Direction chosen: scorer signal-confidence (A),
+canon doc decisions (C), regulated demo runbook (B prep). Delete after review.
+
+## Scope
+- `lib/services/workflow-twins.ts`: exported `computeSignalStrength` (pure);
+  scorer runs now include `payload.signal`, append "Provisional" to weak/none
+  summaries, and persist an informational `signal_strength` entry inside the
+  pilotGates JSON (blocked: false).
+- `app/workflows/page.tsx`: provisional-signal line under the recommendation.
+- `components/dashboard-panel.tsx`: PilotStatusCard shows the persisted signal.
+- Docs: `docs/WORKFLOW_TWIN_SCORER.md` §Signal confidence,
+  `docs/USER_STRATEGY_AND_PIVOTS.md` §Decisions 2026-07-07 (reviewer seat,
+  waitlist->pilots->Stripe, cold-start posture, pilot-afterlife gap),
+  `BACKLOG.md` P1/P2 entries, new `docs/DEMO_RUNBOOK_REGULATED.md`.
+
+## Assumptions
+1. Signal thresholds (none/weak/moderate/strong) per Ali-approved plan; label
+   never blocks confirmation ("Approve as written", not the blocking variant).
+2. Persisting signal inside the pilotGates JSON avoids a migration; the run
+   payload's `pilotGates` stays pure gates so gating consumers are unaffected.
+   Repo evidence: `setPilotReadiness` stores gates as JSON; `pilotReady` is
+   computed before the informational entry is appended.
+3. Demo dates: regulated demo ~1 week, launch ~4 weeks, pilot signing ~6 weeks
+   (interview 2026-07-07).
+
+## Conservative choices / deviations
+- Did not extend `pilotGateSchema`; the informational entry conforms to the
+  existing {key,label,blocked} shape.
+- Dashboard card renders the signal as one small line, not a new cell.
+
+## Verification
+- `tests/workflow-twins.test.ts`: +1 test (thresholds, provisional summary,
+  payload purity, persisted informational entry never gates). 9/9 pass.
+- Full suite: 434/434 tests pass across 61 files.
+- Environment noise (pre-existing, NOT from this change):
+  `tests/google-oauth-config.test.ts` fails to LOAD with filesystem error -35
+  in this sandbox (tsc also reports the file unreadable). Zero test-level
+  failures. Re-verify locally where the mount artifact does not apply.
+
+## Open questions (human decision)
+- Reviewer-seat build start date (must start within ~2 weeks to land by wk 6).
+- Whether the demo includes the live claim email (needs Resend + pinavia.io
+  sender auth in Render first).
+
+## Release-gate follow-up — 2026-07-07 regulated demo hardening
+
+- Live verification against the active pilot host (`https://app.pinavia.co`)
+  showed `/api/health` green and the served `sentry-release` matching local
+  `HEAD` / `origin/main` at
+  `53b4d0ac76c2a729f451896b03602270f223260c`.
+- Authenticated browser checks proved the readiness -> claim ->
+  onboarding-inheritance path live, and confirmed authenticated rendering of
+  `/knowledge`, `/settings/connectors`, and `/dashboard/ceo`. The populated
+  workspace showed `Decision & Action Twin` selected with `pilot-ready` and all
+  bridgeable gates ready.
+- Behavioral evidence strongly suggests migrations `0033` and `0034` are live:
+  claim URLs exist, onboarding inherits the regulated lane, and
+  `strategy_profiles` fields backing pilot status render in Mission Control.
+- Remaining blocker on the deployed build: `scripts/smoke-domain.mjs` still
+  fails `CORS allows expected origin` for the active host because `OPTIONS`
+  requests to protected API routes are being intercepted by Clerk auth before
+  the middleware can emit the preflight response.
+- Fix implemented in this slice: `middleware.ts` returns API `OPTIONS`
+  preflight responses through `withSecurityHeaders(...)` before Clerk auth.
+  Regression coverage added in `tests/security-headers.test.ts`.
+- Verified after the fix: focused regression suite `36` tests passed; full
+  suite `438` tests passed; `npm run build` exited `0`.
+- DNS note: `app.pinavia.io` and `nexus.pinavia.io` did not resolve in this
+  shell during the gate run. Treat as provider/DNS propagation pending, not an
+  app-code issue.
+
+---
+
 # Implementation Notes — Readiness-to-Onboarding Inheritance Pipeline
 
 Temporary working log for the 2026-07-06 change set. Delete after review/merge.

@@ -13,11 +13,13 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { withSecurityHeaders, CSP_DIRECTIVES, parseAllowedOrigins } from "@/middleware";
 
-function fakeRequest(path = "/dashboard/ceo"): NextRequest {
+function fakeRequest(path = "/dashboard/ceo", init?: { method?: string; origin?: string }): NextRequest {
+  const headers = new Headers();
+  if (init?.origin) headers.set("origin", init.origin);
   return {
-    method: "GET",
+    method: init?.method ?? "GET",
     nextUrl: { pathname: path },
-    headers: new Headers(),
+    headers,
   } as unknown as NextRequest;
 }
 
@@ -76,6 +78,16 @@ describe("Security headers", () => {
       const res = withSecurityHeaders(NextResponse.next(), fakeRequest("/api/ask"));
       // Unknown origin in production must not be echoed or wildcarded.
       expect(res.headers.get("access-control-allow-origin")).toBeNull();
+    });
+
+    it("returns a 204 preflight and echoes allowed product origins", () => {
+      const res = withSecurityHeaders(
+        NextResponse.next(),
+        fakeRequest("/api/ask", { method: "OPTIONS", origin: "https://app.pinavia.co" })
+      );
+      expect(res.status).toBe(204);
+      expect(res.headers.get("access-control-allow-origin")).toBe("https://app.pinavia.co");
+      expect(res.headers.get("access-control-allow-methods")).toContain("POST");
     });
   });
 });

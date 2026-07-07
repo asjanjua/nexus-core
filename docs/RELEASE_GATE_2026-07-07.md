@@ -112,3 +112,59 @@ Record pass/fail per step. Any failure at step 3 or 4 usually means the migratio
 ## 8. Sign-off
 
 Release is complete when: tests and build passed locally, `0033` and `0034` are applied and `db:check` is ok, the served SHA matches the release commit, `/api/health` is ok, and all six smoke steps pass. Record the deploy SHA and date in `HANDOVER.md`.
+
+## 9. Verification Snapshot — 2026-07-07
+
+This is the dated evidence from the 2026-07-07 regulated-demo release-gate run.
+
+- **Local verification**
+  - `npm exec -w @nexus/mission-control vitest run` -> `62` files / `438` tests passed.
+  - Focused regression after the middleware fix:
+    `tests/security-headers.test.ts`,
+    `tests/product-detection.test.ts`,
+    `tests/workflow-twins.test.ts`,
+    `tests/strategy-profile-authz.test.ts` -> `36` tests passed.
+  - `npm run build -w @nexus/mission-control` exited `0`.
+- **Served commit**
+  - Local `HEAD` and `origin/main`: `53b4d0ac76c2a729f451896b03602270f223260c`
+  - Live `https://app.pinavia.co/sign-in` page includes
+    `sentry-release=53b4d0ac76c2a729f451896b03602270f223260c`
+  - Conclusion: the active pilot host is serving the expected commit.
+- **Health**
+  - `https://app.pinavia.co/api/health` returned `ok=true` with healthy
+    database, vector search, originals storage, and llm checks at
+    `2026-07-07T15:55:58.471Z`.
+- **Domain/DNS**
+  - `app.pinavia.co` resolves to the Render service and is the active verified
+    pilot host.
+  - `app.pinavia.io` and `nexus.pinavia.io` did not resolve in this shell during
+    the check. Treat that as DNS/provider propagation pending, not an app-code
+    blocker.
+- **Migration readiness**
+  - Direct Neon migration commands were not run in this session.
+  - Production behavior strongly indicates `0033` and `0034` are already
+    applied: readiness produced a claim URL, onboarding inherited the regulated
+    lane, and the authenticated dashboard rendered pilot status fields
+    (`selectedWorkflow`, `pilotReady`, `pilotGates`) from `strategy_profiles`.
+- **Authenticated workflow smoke**
+  - Verified live in an authenticated browser on `app.pinavia.co`:
+    1. `/readiness` with a regulated profile returned governed deployment.
+    2. Continue link carried `?readiness=...` into signup.
+    3. `/onboarding` showed the inherited regulated banner and sector context.
+    4. `/knowledge`, `/settings/connectors`, and `/dashboard/ceo` rendered while
+       signed in.
+    5. Existing populated workspace showed `Decision & Action Twin` selected,
+       `pilot-ready`, and sponsor/reviewer/evidence gates all `ready`.
+  - Remaining gap: this session did not freshly prove the exact blocked -> ready
+    transition in a brand-new workspace, nor re-run the optional
+    `pilot_gates_unmet` API check on a blocked workspace.
+- **Current release blocker**
+  - `APP_URL=https://app.pinavia.co EXPECT_CORS_ORIGIN=https://app.pinavia.co node scripts/smoke-domain.mjs`
+    still fails one check on production:
+    `FAIL CORS allows expected origin — origin=none`
+  - Root cause reproduced live: `OPTIONS` requests to protected API routes are
+    being intercepted by Clerk before middleware can return the CORS preflight
+    response.
+  - Local fix is implemented in `middleware.ts` and covered by
+    `tests/security-headers.test.ts`. It still needs commit, deploy, and
+    production re-smoke before this gate is fully closed.

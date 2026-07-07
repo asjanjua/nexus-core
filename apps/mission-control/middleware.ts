@@ -246,6 +246,13 @@ export default clerkMiddleware(async (auth, request) => {
   const rateLimitResponse = checkRateLimit(request);
   if (rateLimitResponse) return rateLimitResponse;
 
+  // Let CORS preflight requests exit before Clerk auth. The header policy below
+  // decides whether the origin is allowed; auth should not rewrite OPTIONS into
+  // a signed-out 404 for protected API routes.
+  if (request.method === "OPTIONS" && request.nextUrl.pathname.startsWith("/api/")) {
+    return withSecurityHeaders(nextWithPath(request), request);
+  }
+
   // Let public routes through unconditionally
   if (isPublicRoute(request)) return withSecurityHeaders(nextWithPath(request), request);
 
