@@ -23,20 +23,24 @@ const GOOGLE_DRIVE_API = "https://www.googleapis.com/drive/v3";
 const DRIVE_SCOPE = "https://www.googleapis.com/auth/drive.readonly";
 
 function getClientId(): string {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientId = process.env.GOOGLE_CLIENT_ID?.trim();
   if (!clientId) throw new Error("GOOGLE_CLIENT_ID is not configured");
   return clientId;
 }
 
 function getClientSecret(): string {
-  const secret = process.env.GOOGLE_CLIENT_SECRET;
+  const secret = process.env.GOOGLE_CLIENT_SECRET?.trim();
   if (!secret) throw new Error("GOOGLE_CLIENT_SECRET is not configured");
   return secret;
 }
 
 function getRedirectUri(): string {
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const appUrl = (process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000").trim().replace(/\/$/, "");
   return `${appUrl}/api/connectors/google-drive/callback`;
+}
+
+export function googleDriveOAuthConfigured(): boolean {
+  return Boolean(process.env.GOOGLE_CLIENT_ID?.trim() && process.env.GOOGLE_CLIENT_SECRET?.trim());
 }
 
 // ---------------------------------------------------------------------------

@@ -45,6 +45,10 @@ function getRedirectUri(): string {
   return `${appUrl}/api/connectors/gmail/callback`;
 }
 
+export function gmailOAuthConfigured(): boolean {
+  return Boolean(process.env.GOOGLE_CLIENT_ID?.trim() && process.env.GOOGLE_CLIENT_SECRET?.trim());
+}
+
 // ---------------------------------------------------------------------------
 // OAuth — authorization code flow
 // ---------------------------------------------------------------------------

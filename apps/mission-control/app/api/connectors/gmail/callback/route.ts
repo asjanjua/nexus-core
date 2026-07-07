@@ -21,7 +21,7 @@ import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { repository } from "@/lib/data/repository";
 import { requireAuthSecret, timingSafeEqualString } from "@/lib/security";
-import { exchangeCode } from "@/lib/connectors/gmail";
+import { exchangeCode, gmailOAuthConfigured } from "@/lib/connectors/gmail";
 
 type StatePayload = { workspaceId: string; ts: number };
 
@@ -78,7 +78,7 @@ export async function GET(request: Request) {
     return redirectWithError(appUrl, "invalid_state");
   }
 
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+  if (!gmailOAuthConfigured()) {
     return redirectWithError(appUrl, "google_not_configured");
   }
 

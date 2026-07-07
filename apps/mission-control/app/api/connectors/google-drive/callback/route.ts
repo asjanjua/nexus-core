@@ -20,7 +20,7 @@ import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { repository } from "@/lib/data/repository";
 import { requireAuthSecret, timingSafeEqualString } from "@/lib/security";
-import { exchangeCode } from "@/lib/connectors/google-drive";
+import { exchangeCode, googleDriveOAuthConfigured } from "@/lib/connectors/google-drive";
 
 // ---------------------------------------------------------------------------
 // State verification
@@ -89,7 +89,7 @@ export async function GET(request: Request) {
   }
 
   // Check Google credentials are configured
-  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+  if (!googleDriveOAuthConfigured()) {
     return redirectWithError(appUrl, "google_not_configured");
   }
 

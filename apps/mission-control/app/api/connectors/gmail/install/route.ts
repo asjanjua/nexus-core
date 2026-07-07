@@ -20,7 +20,7 @@ import crypto from "crypto";
 import { fail } from "@/lib/api";
 import { requireScope } from "@/lib/api-auth";
 import { requireAuthSecret } from "@/lib/security";
-import { getAuthUrl } from "@/lib/connectors/gmail";
+import { getAuthUrl, gmailOAuthConfigured } from "@/lib/connectors/gmail";
 import { NextResponse } from "next/server";
 
 function signState(workspaceId: string): string {
@@ -37,7 +37,7 @@ export async function GET(request: Request) {
   const { ctx, error } = await requireScope(request, "admin");
   if (error) return error;
 
-  if (!process.env.GOOGLE_CLIENT_ID) {
+  if (!gmailOAuthConfigured()) {
     return fail("google_client_id_not_configured", 503);
   }
 
