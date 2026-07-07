@@ -167,6 +167,47 @@ export interface SynthesisEmailContext {
   unsubscribeToken: string;
 }
 
+export interface ReadinessClaimEmailContext {
+  email: string;
+  claimUrl: string;
+  lane: string;
+  laneConfidence: string;
+  band: string;
+  expiresAt: string;
+}
+
+export function buildReadinessClaimEmailHtml(ctx: ReadinessClaimEmailContext): string {
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#0f172a;">
+    <tr>
+      <td style="padding:32px 24px;">
+        <h1 style="color:#e2e8f0;font-size:20px;margin:0 0 8px 0;">Your NexusAI readiness result is ready</h1>
+        <p style="color:#94a3b8;font-size:14px;line-height:1.6;margin:0 0 20px 0;">
+          Your readiness band is <strong style="color:#e2e8f0;">${escapeHtml(ctx.band)}</strong>. NexusAI routed this to
+          <strong style="color:#e2e8f0;">${escapeHtml(ctx.lane.replace(/_/g, " "))}</strong>
+          with ${escapeHtml(ctx.laneConfidence)} confidence.
+        </p>
+        <p style="color:#94a3b8;font-size:14px;line-height:1.6;margin:0 0 24px 0;">
+          Continue with this link so signup can inherit your readiness context, lane, and first-pilot guidance.
+        </p>
+        <a href="${escapeHtml(ctx.claimUrl)}" style="display:inline-block;padding:11px 24px;background:#3b82f6;color:#fff;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;">
+          Continue to NexusAI
+        </a>
+        <p style="color:#64748b;font-size:12px;line-height:1.6;margin:24px 0 0 0;">
+          This claim link expires ${escapeHtml(new Date(ctx.expiresAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }))}.
+          The result is directional readiness guidance only, not a regulatory, financial, legal, or operational opinion.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`.trim();
+}
+
 /**
  * Build an HTML email for a synthesis brief.
  */

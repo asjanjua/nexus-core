@@ -6,7 +6,9 @@
 
 ## Session Info
 
-- **Last updated:** 2026-07-07 (v0.25.x — session #53. Shipped readiness-to-onboarding lane inheritance, strategy-profile authz fix, API auth-bypass sweep, and workflow scorer pilot bridge.)
+- **Last updated:** 2026-07-07 (v0.25.x — session #53+. Shipped readiness-to-onboarding lane inheritance, strategy-profile authz fix, read+write API auth sweeps, workflow scorer pilot bridge, unified pilot-gate enforcement, strategy-profile store fallback, and pre-pilot readiness lifecycle hardening.)
+- **Pre-pilot readiness hardening (2026-07-07):** Mission Control role dashboards now show a pilot-status card from `strategy_profiles` (lane, readiness band, selected workflow, sponsor, reviewer, scorer gates), including the no-evidence state. `/api/readiness/submit` sends the claim link through Resend when configured and audits sent/skipped/failed outcomes. New protected `POST /api/cron/readiness-prune` deletes expired/consumed readiness claim rows and audits the run. Tests: `tests/readiness-submit-email.test.ts`, `tests/readiness-prune-cron.test.ts`.
+- **Write-side auth sweep (2026-07-07):** all mutating by-id routes confirmed to enforce workspace ownership (route-level checks or repository `WHERE id AND workspaceId`). One integrity gap fixed: `POST /api/actions` now validates the body `decisionId` is in-workspace (`decision_not_found`). Not a tenant breach. `docs/SECURITY_REVIEW.md` §1.2; regression `tests/actions-decision-fk.test.ts`. Full suite 59 files / 425 tests, tsc clean.
 - **Last model:** Claude (Fable 5)
 - **Session number:** #53
 - **Session #53 delivered (2026-07-06) — Readiness-to-onboarding lane inheritance (unknowns-first session):**

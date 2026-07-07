@@ -78,7 +78,7 @@ The audit events `readiness.assessment_submitted` (with assignedLane) and `readi
 
 ## 7. Open Items
 
-- Pruning job for expired or consumed `readiness_submissions` rows.
-- Product email carrying the claim link (Resend path per the email boundary).
-- Mission Control surface showing lane, band, sponsor, reviewer post-onboarding.
-- In-product workflow scorer as the pilot bridge (see `docs/WORKFLOW_TWIN_SCORER.md`).
+- Implemented 2026-07-07: pruning job for expired or consumed `readiness_submissions` rows via `POST /api/cron/readiness-prune` protected by `NEXUS_CRON_SECRET`.
+- Implemented 2026-07-07: product email carrying the claim link through the existing Resend boundary. If Resend is not configured, submission still succeeds and an audit event records the skip.
+- Implemented 2026-07-07: Mission Control surface showing lane, readiness band, sponsor, reviewer, selected workflow, and scorer gates post-onboarding.
+- Implemented: in-product workflow scorer as the pilot bridge (see `docs/WORKFLOW_TWIN_SCORER.md`).

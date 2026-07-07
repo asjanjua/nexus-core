@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, isNull, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { verifyPassword } from "@/lib/auth";
@@ -3869,6 +3869,21 @@ export const repository = {
       expiresAt: r.expiresAt instanceof Date ? r.expiresAt.toISOString() : String(r.expiresAt),
       createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
     };
+  },
+
+  async pruneReadinessSubmissions(now = new Date()): Promise<{ deleted: number }> {
+    const rows = await runDb((db) =>
+      db
+        .delete(readinessSubmissions)
+        .where(
+          or(
+            isNotNull(readinessSubmissions.consumedAt),
+            lt(readinessSubmissions.expiresAt, now)
+          )
+        )
+        .returning({ id: readinessSubmissions.id })
+    );
+    return { deleted: rows?.length ?? 0 };
   },
 
   async storeKnowledgeEmbedding(noteId: string, embedding: number[]): Promise<void> {

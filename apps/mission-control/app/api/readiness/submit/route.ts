@@ -16,6 +16,7 @@
 import { createHash, randomBytes } from "crypto";
 import { ok, fail } from "@/lib/api";
 import { repository } from "@/lib/data/repository";
+import { buildReadinessClaimEmailHtml, resendConfigured, sendEmail } from "@/lib/email/resend";
 import { assignLane } from "@/lib/services/lane-assignment";
 import { z } from "zod";
 
@@ -107,6 +108,59 @@ export async function POST(request: Request) {
       forwardedFor,
     },
   });
+
+  if (claimIssued && parsed.data.email) {
+    if (!resendConfigured()) {
+      await repository.pushAudit({
+        workspaceId: "public-readiness",
+        type: "readiness.claim_email_skipped",
+        actor: parsed.data.email,
+        payload: {
+          reason: "resend_not_configured",
+          submissionId,
+          email: parsed.data.email,
+        },
+      });
+    } else {
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, "") ?? "";
+      const claimUrl = `${appUrl || request.url.replace(/\/api\/readiness\/submit.*$/, "")}/sign-up?readiness=${encodeURIComponent(claimCode)}`;
+      try {
+        await sendEmail({
+          to: parsed.data.email,
+          subject: `Your NexusAI readiness result: ${parsed.data.band}`,
+          html: buildReadinessClaimEmailHtml({
+            email: parsed.data.email,
+            claimUrl,
+            lane: lane.lane,
+            laneConfidence: lane.confidence,
+            band: parsed.data.band,
+            expiresAt: expiresAt.toISOString(),
+          }),
+        });
+        await repository.pushAudit({
+          workspaceId: "public-readiness",
+          type: "readiness.claim_email_sent",
+          actor: parsed.data.email,
+          payload: {
+            submissionId,
+            email: parsed.data.email,
+            expiresAt: expiresAt.toISOString(),
+          },
+        });
+      } catch (error) {
+        await repository.pushAudit({
+          workspaceId: "public-readiness",
+          type: "readiness.claim_email_failed",
+          actor: parsed.data.email,
+          payload: {
+            submissionId,
+            email: parsed.data.email,
+            error: error instanceof Error ? error.message : String(error),
+          },
+        });
+      }
+    }
+  }
 
   return ok({
     submitted: true,

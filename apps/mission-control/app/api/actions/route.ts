@@ -27,6 +27,15 @@ export async function POST(request: Request) {
   const parsed = actionInputSchema.safeParse(body);
   if (!parsed.success) return fail(parsed.error.message, 400);
 
+  // Referential-integrity gate: the parent decision must belong to the caller's
+  // workspace. Without this, an action could be attached to a foreign or
+  // nonexistent decisionId. Actions are always created in ctx.workspaceId, so
+  // this is integrity hardening, not a tenant-isolation fix.
+  const decisions = await repository.listDecisions(ctx.workspaceId);
+  if (!decisions.some((decision) => decision.id === parsed.data.decisionId)) {
+    return fail("decision_not_found", 404);
+  }
+
   const action = await repository.createAction(ctx.workspaceId, parsed.data, ctx.userId);
   return ok({ action }, 201);
 }

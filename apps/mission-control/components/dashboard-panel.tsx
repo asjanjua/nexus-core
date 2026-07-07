@@ -1,6 +1,6 @@
 import { cardsForRole } from "@/lib/services/dashboard";
 import { synthesiseForRole } from "@/lib/services/synthesis";
-import type { EvidenceRecord, Role } from "@/lib/contracts";
+import type { EvidenceRecord, Role, StrategyProfile } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
 import { DashboardCharts } from "@/components/dashboard-charts";
 import { EvidenceSourceList } from "@/components/evidence-source-list";
@@ -34,9 +34,10 @@ export async function DashboardPanel({
   department?: string;
   agentId?: string;
 }) {
-  const [evidence, connectorsInstalled] = await Promise.all([
+  const [evidence, connectorsInstalled, strategyProfile] = await Promise.all([
     repository.getEvidenceForWorkspace(workspaceId),
     repository.listConnectors(workspaceId).catch(() => []),
+    repository.getStrategyProfile(workspaceId).catch(() => null),
   ]);
 
   // First-class empty state: no evidence at all. Do not render zeroed KPIs and
@@ -46,6 +47,7 @@ export async function DashboardPanel({
     return (
       <NoEvidenceState
         connectorCount={connectorsInstalled.length}
+        strategyProfile={strategyProfile}
       />
     );
   }
@@ -301,6 +303,8 @@ export async function DashboardPanel({
         </div>
       </section>
 
+      <PilotStatusCard profile={strategyProfile} />
+
       {/* Room navigation header */}
       <section className="panel space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -489,52 +493,134 @@ export async function DashboardPanel({
 // No-evidence state — a designed first screen, not an error message
 // ---------------------------------------------------------------------------
 
-function NoEvidenceState({ connectorCount }: { connectorCount: number }) {
+function NoEvidenceState({
+  connectorCount,
+  strategyProfile,
+}: {
+  connectorCount: number;
+  strategyProfile: StrategyProfile | null;
+}) {
   const hasConnectors = connectorCount > 0;
   return (
-    <section className="rounded-xl border border-nexus-border bg-nexus-surface p-6 sm:p-8">
-      <p className="text-xs font-semibold uppercase tracking-wide text-nexus-accent/80">
-        NexusAI Mission Control
-      </p>
-      <h2 className="mt-1 text-3xl font-semibold tracking-tight text-nexus-text">
-        No evidence connected yet
-      </h2>
-      <p className="mt-3 max-w-2xl text-base leading-6 text-nexus-muted">
-        {hasConnectors
-          ? `${connectorCount} connector${connectorCount === 1 ? " is" : "s are"} configured, but nothing has been ingested and cleared yet. Nexus refuses to brief without evidence — that refusal is the product working, not failing.`
-          : "Nexus only ever briefs from evidence you connect and approve. Until the first documents are ingested, there is nothing to synthesise — and Nexus will not guess."}
-      </p>
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        <a
-          href="/ingestion"
-          className="inline-flex items-center justify-center rounded-lg bg-nexus-accent px-4 py-2 text-sm font-semibold text-[#04100d] transition hover:brightness-110"
-        >
-          Upload first documents
-        </a>
-        <SecondaryLink href="/settings/connectors" label={hasConnectors ? "Check connector status" : "Configure connectors"} />
+    <div className="space-y-6">
+      <section className="rounded-xl border border-nexus-border bg-nexus-surface p-6 sm:p-8">
+        <p className="text-xs font-semibold uppercase tracking-wide text-nexus-accent/80">
+          NexusAI Mission Control
+        </p>
+        <h2 className="mt-1 text-3xl font-semibold tracking-tight text-nexus-text">
+          No evidence connected yet
+        </h2>
+        <p className="mt-3 max-w-2xl text-base leading-6 text-nexus-muted">
+          {hasConnectors
+            ? `${connectorCount} connector${connectorCount === 1 ? " is" : "s are"} configured, but nothing has been ingested and cleared yet. Nexus refuses to brief without evidence - that refusal is the product working, not failing.`
+            : "Nexus only ever briefs from evidence you connect and approve. Until the first documents are ingested, there is nothing to synthesise - and Nexus will not guess."}
+        </p>
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <a
+            href="/ingestion"
+            className="inline-flex items-center justify-center rounded-lg bg-nexus-accent px-4 py-2 text-sm font-semibold text-[#04100d] transition hover:brightness-110"
+          >
+            Upload first documents
+          </a>
+          <SecondaryLink href="/settings/connectors" label={hasConnectors ? "Check connector status" : "Configure connectors"} />
+        </div>
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          <TrustCard
+            title="1. Connect"
+            body="Upload documents or configure a connector. Every source is fingerprinted and classified before anything reads it."
+            href="/ingestion"
+            cta="Open ingestion"
+          />
+          <TrustCard
+            title="2. Clear"
+            body="Low-confidence or unprovenanced material is quarantined. Only cleared evidence ever reaches an agent."
+            href="/sources"
+            cta="View sources"
+          />
+          <TrustCard
+            title="3. Brief"
+            body="Specialist agents then draft source-backed briefs, with confidence, freshness, and evidence one click away."
+            href="/approvals"
+            cta="See approvals"
+          />
+        </div>
+      </section>
+      <PilotStatusCard profile={strategyProfile} />
+    </div>
+  );
+}
+
+function PilotStatusCard({ profile }: { profile: StrategyProfile | null }) {
+  const laneLabel = labelValue(profile?.buyerLane, "No lane yet");
+  const readinessLabel = profile?.readinessBand ?? "No readiness result";
+  const selectedWorkflow = profile?.selectedWorkflow ?? "No workflow selected";
+  const blockedGates = (profile?.pilotGates ?? []).filter((gate) => gate.blocked);
+  const openGateLabels = blockedGates.length
+    ? blockedGates.map((gate) => gate.label)
+    : profile?.pilotReady
+      ? ["All scorer gates clear"]
+      : ["Run the workflow scorer"];
+  const sponsorReady = Boolean(profile?.sponsorName);
+  const reviewerReady = Boolean(profile?.reviewerName);
+  const evidenceReady = Boolean(profile?.pilotReady) && !blockedGates.some((gate) => gate.key.toLowerCase().includes("evidence"));
+
+  return (
+    <section className="panel space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-wide text-nexus-accent/70">Pilot status</p>
+          <h2 className="mt-1 text-xl font-semibold text-white">
+            {profile?.pilotReady ? "Pilot scope ready for confirmation" : "Pilot scope needs gates cleared"}
+          </h2>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-white/60">
+            Returning users see the readiness lane, sponsor/reviewer ownership, selected workflow, and gate status before pilot paperwork.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <MetaChip label={profile?.pilotReady ? "Pilot ready" : "Gated"} tone={profile?.pilotReady ? "accent" : "warn"} />
+          <MetaChip label={laneLabel} tone="sky" />
+        </div>
       </div>
-      <div className="mt-6 grid gap-3 sm:grid-cols-3">
-        <TrustCard
-          title="1. Connect"
-          body="Upload documents or configure a connector. Every source is fingerprinted and classified before anything reads it."
-          href="/ingestion"
-          cta="Open ingestion"
-        />
-        <TrustCard
-          title="2. Clear"
-          body="Low-confidence or unprovenanced material is quarantined. Only cleared evidence ever reaches an agent."
-          href="/sources"
-          cta="View sources"
-        />
-        <TrustCard
-          title="3. Brief"
-          body="Specialist agents then draft source-backed briefs, with confidence, freshness, and evidence one click away."
-          href="/approvals"
-          cta="See approvals"
-        />
+
+      <div className="grid gap-3 lg:grid-cols-4">
+        <StatusCell label="Buyer lane" value={laneLabel} helper={profile?.laneConfidence ? `Confidence: ${profile.laneConfidence}` : readinessLabel} />
+        <StatusCell label="Selected workflow" value={selectedWorkflow} helper={profile?.selectedWorkflow ? "Scorer-backed pilot target" : "Choose from workflow twins"} />
+        <StatusCell label="Sponsor" value={profile?.sponsorName ?? "Not named"} helper={profile?.sponsorEmail ?? (sponsorReady ? "Named" : "Required before pilot")} />
+        <StatusCell label="Reviewer" value={profile?.reviewerName ?? "Not named"} helper={profile?.reviewerEmail ?? (reviewerReady ? "Named" : "Required before pilot")} />
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-3">
+        <RouteRow label="Sponsor gate" context={sponsorReady ? profile?.sponsorName ?? "Named" : "Name an accountable sponsor"} status={sponsorReady ? "ready" : "blocked"} />
+        <RouteRow label="Reviewer gate" context={reviewerReady ? profile?.reviewerName ?? "Named" : "Assign a human reviewer"} status={reviewerReady ? "ready" : "blocked"} />
+        <RouteRow label="Evidence gate" context={evidenceReady ? "Scorer marked evidence ready" : openGateLabels.join(", ")} status={evidenceReady ? "ready" : "next"} />
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <SecondaryLink href="/workflows" label={profile?.selectedWorkflow ? "Review workflow" : "Select workflow"} />
+        <SecondaryLink href="/start-pilot" label="Complete setup" />
+        <SecondaryLink href="/pilot/paperwork" label="Open paperwork" />
       </div>
     </section>
   );
+}
+
+function StatusCell({ label, value, helper }: { label: string; value: string; helper: string }) {
+  return (
+    <div className="rounded-lg border border-white/10 bg-white/[0.03] p-4">
+      <p className="text-xs uppercase tracking-wide text-white/45">{label}</p>
+      <p className="mt-1 truncate text-sm font-semibold text-white" title={value}>{value}</p>
+      <p className="mt-1 truncate text-xs text-white/50" title={helper}>{helper}</p>
+    </div>
+  );
+}
+
+function labelValue(value: string | null | undefined, fallback: string): string {
+  if (!value) return fallback;
+  return value
+    .split(/[_-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
 }
 
 // ---------------------------------------------------------------------------

@@ -2,9 +2,31 @@
 
 ---
 
+## Unreleased — Pre-Pilot Readiness Lifecycle + Mission Control Status (2026-07-07)
+
+Closed three paid-pilot follow-ups from the readiness/scorer work.
+
+**Mission Control pilot-status card.** Role dashboards now load the strategy profile and show a Pilot status card with buyer lane, readiness band, selected workflow, sponsor, reviewer, and scorer gate status. The card appears even in the no-evidence state so a returning readiness/onboarding user can see what is still blocking pilot confirmation before sources are ingested.
+
+**Claim-link product email.** `POST /api/readiness/submit` now sends the single-use claim link through the existing Resend email boundary when an email is supplied and Resend is configured. Submission still succeeds if Resend is absent or blocked; audit events record `readiness.claim_email_sent`, `readiness.claim_email_skipped`, or `readiness.claim_email_failed`.
+
+**Readiness pruning.** Added `repository.pruneReadinessSubmissions()` and protected `POST /api/cron/readiness-prune`, which deletes expired or already-consumed readiness claim rows and audits `readiness.prune_ran`. `docs/RENDER_DEPLOY.md` now lists the daily cron entry.
+
+**Tests.** Added `tests/readiness-submit-email.test.ts` and `tests/readiness-prune-cron.test.ts`; focused verification covers claim email send/skip and cron auth/prune behavior.
+
+---
+
 ## Unreleased — Clerk Production Domain Cutover Hygiene (2026-07-06)
 
 Removed legacy `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL` and `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL` from the Render blueprint and env template, and removed global `signInFallbackRedirectUrl` / `signUpFallbackRedirectUrl` props from `ClerkProvider`. Sign-in and sign-up redirects now live on the Clerk auth components themselves, which preserves the post-auth landing behavior without serializing deprecated redirect fields on the live `pinavia.co` sign-in/sign-up pages.
+
+---
+
+## Unreleased — Write-Side Ownership Sweep (2026-07-07)
+
+Second API security sweep, this time on mutating handlers (PATCH/POST/DELETE), following the read-side sweep. Verified every by-id mutation confirms the resource belongs to the caller's workspace before writing — either in the route (evidence, agent-keys, knowledge-note PATCH) or via a repository `WHERE id AND workspaceId` clause (actions, decisions, agent-output rollback, knowledge-note DELETE, workflow-twin runs). All clean.
+
+One integrity gap found and fixed: `POST /api/actions` accepted a body `decisionId` and created the action without checking the parent decision was in the caller's workspace. Not a tenant-isolation breach (the action lands in the caller's own workspace and cannot touch the foreign decision), but it allowed dangling or cross-tenant parent references. Now validated (`decision_not_found`, 404). Regression `tests/actions-decision-fk.test.ts`. Findings recorded in `docs/SECURITY_REVIEW.md` §1.2. Full suite 59 files / 425 tests, tsc clean.
 
 ---
 

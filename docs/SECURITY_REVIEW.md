@@ -30,6 +30,16 @@ Regression tests: `tests/api-workspace-authz.test.ts` (6 cases) plus the strateg
 
 Residual: no operator/admin multi-tenant read path exists any more. If cross-workspace admin tooling is needed later, add an explicit operator scope check rather than an unauthenticated `workspaceId` override.
 
+### 1.2 Write-side ownership sweep (2026-07-07)
+
+Second pass, focused on mutating handlers (PATCH/POST/DELETE) rather than reads. Question for each: before mutating a by-id resource, does the handler confirm the resource belongs to `ctx.workspaceId`, and does a create route that accepts a foreign-key id in its body validate that parent is in-workspace?
+
+By-id mutations are all safe. Ownership is enforced either in the route (`evidence/[id]` DELETE and `evidence/[id]/review` check `record.workspaceId === ctx.workspaceId` / fetch via workspace-scoped list; `agent-keys/[id]` DELETE and `knowledge/notes/[id]` PATCH verify membership before mutating) or in the repository `WHERE id AND workspaceId` clause (`updateAction`, `updateDecision`, `rollbackAgentOutput`, `deleteKnowledgeNote`; workflow-twin run/backcast/shadow-roi fetch via workspace-scoped `getWorkflowTwin`). Approvals use `updateRecommendationStatusForWorkspace`; board/delta and dispatch scope by `ctx.workspaceId`.
+
+One integrity gap found and fixed: `POST /api/actions` accepted a body `decisionId` and created the action under `ctx.workspaceId` without checking the parent decision was in-workspace. This is not a tenant-isolation breach — the action lands in the caller's own workspace and cannot read or mutate a foreign decision — but it allowed dangling or cross-tenant parent references. Now validated against the caller's decisions (`decision_not_found`, 404). Regression: `tests/actions-decision-fk.test.ts`.
+
+Residual: no cross-tenant write path remains. In no-database (demo) mode some by-id update repository methods only mutate via the DB path and no-op on the store; that is a demo-mode functional limitation, not a security issue.
+
 - [ ] **REQUIRED** Verify that restricted evidence (`sensitivity = "restricted"`) never appears in LLM prompts for workspaces where it should not. Test with a cross-workspace retrieval attempt.
 
 ---
