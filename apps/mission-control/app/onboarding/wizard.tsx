@@ -861,13 +861,17 @@ function Step3({
 function Step4({
   profile,
   workspaceId,
+  strategyProfile,
   onProfileUpdated,
+  onStrategyProfileUpdated,
   onNext,
   onBack,
 }: {
   profile: DetectedProfile;
   workspaceId: string;
+  strategyProfile: WizardStrategyProfile | null;
   onProfileUpdated: (profile: DetectedProfile) => void;
+  onStrategyProfileUpdated: (profile: WizardStrategyProfile) => void;
   onNext: (roles: WizardRole[]) => void;
   onBack: () => void;
 }) {
@@ -904,8 +908,22 @@ function Step4({
   const [newRoleDesc, setNewRoleDesc] = useState("");
   const [fallbackMoney, setFallbackMoney] = useState("");
   const [fallbackWorries, setFallbackWorries] = useState("");
+  const [sponsorName, setSponsorName] = useState(strategyProfile?.sponsorName ?? "");
+  const [sponsorEmail, setSponsorEmail] = useState(strategyProfile?.sponsorEmail ?? "");
+  const [reviewerName, setReviewerName] = useState(strategyProfile?.reviewerName ?? "");
+  const [reviewerEmail, setReviewerEmail] = useState(strategyProfile?.reviewerEmail ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const governanceReady = sponsorName.trim().length > 1 && reviewerName.trim().length > 1;
+
+  useEffect(() => {
+    if (!strategyProfile) return;
+    setSponsorName((current) => current || strategyProfile.sponsorName || "");
+    setSponsorEmail((current) => current || strategyProfile.sponsorEmail || "");
+    setReviewerName((current) => current || strategyProfile.reviewerName || "");
+    setReviewerEmail((current) => current || strategyProfile.reviewerEmail || "");
+  }, [strategyProfile]);
 
   function toggleRole(role: WizardRole) {
     if (role.locked) return;
@@ -1036,7 +1054,23 @@ function Step4({
       });
       const payload = await res.json().catch(() => ({}));
       if (!res.ok || !payload.ok) throw new Error(payload.error ?? "save_roles_failed");
+
+      const strategyRes = await fetch("/api/strategy-profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          sponsorName: sponsorName.trim(),
+          sponsorEmail: sponsorEmail.trim() || null,
+          reviewerName: reviewerName.trim(),
+          reviewerEmail: reviewerEmail.trim() || null,
+        }),
+      });
+      const strategyPayload = await strategyRes.json().catch(() => ({}));
+      if (!strategyRes.ok || !strategyPayload.ok) {
+        throw new Error(strategyPayload.error ?? "save_governance_owners_failed");
+      }
       onProfileUpdated(updatedProfile);
+      onStrategyProfileUpdated(strategyPayload.data as WizardStrategyProfile);
       onNext(selectedRoles);
     } catch (err) {
       setError(err instanceof Error ? err.message : "unknown_error");
@@ -1218,8 +1252,60 @@ function Step4({
         You can add or change roles any time from Settings.
       </p>
 
+      <div className="rounded-xl border border-nexus-accent/25 bg-nexus-accent/5 p-4 space-y-3">
+        <div>
+          <p className="text-sm font-medium text-white/80">Pilot governance owners</p>
+          <p className="mt-1 text-xs text-white/45">
+            Name the accountable sponsor and human reviewer before upload so the workflow scorer can clear ownership gates.
+          </p>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label className="label">Sponsor name</label>
+            <input
+              className="input"
+              value={sponsorName}
+              onChange={(e) => setSponsorName(e.target.value)}
+              placeholder="e.g. Ali Janjua"
+            />
+          </div>
+          <div>
+            <label className="label">Sponsor email optional</label>
+            <input
+              className="input"
+              type="email"
+              value={sponsorEmail}
+              onChange={(e) => setSponsorEmail(e.target.value)}
+              placeholder="sponsor@company.com"
+            />
+          </div>
+          <div>
+            <label className="label">Reviewer name</label>
+            <input
+              className="input"
+              value={reviewerName}
+              onChange={(e) => setReviewerName(e.target.value)}
+              placeholder="e.g. Compliance reviewer"
+            />
+          </div>
+          <div>
+            <label className="label">Reviewer email optional</label>
+            <input
+              className="input"
+              type="email"
+              value={reviewerEmail}
+              onChange={(e) => setReviewerEmail(e.target.value)}
+              placeholder="reviewer@company.com"
+            />
+          </div>
+        </div>
+        {!governanceReady && (
+          <p className="text-xs text-amber-200/70">Sponsor and reviewer names are required before pilot scope can be confirmed.</p>
+        )}
+      </div>
+
       <div className="flex gap-3">
-        <button onClick={persistAndContinue} disabled={saving} className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed">
+        <button onClick={persistAndContinue} disabled={saving || !governanceReady} className="btn-primary disabled:opacity-40 disabled:cursor-not-allowed">
           {saving ? "Saving roles..." : "Continue →"}
         </button>
         <button onClick={onBack} className="btn-subtle text-sm text-white/50">← Back</button>
@@ -1780,6 +1866,10 @@ type WizardStrategyProfile = {
   readinessBand?: string | null;
   laneConfidence?: string | null;
   governancePosture?: string | null;
+  sponsorName?: string | null;
+  sponsorEmail?: string | null;
+  reviewerName?: string | null;
+  reviewerEmail?: string | null;
 };
 
 const LANE_LABELS: Record<string, string> = {
@@ -2096,7 +2186,9 @@ export function OnboardingWizard({ workspaceId, displayName, isAuthenticated }: 
           <Step4
             profile={profile}
             workspaceId={workspaceId}
+            strategyProfile={strategyProfile}
             onProfileUpdated={(p) => setDetectedProfile(p)}
+            onStrategyProfileUpdated={(p) => setStrategyProfile(p)}
             onNext={(roles) => { setSelectedRoles(roles); setStep(5); }}
             onBack={() => setStep(3)}
           />
