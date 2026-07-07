@@ -594,6 +594,10 @@ export const strategyProfiles = pgTable("strategy_profiles", {
   laneConfidence:    varchar("lane_confidence", { length: 16 }),
   laneChangedBy:     varchar("lane_changed_by", { length: 32 }),
   laneChangedAt:     timestamp("lane_changed_at", { withTimezone: true }),
+  // Pilot readiness snapshot from the last workflow scorer run (migration 0034).
+  // Server-owned: written by the scorer, enforced by PATCH /api/strategy-profile.
+  pilotReady:        boolean("pilot_ready").notNull().default(false),
+  pilotGates:        jsonb("pilot_gates").$type<Array<{ key: string; label: string; blocked: boolean }>>().notNull().default([]),
   createdAt:         timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt:         timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

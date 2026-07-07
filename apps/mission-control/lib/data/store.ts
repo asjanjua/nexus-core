@@ -22,6 +22,7 @@ import {
   type RecommendationStatus,
   type Role,
   type Sensitivity,
+  type StrategyProfile,
   type SynthesisSchedule,
   type SynthesisScheduleInput,
   type SynthesisScheduleStatus,
@@ -156,6 +157,8 @@ const entityStore: Entity[] = [];
 const synthesisScheduleStore: SynthesisSchedule[] = [];
 const workflowTwinStore: WorkflowTwin[] = [];
 const workflowTwinRunStore: WorkflowTwinRun[] = [];
+// Strategy profile fallback for no-DB/demo mode, keyed by workspaceId.
+const strategyProfileStore = new Map<string, StrategyProfile>();
 const knowledgeNoteStore: KnowledgeNote[] = [];
 const knowledgeLinkStore: KnowledgeLink[] = [];
 const knowledgeSyncEventStore: KnowledgeSyncEvent[] = [];
@@ -827,6 +830,58 @@ export const store = {
     if (found.expiresAt && new Date(found.expiresAt) < new Date()) return null;
     const { keyHash: _kh, ...rest } = found;
     return rest;
+  },
+
+  // -------------------------------------------------------------------------
+  // Strategy profile (in-memory fallback)
+  // -------------------------------------------------------------------------
+
+  getStrategyProfile(workspaceId: string): StrategyProfile | null {
+    return strategyProfileStore.get(workspaceId) ?? null;
+  },
+
+  upsertStrategyProfile(profile: StrategyProfile): StrategyProfile {
+    const record = { ...profile, updatedAt: nowIso() };
+    strategyProfileStore.set(profile.workspaceId, record);
+    return record;
+  },
+
+  setPilotReadiness(
+    workspaceId: string,
+    pilotReady: boolean,
+    pilotGates: StrategyProfile["pilotGates"]
+  ): StrategyProfile {
+    const existing = strategyProfileStore.get(workspaceId);
+    const now = nowIso();
+    const profile: StrategyProfile = {
+      id: existing?.id ?? `sp_${workspaceId}`,
+      workspaceId,
+      buyerLane: existing?.buyerLane ?? "evaluator",
+      role: existing?.role ?? null,
+      sector: existing?.sector ?? null,
+      companySize: existing?.companySize ?? null,
+      priority: existing?.priority ?? "medium",
+      sponsorName: existing?.sponsorName ?? null,
+      sponsorEmail: existing?.sponsorEmail ?? null,
+      reviewerName: existing?.reviewerName ?? null,
+      reviewerEmail: existing?.reviewerEmail ?? null,
+      governancePosture: existing?.governancePosture ?? "standard",
+      selectedWorkflow: existing?.selectedWorkflow ?? null,
+      readinessScores: existing?.readinessScores ?? {},
+      readinessBand: existing?.readinessBand ?? null,
+      externalRef: existing?.externalRef ?? null,
+      initialLane: existing?.initialLane ?? null,
+      laneChangeReason: existing?.laneChangeReason ?? null,
+      laneConfidence: existing?.laneConfidence ?? null,
+      laneChangedBy: existing?.laneChangedBy ?? null,
+      laneChangedAt: existing?.laneChangedAt ?? null,
+      pilotReady,
+      pilotGates,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+    };
+    strategyProfileStore.set(workspaceId, profile);
+    return profile;
   },
 
   // -------------------------------------------------------------------------

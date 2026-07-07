@@ -37,8 +37,18 @@ type Candidate = {
   speedBenefit: number;
   reason: string;
   deferredBecause: string | null;
+  hardGate: string | null;
+  status?: "recommended" | "viable" | "not_first_pilot";
   recommended: boolean;
 };
+
+type PilotGate = { key: string; label: string; blocked: boolean };
+
+function asPilotGates(value: unknown): PilotGate[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is PilotGate => !!item && typeof item === "object" && "key" in item && "blocked" in item)
+    : [];
+}
 
 type Backcast = {
   targetState: string;
@@ -141,7 +151,13 @@ export default function WorkflowsPage() {
   const decisionTwin = useMemo(() => twins.find((twin) => twin.type === "decision_action"), [twins]);
   const scorerRun = scorerTwin ? runs[scorerTwin.id]?.[0] : null;
   const candidates = asCandidates(scorerRun?.payload?.candidates);
-  const recommended = candidates.find((candidate) => candidate.recommended) ?? candidates[0];
+  // A hard-gated workflow is never the recommendation, even if ranked first.
+  const recommended = candidates.find((candidate) => candidate.recommended && !candidate.hardGate) ?? null;
+  const viableCandidates = candidates.filter((candidate) => !candidate.hardGate);
+  const notFirstPilot = candidates.filter((candidate) => candidate.hardGate);
+  const pilotGates = asPilotGates(scorerRun?.payload?.pilotGates);
+  const pilotReady = Boolean(scorerRun?.payload?.pilotReady) && Boolean(recommended);
+  const blockedGates = pilotGates.filter((gate) => gate.blocked);
   const backcast = asBackcast((decisionTwin ?? scorerTwin)?.config?.backcast);
   const measurements = asRoiMeasurements((decisionTwin ?? scorerTwin)?.config?.shadowMeasurements);
   const latestRoi = measurements[measurements.length - 1];
@@ -171,6 +187,33 @@ export default function WorkflowsPage() {
       if (!twins.some((twin) => twin.type === item.type)) {
         await createTwin(item.type, item.name, item.owner);
       }
+    }
+  }
+
+  async function confirmFirstPilot() {
+    if (!recommended) return;
+    setBusy("confirm-pilot");
+    setMessage("");
+    try {
+      const res = await fetch("/api/strategy-profile", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ selectedWorkflow: recommended.label }),
+      });
+      const json = await res.json();
+      if (!json.ok) {
+        // Server enforces the pilot gates: no sponsor/reviewer => pilot_gates_unmet.
+        throw new Error(
+          json.error === "pilot_gates_unmet"
+            ? "Name a sponsor and reviewer on your strategy profile before entering pilot scope."
+            : json.error ?? "confirm_failed"
+        );
+      }
+      setMessage(`${recommended.label} confirmed as your first pilot workflow.`);
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Could not confirm the pilot workflow.");
+    } finally {
+      setBusy(null);
     }
   }
 
@@ -285,13 +328,44 @@ export default function WorkflowsPage() {
             </div>
           ) : candidates.length ? (
             <div className="space-y-3">
-              {recommended ? (
-                <div className="rounded-xl border border-green-400/30 bg-green-400/10 p-4">
-                  <p className="text-xs uppercase text-green-300/70">Recommended first pilot</p>
-                  <h2 className="mt-1 text-lg font-semibold text-white">{recommended.label}</h2>
-                  <p className="mt-1 text-sm text-white/65">{recommended.reason}</p>
+              {blockedGates.length ? (
+                <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-4">
+                  <p className="text-xs uppercase text-amber-200/80">
+                    {blockedGates.length} gate{blockedGates.length > 1 ? "s" : ""} remain before pilot scope
+                  </p>
+                  <ul className="mt-2 space-y-1">
+                    {pilotGates.map((gate) => (
+                      <li key={gate.key} className="flex items-center gap-2 text-sm">
+                        <span className={gate.blocked ? "text-amber-300" : "text-green-300"}>
+                          {gate.blocked ? "✗" : "✓"}
+                        </span>
+                        <span className={gate.blocked ? "text-white/75" : "text-white/45 line-through"}>{gate.label}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               ) : null}
+              {recommended ? (
+                <div className="rounded-xl border border-green-400/30 bg-green-400/10 p-4">
+                  <p className="text-xs uppercase text-green-300/70">
+                    Recommended first pilot{pilotReady ? " · pilot-ready" : " · blocked"}
+                  </p>
+                  <h2 className="mt-1 text-lg font-semibold text-white">{recommended.label}</h2>
+                  <p className="mt-1 text-sm text-white/65">{recommended.reason}</p>
+                  <button
+                    className="btn-primary mt-3"
+                    disabled={!pilotReady || busy === "confirm-pilot"}
+                    title={pilotReady ? undefined : "Clear the gates above before confirming."}
+                    onClick={confirmFirstPilot}
+                  >
+                    {busy === "confirm-pilot" ? "Confirming..." : "Confirm as first pilot"}
+                  </button>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-white/15 bg-white/[0.03] p-4 text-sm text-white/70">
+                  No workflow is suitable as a first pilot under current constraints. A NexusAI advisor can help scope a safer entry point.
+                </div>
+              )}
               <div className="overflow-hidden rounded-lg border border-white/10">
                 <table className="w-full text-left text-sm">
                   <thead className="bg-white/[0.04] text-xs uppercase text-white/40">
@@ -320,7 +394,7 @@ export default function WorkflowsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/10">
-                    {candidates.map((candidate) => (
+                    {viableCandidates.map((candidate) => (
                       <tr key={candidate.type} className={candidate.recommended ? "bg-green-400/[0.06]" : ""}>
                         <td className="px-3 py-3">
                           <p className="font-medium text-white">{candidate.label}</p>
@@ -337,6 +411,20 @@ export default function WorkflowsPage() {
                   </tbody>
                 </table>
               </div>
+              {notFirstPilot.length ? (
+                <div className="rounded-lg border border-white/10 bg-white/[0.02] p-4">
+                  <p className="text-xs uppercase tracking-wide text-white/40">Not suitable for a first pilot</p>
+                  <ul className="mt-2 space-y-2">
+                    {notFirstPilot.map((candidate) => (
+                      <li key={candidate.type} className="text-sm">
+                        <span className="font-medium text-white/80">{candidate.label}</span>
+                        <span className="ml-2 text-white/40">{candidate.score}/100</span>
+                        <p className="mt-0.5 text-xs leading-5 text-amber-200/70">{candidate.hardGate}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
             </div>
           ) : (
             <div className="rounded-lg border border-white/10 bg-white/[0.025] p-5 text-sm text-white/55">

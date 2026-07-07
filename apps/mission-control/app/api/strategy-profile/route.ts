@@ -48,6 +48,23 @@ export async function PATCH(request: Request) {
     return fail("regulated_exit_confirmation_required", 400);
   }
 
+  // Pilot gate enforcement (docs/WORKFLOW_TWIN_SCORER.md): a workspace cannot
+  // enter pilot scope — i.e. commit a selectedWorkflow — unless the latest
+  // workflow-scorer run marked it pilot-ready. The scorer owns gate evaluation
+  // (sponsor, reviewer, AND evidence) and persists a single field; the route
+  // enforces that one field instead of re-implementing gate logic it does not
+  // own. pilotReady is server-owned (not in strategyProfileInputSchema), so a
+  // client cannot forge it through this PATCH.
+  const isNewSelection = Boolean(
+    parsed.data.selectedWorkflow &&
+    parsed.data.selectedWorkflow !== existing?.selectedWorkflow
+  );
+  if (isNewSelection && existing?.pilotReady !== true) {
+    return fail("pilot_gates_unmet", 400, {
+      blockedGates: (existing?.pilotGates ?? []).filter((gate) => gate.blocked),
+    });
+  }
+
   const input = {
     ...parsed.data,
     laneChangeReason: isLaneChange ? parsed.data.laneChangeReason?.trim() : parsed.data.laneChangeReason,

@@ -3619,11 +3619,15 @@ export const repository = {
         laneConfidence: (r.laneConfidence ?? null) as StrategyProfile["laneConfidence"],
         laneChangedBy: (r.laneChangedBy ?? null) as StrategyProfile["laneChangedBy"],
         laneChangedAt: r.laneChangedAt instanceof Date ? r.laneChangedAt.toISOString() : r.laneChangedAt ? String(r.laneChangedAt) : null,
+        pilotReady: r.pilotReady ?? false,
+        pilotGates: (r.pilotGates ?? []) as StrategyProfile["pilotGates"],
         createdAt: r.createdAt instanceof Date ? r.createdAt.toISOString() : String(r.createdAt),
         updatedAt: r.updatedAt instanceof Date ? r.updatedAt.toISOString() : String(r.updatedAt),
       };
     }
-    return null;
+    // No DB (demo mode): fall back to the in-memory store so the strategy
+    // profile — and thus the lane-aware scorer — works without Postgres.
+    return store.getStrategyProfile(workspaceId);
   },
 
   async upsertStrategyProfile(
@@ -3664,11 +3668,15 @@ export const repository = {
       laneConfidence: input.laneConfidence ?? existing?.laneConfidence ?? null,
       laneChangedBy: input.laneChangedBy ?? existing?.laneChangedBy ?? null,
       laneChangedAt: input.laneChangedAt ?? existing?.laneChangedAt ?? null,
+      // pilotReady/pilotGates are server-owned (set by the scorer via
+      // setPilotReadiness), never taken from client input. Preserve existing.
+      pilotReady: existing?.pilotReady ?? false,
+      pilotGates: existing?.pilotGates ?? [],
       createdAt: existing?.createdAt ?? now.toISOString(),
       updatedAt: now.toISOString(),
     };
 
-    await runDb(async (db) => {
+    const wrote = await runDb(async (db) => {
       await db
         .insert(strategyProfiles)
         .values({
@@ -3693,6 +3701,8 @@ export const repository = {
           laneConfidence: profile.laneConfidence,
           laneChangedBy: profile.laneChangedBy,
           laneChangedAt: profile.laneChangedAt ? new Date(profile.laneChangedAt) : null,
+          pilotReady: profile.pilotReady,
+          pilotGates: profile.pilotGates,
           createdAt: new Date(profile.createdAt),
           updatedAt: now,
         })
@@ -3721,7 +3731,11 @@ export const repository = {
             updatedAt: now,
           },
         });
+      return true;
     });
+
+    // No DB (demo mode): persist to the in-memory store instead.
+    if (!wrote) store.upsertStrategyProfile(profile);
 
     void repository.pushAudit({
       workspaceId,
@@ -3743,6 +3757,39 @@ export const repository = {
     }).catch(() => {});
 
     return profile;
+  },
+
+  /**
+   * Server-owned write of the pilot-readiness snapshot from the workflow scorer.
+   * Separate from upsertStrategyProfile (which is client-driven) so pilotReady
+   * can never be forged through PATCH /api/strategy-profile. Creates a minimal
+   * profile row if none exists yet. See docs/WORKFLOW_TWIN_SCORER.md.
+   */
+  async setPilotReadiness(
+    workspaceId: string,
+    pilotReady: boolean,
+    pilotGates: StrategyProfile["pilotGates"]
+  ): Promise<void> {
+    const now = new Date();
+    const wrote = await runDb(async (db) => {
+      await db
+        .insert(strategyProfiles)
+        .values({
+          id: `sp_${workspaceId}`,
+          workspaceId,
+          buyerLane: "evaluator",
+          pilotReady,
+          pilotGates,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: strategyProfiles.workspaceId,
+          set: { pilotReady, pilotGates, updatedAt: now },
+        });
+      return true;
+    });
+    if (!wrote) store.setPilotReadiness(workspaceId, pilotReady, pilotGates);
   },
 
   // -------------------------------------------------------------------------

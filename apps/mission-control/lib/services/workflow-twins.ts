@@ -1,9 +1,20 @@
-import type { WorkflowTwin, WorkflowTwinRunInput, WorkspaceProfile } from "@/lib/contracts";
+import type { StrategyProfile, WorkflowTwin, WorkflowTwinRunInput, WorkspaceProfile } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
 
 function unique(values: string[]): string[] {
   return Array.from(new Set(values.filter(Boolean)));
 }
+
+// Candidate status distinguishes the two gate failure modes (see the design
+// note in docs/WORKFLOW_TWIN_SCORER.md §Gating):
+//   - "recommended" / "viable": suitable first pilots; bridgeable workspace
+//     gates (sponsor, reviewer, evidence) are handled separately at the run
+//     level via pilotGates / pilotReady.
+//   - "not_first_pilot": the workflow itself is unsuitable as a FIRST pilot
+//     because it implies autonomous external action, legal commitment, or
+//     regulatory exposure without human sign-off. It keeps its score but is
+//     never the recommendation, regardless of ranking.
+type CandidateStatus = "recommended" | "viable" | "not_first_pilot";
 
 type WorkflowCandidate = {
   type: string;
@@ -19,8 +30,62 @@ type WorkflowCandidate = {
   speedBenefit: number;
   reason: string;
   deferredBecause: string | null;
+  /** Non-null when the workflow is a hard gate: unsuitable as a first pilot. */
+  hardGate: string | null;
+  status: CandidateStatus;
   recommended: boolean;
 };
+
+/**
+ * Pilot gates — the scorer recommends, humans select.
+ * From docs/WORKFLOW_TWIN_SCORER.md: do not enter pilot scope without a named
+ * sponsor and reviewer and available evidence. The recommendation still renders
+ * (so the user sees the path), but pilotReady stays false until gates clear and
+ * the sponsor explicitly confirms the workflow (which writes selectedWorkflow
+ * to the strategy profile).
+ */
+type PilotGate = { key: string; label: string; blocked: boolean };
+
+function buildPilotGates(strategy: StrategyProfile | null, evidenceCoverage: number): PilotGate[] {
+  return [
+    {
+      key: "sponsor_named",
+      label: "Named sponsor on the strategy profile",
+      blocked: !strategy?.sponsorName,
+    },
+    {
+      key: "reviewer_named",
+      label: "Named reviewer on the strategy profile",
+      blocked: !strategy?.reviewerName,
+    },
+    {
+      key: "evidence_available",
+      label: "At least one evidence source connected or uploaded",
+      blocked: evidenceCoverage === 0,
+    },
+  ];
+}
+
+/**
+ * Lane-fit boost — the buyer lane from the readiness pipeline nudges ranking
+ * toward the lane's first-pilot examples (docs/LANE_ASSIGNMENT_SPEC.md §buyer
+ * lanes, docs/USER_STRATEGY_AND_PIVOTS.md). It never overrides a hard gate.
+ */
+function laneFitBoost(strategy: StrategyProfile | null, candidateType: string): number {
+  const lane = strategy?.buyerLane;
+  if (!lane) return 0;
+  const fit: Record<string, string[]> = {
+    // Owner-led lanes want the light, cross-industry cadence workflows.
+    evaluator: ["decision_action", "ops_review"],
+    sme_self_serve: ["decision_action", "ops_review"],
+    // Advisory/pilot lane wants commercial + executive-brief workflows.
+    business_advisory: ["proposal_sow", "risk_review", "decision_action"],
+    // Regulated lane wants risk/control review — NOT the autonomous
+    // regulatory_response filing workflow, which stays a hard gate.
+    regulated_enterprise: ["risk_review", "ops_review"],
+  };
+  return fit[lane]?.includes(candidateType) ? 10 : 0;
+}
 
 function sectorBoost(profile: WorkspaceProfile | null, candidateType: string): number {
   const sector = profile?.sector?.toLowerCase() ?? "";
@@ -36,6 +101,15 @@ function clampScore(value: number): number {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
+// Workflows that must never be a FIRST pilot because they imply autonomous
+// external action, legal commitment, or regulatory exposure without human
+// sign-off (docs/WORKFLOW_TWIN_SCORER.md — "Do not select if..."). They keep
+// their score but are pushed into the "not suitable for first pilot" section.
+const HARD_GATES: Record<string, string> = {
+  regulatory_response: "Would create regulatory exposure without human sign-off — not a safe first pilot.",
+  agreement_review: "Implies a legal commitment without counsel approval — not a safe first pilot.",
+};
+
 function buildWorkflowCandidates(input: {
   openDecisionCount: number;
   openActionCount: number;
@@ -43,6 +117,7 @@ function buildWorkflowCandidates(input: {
   recommendationCount: number;
   evidenceCoverage: number;
   profile: WorkspaceProfile | null;
+  strategy: StrategyProfile | null;
 }): WorkflowCandidate[] {
   const dataReadiness = Math.min(100, 45 + input.evidenceCoverage * 8);
   const decisionActivity = Math.min(100, 35 + input.openDecisionCount * 14 + input.openActionCount * 5);
@@ -146,23 +221,39 @@ function buildWorkflowCandidates(input: {
       candidate.reusability * 0.1 +
       candidate.monetization * 0.08 +
       candidate.speedBenefit * 0.08 +
-      sectorBoost(input.profile, candidate.type)
+      sectorBoost(input.profile, candidate.type) +
+      laneFitBoost(input.strategy, candidate.type)
     );
-    return { ...candidate, score, recommended: false };
+    const hardGate = HARD_GATES[candidate.type] ?? null;
+    return { ...candidate, score, hardGate, status: "viable" as CandidateStatus, recommended: false };
   }).sort((a, b) => b.score - a.score);
 
-  return scored.map((candidate, idx) => ({ ...candidate, recommended: idx === 0 }));
+  // The recommendation is the highest-scoring candidate that is NOT hard-gated.
+  // Hard-gated workflows are marked not_first_pilot and can never be selected,
+  // regardless of rank. If every candidate is hard-gated, there is no
+  // recommendation (the caller surfaces the human-scoping path).
+  const recommendedType = scored.find((candidate) => !candidate.hardGate)?.type ?? null;
+  return scored.map((candidate) => ({
+    ...candidate,
+    status: candidate.hardGate
+      ? "not_first_pilot"
+      : candidate.type === recommendedType
+        ? "recommended"
+        : "viable",
+    recommended: candidate.type === recommendedType,
+  }));
 }
 
 export async function buildWorkflowTwinRunInput(
   twin: WorkflowTwin,
   workspaceId: string
 ): Promise<WorkflowTwinRunInput> {
-  const [decisions, actions, recommendations, profile] = await Promise.all([
+  const [decisions, actions, recommendations, profile, strategy] = await Promise.all([
     repository.listDecisions(workspaceId),
     repository.listActions(workspaceId),
     repository.getRecommendations(workspaceId),
-    repository.getWorkspaceProfile(workspaceId)
+    repository.getWorkspaceProfile(workspaceId),
+    repository.getStrategyProfile(workspaceId)
   ]);
 
   const openDecisions = decisions.filter((decision) => decision.status === "open");
@@ -185,20 +276,30 @@ export async function buildWorkflowTwinRunInput(
       blockerCount: blockers.length,
       recommendationCount: recommendations.length,
       evidenceCoverage: evidenceRefs.length,
-      profile
+      profile,
+      strategy
     });
-    const recommended = candidates.find((candidate) => candidate.recommended) ?? candidates[0];
+    // Recommendation is the top non-hard-gated candidate; may be undefined if
+    // every candidate is hard-gated (surface the human-scoping path then).
+    const recommended = candidates.find((candidate) => candidate.recommended) ?? null;
+    // Bridgeable workspace gates: named sponsor, named reviewer, evidence.
+    // pilotReady only when a recommendation exists AND all gates clear.
+    const pilotGates = buildPilotGates(strategy, evidenceRefs.length);
+    const pilotReady = Boolean(recommended) && pilotGates.every((gate) => !gate.blocked);
+    await repository.setPilotReadiness(workspaceId, pilotReady, pilotGates);
     return {
       evidenceRefs,
       generatedOutputRefs,
       confidence: evidenceRefs.length ? 0.72 : 0.52,
       status: "generated",
       summary: recommended
-        ? `Workflow scorer recommends starting with ${recommended.label} (${recommended.score}/100) based on data readiness, pain, risk, and expected speed benefit.`
-        : "Workflow scorer baseline generated from current decisions, actions, recommendations, and evidence coverage.",
+        ? `Workflow scorer recommends starting with ${recommended.label} (${recommended.score}/100)${pilotReady ? " — pilot-ready" : `, but ${pilotGates.filter((g) => g.blocked).length} gate(s) remain before pilot scope`}.`
+        : "No workflow is suitable as a first pilot under current constraints. A NexusAI advisor can help scope a safer entry point.",
       payload: {
         candidates,
         recommended,
+        pilotGates,
+        pilotReady,
         scoringWeights: {
           dataReadiness: "22%",
           pain: "18%",

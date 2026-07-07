@@ -81,6 +81,8 @@ describe("strategy-profile authz", () => {
       laneConfidence: null,
       laneChangedBy: null,
       laneChangedAt: null,
+      pilotReady: false,
+      pilotGates: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
@@ -122,6 +124,8 @@ describe("strategy-profile authz", () => {
       laneConfidence: null,
       laneChangedBy: null,
       laneChangedAt: null,
+      pilotReady: false,
+      pilotGates: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
@@ -162,6 +166,8 @@ describe("strategy-profile authz", () => {
       laneConfidence: "high",
       laneChangedBy: null,
       laneChangedAt: null,
+      pilotReady: false,
+      pilotGates: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
@@ -206,6 +212,8 @@ describe("strategy-profile authz", () => {
       laneConfidence: "high",
       laneChangedBy: null,
       laneChangedAt: null,
+      pilotReady: false,
+      pilotGates: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
@@ -259,6 +267,8 @@ describe("strategy-profile authz", () => {
       laneConfidence: "low",
       laneChangedBy: null,
       laneChangedAt: null,
+      pilotReady: false,
+      pilotGates: [],
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
@@ -283,6 +293,71 @@ describe("strategy-profile authz", () => {
         laneChangedBy: "user_confirmation",
         laneChangedAt: expect.any(String),
       })
+    );
+  });
+
+  it("PATCH rejects selectedWorkflow when the profile is not pilot-ready", async () => {
+    // The scorer owns gate evaluation and persists pilotReady; the route
+    // enforces that single field. pilotReady false => selection blocked.
+    vi.mocked(repository.getStrategyProfile).mockResolvedValueOnce({
+      id: "sp_workspace-alice",
+      workspaceId: "workspace-alice",
+      buyerLane: "business_advisory",
+      role: null, sector: null, companySize: null, priority: "medium",
+      sponsorName: null, sponsorEmail: null, reviewerName: null, reviewerEmail: null,
+      governancePosture: "standard", selectedWorkflow: null,
+      readinessScores: {}, readinessBand: null, externalRef: null,
+      initialLane: "business_advisory", laneChangeReason: null, laneConfidence: "medium",
+      laneChangedBy: null, laneChangedAt: null,
+      pilotReady: false,
+      pilotGates: [{ key: "sponsor_named", label: "Named sponsor", blocked: true }],
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    });
+
+    const res = await PATCH(
+      new Request("http://localhost/api/strategy-profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selectedWorkflow: "Decision & Action Twin" }),
+      })
+    );
+
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({
+      error: "pilot_gates_unmet",
+      blockedGates: [{ key: "sponsor_named" }],
+    });
+    expect(repository.upsertStrategyProfile).not.toHaveBeenCalled();
+  });
+
+  it("PATCH accepts selectedWorkflow when the profile is pilot-ready", async () => {
+    vi.mocked(repository.getStrategyProfile).mockResolvedValueOnce({
+      id: "sp_workspace-alice",
+      workspaceId: "workspace-alice",
+      buyerLane: "business_advisory",
+      role: null, sector: null, companySize: null, priority: "medium",
+      sponsorName: "A. Sponsor", sponsorEmail: null, reviewerName: "R. Reviewer", reviewerEmail: null,
+      governancePosture: "standard", selectedWorkflow: null,
+      readinessScores: {}, readinessBand: null, externalRef: null,
+      initialLane: "business_advisory", laneChangeReason: null, laneConfidence: "medium",
+      laneChangedBy: null, laneChangedAt: null,
+      pilotReady: true,
+      pilotGates: [],
+      createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+    });
+
+    const res = await PATCH(
+      new Request("http://localhost/api/strategy-profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ selectedWorkflow: "Decision & Action Twin" }),
+      })
+    );
+
+    expect(res.status).toBe(200);
+    expect(repository.upsertStrategyProfile).toHaveBeenCalledWith(
+      "workspace-alice",
+      expect.objectContaining({ selectedWorkflow: "Decision & Action Twin" })
     );
   });
 });

@@ -1,7 +1,33 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { repository } from "@/lib/data/repository";
 import { buildWorkflowTwinRunInput } from "@/lib/services/workflow-twins";
 import { store } from "@/lib/data/store";
+import type { StrategyProfile } from "@/lib/contracts";
+
+// Most scorer tests stub getStrategyProfile directly so the lane/gate input is
+// deterministic even when the demo/no-DB fallback store is also available.
+function stubStrategyProfile(partial: Partial<StrategyProfile> | null) {
+  vi.spyOn(repository, "getStrategyProfile").mockResolvedValue(
+    partial === null
+      ? null
+      : ({
+          id: "sp_test", workspaceId: "ws", buyerLane: "evaluator",
+          role: null, sector: null, companySize: null, priority: "medium",
+          sponsorName: null, sponsorEmail: null, reviewerName: null, reviewerEmail: null,
+          governancePosture: "standard", selectedWorkflow: null,
+	          readinessScores: {}, readinessBand: null, externalRef: null,
+	          initialLane: null, laneChangeReason: null, laneConfidence: null,
+	          laneChangedBy: null, laneChangedAt: null,
+	          pilotReady: false, pilotGates: [],
+	          createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(),
+	          ...partial,
+	        } as StrategyProfile)
+  );
+}
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
 
 describe("workflow twin primitives", () => {
   it("creates workflow twins and writes an audit event", async () => {
@@ -109,6 +135,87 @@ describe("workflow twin primitives", () => {
     expect(candidates.some((candidate) => candidate.recommended)).toBe(true);
     expect(candidates[0]?.score).toBeGreaterThanOrEqual(candidates[candidates.length - 1]?.score ?? 0);
     expect(run.payload).toHaveProperty("shadowPlan");
+  });
+
+  it("marks autonomous/legal workflows as hard-gated and never recommends them", async () => {
+    const scorerTwin = {
+      id: "wt-scorer-hg",
+      workspaceId: "workspace-demo",
+      type: "workflow_scorer" as const,
+      name: "Workflow Twin Scorer",
+      status: "active" as const,
+      config: {},
+      owner: "strategy",
+      createdBy: "tester",
+      createdAt: new Date().toISOString(),
+      updatedBy: "tester",
+      updatedAt: new Date().toISOString()
+    };
+
+    const run = await buildWorkflowTwinRunInput(scorerTwin, "workspace-demo");
+    const candidates = run.payload.candidates as Array<{ type: string; hardGate: string | null; status: string; recommended: boolean }>;
+
+    const regulatory = candidates.find((c) => c.type === "regulatory_response");
+    const agreement = candidates.find((c) => c.type === "agreement_review");
+    expect(regulatory?.hardGate).toBeTruthy();
+    expect(regulatory?.status).toBe("not_first_pilot");
+    expect(agreement?.hardGate).toBeTruthy();
+    // A hard-gated candidate is never the recommendation.
+    const recommended = candidates.find((c) => c.recommended);
+    expect(recommended?.hardGate).toBeNull();
+  });
+
+	  it("blocks pilot readiness until sponsor and reviewer gates clear", async () => {
+	    const workspaceId = `workspace-gates-${Date.now()}`;
+	    const readinessSpy = vi.spyOn(repository, "setPilotReadiness");
+	    const scorerTwin = await repository.createWorkflowTwin(
+	      workspaceId,
+      { type: "workflow_scorer", name: "Workflow Twin Scorer", status: "active", config: {}, owner: "strategy" },
+      "tester"
+    );
+
+    // No strategy profile: all bridgeable gates blocked, not pilot-ready.
+    stubStrategyProfile(null);
+    const blockedRun = await buildWorkflowTwinRunInput(scorerTwin, workspaceId);
+    expect(blockedRun.payload.pilotReady).toBe(false);
+    const gates = blockedRun.payload.pilotGates as Array<{ key: string; blocked: boolean }>;
+    expect(gates.find((g) => g.key === "sponsor_named")?.blocked).toBe(true);
+    expect(gates.find((g) => g.key === "reviewer_named")?.blocked).toBe(true);
+
+    // Sponsor and reviewer named; evidence still missing, so still blocked.
+    stubStrategyProfile({ buyerLane: "business_advisory", sponsorName: "A. Sponsor", reviewerName: "R. Reviewer" });
+    const stillBlocked = await buildWorkflowTwinRunInput(scorerTwin, workspaceId);
+    const gates2 = stillBlocked.payload.pilotGates as Array<{ key: string; blocked: boolean }>;
+    expect(gates2.find((g) => g.key === "sponsor_named")?.blocked).toBe(false);
+	    expect(gates2.find((g) => g.key === "reviewer_named")?.blocked).toBe(false);
+	    expect(gates2.find((g) => g.key === "evidence_available")?.blocked).toBe(true);
+	    expect(stillBlocked.payload.pilotReady).toBe(false);
+	    expect(readinessSpy).toHaveBeenLastCalledWith(
+	      workspaceId,
+	      false,
+	      expect.arrayContaining([
+	        expect.objectContaining({ key: "evidence_available", blocked: true }),
+	      ])
+	    );
+	  });
+
+  it("applies lane-fit boost from the strategy profile buyer lane", async () => {
+    const workspaceId = `workspace-lane-${Date.now()}`;
+    const scorerTwin = await repository.createWorkflowTwin(
+      workspaceId,
+      { type: "workflow_scorer", name: "Workflow Twin Scorer", status: "active", config: {}, owner: "strategy" },
+      "tester"
+    );
+
+    stubStrategyProfile({ buyerLane: "regulated_enterprise" });
+    const regRun = await buildWorkflowTwinRunInput(scorerTwin, workspaceId);
+    stubStrategyProfile({ buyerLane: "sme_self_serve" });
+    const smeRun = await buildWorkflowTwinRunInput(scorerTwin, workspaceId);
+
+    const riskInReg = (regRun.payload.candidates as Array<{ type: string; score: number }>).find((c) => c.type === "risk_review")!;
+    const riskInSme = (smeRun.payload.candidates as Array<{ type: string; score: number }>).find((c) => c.type === "risk_review")!;
+    // risk_review is a lane-fit match for regulated_enterprise but not for sme.
+    expect(riskInReg.score).toBeGreaterThan(riskInSme.score);
   });
 
   it("updates workflow twin config for backcasting and shadow ROI state", async () => {

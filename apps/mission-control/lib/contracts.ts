@@ -1037,6 +1037,13 @@ export type GovernancePosture = z.infer<typeof governancePostureSchema>;
 export const laneConfidenceSchema = z.enum(["high", "medium", "low"]);
 export type LaneConfidence = z.infer<typeof laneConfidenceSchema>;
 
+export const pilotGateSchema = z.object({
+  key: z.string(),
+  label: z.string(),
+  blocked: z.boolean(),
+});
+export type PilotGate = z.infer<typeof pilotGateSchema>;
+
 export const laneChangedBySchema = z.enum([
   "system_suggestion",
   "user_confirmation",
@@ -1068,6 +1075,11 @@ export const strategyProfileSchema = z.object({
   laneConfidence: laneConfidenceSchema.nullable().optional(),
   laneChangedBy: laneChangedBySchema.nullable().optional(),
   laneChangedAt: z.string().nullable().optional(),
+  // Pilot readiness snapshot (migration 0034). Server-owned: written by the
+  // workflow scorer, enforced by PATCH. Deliberately NOT in the input schema
+  // below so a client cannot forge pilotReady to bypass the pilot gates.
+  pilotReady: z.boolean().default(false),
+  pilotGates: z.array(pilotGateSchema).default([]),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

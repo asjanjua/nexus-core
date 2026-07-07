@@ -24,6 +24,8 @@ const baseProfile: StrategyProfile = {
   laneConfidence: "high",
   laneChangedBy: null,
   laneChangedAt: null,
+  pilotReady: false,
+  pilotGates: [],
   createdAt: new Date("2026-07-06T00:00:00.000Z").toISOString(),
   updatedAt: new Date("2026-07-06T00:00:00.000Z").toISOString(),
 };

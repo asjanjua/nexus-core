@@ -8,6 +8,22 @@ Removed legacy `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL` and `NEXT_PUBLIC_CLERK_AFTE
 
 ---
 
+## Unreleased — Workflow Scorer: Lane Fit + Pilot Gates (2026-07-06)
+
+Turned the workflow scorer from a ranking display into the governed pilot bridge the strategy calls for, closing the funnel from "workspace provisioned" to "first workflow selected".
+
+**Lane-fit weighting.** The scorer now reads the workspace strategy profile and applies a buyer-lane boost (`lib/services/workflow-twins.ts`): each lane favours its first-pilot examples from `docs/LANE_ASSIGNMENT_SPEC.md`. Regulated enterprise favours risk/ops review and never the autonomous regulatory-response workflow.
+
+**Two-tier gating.** Hard gates mark workflows that are unsuitable as a FIRST pilot (autonomous external action, legal commitment, regulatory exposure without sign-off) — they keep their score but can never be the recommendation and render in a separate "not suitable for first pilot" section. Bridgeable gates (named sponsor, named reviewer, evidence available) are reported as `pilotGates` with a `pilotReady` flag; the recommendation still shows so the user sees the path, but pilot start stays blocked until gates clear.
+
+**Confirm-first-pilot.** The `/workflows` scorer card shows the gate checklist and a "Confirm as first pilot" action, enabled only when pilot-ready, that writes `selectedWorkflow` to the strategy profile. Enforced server-side: the scorer persists `pilotReady` / `pilotGates`, and `PATCH /api/strategy-profile` rejects a new `selectedWorkflow` unless that server-owned snapshot is pilot-ready (`pilot_gates_unmet`). This now covers sponsor, reviewer, and evidence gates. The scorer never auto-selects.
+
+**Fixes.** Repaired an unterminated-comment syntax error in `workflow-twins.ts` (a half-finished lane-fit edit) that broke the build. Added a no-DB strategy-profile fallback for demos and migration `0034_strategy_profile_pilot_ready.sql` for durable scorer readiness snapshots in production.
+
+**Tests.** Extended `tests/workflow-twins.test.ts` (hard gates, bridgeable gates, lane-fit boost) and `tests/strategy-profile-authz.test.ts` (selectedWorkflow gate). `docs/WORKFLOW_TWIN_SCORER.md` now documents the implemented engine. Verified with focused scorer/profile tests (17), full suite 57 files / 420 tests, and production build. Standalone `tsc` was inconclusive in this PTY.
+
+---
+
 ## Unreleased — API Auth-Bypass Sweep (2026-07-06)
 
 Completed the full manual API auth-bypass review (was BACKLOG "spot-verified only"). Enumerated all 135 route handlers under `app/api/` and classified each by auth mechanism and caller-supplied `workspaceId` handling. Found five routes where an authenticated caller could pass `?workspaceId=` or a body `workspaceId` to reach another workspace's data, and fixed all five:

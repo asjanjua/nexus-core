@@ -114,3 +114,57 @@ Buyer-lane fit:
 - The selected workflow has evidence sources available at kickoff.
 - The recommendation includes the score, top reason, and main risk.
 - Sponsor signs off before the workflow enters pilot scope.
+
+## Implemented Engine (as built)
+
+The worksheet above is the manual/workshop model. The in-product scorer
+(`lib/services/workflow-twins.ts`, run via the `workflow_scorer` twin) implements
+the same intent with an activity-driven engine, not sponsor-entered 1-5 scores.
+This section is canonical for what the code does; tune here and in that file
+together.
+
+### Scoring
+
+Each candidate is scored 0-100 from workspace signal (open decisions, open
+actions, blockers, recommendation volume, evidence coverage) combined with fixed
+per-workflow weights: data readiness 22%, pain 18%, frequency 13%, senior
+judgment 11%, inverse risk 10%, reusability 10%, monetization 8%, speed benefit
+8%. Two additive boosts apply: a sector-fit boost from the workspace profile and
+a lane-fit boost (+10) from the buyer lane set by the readiness pipeline
+(`docs/LANE_ASSIGNMENT_SPEC.md`). Lane-fit map: evaluator and SME self-serve
+favour decision/action and ops review; business/advisory favours proposal, risk,
+and decision workflows; regulated enterprise favours risk and ops review and
+never the autonomous regulatory-response workflow.
+
+### Gating — two distinct failure modes
+
+**Hard gates (workflow unsuitability).** Some workflows are never a safe FIRST
+pilot because they imply autonomous external action, a legal commitment, or
+regulatory exposure without human sign-off. These keep their score but are
+marked `not_first_pilot` and can never be the recommendation, regardless of
+rank. Currently: regulatory-response and agreement-review.
+
+**Bridgeable gates (workspace readiness).** The run reports `pilotGates`: a named
+sponsor, a named reviewer, and at least one evidence source. The recommendation
+still renders so the user sees the path, but `pilotReady` stays false until all
+gates clear. These are completion problems, not suitability problems.
+
+### Selection and enforcement
+
+The recommendation is the highest-scoring non-hard-gated candidate. Committing it
+as the first pilot writes `selectedWorkflow` to the strategy profile. The scorer
+persists the latest `pilotReady` / `pilotGates` snapshot on the strategy profile
+after each scorer run. `PATCH /api/strategy-profile` enforces that server-owned
+snapshot: setting a new `selectedWorkflow` while `pilotReady !== true` is
+rejected with `pilot_gates_unmet` (400). This covers sponsor, reviewer, and
+evidence gates without letting clients forge readiness. The scorer never
+auto-selects; a human confirms.
+
+### Deployment note
+
+Database deployments must apply migrations `0033` and `0034` before deploying
+the lane-aware scorer. `0033` adds readiness submissions and lane lifecycle
+fields. `0034` persists the workflow scorer readiness snapshot (`pilot_ready`,
+`pilot_gates`). No-database demos now use an in-memory strategy-profile fallback
+for the same process, but that fallback is ephemeral and should not be treated as
+production storage.

@@ -90,6 +90,27 @@ strategy-profile API authz hole is closed.
 - Open question: `ingestion/status` still accepts a `workspaceId` form field in
   its POST schema even though the write forces ctx.workspaceId. Harmless but
   misleading; left as-is to keep the change surgical.
+
+## Follow-up slice — Workflow scorer as pilot bridge (same day)
+
+- Found `workflow-twins.ts` broken on arrival: an unterminated `/**` comment
+  from a half-finished lane-fit edit made the rest of the file a comment and
+  failed tsc (TS1010). Fixed by completing the `laneFitBoost` function.
+- Design (from Ali): two gate types. Hard gates = workflow unsuitable as a
+  FIRST pilot (regulatory-response, agreement-review) — kept in results, marked
+  not_first_pilot, never recommended. Bridgeable gates = sponsor/reviewer/
+  evidence — reported as pilotGates + pilotReady, recommendation still shown.
+- Conservative choices: recommendation is top NON-hard-gated candidate; if all
+  are hard-gated there is no recommendation (surface human-scoping path).
+  Server enforces the scorer-owned readiness snapshot for selectedWorkflow
+  (`pilot_gates_unmet`), which now covers sponsor, reviewer, and evidence gates.
+- Gap closed: strategy profiles now have an in-memory store fallback for no-DB
+  demos and migration 0034 persists the scorer readiness snapshot in DB-backed
+  environments. The fallback is process-local only; production still requires
+  migrations 0033 and 0034 before deploy.
+- Verified: workflow-twins.test.ts + strategy-profile-authz.test.ts (17),
+  full suite 57 files / 420 tests, and production build. Standalone tsc was
+  inconclusive in this PTY.
 - Current Codex PTY: `npm exec -w @nexus/mission-control tsc -- --noEmit`
   stayed silent for ~90s and was stopped as inconclusive. Previous handoff
   reported tsc clean before this hardening slice; Vitest is the verified gate
