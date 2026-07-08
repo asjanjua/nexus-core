@@ -74,6 +74,8 @@ const navSections = [
       { href: "/recommendations", label: "Recommendations" },
       { href: "/decisions", label: "Decisions" },
       { href: "/workflows", label: "Workflow Twins" },
+      { href: "/funnel", label: "Pilot Funnel" },
+      { href: "/pilot/afterlife", label: "Pilot Afterlife" },
       { href: "/entities", label: "Company Memory" },
       { href: "/knowledge", label: "Knowledge Workspace" },
       { href: "/approvals", label: "Approvals" },

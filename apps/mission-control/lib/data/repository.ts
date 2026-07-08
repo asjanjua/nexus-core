@@ -4,7 +4,7 @@ import { Pool } from "pg";
 import { verifyPassword } from "@/lib/auth";
 import { store } from "@/lib/data/store";
 import { evidenceSourceTypeSchema } from "@/lib/contracts";
-import type { Action, ActionInput, ActionStatus, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, DispatchJob, DispatchJobInput, DispatchJobStatus, Entity, EntityInput, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, KnowledgeLink, KnowledgeNote, KnowledgeNoteInput, KnowledgeSearchResult, KnowledgeSyncEvent, LearningSignal, LearningSignalInput, LearningSignalSummary, PromptRegistryEntry, ReadinessSubmission, Recommendation, ReviewerSeat, RecommendationStatus, Role, StrategyProfile, StrategyProfileInput, SynthesisSchedule, SynthesisScheduleInput, SynthesisScheduleStatus, WorkflowTwin, WorkflowTwinInput, WorkflowTwinRun, WorkflowTwinRunInput, WorkflowTwinRunStatus, WorkflowTwinStatus, WorkflowTwinType, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
+import type { Action, ActionInput, ActionStatus, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, DispatchJob, DispatchJobInput, DispatchJobStatus, Entity, EntityInput, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, KnowledgeLink, KnowledgeNote, KnowledgeNoteInput, KnowledgeSearchResult, KnowledgeSyncEvent, LearningSignal, LearningSignalInput, LearningSignalSummary, PromptRegistryEntry, ReadinessSubmission, PilotOutcome, Recommendation, ReviewerSeat, RecommendationStatus, Role, StrategyProfile, StrategyProfileInput, SynthesisSchedule, SynthesisScheduleInput, SynthesisScheduleStatus, WorkflowTwin, WorkflowTwinInput, WorkflowTwinRun, WorkflowTwinRunInput, WorkflowTwinRunStatus, WorkflowTwinStatus, WorkflowTwinType, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
 import { assertDbConfigured, isDbRequired } from "@/lib/data/db-policy";
 
 // In-memory idempotency cache for Stripe events (fallback when DB is unavailable).
@@ -49,6 +49,7 @@ import {
   stripeProcessedEvents,
   readinessSubmissions,
   reviewerSeats,
+  pilotOutcomes,
   strategyProfiles,
   type recommendationStatusEnum,
   type ingestionStatusEnum
@@ -420,6 +421,20 @@ function mapReviewerSeatRow(row: typeof reviewerSeats.$inferSelect): ReviewerSea
     acceptedAt: isoOrNull(row.acceptedAt),
     revokedAt: isoOrNull(row.revokedAt),
     expiresAt: isoOrNull(row.expiresAt) ?? new Date(0).toISOString(),
+    createdAt: isoOrNull(row.createdAt) ?? new Date(0).toISOString(),
+    updatedAt: isoOrNull(row.updatedAt) ?? new Date(0).toISOString(),
+  };
+}
+
+function mapPilotOutcomeRow(row: typeof pilotOutcomes.$inferSelect): PilotOutcome {
+  return {
+    id: row.id,
+    workspaceId: row.workspaceId,
+    workflowName: row.workflowName,
+    status: row.status as PilotOutcome["status"],
+    note: row.note ?? null,
+    decidedBy: row.decidedBy ?? null,
+    decidedAt: isoOrNull(row.decidedAt),
     createdAt: isoOrNull(row.createdAt) ?? new Date(0).toISOString(),
     updatedAt: isoOrNull(row.updatedAt) ?? new Date(0).toISOString(),
   };
@@ -4020,6 +4035,65 @@ export const repository = {
     );
     if (rows === null) return store.revokeReviewerSeat(workspaceId, seatId, now);
     return rows.length ? mapReviewerSeatRow(rows[0]) : null;
+  },
+
+  // -------------------------------------------------------------------------
+  // Pilot outcomes (migration 0036)
+  // -------------------------------------------------------------------------
+
+  async getPilotOutcome(workspaceId: string, workflowName: string): Promise<PilotOutcome | null> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(pilotOutcomes)
+        .where(and(eq(pilotOutcomes.workspaceId, workspaceId), eq(pilotOutcomes.workflowName, workflowName)))
+        .limit(1)
+    );
+    if (rows === null) return store.getPilotOutcome(workspaceId, workflowName);
+    return rows.length ? mapPilotOutcomeRow(rows[0]) : null;
+  },
+
+  /**
+   * Record an expand/hold/stop decision for a workspace's pilot workflow.
+   * Upsert on (workspace_id, workflow_name): one outcome record per workflow.
+   */
+  async recordPilotDecision(input: {
+    id: string;
+    workspaceId: string;
+    workflowName: string;
+    status: PilotOutcome["status"];
+    note?: string | null;
+    decidedBy: string;
+  }): Promise<PilotOutcome> {
+    const now = new Date();
+    const rows = await runDb((db) =>
+      db
+        .insert(pilotOutcomes)
+        .values({
+          id: input.id,
+          workspaceId: input.workspaceId,
+          workflowName: input.workflowName,
+          status: input.status,
+          note: input.note ?? null,
+          decidedBy: input.decidedBy,
+          decidedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: [pilotOutcomes.workspaceId, pilotOutcomes.workflowName],
+          set: {
+            status: input.status,
+            note: input.note ?? null,
+            decidedBy: input.decidedBy,
+            decidedAt: now,
+            updatedAt: now,
+          },
+        })
+        .returning()
+    );
+    if (rows === null) {
+      return store.recordPilotDecision({ ...input, now });
+    }
+    return mapPilotOutcomeRow(rows[0]);
   },
 
   async storeKnowledgeEmbedding(noteId: string, embedding: number[]): Promise<void> {

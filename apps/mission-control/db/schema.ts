@@ -623,6 +623,21 @@ export const reviewerSeats = pgTable("reviewer_seats", {
   updatedAt:      timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// Pilot outcomes (migration 0036): the expand/hold/stop decision record for a
+// selected pilot workflow. Run cadence and shadow-ROI are derived elsewhere
+// (workflow-twin runs + config.shadowMeasurements), not duplicated here.
+export const pilotOutcomes = pgTable("pilot_outcomes", {
+  id:           text("id").primaryKey(),
+  workspaceId:  text("workspace_id").notNull(),
+  workflowName: text("workflow_name").notNull(),
+  status:       varchar("status", { length: 16 }).notNull().default("running"),
+  note:         text("note"),
+  decidedBy:    text("decided_by"),
+  decidedAt:    timestamp("decided_at", { withTimezone: true }),
+  createdAt:    timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:    timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 /**
  * Readiness submissions — pending anonymous assessment records from the public
  * /readiness page. Claimed post-auth via a single-use claim code, which writes

@@ -18,6 +18,7 @@ import {
   type KnowledgeNoteInput,
   type KnowledgeSyncEvent,
   type LearningSignal,
+  type PilotOutcome,
   type Recommendation,
   type RecommendationStatus,
   type ReviewerSeat,
@@ -168,6 +169,11 @@ const reviewerSeatStore = new Map<string, StoredReviewerSeat>();
 function publicReviewerSeat(seat: StoredReviewerSeat): ReviewerSeat {
   const { inviteCodeHash: _hash, ...rest } = seat;
   return rest;
+}
+// Pilot outcome fallback for no-DB/demo mode, keyed by `${workspaceId}::${workflowName}`.
+const pilotOutcomeStore = new Map<string, PilotOutcome>();
+function pilotOutcomeKey(workspaceId: string, workflowName: string): string {
+  return `${workspaceId}::${workflowName}`;
 }
 const knowledgeNoteStore: KnowledgeNote[] = [];
 const knowledgeLinkStore: KnowledgeLink[] = [];
@@ -955,6 +961,41 @@ export const store = {
     };
     reviewerSeatStore.set(seatId, revoked);
     return publicReviewerSeat(revoked);
+  },
+
+  // -------------------------------------------------------------------------
+  // Pilot outcomes (in-memory fallback)
+  // -------------------------------------------------------------------------
+
+  getPilotOutcome(workspaceId: string, workflowName: string): PilotOutcome | null {
+    return pilotOutcomeStore.get(pilotOutcomeKey(workspaceId, workflowName)) ?? null;
+  },
+
+  recordPilotDecision(input: {
+    id: string;
+    workspaceId: string;
+    workflowName: string;
+    status: PilotOutcome["status"];
+    note?: string | null;
+    decidedBy: string;
+    now?: Date;
+  }): PilotOutcome {
+    const now = (input.now ?? new Date()).toISOString();
+    const key = pilotOutcomeKey(input.workspaceId, input.workflowName);
+    const existing = pilotOutcomeStore.get(key);
+    const outcome: PilotOutcome = {
+      id: existing?.id ?? input.id,
+      workspaceId: input.workspaceId,
+      workflowName: input.workflowName,
+      status: input.status,
+      note: input.note ?? null,
+      decidedBy: input.decidedBy,
+      decidedAt: now,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+    };
+    pilotOutcomeStore.set(key, outcome);
+    return outcome;
   },
 
   // -------------------------------------------------------------------------

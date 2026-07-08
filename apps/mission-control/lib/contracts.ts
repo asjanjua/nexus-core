@@ -1064,6 +1064,24 @@ export const reviewerSeatSchema = z.object({
 });
 export type ReviewerSeat = z.infer<typeof reviewerSeatSchema>;
 
+// Pilot outcome (migration 0036): expand/hold/stop lifecycle record for a
+// selected pilot workflow.
+export const pilotOutcomeStatusSchema = z.enum(["running", "expand", "hold", "stop"]);
+export type PilotOutcomeStatus = z.infer<typeof pilotOutcomeStatusSchema>;
+
+export const pilotOutcomeSchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  workflowName: z.string(),
+  status: pilotOutcomeStatusSchema.default("running"),
+  note: z.string().nullable().optional(),
+  decidedBy: z.string().nullable().optional(),
+  decidedAt: z.string().nullable().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type PilotOutcome = z.infer<typeof pilotOutcomeSchema>;
+
 export const laneChangedBySchema = z.enum([
   "system_suggestion",
   "user_confirmation",
