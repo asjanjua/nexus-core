@@ -254,6 +254,92 @@ export function buildReviewerInviteEmailHtml(ctx: ReviewerInviteEmailContext): s
 </html>`.trim();
 }
 
+export interface ProWaitlistEmailContext {
+  name?: string | null;
+  /** URL back into the product / pricing. */
+  appUrl?: string;
+}
+
+export function buildProWaitlistEmailHtml(ctx: ProWaitlistEmailContext): string {
+  const greeting = ctx.name ? `Hi ${escapeHtml(ctx.name)},` : "Hi,";
+  const cta = ctx.appUrl
+    ? `<a href="${escapeHtml(ctx.appUrl)}" style="display:inline-block;padding:11px 24px;background:#3b82f6;color:#fff;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;">Back to NexusAI</a>`
+    : "";
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#0f172a;">
+    <tr>
+      <td style="padding:32px 24px;">
+        <h1 style="color:#e2e8f0;font-size:20px;margin:0 0 8px 0;">You are on the Nexus Pro waitlist</h1>
+        <p style="color:#94a3b8;font-size:14px;line-height:1.6;margin:0 0 20px 0;">
+          ${greeting} thanks for registering interest in Nexus Pro. We will reach out to set up a
+          pilot or Pro plan for your workspace. No payment is taken today.
+        </p>
+        ${cta}
+        <p style="color:#64748b;font-size:12px;line-height:1.6;margin:24px 0 0 0;">
+          If you did not request this, you can ignore this email.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`.trim();
+}
+
+export interface PilotDigestEmailContext {
+  workspaceName: string;
+  workflowName: string;
+  totalRuns: number;
+  briefCount: number;
+  approvalCount: number;
+  monthlyHoursSaved: number;
+  roiMeasurementCount: number;
+  outcomeStatus: string; // running | expand | hold | stop | none
+  appUrl?: string;
+}
+
+export function buildPilotDigestEmailHtml(ctx: PilotDigestEmailContext): string {
+  const row = (label: string, value: string) => `
+    <tr>
+      <td style="padding:8px 0;color:#94a3b8;font-size:13px;">${escapeHtml(label)}</td>
+      <td style="padding:8px 0;color:#e2e8f0;font-size:14px;font-weight:600;text-align:right;">${escapeHtml(value)}</td>
+    </tr>`;
+  const cta = ctx.appUrl
+    ? `<a href="${escapeHtml(ctx.appUrl)}" style="display:inline-block;margin-top:20px;padding:11px 24px;background:#3b82f6;color:#fff;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;">Open pilot afterlife</a>`
+    : "";
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#0f172a;">
+    <tr>
+      <td style="padding:32px 24px;">
+        <h1 style="color:#e2e8f0;font-size:20px;margin:0 0 4px 0;">Pilot digest — ${escapeHtml(ctx.workspaceName)}</h1>
+        <p style="color:#64748b;font-size:13px;margin:0 0 20px 0;">${escapeHtml(ctx.workflowName)}</p>
+        <table width="100%" cellpadding="0" cellspacing="0" style="border-top:1px solid #1e293b;">
+          ${row("Twin runs", String(ctx.totalRuns))}
+          ${row("Briefs generated", String(ctx.briefCount))}
+          ${row("Approvals recorded", String(ctx.approvalCount))}
+          ${row("Monthly hours saved", String(ctx.monthlyHoursSaved))}
+          ${row("Shadow-ROI measurements", String(ctx.roiMeasurementCount))}
+          ${row("Current decision", ctx.outcomeStatus)}
+        </table>
+        ${cta}
+        <p style="color:#475569;font-size:11px;margin:24px 0 0 0;">
+          Figures are read from governed product signals. This is an internal pilot update, not a
+          regulatory, financial, or legal opinion.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`.trim();
+}
+
 /**
  * Build an HTML email for a synthesis brief.
  */

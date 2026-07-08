@@ -1,5 +1,0 @@
-Contact: mailto:security@pinavia.io
-Expires: 2027-07-05T00:00:00.000Z
-Preferred-Languages: en
-Canonical: https://app.pinavia.io/.well-known/security.txt
-Policy: https://pinavia.io/security

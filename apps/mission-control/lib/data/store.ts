@@ -966,6 +966,25 @@ export const store = {
     return publicReviewerSeat(revoked);
   },
 
+  refreshReviewerInvite(
+    workspaceId: string,
+    seatId: string,
+    newInviteCodeHash: string,
+    newExpiresAt: Date,
+    now = new Date()
+  ): ReviewerSeat | null {
+    const seat = reviewerSeatStore.get(seatId);
+    if (!seat || seat.workspaceId !== workspaceId || seat.status !== "invited") return null;
+    const refreshed: StoredReviewerSeat = {
+      ...seat,
+      inviteCodeHash: newInviteCodeHash,
+      expiresAt: newExpiresAt.toISOString(),
+      updatedAt: now.toISOString(),
+    };
+    reviewerSeatStore.set(seatId, refreshed);
+    return publicReviewerSeat(refreshed);
+  },
+
   // -------------------------------------------------------------------------
   // Pilot outcomes (in-memory fallback)
   // -------------------------------------------------------------------------

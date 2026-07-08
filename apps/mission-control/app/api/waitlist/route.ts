@@ -14,6 +14,7 @@ import { z } from "zod";
 import { ok, fail } from "@/lib/api";
 import { resolveAuth } from "@/lib/api-auth";
 import { repository } from "@/lib/data/repository";
+import { buildProWaitlistEmailHtml, resendConfigured, sendEmail } from "@/lib/email/resend";
 
 export async function GET(request: Request) {
   const auth = await resolveAuth(request);
@@ -51,5 +52,34 @@ export async function POST(request: Request) {
     payload: { email: entry.email },
   }).catch(() => {});
 
-  return ok(entry);
+  // Confirm to the joiner and notify ops. Best-effort: never fail the request
+  // if email is unconfigured or a send errors — the intent is already recorded.
+  let emailSent = false;
+  if (resendConfigured()) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, "") || new URL(request.url).origin;
+    try {
+      await sendEmail({
+        to: entry.email,
+        subject: "You are on the Nexus Pro waitlist",
+        html: buildProWaitlistEmailHtml({ name: entry.name, appUrl: `${appUrl}/pro-waitlist` }),
+      });
+      emailSent = true;
+    } catch {
+      /* recorded regardless */
+    }
+    const ops = process.env.NEXUS_OPS_EMAIL?.trim();
+    if (ops) {
+      try {
+        await sendEmail({
+          to: ops,
+          subject: `Pro waitlist: ${entry.email}`,
+          html: `<p>New Pro-plan intent.</p><ul><li>Email: ${entry.email}</li><li>Name: ${entry.name ?? "—"}</li><li>Workspace: ${entry.workspaceId}</li><li>Note: ${entry.note ?? "—"}</li></ul>`,
+        });
+      } catch {
+        /* best-effort ops notify */
+      }
+    }
+  }
+
+  return ok({ ...entry, emailSent });
 }

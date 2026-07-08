@@ -281,6 +281,7 @@ export default function ReadinessPage() {
   const [role, setRole] = useState("");
   const [lane, setLane] = useState<string | null>(null);
   const [claimCode, setClaimCode] = useState<string | null>(null);
+  const [advisorRecommended, setAdvisorRecommended] = useState(false);
 
   const answered = Object.keys(answers).length;
   const total = Object.values(answers).reduce((s, v) => s + v, 0);
@@ -311,6 +312,7 @@ export default function ReadinessPage() {
       const json = await res.json().catch(() => null);
       const data = json?.data ?? json;
       if (data?.lane) setLane(data.lane);
+      if (data?.advisorRecommended) setAdvisorRecommended(true);
       if (data?.claimCode) {
         setClaimCode(data.claimCode);
         // Backup carry: token only, never the readiness payload itself.
@@ -514,6 +516,24 @@ export default function ReadinessPage() {
                 <p className="text-xs text-gray-400">
                   Your assessment travels with you. You will not repeat these questions after signing up.
                 </p>
+              </div>
+            )}
+
+            {advisorRecommended && (
+              <div className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-4">
+                <p className="text-xs font-semibold uppercase tracking-wider text-amber-700">
+                  Not a clear fit yet
+                </p>
+                <p className="text-sm text-gray-700">
+                  Your answers did not point clearly to one path. Rather than guess, a NexusAI advisor
+                  can scope the right starting point for your situation.
+                </p>
+                <a
+                  href={band.ctaHref}
+                  className="inline-block rounded-lg bg-amber-600 px-5 py-3 text-sm font-semibold text-white hover:bg-amber-700 transition-colors"
+                >
+                  Talk to an advisor →
+                </a>
               </div>
             )}
 

@@ -40,6 +40,15 @@ export type LaneAssignment = {
   reason: string;
 };
 
+/**
+ * When lane confidence is low, the assessment could not confidently place the
+ * buyer. Rather than commit them to a lane silently, the result offers a
+ * talk-to-an-advisor hand-raise. Pure predicate so the API and tests agree.
+ */
+export function advisorFollowUpRecommended(confidence: LaneConfidence): boolean {
+  return confidence === "low";
+}
+
 export function assignLane(input: LaneAssignmentInput): LaneAssignment {
   const sector = input.sector?.trim() || null;
   const size = input.companySize?.trim() || null;

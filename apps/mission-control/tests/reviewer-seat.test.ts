@@ -84,4 +84,26 @@ describe("reviewer seat lifecycle (migration 0035)", () => {
     const stolen = await repository.revokeReviewerSeat("ws-other", seat.id);
     expect(stolen).toBeNull();
   });
+
+  it("resend rotates the invite code: old code stops working, new code accepts", async () => {
+    const ws = `ws-reviewer-${Date.now()}-g`;
+    const { seat, inviteCodeHash: oldHash } = await createSeat(ws);
+
+    const newCode = randomBytes(24).toString("base64url");
+    const newHash = createHash("sha256").update(newCode).digest("hex");
+    const refreshed = await repository.refreshReviewerInvite(ws, seat.id, newHash, new Date(Date.now() + 86_400_000));
+    expect(refreshed?.id).toBe(seat.id);
+
+    expect(await repository.acceptReviewerSeat(oldHash, "user_old")).toBeNull();
+    const accepted = await repository.acceptReviewerSeat(newHash, "user_new");
+    expect(accepted?.clerkUserId).toBe("user_new");
+  });
+
+  it("refresh only works on invited seats, not accepted ones", async () => {
+    const ws = `ws-reviewer-${Date.now()}-h`;
+    const { inviteCodeHash } = await createSeat(ws);
+    const accepted = await repository.acceptReviewerSeat(inviteCodeHash, "user_bound");
+    const rotated = await repository.refreshReviewerInvite(ws, accepted!.id, "deadbeef", new Date(Date.now() + 86_400_000));
+    expect(rotated).toBeNull();
+  });
 });

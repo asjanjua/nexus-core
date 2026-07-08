@@ -17,7 +17,7 @@ import { createHash, randomBytes } from "crypto";
 import { ok, fail } from "@/lib/api";
 import { repository } from "@/lib/data/repository";
 import { buildReadinessClaimEmailHtml, resendConfigured, sendEmail } from "@/lib/email/resend";
-import { assignLane } from "@/lib/services/lane-assignment";
+import { advisorFollowUpRecommended, assignLane } from "@/lib/services/lane-assignment";
 import { z } from "zod";
 
 const scoreSchema = z.record(z.number().int().min(1).max(7));
@@ -167,6 +167,9 @@ export async function POST(request: Request) {
     submittedAt,
     lane: lane.lane,
     laneConfidence: lane.confidence,
+    // When the lane could not be placed confidently, prompt an advisor
+    // hand-raise instead of committing the buyer to a lane silently.
+    advisorRecommended: advisorFollowUpRecommended(lane.confidence),
     claimCode: claimIssued ? claimCode : null,
     expiresAt: claimIssued ? expiresAt.toISOString() : null,
   });

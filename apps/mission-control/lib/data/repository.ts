@@ -4051,6 +4051,35 @@ export const repository = {
     return rows.length ? mapReviewerSeatRow(rows[0]) : null;
   },
 
+  /**
+   * Rotate an invited seat's invite code (new hash) and extend its expiry, so
+   * an admin can re-send an invite whose link was lost or expired. Only seats
+   * still in the `invited` state can be refreshed. Returns null otherwise.
+   */
+  async refreshReviewerInvite(
+    workspaceId: string,
+    seatId: string,
+    newInviteCodeHash: string,
+    newExpiresAt: Date
+  ): Promise<ReviewerSeat | null> {
+    const now = new Date();
+    const rows = await runDb((db) =>
+      db
+        .update(reviewerSeats)
+        .set({ inviteCodeHash: newInviteCodeHash, expiresAt: newExpiresAt, updatedAt: now })
+        .where(
+          and(
+            eq(reviewerSeats.id, seatId),
+            eq(reviewerSeats.workspaceId, workspaceId),
+            eq(reviewerSeats.status, "invited")
+          )
+        )
+        .returning()
+    );
+    if (rows === null) return store.refreshReviewerInvite(workspaceId, seatId, newInviteCodeHash, newExpiresAt, now);
+    return rows.length ? mapReviewerSeatRow(rows[0]) : null;
+  },
+
   // -------------------------------------------------------------------------
   // Pilot outcomes (migration 0036)
   // -------------------------------------------------------------------------

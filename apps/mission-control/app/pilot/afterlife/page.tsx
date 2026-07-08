@@ -87,6 +87,26 @@ export default function PilotAfterlifePage() {
     void load();
   }, [load]);
 
+  const [digestMsg, setDigestMsg] = useState<string | null>(null);
+  const [digestBusy, setDigestBusy] = useState(false);
+
+  async function emailDigest() {
+    setDigestBusy(true);
+    setDigestMsg(null);
+    try {
+      const res = await fetch("/api/pilot/afterlife/digest", { method: "POST" });
+      const json = (await res.json()) as { ok: boolean; data?: { sentTo: string }; error?: string };
+      if (json.ok && json.data) setDigestMsg(`Digest emailed to ${json.data.sentTo}.`);
+      else if (json.error === "no_sponsor_email") setDigestMsg("Add a sponsor email on the strategy profile first.");
+      else if (json.error === "email_not_configured") setDigestMsg("Email delivery is not configured on this host.");
+      else setDigestMsg("Could not send the digest.");
+    } catch {
+      setDigestMsg("Network error sending the digest.");
+    } finally {
+      setDigestBusy(false);
+    }
+  }
+
   async function captureRoi() {
     if (!data?.twinId || !data.selectedWorkflow) return;
     const manualMinutes = Number(manual);
@@ -187,6 +207,12 @@ export default function PilotAfterlifePage() {
                 value={String(data.roi.monthlyHoursSaved)}
                 helper={`${data.roi.measurementCount} ROI measurement(s)`}
               />
+            </div>
+            <div className="mt-3 flex flex-wrap items-center gap-3">
+              <button className="btn-secondary" onClick={emailDigest} disabled={digestBusy}>
+                {digestBusy ? "Sending…" : "Email digest to sponsor"}
+              </button>
+              {digestMsg ? <span className="text-xs text-nexus-muted">{digestMsg}</span> : null}
             </div>
           </div>
 
