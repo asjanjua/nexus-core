@@ -14,7 +14,6 @@
 
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
-import { SignedIn, SignedOut, SignInButton } from "@clerk/nextjs";
 import { PageShell } from "@/components/page-shell";
 
 type AcceptState =
@@ -69,53 +68,44 @@ function AcceptPanel() {
           full link, or ask the workspace admin to resend it.
         </p>
       ) : (
-        <>
-          <SignedOut>
-            <p className="text-sm leading-6 text-white/70">
-              Sign in to bind this reviewer seat to your identity. Approvals you make will be
-              recorded against your account.
-            </p>
-            <div className="mt-4">
-              <SignInButton mode="redirect">
-                <button className="btn-primary text-sm">Sign in to continue</button>
-              </SignInButton>
+        <div>
+          {state.kind === "bound" ? (
+            <div>
+              <p className="text-sm font-medium text-white">You are now the bound reviewer.</p>
+              <p className="mt-2 text-sm leading-6 text-white/60">
+                This seat is tied to your account. You hold approval authority for this
+                workspace&apos;s pilot recommendations.
+              </p>
+              <a href="/" className="btn-primary mt-4 inline-flex text-sm">
+                Go to Mission Control
+              </a>
             </div>
-          </SignedOut>
-
-          <SignedIn>
-            {state.kind === "bound" ? (
-              <div>
-                <p className="text-sm font-medium text-white">You are now the bound reviewer.</p>
-                <p className="mt-2 text-sm leading-6 text-white/60">
-                  This seat is tied to your account. You hold approval authority for this
-                  workspace&apos;s pilot recommendations.
+          ) : (
+            <div>
+              <p className="text-sm leading-6 text-white/70">
+                Sign in first, then accept this invite to bind the reviewer seat to your account.
+                If the API says you are unauthorized, use the sign-in link and return to this invite.
+              </p>
+              {state.kind === "error" ? (
+                <p className="mt-3 rounded-md border border-rose-400/30 bg-rose-400/10 px-3 py-2 text-sm text-rose-200">
+                  {state.message}
                 </p>
-                <a href="/" className="btn-primary mt-4 inline-flex text-sm">
-                  Go to Mission Control
-                </a>
-              </div>
-            ) : (
-              <div>
-                <p className="text-sm leading-6 text-white/70">
-                  Accepting will bind this reviewer seat to your account and give you approval
-                  authority for this workspace.
-                </p>
-                {state.kind === "error" ? (
-                  <p className="mt-3 rounded-md border border-rose-400/30 bg-rose-400/10 px-3 py-2 text-sm text-rose-200">
-                    {state.message}
-                  </p>
-                ) : null}
+              ) : null}
+              <div className="mt-4 flex flex-wrap gap-2">
                 <button
-                  className="btn-primary mt-4 text-sm disabled:opacity-60"
+                  className="btn-primary text-sm disabled:opacity-60"
                   onClick={accept}
                   disabled={state.kind === "submitting"}
                 >
                   {state.kind === "submitting" ? "Accepting…" : "Accept reviewer invite"}
                 </button>
+                <a href="/sign-in" className="btn-subtle text-sm">
+                  Sign in
+                </a>
               </div>
-            )}
-          </SignedIn>
-        </>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

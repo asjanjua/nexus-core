@@ -3,15 +3,15 @@
  *
  * The app already ships an A-grade header set (HSTS preload, nosniff, frame
  * DENY, Referrer-Policy, Permissions-Policy, strict CSP). This test pins that
- * set so a future middleware edit cannot silently drop a header and regress the
+ * set so a future security-header edit cannot silently drop a header and regress the
  * securityheaders.com grade before a pilot. It calls the real
- * `withSecurityHeaders` exported from middleware.
+ * `withSecurityHeaders` helper used by the app header config.
  */
 
 import { describe, expect, it, beforeAll, afterAll, vi } from "vitest";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { withSecurityHeaders, CSP_DIRECTIVES, parseAllowedOrigins } from "@/middleware";
+import { withSecurityHeaders, CSP_DIRECTIVES, parseAllowedOrigins } from "@/lib/security-headers";
 
 function fakeRequest(path = "/dashboard/ceo", init?: { method?: string; origin?: string }): NextRequest {
   const headers = new Headers();

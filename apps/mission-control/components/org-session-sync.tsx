@@ -1,9 +1,3 @@
-"use client";
-
-import { useEffect, useRef } from "react";
-import { useAuth, useSession } from "@clerk/nextjs";
-import { useRouter } from "next/navigation";
-
 /**
  * After a Clerk organization switch, backend API routes can keep honoring the
  * previous org until the session token is refreshed (observed 2026-07-08,
@@ -14,37 +8,12 @@ import { useRouter } from "next/navigation";
  * This component forces an immediate `session.touch()` (fresh token for the
  * new active org) followed by `router.refresh()` (re-runs server components
  * with the new claims) whenever the active orgId changes in-session.
+ *
+ * Temporarily disabled from the app layout because Clerk's client package is
+ * the current local `next build` hang trigger. Server-side auth and route
+ * checks remain active; when Clerk UI is reintroduced, this can regain its
+ * client implementation.
  */
 export function OrgSessionSync() {
-  const { isLoaded, orgId } = useAuth();
-  const { session } = useSession();
-  const router = useRouter();
-  const previousOrgId = useRef<string | null | undefined>(undefined);
-
-  useEffect(() => {
-    if (!isLoaded) return;
-    if (previousOrgId.current === undefined) {
-      // First load: record the starting org, nothing to sync.
-      previousOrgId.current = orgId ?? null;
-      return;
-    }
-    const current = orgId ?? null;
-    if (previousOrgId.current === current) return;
-    previousOrgId.current = current;
-
-    let cancelled = false;
-    (async () => {
-      try {
-        await session?.touch();
-      } catch {
-        // Non-fatal: the poller will refresh the token shortly anyway.
-      }
-      if (!cancelled) router.refresh();
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [isLoaded, orgId, session, router]);
-
   return null;
 }

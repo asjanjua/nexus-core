@@ -3,28 +3,19 @@
  * at the call site (e.g. webhook handlers that must always return 200,
  * fire-and-forget background jobs, fully-exhausted LLM fallback chains).
  *
- * Automatic coverage (uncaught exceptions in route handlers, server
- * components, and middleware) comes from instrumentation.ts's
- * onRequestError hook and needs no per-route wiring. This helper is only
- * for the minority of cases where the app intentionally catches an error
- * and continues — those errors are invisible to onRequestError because
- * nothing actually throws past the route handler.
+ * The Sentry runtime entrypoints are disabled in the demo build path because
+ * Next 15 middleware builds were hanging while bundling Sentry/OpenTelemetry.
+ * Keep these helpers as safe no-ops so call sites do not need branching.
  *
  * Task #32 — production error tracking.
  */
-import * as Sentry from "@sentry/nextjs";
 
 export function captureHandledError(
   err: unknown,
   context: { route: string; errorType: string; workspaceId?: string; extra?: Record<string, unknown> }
 ): void {
-  Sentry.withScope((scope) => {
-    scope.setTag("route", context.route);
-    scope.setTag("errorType", context.errorType);
-    if (context.workspaceId) scope.setTag("workspaceId", context.workspaceId);
-    if (context.extra) scope.setContext("details", context.extra);
-    Sentry.captureException(err instanceof Error ? err : new Error(String(err)));
-  });
+  void err;
+  void context;
 }
 
 /**
@@ -36,12 +27,6 @@ export function captureDegradedState(
   message: string,
   context: { route: string; errorType: string; workspaceId?: string; extra?: Record<string, unknown> }
 ): void {
-  Sentry.withScope((scope) => {
-    scope.setTag("route", context.route);
-    scope.setTag("errorType", context.errorType);
-    scope.setLevel("warning");
-    if (context.workspaceId) scope.setTag("workspaceId", context.workspaceId);
-    if (context.extra) scope.setContext("details", context.extra);
-    Sentry.captureMessage(message);
-  });
+  void message;
+  void context;
 }

@@ -1,11 +1,6 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useEffect, useMemo, useState } from "react";
-import CodeMirror from "@uiw/react-codemirror";
-import { markdown } from "@codemirror/lang-markdown";
-
-const ForceGraph2D = dynamic(() => import("react-force-graph-2d"), { ssr: false });
 
 type KnowledgeNote = {
   id: string;
@@ -87,6 +82,121 @@ function extRefs(note: KnowledgeNote) {
     ...note.decisionRefs.map((id) => ({ type: "decision", id, href: `/decisions` })),
     ...note.recommendationRefs.map((id) => ({ type: "recommendation", id, href: `/recommendations` }))
   ];
+}
+
+function graphNodeColor(type: string) {
+  if (type === "note") return "#7dd3fc";
+  if (type === "evidence") return "#86efac";
+  if (type === "workflow_twin" || type === "workflow") return "#facc15";
+  if (type === "decision") return "#fb7185";
+  if (type === "recommendation") return "#c4b5fd";
+  return "#a7f3d0";
+}
+
+function MiniKnowledgeGraph({ graph }: { graph: KnowledgeGraph }) {
+  const nodes = graph.nodes.slice(0, 48);
+  const visibleNodeIds = new Set(nodes.map((node) => node.id));
+  const edges = graph.edges
+    .filter((edge) => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target))
+    .slice(0, 96);
+
+  if (!nodes.length) {
+    return (
+      <div className="flex h-full min-h-[22rem] items-center justify-center px-6 text-center">
+        <div>
+          <p className="text-sm font-medium text-white/75">No graph links yet.</p>
+          <p className="mt-1 text-xs text-white/40">
+            Link notes to evidence, entities, decisions, or workflows to build the Nexus knowledge map.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const width = 820;
+  const height = 460;
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const outerRadius = Math.min(width, height) * 0.34;
+  const innerRadius = Math.min(width, height) * 0.16;
+  const positions = new Map<string, { x: number; y: number }>();
+
+  nodes.forEach((node, index) => {
+    const ringRadius = node.type === "note" ? innerRadius : outerRadius;
+    const ringCount = nodes.filter((candidate) => (node.type === "note") === (candidate.type === "note")).length || nodes.length;
+    const ringIndex = nodes.slice(0, index).filter((candidate) => (node.type === "note") === (candidate.type === "note")).length;
+    const angle = (Math.PI * 2 * ringIndex) / Math.max(ringCount, 1) - Math.PI / 2;
+    positions.set(node.id, {
+      x: centerX + Math.cos(angle) * ringRadius,
+      y: centerY + Math.sin(angle) * ringRadius
+    });
+  });
+
+  return (
+    <div className="h-full min-h-[22rem] overflow-hidden">
+      <svg className="h-full w-full" role="img" aria-label="Knowledge graph" viewBox={`0 0 ${width} ${height}`}>
+        <defs>
+          <radialGradient id="knowledge-graph-glow" cx="50%" cy="50%" r="65%">
+            <stop offset="0%" stopColor="rgba(125, 211, 252, 0.12)" />
+            <stop offset="100%" stopColor="rgba(2, 6, 23, 0)" />
+          </radialGradient>
+        </defs>
+        <rect width={width} height={height} fill="url(#knowledge-graph-glow)" />
+        {edges.map((edge) => {
+          const source = positions.get(edge.source);
+          const target = positions.get(edge.target);
+          if (!source || !target) return null;
+          return (
+            <g key={edge.id}>
+              <line
+                x1={source.x}
+                y1={source.y}
+                x2={target.x}
+                y2={target.y}
+                stroke="rgba(255,255,255,0.16)"
+                strokeWidth="1.2"
+              />
+              {edge.label && (
+                <text
+                  x={(source.x + target.x) / 2}
+                  y={(source.y + target.y) / 2}
+                  textAnchor="middle"
+                  className="fill-white/30 text-[9px]"
+                >
+                  {edge.label.slice(0, 18)}
+                </text>
+              )}
+            </g>
+          );
+        })}
+        {nodes.map((node) => {
+          const position = positions.get(node.id);
+          if (!position) return null;
+          const color = graphNodeColor(node.type);
+          return (
+            <g key={node.id}>
+              <circle cx={position.x} cy={position.y} r="10" fill={color} opacity="0.18" />
+              <circle cx={position.x} cy={position.y} r="5.5" fill={color} />
+              <text
+                x={position.x + 10}
+                y={position.y + 4}
+                className="fill-white/75 text-[10px]"
+              >
+                {node.label.slice(0, 34)}
+              </text>
+              <text
+                x={position.x + 10}
+                y={position.y + 17}
+                className="fill-white/35 text-[8px] uppercase tracking-[0.12em]"
+              >
+                {node.type.replace("_", " ")}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
 }
 
 export function KnowledgeWorkspace() {
@@ -570,12 +680,12 @@ export function KnowledgeWorkspace() {
             </div>
             {view === "edit" && (
               <div className="overflow-hidden rounded-lg border border-white/10 bg-[#060a12]">
-                <CodeMirror
+                <textarea
+                  className="min-h-[56vh] w-full resize-none bg-transparent p-4 font-mono text-sm leading-6 text-white/80 outline-none placeholder:text-white/25"
                   value={draft.body}
-                  height="56vh"
-                  theme="dark"
-                  extensions={[markdown()]}
-                  onChange={(value) => setDraft({ ...draft, body: value })}
+                  spellCheck={false}
+                  onChange={(event) => setDraft({ ...draft, body: event.target.value })}
+                  placeholder="# Note title&#10;&#10;Write Markdown here..."
                 />
               </div>
             )}
@@ -586,22 +696,7 @@ export function KnowledgeWorkspace() {
             )}
             {view === "graph" && (
               <div className="h-[56vh] overflow-hidden rounded-lg border border-white/10 bg-black/20">
-                <ForceGraph2D
-                  graphData={{ nodes: graph.nodes, links: graph.edges.map((edge) => ({ ...edge, source: edge.source, target: edge.target })) }}
-                  nodeLabel={(node) => String((node as { label?: string }).label ?? "")}
-                  nodeCanvasObject={(node, ctx) => {
-                    const typedNode = node as { x?: number; y?: number; label?: string; type?: string };
-                    const label = typedNode.label ?? "";
-                    const color = typedNode.type === "note" ? "#7dd3fc" : typedNode.type === "evidence" ? "#86efac" : "#c4b5fd";
-                    ctx.fillStyle = color;
-                    ctx.beginPath();
-                    ctx.arc(typedNode.x ?? 0, typedNode.y ?? 0, 5, 0, 2 * Math.PI, false);
-                    ctx.fill();
-                    ctx.fillStyle = "rgba(255,255,255,0.78)";
-                    ctx.font = "10px sans-serif";
-                    ctx.fillText(label.slice(0, 32), (typedNode.x ?? 0) + 8, (typedNode.y ?? 0) + 3);
-                  }}
-                />
+                <MiniKnowledgeGraph graph={graph} />
               </div>
             )}
           </>

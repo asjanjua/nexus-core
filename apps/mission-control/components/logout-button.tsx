@@ -1,16 +1,13 @@
-"use client";
-
 /**
- * LogoutButton — thin wrapper around Clerk's SignOutButton.
- * Kept for backwards compatibility with any existing references.
- * New code should use <UserButton afterSignOutUrl="/sign-in" /> directly.
+ * LogoutButton — lightweight fallback while Clerk client widgets are disabled.
+ * Kept for backwards compatibility with any existing references without
+ * importing Clerk's client package into the production build graph.
  */
-import { SignOutButton } from "@clerk/nextjs";
 
 export function LogoutButton() {
   return (
-    <SignOutButton redirectUrl="/sign-in">
-      <button className="btn-subtle">Sign out</button>
-    </SignOutButton>
+    <a href="/sign-in" className="btn-subtle">
+      Account
+    </a>
   );
 }
