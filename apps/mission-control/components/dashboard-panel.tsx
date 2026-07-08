@@ -22,6 +22,7 @@ import {
 import { HelpLabel } from "@/components/ui/help-dialog";
 import { EvidenceTrustLink } from "@/components/ui/trust-drawer-trigger";
 import { SourceCoverageMap } from "@/components/source-coverage-map";
+import { derivePilotLaneStatus } from "@/lib/services/pilot-status";
 
 export async function DashboardPanel({
   role,
@@ -551,35 +552,49 @@ function NoEvidenceState({
 }
 
 function PilotStatusCard({ profile }: { profile: StrategyProfile | null }) {
+  const lane = derivePilotLaneStatus(profile);
   const laneLabel = labelValue(profile?.buyerLane, "No lane yet");
   const readinessLabel = profile?.readinessBand ?? "No readiness result";
   const selectedWorkflow = profile?.selectedWorkflow ?? "No workflow selected";
-  const blockedGates = (profile?.pilotGates ?? []).filter((gate) => gate.blocked);
-  const openGateLabels = blockedGates.length
-    ? blockedGates.map((gate) => gate.label)
-    : profile?.pilotReady
-      ? ["All scorer gates clear"]
-      : ["Run the workflow scorer"];
   const sponsorReady = Boolean(profile?.sponsorName);
   const reviewerReady = Boolean(profile?.reviewerName);
-  const evidenceReady = Boolean(profile?.pilotReady) && !blockedGates.some((gate) => gate.key.toLowerCase().includes("evidence"));
+  const evidenceReady =
+    Boolean(profile?.pilotReady) &&
+    !lane.blockedGates.some((gate) => gate.key.toLowerCase().includes("evidence"));
+  const stateChip =
+    lane.state === "in_motion"
+      ? { label: "Pilot in motion", tone: "accent" as const }
+      : lane.state === "select"
+        ? { label: "Pilot ready", tone: "accent" as const }
+        : lane.state === "gated"
+          ? { label: "Gated", tone: "warn" as const }
+          : { label: "Not started", tone: "warn" as const };
 
   return (
     <section className="panel space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs uppercase tracking-wide text-nexus-accent/70">Pilot status</p>
-          <h2 className="mt-1 text-xl font-semibold text-white">
-            {profile?.pilotReady ? "Pilot scope ready for confirmation" : "Pilot scope needs gates cleared"}
-          </h2>
-          <p className="mt-1 max-w-3xl text-sm leading-6 text-white/60">
-            Returning users see the readiness lane, sponsor/reviewer ownership, selected workflow, and gate status before pilot paperwork.
-          </p>
+          <h2 className="mt-1 text-xl font-semibold text-white">{lane.headline}</h2>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-white/60">{lane.description}</p>
+          {lane.signalGate ? (
+            <p className="mt-1 text-xs text-white/50">{lane.signalGate.label}</p>
+          ) : null}
         </div>
         <div className="flex flex-wrap gap-2">
-          <MetaChip label={profile?.pilotReady ? "Pilot ready" : "Gated"} tone={profile?.pilotReady ? "accent" : "warn"} />
+          <MetaChip label={stateChip.label} tone={stateChip.tone} />
           <MetaChip label={laneLabel} tone="sky" />
         </div>
+      </div>
+
+      {/* Now / Next strip — persistent orientation for returning users */}
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-1 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-2 text-xs">
+        <span className="text-white/45">
+          Now: <span className="text-white/80">{lane.now}</span>
+        </span>
+        <span className="text-white/45">
+          Next: <span className="text-white/80">{lane.next}</span>
+        </span>
       </div>
 
       <div className="grid gap-3 lg:grid-cols-4">
@@ -592,13 +607,19 @@ function PilotStatusCard({ profile }: { profile: StrategyProfile | null }) {
       <div className="grid gap-3 lg:grid-cols-3">
         <RouteRow label="Sponsor gate" context={sponsorReady ? profile?.sponsorName ?? "Named" : "Name an accountable sponsor"} status={sponsorReady ? "ready" : "blocked"} />
         <RouteRow label="Reviewer gate" context={reviewerReady ? profile?.reviewerName ?? "Named" : "Assign a human reviewer"} status={reviewerReady ? "ready" : "blocked"} />
-        <RouteRow label="Evidence gate" context={evidenceReady ? "Scorer marked evidence ready" : openGateLabels.join(", ")} status={evidenceReady ? "ready" : "next"} />
+        <RouteRow label="Evidence gate" context={evidenceReady ? "Scorer marked evidence ready" : lane.blockedGates.map((gate) => gate.label).join(", ") || "Run the workflow scorer"} status={evidenceReady ? "ready" : "next"} />
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <SecondaryLink href="/workflows" label={profile?.selectedWorkflow ? "Review workflow" : "Select workflow"} />
-        <SecondaryLink href="/start-pilot" label="Complete setup" />
-        <SecondaryLink href="/pilot/paperwork" label="Open paperwork" />
+      <div className="flex flex-wrap items-center gap-2">
+        <a
+          href={lane.primaryAction.href}
+          className="inline-flex items-center rounded-lg bg-nexus-accent px-4 py-2 text-sm font-semibold text-[#04100d] transition hover:brightness-110"
+        >
+          {lane.primaryAction.label}
+        </a>
+        {lane.secondaryActions.map((action) => (
+          <SecondaryLink key={action.href} href={action.href} label={action.label} />
+        ))}
       </div>
     </section>
   );
