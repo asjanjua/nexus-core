@@ -160,6 +160,28 @@ rejected with `pilot_gates_unmet` (400). This covers sponsor, reviewer, and
 evidence gates without letting clients forge readiness. The scorer never
 auto-selects; a human confirms.
 
+### Signal confidence (cold-start honesty)
+
+The engine scores from workspace activity, which is near zero for a user who
+just arrived through readiness -> signup. Rather than hide that, each scorer run
+computes a signal-strength label (`computeSignalStrength` in
+`lib/services/workflow-twins.ts`; thresholds canonical here and there together):
+
+| Strength | Rule |
+| --- | --- |
+| `none` | 0 evidence items and 0 open decisions/actions |
+| `weak` | fewer than 3 evidence items |
+| `moderate` | 3-9 evidence items |
+| `strong` | 10+ evidence items, or 3+ evidence with 5+ open decisions/actions |
+
+`none` and `weak` runs render a "Provisional recommendation" line on
+`/workflows` and append "Provisional" to the run summary. The label NEVER
+blocks confirmation — the human still decides, consistent with the scorer never
+auto-selecting. It is persisted inside the `pilotGates` JSON as an informational
+entry (`key: signal_strength`, `blocked: false`) so Mission Control's
+pilot-status card can show it without a schema migration; the run payload's
+`pilotGates` stays pure gates and carries `signal` separately.
+
 ### Deployment note
 
 Database deployments must apply migrations `0033` and `0034` before deploying

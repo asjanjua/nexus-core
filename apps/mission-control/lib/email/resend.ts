@@ -208,6 +208,52 @@ export function buildReadinessClaimEmailHtml(ctx: ReadinessClaimEmailContext): s
 </html>`.trim();
 }
 
+export interface ReviewerInviteEmailContext {
+  /** Display name of the invited reviewer, if provided at invite time. */
+  reviewerName?: string | null;
+  /** Name of the workspace the reviewer is being invited to review for. */
+  workspaceName: string;
+  /** Name/email of the person who sent the invite. */
+  invitedBy: string;
+  /** Absolute URL that redeems the single-use invite code. */
+  acceptUrl: string;
+  /** ISO timestamp the invite expires. */
+  expiresAt: string;
+}
+
+export function buildReviewerInviteEmailHtml(ctx: ReviewerInviteEmailContext): string {
+  const greeting = ctx.reviewerName ? `Hi ${escapeHtml(ctx.reviewerName)},` : "Hi,";
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#0f172a;">
+    <tr>
+      <td style="padding:32px 24px;">
+        <h1 style="color:#e2e8f0;font-size:20px;margin:0 0 8px 0;">You have been invited as a reviewer</h1>
+        <p style="color:#94a3b8;font-size:14px;line-height:1.6;margin:0 0 20px 0;">
+          ${greeting} <strong style="color:#e2e8f0;">${escapeHtml(ctx.invitedBy)}</strong> invited you to be the
+          named reviewer for <strong style="color:#e2e8f0;">${escapeHtml(ctx.workspaceName)}</strong> on NexusAI.
+          As the reviewer you hold the approval authority for pilot recommendations, bound to your own identity.
+        </p>
+        <p style="color:#94a3b8;font-size:14px;line-height:1.6;margin:0 0 24px 0;">
+          Accept the invite below to bind this reviewer seat to your account. You will be asked to sign in first.
+        </p>
+        <a href="${escapeHtml(ctx.acceptUrl)}" style="display:inline-block;padding:11px 24px;background:#3b82f6;color:#fff;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;">
+          Accept reviewer invite
+        </a>
+        <p style="color:#64748b;font-size:12px;line-height:1.6;margin:24px 0 0 0;">
+          This invite is single-use and expires ${escapeHtml(new Date(ctx.expiresAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }))}.
+          If you were not expecting this, you can ignore this email and the seat will never be bound to you.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`.trim();
+}
+
 /**
  * Build an HTML email for a synthesis brief.
  */

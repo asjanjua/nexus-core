@@ -46,7 +46,55 @@ type WorkflowCandidate = {
  */
 type PilotGate = { key: string; label: string; blocked: boolean };
 
-function buildPilotGates(strategy: StrategyProfile | null, evidenceCoverage: number): PilotGate[] {
+/**
+ * Scorer signal confidence — the cold-start honesty layer.
+ * The activity-driven engine scores from workspace signal (evidence coverage,
+ * open decisions, open actions). Right after readiness -> signup that signal is
+ * near zero, so the recommendation is driven almost entirely by fixed weights
+ * and lane/sector boosts. Rather than hide that, the scorer labels how much
+ * customer signal backs the run. The label never blocks confirmation — the
+ * human still decides — it makes the basis of the recommendation explicit.
+ * Thresholds are canonical here and in docs/WORKFLOW_TWIN_SCORER.md; tune both.
+ */
+export type ScorerSignalStrength = "none" | "weak" | "moderate" | "strong";
+
+export type ScorerSignal = {
+  strength: ScorerSignalStrength;
+  evidenceCount: number;
+  openDecisions: number;
+  openActions: number;
+  note: string;
+};
+
+export function computeSignalStrength(
+  evidenceCount: number,
+  openDecisions: number,
+  openActions: number
+): ScorerSignal {
+  const activity = openDecisions + openActions;
+  let strength: ScorerSignalStrength;
+  if (evidenceCount === 0 && activity === 0) strength = "none";
+  else if (evidenceCount >= 10 || (evidenceCount >= 3 && activity >= 5)) strength = "strong";
+  else if (evidenceCount >= 3) strength = "moderate";
+  else strength = "weak";
+
+  const basis = `based on ${evidenceCount} evidence item(s), ${openDecisions} open decision(s), and ${openActions} open action(s)`;
+  const note =
+    strength === "none"
+      ? `Provisional recommendation — no workspace signal yet (${basis}). Connect or upload evidence to strengthen it.`
+      : strength === "weak"
+        ? `Provisional recommendation — limited workspace signal (${basis}). Connect more sources to strengthen it.`
+        : strength === "moderate"
+          ? `Recommendation ${basis}.`
+          : `Recommendation backed by substantial workspace signal (${basis}).`;
+  return { strength, evidenceCount, openDecisions, openActions, note };
+}
+
+function buildPilotGates(
+  strategy: StrategyProfile | null,
+  evidenceCoverage: number,
+  hasAcceptedReviewerSeat: boolean
+): PilotGate[] {
   return [
     {
       key: "sponsor_named",
@@ -54,9 +102,13 @@ function buildPilotGates(strategy: StrategyProfile | null, evidenceCoverage: num
       blocked: !strategy?.sponsorName,
     },
     {
+      // The reviewer gate requires an identity-bound reviewer seat, not a
+      // free-text name. A reviewer must accept an invite (binding the seat to
+      // their Clerk identity) before the workspace is pilot-ready — this is
+      // what makes pilot approvals attributable to a real, accountable person.
       key: "reviewer_named",
-      label: "Named reviewer on the strategy profile",
-      blocked: !strategy?.reviewerName,
+      label: "Identity-bound reviewer seat accepted",
+      blocked: !hasAcceptedReviewerSeat,
     },
     {
       key: "evidence_available",
@@ -248,12 +300,13 @@ export async function buildWorkflowTwinRunInput(
   twin: WorkflowTwin,
   workspaceId: string
 ): Promise<WorkflowTwinRunInput> {
-  const [decisions, actions, recommendations, profile, strategy] = await Promise.all([
+  const [decisions, actions, recommendations, profile, strategy, acceptedReviewerSeat] = await Promise.all([
     repository.listDecisions(workspaceId),
     repository.listActions(workspaceId),
     repository.getRecommendations(workspaceId),
     repository.getWorkspaceProfile(workspaceId),
-    repository.getStrategyProfile(workspaceId)
+    repository.getStrategyProfile(workspaceId),
+    repository.getAcceptedReviewerSeat(workspaceId)
   ]);
 
   const openDecisions = decisions.filter((decision) => decision.status === "open");
@@ -284,22 +337,37 @@ export async function buildWorkflowTwinRunInput(
     const recommended = candidates.find((candidate) => candidate.recommended) ?? null;
     // Bridgeable workspace gates: named sponsor, named reviewer, evidence.
     // pilotReady only when a recommendation exists AND all gates clear.
-    const pilotGates = buildPilotGates(strategy, evidenceRefs.length);
+    const pilotGates = buildPilotGates(strategy, evidenceRefs.length, Boolean(acceptedReviewerSeat));
     const pilotReady = Boolean(recommended) && pilotGates.every((gate) => !gate.blocked);
-    await repository.setPilotReadiness(workspaceId, pilotReady, pilotGates);
+    // Signal confidence is computed AFTER pilotReady so the informational entry
+    // below can never affect gating. It is persisted inside the pilotGates JSON
+    // (blocked: false, key "signal_strength") so Mission Control can show it
+    // without a schema migration.
+    const openActionCount = actions.filter((action) => action.status === "open").length;
+    const signal = computeSignalStrength(evidenceRefs.length, openDecisions.length, openActionCount);
+    const persistedGates = [
+      ...pilotGates,
+      {
+        key: "signal_strength",
+        label: `Scorer signal: ${signal.strength} — ${signal.evidenceCount} evidence, ${signal.openDecisions} decisions, ${signal.openActions} actions`,
+        blocked: false,
+      },
+    ];
+    await repository.setPilotReadiness(workspaceId, pilotReady, persistedGates);
     return {
       evidenceRefs,
       generatedOutputRefs,
       confidence: evidenceRefs.length ? 0.72 : 0.52,
       status: "generated",
       summary: recommended
-        ? `Workflow scorer recommends starting with ${recommended.label} (${recommended.score}/100)${pilotReady ? " — pilot-ready" : `, but ${pilotGates.filter((g) => g.blocked).length} gate(s) remain before pilot scope`}.`
+        ? `Workflow scorer recommends starting with ${recommended.label} (${recommended.score}/100)${pilotReady ? " — pilot-ready" : `, but ${pilotGates.filter((g) => g.blocked).length} gate(s) remain before pilot scope`}.${signal.strength === "none" || signal.strength === "weak" ? " Provisional: limited workspace signal." : ""}`
         : "No workflow is suitable as a first pilot under current constraints. A NexusAI advisor can help scope a safer entry point.",
       payload: {
         candidates,
         recommended,
         pilotGates,
         pilotReady,
+        signal,
         scoringWeights: {
           dataReadiness: "22%",
           pain: "18%",

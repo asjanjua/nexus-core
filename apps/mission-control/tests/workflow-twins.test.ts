@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { repository } from "@/lib/data/repository";
-import { buildWorkflowTwinRunInput } from "@/lib/services/workflow-twins";
+import { buildWorkflowTwinRunInput, computeSignalStrength } from "@/lib/services/workflow-twins";
 import { store } from "@/lib/data/store";
 import type { StrategyProfile } from "@/lib/contracts";
 
@@ -182,21 +182,45 @@ describe("workflow twin primitives", () => {
     expect(gates.find((g) => g.key === "sponsor_named")?.blocked).toBe(true);
     expect(gates.find((g) => g.key === "reviewer_named")?.blocked).toBe(true);
 
-    // Sponsor and reviewer named; evidence still missing, so still blocked.
+    // Sponsor named + a free-text reviewer name. The reviewer gate now
+    // requires an identity-bound reviewer SEAT, not a name, so it stays
+    // blocked until a seat is accepted (reviewer-seat slice 3).
     stubStrategyProfile({ buyerLane: "business_advisory", sponsorName: "A. Sponsor", reviewerName: "R. Reviewer" });
     const stillBlocked = await buildWorkflowTwinRunInput(scorerTwin, workspaceId);
     const gates2 = stillBlocked.payload.pilotGates as Array<{ key: string; blocked: boolean }>;
     expect(gates2.find((g) => g.key === "sponsor_named")?.blocked).toBe(false);
-	    expect(gates2.find((g) => g.key === "reviewer_named")?.blocked).toBe(false);
+	    expect(gates2.find((g) => g.key === "reviewer_named")?.blocked).toBe(true);
 	    expect(gates2.find((g) => g.key === "evidence_available")?.blocked).toBe(true);
 	    expect(stillBlocked.payload.pilotReady).toBe(false);
 	    expect(readinessSpy).toHaveBeenLastCalledWith(
 	      workspaceId,
 	      false,
 	      expect.arrayContaining([
+	        expect.objectContaining({ key: "reviewer_named", blocked: true }),
 	        expect.objectContaining({ key: "evidence_available", blocked: true }),
 	      ])
 	    );
+
+	    // Accept an identity-bound reviewer seat for this workspace: the
+	    // reviewer gate now clears even though evidence is still missing.
+	    const { createHash, randomBytes } = await import("crypto");
+	    const inviteCode = randomBytes(24).toString("base64url");
+	    const inviteCodeHash = createHash("sha256").update(inviteCode).digest("hex");
+	    await repository.createReviewerSeat({
+	      id: `rs_gate_${Date.now()}`,
+	      workspaceId,
+	      email: "reviewer@example.com",
+	      name: "R. Reviewer",
+	      inviteCodeHash,
+	      invitedBy: "user_sponsor",
+	      expiresAt: new Date(Date.now() + 86_400_000),
+	    });
+	    await repository.acceptReviewerSeat(inviteCodeHash, "user_reviewer_gate");
+	    const reviewerBound = await buildWorkflowTwinRunInput(scorerTwin, workspaceId);
+	    const gates3 = reviewerBound.payload.pilotGates as Array<{ key: string; blocked: boolean }>;
+	    expect(gates3.find((g) => g.key === "reviewer_named")?.blocked).toBe(false);
+	    expect(gates3.find((g) => g.key === "evidence_available")?.blocked).toBe(true);
+	    expect(reviewerBound.payload.pilotReady).toBe(false);
 	  });
 
   it("applies lane-fit boost from the strategy profile buyer lane", async () => {
@@ -216,6 +240,42 @@ describe("workflow twin primitives", () => {
     const riskInSme = (smeRun.payload.candidates as Array<{ type: string; score: number }>).find((c) => c.type === "risk_review")!;
     // risk_review is a lane-fit match for regulated_enterprise but not for sme.
     expect(riskInReg.score).toBeGreaterThan(riskInSme.score);
+  });
+
+  it("labels scorer signal strength and never lets it gate pilot readiness", async () => {
+    // Pure threshold checks (canonical in docs/WORKFLOW_TWIN_SCORER.md).
+    expect(computeSignalStrength(0, 0, 0).strength).toBe("none");
+    expect(computeSignalStrength(1, 0, 0).strength).toBe("weak");
+    expect(computeSignalStrength(2, 4, 0).strength).toBe("weak");
+    expect(computeSignalStrength(3, 0, 0).strength).toBe("moderate");
+    expect(computeSignalStrength(3, 3, 2).strength).toBe("strong");
+    expect(computeSignalStrength(10, 0, 0).strength).toBe("strong");
+    expect(computeSignalStrength(0, 0, 0).note).toContain("Provisional");
+    expect(computeSignalStrength(1, 0, 0).note).toContain("Provisional");
+    expect(computeSignalStrength(10, 0, 0).note).not.toContain("Provisional");
+
+    // Cold-start run: empty workspace produces a provisional-labelled run whose
+    // signal entry is informational (blocked: false) and never blocks gating.
+    const workspaceId = `workspace-signal-${Date.now()}`;
+    const readinessSpy = vi.spyOn(repository, "setPilotReadiness");
+    const scorerTwin = await repository.createWorkflowTwin(
+      workspaceId,
+      { type: "workflow_scorer", name: "Workflow Twin Scorer", status: "active", config: {}, owner: "strategy" },
+      "tester"
+    );
+    stubStrategyProfile(null);
+    const run = await buildWorkflowTwinRunInput(scorerTwin, workspaceId);
+    const signal = run.payload.signal as { strength: string; note: string };
+    expect(signal.strength).toBe("none");
+    expect(run.summary).toContain("Provisional");
+    // Payload gates stay pure (no signal entry); persisted gates carry the
+    // informational entry with blocked: false.
+    const payloadGates = run.payload.pilotGates as Array<{ key: string }>;
+    expect(payloadGates.find((g) => g.key === "signal_strength")).toBeUndefined();
+    const persisted = readinessSpy.mock.calls[readinessSpy.mock.calls.length - 1]?.[2] as Array<{ key: string; blocked: boolean }>;
+    const persistedSignal = persisted.find((g) => g.key === "signal_strength");
+    expect(persistedSignal).toBeTruthy();
+    expect(persistedSignal?.blocked).toBe(false);
   });
 
   it("updates workflow twin config for backcasting and shadow ROI state", async () => {

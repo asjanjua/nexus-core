@@ -157,6 +157,11 @@ export default function WorkflowsPage() {
   const notFirstPilot = candidates.filter((candidate) => candidate.hardGate);
   const pilotGates = asPilotGates(scorerRun?.payload?.pilotGates);
   const pilotReady = Boolean(scorerRun?.payload?.pilotReady) && Boolean(recommended);
+  // Signal confidence (cold-start honesty): informational only, never gates.
+  const scorerSignal = (scorerRun?.payload?.signal ?? null) as
+    | { strength: "none" | "weak" | "moderate" | "strong"; note: string }
+    | null;
+  const provisionalSignal = scorerSignal?.strength === "none" || scorerSignal?.strength === "weak";
   const blockedGates = pilotGates.filter((gate) => gate.blocked);
   const backcast = asBackcast((decisionTwin ?? scorerTwin)?.config?.backcast);
   const measurements = asRoiMeasurements((decisionTwin ?? scorerTwin)?.config?.shadowMeasurements);
@@ -352,6 +357,11 @@ export default function WorkflowsPage() {
                   </p>
                   <h2 className="mt-1 text-lg font-semibold text-white">{recommended.label}</h2>
                   <p className="mt-1 text-sm text-white/65">{recommended.reason}</p>
+                  {scorerSignal ? (
+                    <p className={`mt-2 text-xs ${provisionalSignal ? "text-amber-200/90" : "text-white/50"}`}>
+                      {scorerSignal.note}
+                    </p>
+                  ) : null}
                   <button
                     className="btn-primary mt-3"
                     disabled={!pilotReady || busy === "confirm-pilot"}
