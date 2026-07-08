@@ -1,10 +1,10 @@
-import { and, desc, eq, gt, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { verifyPassword } from "@/lib/auth";
 import { store } from "@/lib/data/store";
 import { evidenceSourceTypeSchema } from "@/lib/contracts";
-import type { Action, ActionInput, ActionStatus, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, DispatchJob, DispatchJobInput, DispatchJobStatus, Entity, EntityInput, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, KnowledgeLink, KnowledgeNote, KnowledgeNoteInput, KnowledgeSearchResult, KnowledgeSyncEvent, LearningSignal, LearningSignalInput, LearningSignalSummary, PromptRegistryEntry, ReadinessSubmission, Recommendation, RecommendationStatus, Role, StrategyProfile, StrategyProfileInput, SynthesisSchedule, SynthesisScheduleInput, SynthesisScheduleStatus, WorkflowTwin, WorkflowTwinInput, WorkflowTwinRun, WorkflowTwinRunInput, WorkflowTwinRunStatus, WorkflowTwinStatus, WorkflowTwinType, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
+import type { Action, ActionInput, ActionStatus, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, DispatchJob, DispatchJobInput, DispatchJobStatus, Entity, EntityInput, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, KnowledgeLink, KnowledgeNote, KnowledgeNoteInput, KnowledgeSearchResult, KnowledgeSyncEvent, LearningSignal, LearningSignalInput, LearningSignalSummary, PromptRegistryEntry, ReadinessSubmission, Recommendation, ReviewerSeat, RecommendationStatus, Role, StrategyProfile, StrategyProfileInput, SynthesisSchedule, SynthesisScheduleInput, SynthesisScheduleStatus, WorkflowTwin, WorkflowTwinInput, WorkflowTwinRun, WorkflowTwinRunInput, WorkflowTwinRunStatus, WorkflowTwinStatus, WorkflowTwinType, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
 import { assertDbConfigured, isDbRequired } from "@/lib/data/db-policy";
 
 // In-memory idempotency cache for Stripe events (fallback when DB is unavailable).
@@ -48,6 +48,7 @@ import {
   dispatchJobs,
   stripeProcessedEvents,
   readinessSubmissions,
+  reviewerSeats,
   strategyProfiles,
   type recommendationStatusEnum,
   type ingestionStatusEnum
@@ -401,6 +402,28 @@ function backoffMs(attempts: number): number {
 }
 
 type DispatchJobRow = typeof dispatchJobs.$inferSelect;
+
+function isoOrNull(value: Date | string | null | undefined): string | null {
+  if (!value) return null;
+  return value instanceof Date ? value.toISOString() : String(value);
+}
+
+function mapReviewerSeatRow(row: typeof reviewerSeats.$inferSelect): ReviewerSeat {
+  return {
+    id: row.id,
+    workspaceId: row.workspaceId,
+    email: row.email,
+    name: row.name ?? null,
+    status: row.status as ReviewerSeat["status"],
+    clerkUserId: row.clerkUserId ?? null,
+    invitedBy: row.invitedBy,
+    acceptedAt: isoOrNull(row.acceptedAt),
+    revokedAt: isoOrNull(row.revokedAt),
+    expiresAt: isoOrNull(row.expiresAt) ?? new Date(0).toISOString(),
+    createdAt: isoOrNull(row.createdAt) ?? new Date(0).toISOString(),
+    updatedAt: isoOrNull(row.updatedAt) ?? new Date(0).toISOString(),
+  };
+}
 
 function mapDispatchJob(row: DispatchJobRow): DispatchJob {
   return {
@@ -3884,6 +3907,119 @@ export const repository = {
         .returning({ id: readinessSubmissions.id })
     );
     return { deleted: rows?.length ?? 0 };
+  },
+
+  // -------------------------------------------------------------------------
+  // Reviewer seats (migration 0035) — identity-bound reviewer role. Invite
+  // codes are single-use and stored hashed; acceptance binds a Clerk user id.
+  // -------------------------------------------------------------------------
+
+  async createReviewerSeat(input: {
+    id: string;
+    workspaceId: string;
+    email: string;
+    name?: string | null;
+    inviteCodeHash: string;
+    invitedBy: string;
+    expiresAt: Date;
+  }): Promise<ReviewerSeat> {
+    const seat: ReviewerSeat = {
+      id: input.id,
+      workspaceId: input.workspaceId,
+      email: input.email,
+      name: input.name ?? null,
+      status: "invited",
+      clerkUserId: null,
+      invitedBy: input.invitedBy,
+      acceptedAt: null,
+      revokedAt: null,
+      expiresAt: input.expiresAt.toISOString(),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    const wrote = await runDb(async (db) => {
+      await db.insert(reviewerSeats).values({
+        id: seat.id,
+        workspaceId: seat.workspaceId,
+        email: seat.email,
+        name: seat.name ?? null,
+        inviteCodeHash: input.inviteCodeHash,
+        status: "invited",
+        invitedBy: seat.invitedBy,
+        expiresAt: input.expiresAt,
+      });
+      return true;
+    });
+    if (!wrote) store.createReviewerSeat(seat, input.inviteCodeHash);
+    return seat;
+  },
+
+  /**
+   * Atomically accept a reviewer invite by invite-code hash, binding the seat
+   * to the accepting Clerk user. Single UPDATE ... RETURNING prevents
+   * double-accept races. Returns null if the code is invalid, consumed,
+   * revoked, or expired.
+   */
+  async acceptReviewerSeat(
+    inviteCodeHash: string,
+    clerkUserId: string
+  ): Promise<ReviewerSeat | null> {
+    const now = new Date();
+    const rows = await runDb((db) =>
+      db
+        .update(reviewerSeats)
+        .set({ status: "accepted", clerkUserId, acceptedAt: now, updatedAt: now })
+        .where(
+          and(
+            eq(reviewerSeats.inviteCodeHash, inviteCodeHash),
+            eq(reviewerSeats.status, "invited"),
+            gt(reviewerSeats.expiresAt, now)
+          )
+        )
+        .returning()
+    );
+    if (rows === null) return store.acceptReviewerSeat(inviteCodeHash, clerkUserId, now);
+    if (rows.length === 0) return null;
+    return mapReviewerSeatRow(rows[0]);
+  },
+
+  async getAcceptedReviewerSeat(workspaceId: string): Promise<ReviewerSeat | null> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(reviewerSeats)
+        .where(and(eq(reviewerSeats.workspaceId, workspaceId), eq(reviewerSeats.status, "accepted")))
+        .limit(1)
+    );
+    if (rows === null) return store.getAcceptedReviewerSeat(workspaceId);
+    return rows.length ? mapReviewerSeatRow(rows[0]) : null;
+  },
+
+  async listReviewerSeats(workspaceId: string): Promise<ReviewerSeat[]> {
+    const rows = await runDb((db) =>
+      db.select().from(reviewerSeats).where(eq(reviewerSeats.workspaceId, workspaceId))
+    );
+    if (rows === null) return store.listReviewerSeats(workspaceId);
+    return rows.map(mapReviewerSeatRow);
+  },
+
+  async revokeReviewerSeat(workspaceId: string, seatId: string): Promise<ReviewerSeat | null> {
+    const now = new Date();
+    const rows = await runDb((db) =>
+      db
+        .update(reviewerSeats)
+        .set({ status: "revoked", revokedAt: now, updatedAt: now })
+        .where(
+          and(
+            eq(reviewerSeats.id, seatId),
+            eq(reviewerSeats.workspaceId, workspaceId),
+            ne(reviewerSeats.status, "revoked")
+          )
+        )
+        .returning()
+    );
+    if (rows === null) return store.revokeReviewerSeat(workspaceId, seatId, now);
+    return rows.length ? mapReviewerSeatRow(rows[0]) : null;
   },
 
   async storeKnowledgeEmbedding(noteId: string, embedding: number[]): Promise<void> {

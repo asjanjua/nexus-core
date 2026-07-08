@@ -603,6 +603,27 @@ export const strategyProfiles = pgTable("strategy_profiles", {
 });
 
 /**
+ * Reviewer seats — identity-bound reviewer role per workspace (migration 0035).
+ * Invite codes are single-use and stored hashed; acceptance binds the seat to
+ * a Clerk user id. One accepted seat per workspace in V1.
+ */
+export const reviewerSeats = pgTable("reviewer_seats", {
+  id:             text("id").primaryKey(),
+  workspaceId:    text("workspace_id").notNull(),
+  email:          varchar("email", { length: 320 }).notNull(),
+  name:           varchar("name", { length: 160 }),
+  inviteCodeHash: varchar("invite_code_hash", { length: 64 }).notNull(),
+  status:         varchar("status", { length: 16 }).notNull().default("invited"),
+  clerkUserId:    text("clerk_user_id"),
+  invitedBy:      text("invited_by").notNull(),
+  acceptedAt:     timestamp("accepted_at", { withTimezone: true }),
+  revokedAt:      timestamp("revoked_at", { withTimezone: true }),
+  expiresAt:      timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt:      timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:      timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+/**
  * Readiness submissions — pending anonymous assessment records from the public
  * /readiness page. Claimed post-auth via a single-use claim code, which writes
  * the strategy profile. Migration 0033. See docs/LANE_ASSIGNMENT_SPEC.md.

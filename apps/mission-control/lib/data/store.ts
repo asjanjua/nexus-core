@@ -20,6 +20,7 @@ import {
   type LearningSignal,
   type Recommendation,
   type RecommendationStatus,
+  type ReviewerSeat,
   type Role,
   type Sensitivity,
   type StrategyProfile,
@@ -159,6 +160,15 @@ const workflowTwinStore: WorkflowTwin[] = [];
 const workflowTwinRunStore: WorkflowTwinRun[] = [];
 // Strategy profile fallback for no-DB/demo mode, keyed by workspaceId.
 const strategyProfileStore = new Map<string, StrategyProfile>();
+// Reviewer seat fallback for no-DB/demo mode, keyed by seat id. The invite
+// code hash is kept internally and never returned to callers.
+type StoredReviewerSeat = ReviewerSeat & { inviteCodeHash: string };
+const reviewerSeatStore = new Map<string, StoredReviewerSeat>();
+
+function publicReviewerSeat(seat: StoredReviewerSeat): ReviewerSeat {
+  const { inviteCodeHash: _hash, ...rest } = seat;
+  return rest;
+}
 const knowledgeNoteStore: KnowledgeNote[] = [];
 const knowledgeLinkStore: KnowledgeLink[] = [];
 const knowledgeSyncEventStore: KnowledgeSyncEvent[] = [];
@@ -882,6 +892,69 @@ export const store = {
     };
     strategyProfileStore.set(workspaceId, profile);
     return profile;
+  },
+
+  // -------------------------------------------------------------------------
+  // Reviewer seats (in-memory fallback, migration 0035)
+  // -------------------------------------------------------------------------
+
+  createReviewerSeat(seat: ReviewerSeat, inviteCodeHash: string): ReviewerSeat {
+    reviewerSeatStore.set(seat.id, { ...seat, inviteCodeHash });
+    return seat;
+  },
+
+  /** Atomic-equivalent single-use accept: invited, unexpired, code matches. */
+  acceptReviewerSeat(
+    inviteCodeHash: string,
+    clerkUserId: string,
+    now = new Date()
+  ): ReviewerSeat | null {
+    for (const seat of reviewerSeatStore.values()) {
+      if (
+        seat.inviteCodeHash === inviteCodeHash &&
+        seat.status === "invited" &&
+        new Date(seat.expiresAt) > now
+      ) {
+        const accepted: StoredReviewerSeat = {
+          ...seat,
+          status: "accepted",
+          clerkUserId,
+          acceptedAt: now.toISOString(),
+          updatedAt: now.toISOString(),
+        };
+        reviewerSeatStore.set(seat.id, accepted);
+        return publicReviewerSeat(accepted);
+      }
+    }
+    return null;
+  },
+
+  getAcceptedReviewerSeat(workspaceId: string): ReviewerSeat | null {
+    for (const seat of reviewerSeatStore.values()) {
+      if (seat.workspaceId === workspaceId && seat.status === "accepted") {
+        return publicReviewerSeat(seat);
+      }
+    }
+    return null;
+  },
+
+  listReviewerSeats(workspaceId: string): ReviewerSeat[] {
+    return [...reviewerSeatStore.values()]
+      .filter((seat) => seat.workspaceId === workspaceId)
+      .map(publicReviewerSeat);
+  },
+
+  revokeReviewerSeat(workspaceId: string, seatId: string, now = new Date()): ReviewerSeat | null {
+    const seat = reviewerSeatStore.get(seatId);
+    if (!seat || seat.workspaceId !== workspaceId || seat.status === "revoked") return null;
+    const revoked: StoredReviewerSeat = {
+      ...seat,
+      status: "revoked",
+      revokedAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+    };
+    reviewerSeatStore.set(seatId, revoked);
+    return publicReviewerSeat(revoked);
   },
 
   // -------------------------------------------------------------------------

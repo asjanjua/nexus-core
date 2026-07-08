@@ -1044,6 +1044,26 @@ export const pilotGateSchema = z.object({
 });
 export type PilotGate = z.infer<typeof pilotGateSchema>;
 
+// Reviewer seat (migration 0035): identity-bound reviewer role per workspace.
+export const reviewerSeatStatusSchema = z.enum(["invited", "accepted", "revoked"]);
+export type ReviewerSeatStatus = z.infer<typeof reviewerSeatStatusSchema>;
+
+export const reviewerSeatSchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  email: z.string().email(),
+  name: z.string().nullable().optional(),
+  status: reviewerSeatStatusSchema.default("invited"),
+  clerkUserId: z.string().nullable().optional(),
+  invitedBy: z.string(),
+  acceptedAt: z.string().nullable().optional(),
+  revokedAt: z.string().nullable().optional(),
+  expiresAt: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type ReviewerSeat = z.infer<typeof reviewerSeatSchema>;
+
 export const laneChangedBySchema = z.enum([
   "system_suggestion",
   "user_confirmation",
