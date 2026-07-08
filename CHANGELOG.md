@@ -2,6 +2,26 @@
 
 ---
 
+## Unreleased — Reviewer Seat Slice 1 + Pilot-Status Lane + Org-Switch Fix (2026-07-08)
+
+**Reviewer seat, slice 1 (identity-bound reviewer).** Migration 0035 `reviewer_seats`: invite flow with single-use sha256-hashed invite codes (7-day expiry), acceptance binds the seat to the accepting Clerk user id, one accepted seat per workspace (partial unique index), revoke is workspace-scoped and audited. New API: `GET/POST/DELETE /api/reviewer-seat` (invite code returned exactly once; delivery is the caller's responsibility this slice) and `POST /api/reviewer-seat/accept` (also writes reviewerName/reviewerEmail to the strategy profile so the scorer gate reflects the bound identity). Approvals are now identity-bound: the recorded actor is the server-resolved identity (client `actor` only as legacy bearer fallback), and each approval audit records whether the approver IS the bound reviewer (`approvedByBoundReviewer`). Not yet done (next slices): invite email delivery, accept UI, gating `pilotReady` on an accepted seat, restricting approval rights to the bound reviewer. Tests: `tests/reviewer-seat.test.ts` (6). No-DB store fallback included.
+
+**Returning-user pilot-status lane.** `lib/services/pilot-status.ts` derives one of four lane states (start / gated / select / in_motion) from the strategy profile; the Mission Control pilot-status card is now state-driven with exactly one primary action per state and a Now/Next strip. Tests: `tests/pilot-status.test.ts` (7).
+
+**Clerk org-switch session fix.** New `components/org-session-sync.tsx` mounted in the authed layout: on in-session org change it forces `session.touch()` then `router.refresh()`, so backend API routes honor the new org immediately (the 2026-07-08 release-gate nuance, previously only handled in browser automation).
+
+Full suite after changes: 65 files / 451 tests passing.
+
+---
+
+## Unreleased — Scorer Signal Confidence + Demo Week Plan (2026-07-07)
+
+**Scorer signal confidence (cold-start honesty).** The workflow scorer now labels how much workspace signal backs each run: `computeSignalStrength` (none/weak/moderate/strong from evidence count and open decisions/actions) in `lib/services/workflow-twins.ts`, `payload.signal` on scorer runs, "Provisional" appended to weak/none run summaries, a provisional line under the `/workflows` recommendation, and the label on the Mission Control pilot-status card. Persisted as an informational `signal_strength` entry inside the pilotGates JSON (`blocked: false`) — it never gates confirmation and needs no migration. Spec: `docs/WORKFLOW_TWIN_SCORER.md` §Signal confidence. Tests: `tests/workflow-twins.test.ts` (9/9; full suite 434 tests / 61 files).
+
+**Calendar-driven planning.** `docs/USER_STRATEGY_AND_PIVOTS.md` §Decisions 2026-07-07 records the dated decisions (reviewer becomes a real Clerk-org seat before pilot signing; monetization waitlist -> pilots -> Stripe; scorer cold-start labeled not blocked; pilot afterlife named as an open gap). New `docs/DEMO_RUNBOOK_REGULATED.md` sequences the regulated-buyer demo. `TASKS.md` § Demo/Launch/Pilot Calendar Plan and `BACKLOG.md` carry the execution items.
+
+---
+
 ## Unreleased — Pre-Pilot Readiness Lifecycle + Mission Control Status (2026-07-07)
 
 Closed three paid-pilot follow-ups from the readiness/scorer work.

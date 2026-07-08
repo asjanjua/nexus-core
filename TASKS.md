@@ -87,6 +87,28 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 28. [x] Add product subdomain detection for the Pinavia house-of-brands — `lib/product-detection.ts`, middleware `x-nexus-product`, product CORS origins, public/auth shell product lockup, and route-safe sign-in redirects. `quorum.pinavia.io` can land on `/board`; `meridian`, `vantage`, and `nucleus` fall back to `/dashboard/ceo` until their routes ship. Pushed as `c55417e`.
 29. [ ] Configure product subdomains operationally — Cloudflare DNS records for `app`, `nexus`, `quorum`, `meridian`, `vantage`, `nucleus`; Render custom domains on the current service; Clerk allowed origins and redirect URLs for each product; authenticated smoke per domain after deploy.
 
+## Demo/Launch/Pilot Calendar Plan (added 2026-07-07)
+
+Three dated events drive priority (unknowns-first session, decisions in `docs/USER_STRATEGY_AND_PIVOTS.md` §Decisions 2026-07-07): regulated-buyer demo ~week of 2026-07-13, public self-serve launch ~2026-08-04, paid pilot signing ~2026-08-18.
+
+**Week 1 — demo (runbook: `docs/DEMO_RUNBOOK_REGULATED.md`):**
+1. [ ] Execute `docs/RELEASE_GATE_2026-07-07.md` — apply migrations 0033-0034 on Neon, confirm Render deploy SHA, set `NEXT_PUBLIC_APP_URL`, run the authenticated six-step smoke. (External: Ali at the keyboard.)
+2. [ ] Seed the populated demo workspace per runbook §2 (test-data/ingestion set, Ask runs, one approval, sponsor/reviewer named, scorer run fresh).
+3. [ ] Decide whether the live claim email is in the demo; if yes, configure Resend + `pinavia.io` sender auth in Render first.
+4. [ ] Day-of checklist in runbook §5 within 24h of the demo.
+
+**Weeks 2-5 — launch preparation (launch ~2026-08-04):**
+5. [~] Reviewer-seat build STARTED 2026-07-08 (ahead of the 2026-07-21 hard date). Slice 1 shipped: migration 0035 `reviewer_seats`, hashed single-use invite codes, `GET/POST/DELETE /api/reviewer-seat` + `POST /api/reviewer-seat/accept` (binds Clerk user id, writes reviewer to strategy profile), identity-bound approval actor + `approvedByBoundReviewer` audit, no-DB fallback, tests `tests/reviewer-seat.test.ts`. Remaining slices: invite email delivery, accept/manage UI, gate `pilotReady` on an accepted seat, restrict approval rights to the bound reviewer. Production pending: run migration 0035.
+6. [ ] Pro waitlist surface — pricing shown, intent captured, no checkout. Launch is free.
+7. [ ] Funnel + pilot-lifecycle operator panel — aggregate existing funnel audit events; doubles as a regulated demo asset.
+8. [ ] Low-confidence lane follow-up — onboarding should re-ask sector/size when `laneConfidence` is low instead of silently keeping evaluator.
+
+**Weeks 5-6 — pilot readiness (signing ~2026-08-18):**
+9. [ ] Pilot afterlife surface — post-`selectedWorkflow` run loop, shadow ROI capture, expand/stop record (`docs/SHADOW_MODE_ROI_PLAYBOOK.md` productized).
+10. [ ] Remaining P1 ops trust items: uptime monitoring, Neon backup restore test, R2 versioning decision, support/security mailbox, SLA doc linked in paperwork.
+11. [ ] Pilot paperwork updated to state the reviewer model honestly (string vs seat, depending on item 5 landing).
+12. [ ] Stripe checkout for SME self-serve — post-launch, not a launch blocker.
+
 ## Active Product Queue (updated 2026-07-06)
 
 These are the pivot/product items that were explicitly reviewed after the DD checklist and board-delta backend work. Keep this queue current so implementation order stays visible.
