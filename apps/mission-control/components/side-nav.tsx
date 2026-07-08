@@ -106,6 +106,7 @@ const navSections = [
       { href: "/settings/workspace", label: "Workspace" },
       { href: "/settings/policies", label: "Policies" },
       { href: "/reviewer-seat", label: "Reviewer Seat" },
+      { href: "/pro-waitlist", label: "Nexus Pro" },
     ]
   }
 ];

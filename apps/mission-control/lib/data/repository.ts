@@ -4,7 +4,7 @@ import { Pool } from "pg";
 import { verifyPassword } from "@/lib/auth";
 import { store } from "@/lib/data/store";
 import { evidenceSourceTypeSchema } from "@/lib/contracts";
-import type { Action, ActionInput, ActionStatus, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, DispatchJob, DispatchJobInput, DispatchJobStatus, Entity, EntityInput, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, KnowledgeLink, KnowledgeNote, KnowledgeNoteInput, KnowledgeSearchResult, KnowledgeSyncEvent, LearningSignal, LearningSignalInput, LearningSignalSummary, PromptRegistryEntry, ReadinessSubmission, PilotOutcome, Recommendation, ReviewerSeat, RecommendationStatus, Role, StrategyProfile, StrategyProfileInput, SynthesisSchedule, SynthesisScheduleInput, SynthesisScheduleStatus, WorkflowTwin, WorkflowTwinInput, WorkflowTwinRun, WorkflowTwinRunInput, WorkflowTwinRunStatus, WorkflowTwinStatus, WorkflowTwinType, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
+import type { Action, ActionInput, ActionStatus, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, DispatchJob, DispatchJobInput, DispatchJobStatus, Entity, EntityInput, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, KnowledgeLink, KnowledgeNote, KnowledgeNoteInput, KnowledgeSearchResult, KnowledgeSyncEvent, LearningSignal, LearningSignalInput, LearningSignalSummary, PromptRegistryEntry, ReadinessSubmission, PilotOutcome, ProWaitlistEntry, Recommendation, ReviewerSeat, RecommendationStatus, Role, StrategyProfile, StrategyProfileInput, SynthesisSchedule, SynthesisScheduleInput, SynthesisScheduleStatus, WorkflowTwin, WorkflowTwinInput, WorkflowTwinRun, WorkflowTwinRunInput, WorkflowTwinRunStatus, WorkflowTwinStatus, WorkflowTwinType, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
 import { assertDbConfigured, isDbRequired } from "@/lib/data/db-policy";
 
 // In-memory idempotency cache for Stripe events (fallback when DB is unavailable).
@@ -50,6 +50,7 @@ import {
   readinessSubmissions,
   reviewerSeats,
   pilotOutcomes,
+  proWaitlist,
   strategyProfiles,
   type recommendationStatusEnum,
   type ingestionStatusEnum
@@ -435,6 +436,19 @@ function mapPilotOutcomeRow(row: typeof pilotOutcomes.$inferSelect): PilotOutcom
     note: row.note ?? null,
     decidedBy: row.decidedBy ?? null,
     decidedAt: isoOrNull(row.decidedAt),
+    createdAt: isoOrNull(row.createdAt) ?? new Date(0).toISOString(),
+    updatedAt: isoOrNull(row.updatedAt) ?? new Date(0).toISOString(),
+  };
+}
+
+function mapProWaitlistRow(row: typeof proWaitlist.$inferSelect): ProWaitlistEntry {
+  return {
+    id: row.id,
+    workspaceId: row.workspaceId,
+    email: row.email,
+    name: row.name ?? null,
+    note: row.note ?? null,
+    createdBy: row.createdBy,
     createdAt: isoOrNull(row.createdAt) ?? new Date(0).toISOString(),
     updatedAt: isoOrNull(row.updatedAt) ?? new Date(0).toISOString(),
   };
@@ -4094,6 +4108,55 @@ export const repository = {
       return store.recordPilotDecision({ ...input, now });
     }
     return mapPilotOutcomeRow(rows[0]);
+  },
+
+  // -------------------------------------------------------------------------
+  // Pro waitlist (migration 0037)
+  // -------------------------------------------------------------------------
+
+  async getProWaitlistEntry(workspaceId: string): Promise<ProWaitlistEntry | null> {
+    const rows = await runDb((db) =>
+      db.select().from(proWaitlist).where(eq(proWaitlist.workspaceId, workspaceId)).limit(1)
+    );
+    if (rows === null) return store.getProWaitlistEntry(workspaceId);
+    return rows.length ? mapProWaitlistRow(rows[0]) : null;
+  },
+
+  /** Record Pro-plan intent. Upsert on workspace_id: one intent per workspace. */
+  async addProWaitlistEntry(input: {
+    id: string;
+    workspaceId: string;
+    email: string;
+    name?: string | null;
+    note?: string | null;
+    createdBy: string;
+  }): Promise<ProWaitlistEntry> {
+    const now = new Date();
+    const rows = await runDb((db) =>
+      db
+        .insert(proWaitlist)
+        .values({
+          id: input.id,
+          workspaceId: input.workspaceId,
+          email: input.email,
+          name: input.name ?? null,
+          note: input.note ?? null,
+          createdBy: input.createdBy,
+        })
+        .onConflictDoUpdate({
+          target: proWaitlist.workspaceId,
+          set: {
+            email: input.email,
+            name: input.name ?? null,
+            note: input.note ?? null,
+            createdBy: input.createdBy,
+            updatedAt: now,
+          },
+        })
+        .returning()
+    );
+    if (rows === null) return store.addProWaitlistEntry({ ...input, now });
+    return mapProWaitlistRow(rows[0]);
   },
 
   async storeKnowledgeEmbedding(noteId: string, embedding: number[]): Promise<void> {

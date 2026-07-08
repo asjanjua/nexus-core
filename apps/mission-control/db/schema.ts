@@ -638,6 +638,18 @@ export const pilotOutcomes = pgTable("pilot_outcomes", {
   updatedAt:    timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
+// Pro waitlist (migration 0037): pre-Stripe Pro-plan intent, one row per workspace.
+export const proWaitlist = pgTable("pro_waitlist", {
+  id:          text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull(),
+  email:       varchar("email", { length: 320 }).notNull(),
+  name:        varchar("name", { length: 160 }),
+  note:        text("note"),
+  createdBy:   text("created_by").notNull(),
+  createdAt:   timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:   timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 /**
  * Readiness submissions — pending anonymous assessment records from the public
  * /readiness page. Claimed post-auth via a single-use claim code, which writes

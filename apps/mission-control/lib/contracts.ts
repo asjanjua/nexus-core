@@ -1082,6 +1082,19 @@ export const pilotOutcomeSchema = z.object({
 });
 export type PilotOutcome = z.infer<typeof pilotOutcomeSchema>;
 
+// Pro waitlist (migration 0037): pre-Stripe Pro-plan intent per workspace.
+export const proWaitlistEntrySchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  email: z.string().email(),
+  name: z.string().nullable().optional(),
+  note: z.string().nullable().optional(),
+  createdBy: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type ProWaitlistEntry = z.infer<typeof proWaitlistEntrySchema>;
+
 export const laneChangedBySchema = z.enum([
   "system_suggestion",
   "user_confirmation",

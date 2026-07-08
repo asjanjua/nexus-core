@@ -19,6 +19,7 @@ import {
   type KnowledgeSyncEvent,
   type LearningSignal,
   type PilotOutcome,
+  type ProWaitlistEntry,
   type Recommendation,
   type RecommendationStatus,
   type ReviewerSeat,
@@ -175,6 +176,8 @@ const pilotOutcomeStore = new Map<string, PilotOutcome>();
 function pilotOutcomeKey(workspaceId: string, workflowName: string): string {
   return `${workspaceId}::${workflowName}`;
 }
+// Pro waitlist fallback for no-DB/demo mode, keyed by workspaceId (one intent per workspace).
+const proWaitlistStore = new Map<string, ProWaitlistEntry>();
 const knowledgeNoteStore: KnowledgeNote[] = [];
 const knowledgeLinkStore: KnowledgeLink[] = [];
 const knowledgeSyncEventStore: KnowledgeSyncEvent[] = [];
@@ -996,6 +999,39 @@ export const store = {
     };
     pilotOutcomeStore.set(key, outcome);
     return outcome;
+  },
+
+  // -------------------------------------------------------------------------
+  // Pro waitlist (in-memory fallback)
+  // -------------------------------------------------------------------------
+
+  getProWaitlistEntry(workspaceId: string): ProWaitlistEntry | null {
+    return proWaitlistStore.get(workspaceId) ?? null;
+  },
+
+  addProWaitlistEntry(input: {
+    id: string;
+    workspaceId: string;
+    email: string;
+    name?: string | null;
+    note?: string | null;
+    createdBy: string;
+    now?: Date;
+  }): ProWaitlistEntry {
+    const now = (input.now ?? new Date()).toISOString();
+    const existing = proWaitlistStore.get(input.workspaceId);
+    const entry: ProWaitlistEntry = {
+      id: existing?.id ?? input.id,
+      workspaceId: input.workspaceId,
+      email: input.email,
+      name: input.name ?? null,
+      note: input.note ?? null,
+      createdBy: input.createdBy,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now,
+    };
+    proWaitlistStore.set(input.workspaceId, entry);
+    return entry;
   },
 
   // -------------------------------------------------------------------------
