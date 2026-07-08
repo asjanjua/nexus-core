@@ -4,6 +4,17 @@
 
 ---
 
+## ⚠ Standing Build Constraints (do not violate — see `docs/ENGINEERING_GUARDRAILS.md` §7)
+
+Since commit `68a5a0b` (2026-07-09), the production `next build` is green only because these are kept OUT of the build path. Reintroducing any of them hangs `next build` before compile output, and tests + `tsc` will NOT catch it:
+
+- No Clerk CLIENT components (`SignedIn`/`SignedOut`/`SignInButton`/`UserButton`) in bundles. Server-side Clerk auth stays as-is.
+- Auth handoff is hosted via `NEXT_PUBLIC_CLERK_HOSTED_SIGN_IN_URL` / `NEXT_PUBLIC_CLERK_HOSTED_SIGN_UP_URL`; gate signed-out UI with a `/sign-in` link (pattern: `app/reviewer-seat/accept/page.tsx`).
+- No Sentry runtime instrumentation, middleware tracing, or force-graph rendering in the build path.
+- Verify front-end changes with a real `npm run build` (or Render CI), not just tests + `tsc`.
+
+---
+
 ## Session Info
 
 - **Last updated:** 2026-07-07 (v0.25.x — session #54: demo week package. Prior: session #53+ readiness-to-onboarding lane inheritance, strategy-profile authz fix, read+write API auth sweeps, workflow scorer pilot bridge, unified pilot-gate enforcement, strategy-profile store fallback, pre-pilot readiness lifecycle hardening.)

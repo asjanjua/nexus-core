@@ -163,6 +163,20 @@ Priority order:
 
 ---
 
+## 7. Keep The Production Build Green (Clerk client / Sentry / tracing / force-graph)
+
+Established after commit `68a5a0b` (2026-07-09) "fix: unblock mission-control production build". The `next build` had been hanging locally before emitting any compile output. `tsc --noEmit` and the full Vitest suite were green the entire time, so the hang was a build/bundle-path problem, not a code-correctness one. Removing four things from the production build path fixed it (build now completes in ~40s).
+
+Rules, in force for all new code:
+
+1. **Do not import Clerk CLIENT components into page or component bundles.** `SignedIn`, `SignedOut`, `SignInButton`, `UserButton` and similar client widgets from `@clerk/nextjs` are banned from the build path. Server-side auth is unchanged and still required: keep using `auth()` in route handlers and `requireScope`/`resolveAuth` in APIs.
+2. **Auth handoff is hosted.** Sign-in/sign-up go through the hosted Clerk URLs in env: `NEXT_PUBLIC_CLERK_HOSTED_SIGN_IN_URL` and `NEXT_PUBLIC_CLERK_HOSTED_SIGN_UP_URL`. To gate signed-out UI, render a plain `/sign-in` link, not `<SignedOut>`. Reference implementation: `app/reviewer-seat/accept/page.tsx`.
+3. **New client pages should be fetch-only against server APIs.** Pages that only `fetch()` their data (for example `/reviewer-seat`, `/funnel`, `/pilot/afterlife`) are safe and were unaffected by the hang.
+4. **Do not reintroduce, into the production build path:** Sentry runtime instrumentation, middleware request tracing, or client-side force-graph rendering, without confirming `next build` still completes.
+5. **Verifying build health requires an actual build.** Tests + `tsc` passing is necessary but not sufficient — run `npm run build`, or let Render build in fresh CI. When a build hangs before compile output, suspect client-bundle/env triggers or stale `.next`/duplicate `route 2.ts`/`route 3.ts` files, not the source logic.
+
+---
+
 ## Implementation Checklist
 
 Contract layer landed 2026-06-25 in `apps/mission-control/lib/guardrails.ts` (tests: `tests/guardrails.test.ts`, 16 runtime assertions verified via tsx, tsc clean). These are the shared primitives; runners adopt them when written.
@@ -173,4 +187,5 @@ Contract layer landed 2026-06-25 in `apps/mission-control/lib/guardrails.ts` (te
 - [x] Add error taxonomies for verifier/runner outcomes. (`VerifierOutcome` + `isRetryableOutcome`/`isUserActionable`)
 - [x] Add auth-mode contracts before shipping local/on-prem client work. (`AuthMode` + `canSyncToCloud()` + `authModeTransitionEvent()`)
 - [x] Add tests for impossible state rejection and exhaustive outcome handling. (`tests/guardrails.test.ts`)
+- [ ] Before merging front-end work: no Clerk client components in bundles, hosted-Clerk envs used for auth handoff, and `npm run build` completes (see §7).
 

@@ -38,6 +38,15 @@ npm run test
 npm run build
 ```
 
+## Production Build Constraints (READ BEFORE WRITING FRONT-END)
+
+Since commit `68a5a0b`, four things are banned from the production build path because they hung `next build` before any compile output (tests + tsc stayed green — a build cannot be verified by those alone). Full detail: `docs/ENGINEERING_GUARDRAILS.md` §7.
+
+1. No Clerk CLIENT components in bundles (`SignedIn`/`SignedOut`/`SignInButton`/`UserButton`). Server-side auth (`auth()`, `requireScope`, `resolveAuth`) is unchanged and still required.
+2. Auth handoff is HOSTED: use envs `NEXT_PUBLIC_CLERK_HOSTED_SIGN_IN_URL` / `NEXT_PUBLIC_CLERK_HOSTED_SIGN_UP_URL`; gate signed-out UI with a plain `/sign-in` link (see `app/reviewer-seat/accept/page.tsx`), never `<SignedOut>`.
+3. New client pages should be fetch-only against server APIs (e.g. `/reviewer-seat`, `/funnel`, `/pilot/afterlife`).
+4. Do not reintroduce Sentry runtime instrumentation, middleware tracing, or force-graph rendering into the build path without confirming `npm run build` still completes. Always verify with a real `npm run build` (or Render CI), not just tests + tsc.
+
 ## Development Standards
 
 - Keep UI copy clear for executives.

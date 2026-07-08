@@ -37,3 +37,6 @@ nexus doctor --json
 nexus init /tmp/nexus-demo
 ```
 
+## Mission Control build constraints
+If you touch `apps/mission-control` front-end, read `docs/ENGINEERING_GUARDRAILS.md` §7 first. In short: no Clerk client components in bundles (auth handoff is hosted via `NEXT_PUBLIC_CLERK_HOSTED_SIGN_IN_URL` / `NEXT_PUBLIC_CLERK_HOSTED_SIGN_UP_URL`); no Sentry runtime instrumentation, middleware tracing, or force-graph in the build path; and verify with a real `npm run build`, not just tests + `tsc`, since those do not catch the build hang those triggers cause.
+
