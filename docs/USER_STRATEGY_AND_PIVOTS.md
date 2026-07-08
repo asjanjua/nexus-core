@@ -1,7 +1,7 @@
 # NexusAI User Strategy and Pivot Map
 
 Status: Canonical strategy note for paperwork, roadmap, backlog, and user-flow alignment.
-Last updated: 2026-07-06.
+Last updated: 2026-07-07.
 
 ## Core Pivot
 
@@ -144,6 +144,38 @@ Track the strategy as a funnel:
 - Public-facing copy should avoid internal "pivot" language, but internal docs should name the pivot clearly.
 - Regulated-buyer language must preserve the human-approval and no-autonomous-writeback boundary.
 - Keep auth email and product email separate: Clerk for verification and account lifecycle, NexusAI delivery provider for operational product emails.
+
+## Decisions 2026-07-07 (unknowns-first session)
+
+Sequenced against three real events: regulated-buyer demo (~1 week), public
+self-serve launch (~4 weeks), paid pilot signing (~6 weeks).
+
+1. **Reviewer becomes a real second seat before pilot signing.** Today
+   `sponsorName`/`reviewerName` are text fields in a single-seat workspace, so
+   every approval is effectively self-approval. Decision: build a Clerk
+   organization per workspace with a reviewer role and invite flow; approvals
+   recorded against the reviewer's identity; `pilotReady` eventually gated on
+   an accepted reviewer invite. Until it ships, pilot paperwork must state the
+   limitation honestly: the reviewer is a declared accountability field, and
+   approvals are recorded by the sponsor on their behalf.
+2. **Monetization sequence: waitlist -> pilot revenue -> Stripe.** Public
+   launch is free with a Pro waitlist (pricing shown, intent collected, no
+   checkout). Revenue comes from pilot SOWs first. Stripe checkout for the SME
+   self-serve lane follows after launch. No billing rail is a launch blocker.
+3. **Scorer cold-start posture: label, do not block.** The activity-driven
+   scorer is weakest at the exact moment the strategy cares most about (right
+   after claim, empty workspace). Runs now carry a signal-strength label and
+   provisional copy (see `docs/WORKFLOW_TWIN_SCORER.md` §Signal confidence).
+   Showing the system knows what it does not know is part of the regulated
+   trust story, not an apology.
+4. **Pilot afterlife is a named open gap.** After `selectedWorkflow` is
+   written, there is no product surface that runs the pilot loop, captures
+   shadow ROI, or records the expand/stop decision — the funnel's last four
+   stages are doc-only (`docs/SHADOW_MODE_ROI_PLAYBOOK.md`). Candidate build
+   alongside the reviewer seat, before pilot signing.
+5. **Known funnel gap: instrumented but not measurable.** Audit events exist
+   for every funnel stage, but nothing aggregates them. An operator-facing
+   funnel/pilot-lifecycle panel is backlogged (P2) for launch preparation.
 
 ## Current Plan
 

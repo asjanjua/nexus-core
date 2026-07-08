@@ -9,6 +9,8 @@
 
 See `docs/USER_STRATEGY_AND_PIVOTS.md` for the canonical user strategy and pivot map. Roadmap decisions should preserve the flow: readiness assessment -> buyer lane -> signup/onboarding -> first workflow pilot -> governed value proof. See `BACKLOG.md` for the cross-document operating backlog and release-gate view, keep `TASKS.md` aligned with the active strategy plan, and use `docs/DEVELOPMENT_FINISH_LINE_VISUAL.md` for the visual finish-line map.
 
+**Calendar anchor (2026-07-07):** regulated-buyer demo ~week of 2026-07-13 (`docs/DEMO_RUNBOOK_REGULATED.md`), public self-serve launch ~2026-08-04 (free + Pro waitlist, no checkout), paid pilot signing ~2026-08-18 (reviewer seat must land first; build starts by 2026-07-21). Sequencing lives in `TASKS.md` § Demo/Launch/Pilot Calendar Plan; decisions in `docs/USER_STRATEGY_AND_PIVOTS.md` §Decisions 2026-07-07.
+
 **1. AI as analyst, not assistant.**
 NexusAI should feel like a senior analyst embedded in the executive team. Every AI touch-point should demonstrate the system understands the business — sector, stage, risks, goals — before a question is asked.
 

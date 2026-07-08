@@ -168,3 +168,48 @@ This is the dated evidence from the 2026-07-07 regulated-demo release-gate run.
   - Local fix is implemented in `middleware.ts` and covered by
     `tests/security-headers.test.ts`. It still needs commit, deploy, and
     production re-smoke before this gate is fully closed.
+
+## 10. Verification Continuation — 2026-07-08
+
+Follow-up verification on 2026-07-08 closed the live pre-pilot gate for the
+currently active deployment:
+
+- **Deploy**
+  - Commit `920f562a5a8fc3f4de0e1bfe2adbfd4c9bf137ed` was pushed to `origin/main`.
+  - `https://app.pinavia.co/sign-in?t=<cache-bust>` served
+    `sentry-release=920f562a5a8fc3f4de0e1bfe2adbfd4c9bf137ed`.
+- **Live health**
+  - `https://app.pinavia.co/api/health` remained `ok=true`.
+  - `https://app.pinavia.io/api/health` also returned `ok=true` once DNS
+    propagated.
+- **Domain smoke**
+  - `APP_URL=https://app.pinavia.co EXPECT_CORS_ORIGIN=https://app.pinavia.co node scripts/smoke-domain.mjs`
+    passed all 8 checks after the middleware deploy.
+  - `APP_URL=https://app.pinavia.io EXPECT_CORS_ORIGIN=https://app.pinavia.io node scripts/smoke-domain.mjs`
+    also passed all 8 checks.
+- **Authenticated workflow proof — blocked -> ready**
+  - In a fresh organization/workspace (`Nexus Gate Smoke 2026-07-08`), the
+    strategy profile initially showed:
+    `pilotReady=false`, `selectedWorkflow=null`, and all three gates blocked
+    (`sponsor_named`, `reviewer_named`, `evidence_available`).
+  - Server enforcement held before setup:
+    `PATCH /api/strategy-profile` with
+    `{ "selectedWorkflow": "Decision & Action Twin" }` returned
+    `400 pilot_gates_unmet` plus the three blocked gates.
+  - After enabling demo mode and running
+    `POST /api/workspace/demo-reset?sector=financial_services`, the workspace
+    seeded 5 evidence items and a regulated financial-services demo pack.
+  - After naming sponsor and reviewer and re-running the scorer, the fresh
+    workspace reached `pilotReady=true` with all three gates clear.
+  - Final confirmation held server-side:
+    `PATCH /api/strategy-profile` with
+    `{ "selectedWorkflow": "Decision & Action Twin" }` returned `200`, and the
+    profile persisted `selectedWorkflow="Decision & Action Twin"`.
+- **Operator gotcha discovered**
+  - After switching Clerk organizations in-browser, backend API routes in the
+    same browser session did not always pick up the new org immediately.
+    For reliable smoke on a newly created org, force a Clerk session refresh
+    before API-backed checks. In browser automation this was resolved by calling
+    `window.Clerk.setActive(...)` then `window.Clerk.session.touch()`.
+  - Treat this as an operator/runtime nuance, not a blocker for demoing a single
+    already-selected workspace.
