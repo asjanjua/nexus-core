@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { PwaRegister } from "@/components/pwa-register";
+import { OrgSessionSync } from "@/components/org-session-sync";
 import { SideNav } from "@/components/side-nav";
 import { TrialBanner } from "@/components/trial-banner";
 import { FeedbackButton } from "@/components/feedback-button";
@@ -173,6 +174,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           signUpUrl="/sign-up"
           afterSignOutUrl="/sign-in"
         >
+          <OrgSessionSync />
           <main className="flex min-h-screen flex-col md:flex-row">
             <TrustDrawerProvider>
             <ModeProvider>
