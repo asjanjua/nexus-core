@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+NEXUS_HOME="${NEXUS_HOME:-$HOME/.nexus}"
+if [[ -f "$NEXUS_HOME/config/nexus.env" ]]; then
+  # shellcheck disable=SC1090
+  source "$NEXUS_HOME/config/nexus.env"
+fi
+
+case "${1:-}" in
+  doctor)
+    shift
+    exec "$NEXUS_HOME/scripts/nexus-doctor.sh" "$@"
+    ;;
+  init)
+    shift
+    exec "$NEXUS_HOME/scripts/nexus-init.sh" "$@"
+    ;;
+  status)
+    shift || true
+    echo "Nexus status"
+    echo "NEXUS_HOME: $NEXUS_HOME"
+    if [[ -f "$NEXUS_HOME/config/nexus.env" ]]; then
+      echo "config: present"
+    else
+      echo "config: missing"
+    fi
+    if command -v openclaw >/dev/null 2>&1; then
+      echo "openclaw: $(command -v openclaw)"
+    else
+      echo "openclaw: missing"
+    fi
+    exec "$NEXUS_HOME/scripts/nexus-doctor.sh" "$@"
+    ;;
+  setup)
+    shift || true
+    exec "$NEXUS_HOME/scripts/nexus-bootstrap.sh" "$@"
+    ;;
+  help|-h|--help|"")
+    cat <<USAGE
+Nexus command
+
+Usage:
+  nexus doctor
+  nexus init [target]
+  nexus status
+  nexus setup
+  nexus help
+
+Commands:
+  doctor  Run health checks for the installed Nexus/OpenClaw stack.
+  init    Scaffold a new Nexus workspace in the current directory or target path.
+  status  Show a short runtime summary and then run doctor checks.
+  setup   Rerun the Nexus bootstrap.
+  help    Show this help.
+
+This helper bootstraps Nexus around OpenClaw.
+USAGE
+    ;;
+  *)
+    exec "$NEXUS_HOME/scripts/nexus" help
+    ;;
+esac

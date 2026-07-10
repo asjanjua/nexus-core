@@ -1,0 +1,91 @@
+{
+  "generatedAt": "2026-05-19T12:20:10.459Z",
+  "baseUrl": "http://127.0.0.1:1234",
+  "baselinePolicy": {
+    "flashAttention": true,
+    "kvCacheQuantization": "probe-only in LM Studio native load (model/runtime dependent)",
+    "speculativeDecoding": "disabled",
+    "contextLadder": [
+      8192
+    ]
+  },
+  "modelsBenchmarked": [
+    "qwen/qwen3-14b",
+    "google/gemma-3-12b"
+  ],
+  "benchmarkRows": [
+    {
+      "model": "qwen/qwen3-14b",
+      "contextLength": 8192,
+      "loadOk": true,
+      "loadConfigEcho": {
+        "context_length": 8192,
+        "parallel": 1
+      },
+      "ttft": {
+        "ok": false,
+        "error": "This operation was aborted"
+      },
+      "throughput": {
+        "ok": false,
+        "error": "This operation was aborted"
+      },
+      "benchError": "This operation was aborted",
+      "memory": {
+        "beforeSwapMB": 25443.69,
+        "afterSwapMB": 28155,
+        "deltaSwapMB": 2711.31
+      }
+    },
+    {
+      "model": "google/gemma-3-12b",
+      "contextLength": 8192,
+      "loadOk": true,
+      "loadConfigEcho": {
+        "context_length": 8192,
+        "parallel": 1
+      },
+      "ttft": {
+        "ok": true,
+        "ttftMs": 712.5,
+        "streamChars": 559
+      },
+      "throughput": {
+        "ok": true,
+        "elapsedMs": 15318.2,
+        "completionTokens": 219,
+        "promptTokens": 44,
+        "tokensPerSecond": 14.3
+      },
+      "benchError": null,
+      "memory": {
+        "beforeSwapMB": 30251.31,
+        "afterSwapMB": 26414.69,
+        "deltaSwapMB": -3836.62
+      }
+    }
+  ],
+  "stability": {
+    "model": "qwen/qwen3-14b",
+    "minutes": 1,
+    "requests": 1,
+    "failures": 1,
+    "successRate": 0,
+    "samples": [
+      {
+        "loop": 1,
+        "timestamp": "2026-05-19T12:19:53.465Z",
+        "ok": false,
+        "elapsedMs": 45025.5,
+        "completionTokens": 0,
+        "swapUsedMB": 25208.25
+      }
+    ]
+  },
+  "memoryGate": {
+    "startSwapMB": 19807.62,
+    "endSwapMB": 26629.69,
+    "totalDeltaSwapMB": 6822.07,
+    "note": "No sustained swap-thrashing target means swap should not continually climb with repeated requests."
+  }
+}

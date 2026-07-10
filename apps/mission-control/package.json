@@ -1,0 +1,53 @@
+{
+  "name": "@nexus/mission-control",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "vitest run",
+    "cron:synthesis": "node scripts/run-scheduled-synthesis.mjs",
+    "smoke:domain": "node scripts/smoke-domain.mjs",
+    "mcp:knowledge": "node scripts/knowledge-mcp.mjs",
+    "db:generate": "npx --yes drizzle-kit@0.31.10 generate",
+    "db:migrate": "node scripts/db-migrate.mjs",
+    "db:seed": "node scripts/db-seed.mjs",
+    "db:seed:demo": "node scripts/seed-demo-workspace.mjs",
+    "db:check": "node scripts/db-check.mjs"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.1056.0",
+    "@clerk/nextjs": "^6.39.5",
+    "@codemirror/lang-markdown": "^6.3.4",
+    "@sentry/nextjs": "^10.0.0",
+    "@uiw/react-codemirror": "^4.25.5",
+    "chokidar": "^4.0.3",
+    "drizzle-orm": "^0.45.2",
+    "imapflow": "^1.0.187",
+    "jszip": "^3.10.1",
+    "mailparser": "^3.7.4",
+    "next": "^15.5.18",
+    "pdf-parse": "^1.1.1",
+    "pg": "^8.21.0",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "react-force-graph-2d": "^1.29.1",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/mailparser": "^3.4.5",
+    "@types/node": "^22.10.1",
+    "@types/pdf-parse": "^1.1.5",
+    "@types/pg": "^8.15.2",
+    "@types/react": "^18.3.13",
+    "@types/react-dom": "^18.3.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.5.15",
+    "tailwindcss": "^3.4.16",
+    "typescript": "^5.7.2",
+    "vitest": "^4.1.7"
+  }
+}

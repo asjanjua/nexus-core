@@ -1,0 +1,81 @@
+LM Studio MoE Probe
+Generated: 2026-05-19T17:23:13+05:00
+
+Runtime:
+LLM ENGINE                                         SELECTED    MODEL FORMAT
+llama.cpp-mac-arm64-apple-metal-advsimd@2.14.0        ✓            GGUF    
+llama.cpp-mac-arm64-apple-metal-advsimd@2.13.0                     GGUF    
+llama.cpp-mac-arm64-apple-metal-advsimd@2.12.0                     GGUF    
+llama.cpp-mac-arm64-apple-metal-advsimd@2.10.1                     GGUF    
+llama.cpp-mac-arm64-apple-metal-advsimd@2.8.0                      GGUF    
+mlx-llm-mac-arm64-apple-metal-advsimd@1.3.0                        MLX     
+mlx-llm-mac-arm64-apple-metal-nax-advsimd@1.6.0       ✓            MLX     
+mlx-llm-mac-arm64-apple-metal-nax-advsimd@1.5.0                    MLX     
+mlx-llm-mac-arm64-apple-metal-nax-advsimd@1.4.0                    MLX     
+mlx-llm-mac-arm64-apple-metal-nax-advsimd@1.3.0                    MLX     
+
+Server:
+
+Candidates:
+- qwen/qwen3-30b-a3b-2507
+- qwen/qwen3-coder-30b-a3b-instruct
+- zai-org/glm-4.7-flash
+- nvidia/nemotron-3-nano
+
+Estimate-only checks:
+-----
+MODEL: qwen/qwen3-30b-a3b-2507
+Model not found
+
+No model found that matches model key "qwen/qwen3-30b-a3b-2507".
+
+To see a list of all downloaded models, run:
+
+    lms ls
+
+To select a model interactively, remove the --yes flag:
+
+    lms load
+
+-----
+MODEL: qwen/qwen3-coder-30b-a3b-instruct
+Model not found
+
+No model found that matches model key "qwen/qwen3-coder-30b-a3b-instruct".
+
+To see a list of all downloaded models, run:
+
+    lms ls
+
+To select a model interactively, remove the --yes flag:
+
+    lms load
+
+-----
+MODEL: zai-org/glm-4.7-flash
+Model not found
+
+No model found that matches model key "zai-org/glm-4.7-flash".
+
+To see a list of all downloaded models, run:
+
+    lms ls
+
+To select a model interactively, remove the --yes flag:
+
+    lms load
+
+-----
+MODEL: nvidia/nemotron-3-nano
+Model not found
+
+No model found that matches model key "nvidia/nemotron-3-nano".
+
+To see a list of all downloaded models, run:
+
+    lms ls
+
+To select a model interactively, remove the --yes flag:
+
+    lms load
+

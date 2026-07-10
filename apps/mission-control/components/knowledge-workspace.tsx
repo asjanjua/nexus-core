@@ -1,0 +1,808 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+
+type KnowledgeNote = {
+  id: string;
+  title: string;
+  path: string;
+  body: string;
+  tags: string[];
+  sensitivity: "public" | "internal" | "confidential" | "restricted";
+  status: "active" | "archived" | "deleted";
+  sourceKind: string;
+  evidenceRefs: string[];
+  entityRefs: string[];
+  workflowRefs: string[];
+  decisionRefs: string[];
+  recommendationRefs: string[];
+  updatedAt: string;
+};
+
+type KnowledgeGraph = {
+  nodes: Array<{ id: string; label: string; type: string }>;
+  edges: Array<{ id: string; source: string; target: string; type: string; label?: string }>;
+};
+
+type SyncStatus = {
+  mode: string;
+  enabled: boolean;
+  vaultPath: string | null;
+  watcherActive: boolean;
+  events: Array<{ id: string; type: string; status: string; message?: string | null; createdAt: string }>;
+};
+
+const ROOTS = ["_Inbox", "Daily", "Projects", "Workflows", "Entities", "Sources"];
+
+const SOURCE_KINDS = ["manual", "import", "sync", "automation", "mcp"] as const;
+const REF_TYPES = [
+  { value: "any", label: "Any" },
+  { value: "evidence", label: "Evidence" },
+  { value: "entity", label: "Entity" },
+  { value: "workflow_twin", label: "Workflow" },
+  { value: "decision", label: "Decision" },
+  { value: "recommendation", label: "Recommendation" }
+] as const;
+const FRESHNESS_OPTIONS = [
+  { value: "all", label: "Any time" },
+  { value: "24h", label: "Last 24h" },
+  { value: "7d", label: "Last 7 days" },
+  { value: "30d", label: "Last 30 days" }
+] as const;
+
+type KnowledgeFilters = {
+  tags: string[];
+  sources: string[];
+  refType: string;
+  freshness: string;
+  entityId: string | null;
+  entityLabel: string;
+  workflowId: string;
+};
+
+const EMPTY_FILTERS: KnowledgeFilters = {
+  tags: [],
+  sources: [],
+  refType: "any",
+  freshness: "all",
+  entityId: null,
+  entityLabel: "",
+  workflowId: ""
+};
+
+function folderFor(path: string) {
+  return path.split("/")[0] || "_Inbox";
+}
+
+function extRefs(note: KnowledgeNote) {
+  return [
+    ...note.evidenceRefs.map((id) => ({ type: "evidence", id, href: `/evidence/${id}` })),
+    ...note.entityRefs.map((id) => ({ type: "entity", id, href: `/entities/${id}` })),
+    ...note.workflowRefs.map((id) => ({ type: "workflow", id, href: `/workflows` })),
+    ...note.decisionRefs.map((id) => ({ type: "decision", id, href: `/decisions` })),
+    ...note.recommendationRefs.map((id) => ({ type: "recommendation", id, href: `/recommendations` }))
+  ];
+}
+
+function graphNodeColor(type: string) {
+  if (type === "note") return "#7dd3fc";
+  if (type === "evidence") return "#86efac";
+  if (type === "workflow_twin" || type === "workflow") return "#facc15";
+  if (type === "decision") return "#fb7185";
+  if (type === "recommendation") return "#c4b5fd";
+  return "#a7f3d0";
+}
+
+function MiniKnowledgeGraph({ graph }: { graph: KnowledgeGraph }) {
+  const nodes = graph.nodes.slice(0, 48);
+  const visibleNodeIds = new Set(nodes.map((node) => node.id));
+  const edges = graph.edges
+    .filter((edge) => visibleNodeIds.has(edge.source) && visibleNodeIds.has(edge.target))
+    .slice(0, 96);
+
+  if (!nodes.length) {
+    return (
+      <div className="flex h-full min-h-[22rem] items-center justify-center px-6 text-center">
+        <div>
+          <p className="text-sm font-medium text-white/75">No graph links yet.</p>
+          <p className="mt-1 text-xs text-white/40">
+            Link notes to evidence, entities, decisions, or workflows to build the Nexus knowledge map.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  const width = 820;
+  const height = 460;
+  const centerX = width / 2;
+  const centerY = height / 2;
+  const outerRadius = Math.min(width, height) * 0.34;
+  const innerRadius = Math.min(width, height) * 0.16;
+  const positions = new Map<string, { x: number; y: number }>();
+
+  nodes.forEach((node, index) => {
+    const ringRadius = node.type === "note" ? innerRadius : outerRadius;
+    const ringCount = nodes.filter((candidate) => (node.type === "note") === (candidate.type === "note")).length || nodes.length;
+    const ringIndex = nodes.slice(0, index).filter((candidate) => (node.type === "note") === (candidate.type === "note")).length;
+    const angle = (Math.PI * 2 * ringIndex) / Math.max(ringCount, 1) - Math.PI / 2;
+    positions.set(node.id, {
+      x: centerX + Math.cos(angle) * ringRadius,
+      y: centerY + Math.sin(angle) * ringRadius
+    });
+  });
+
+  return (
+    <div className="h-full min-h-[22rem] overflow-hidden">
+      <svg className="h-full w-full" role="img" aria-label="Knowledge graph" viewBox={`0 0 ${width} ${height}`}>
+        <defs>
+          <radialGradient id="knowledge-graph-glow" cx="50%" cy="50%" r="65%">
+            <stop offset="0%" stopColor="rgba(125, 211, 252, 0.12)" />
+            <stop offset="100%" stopColor="rgba(2, 6, 23, 0)" />
+          </radialGradient>
+        </defs>
+        <rect width={width} height={height} fill="url(#knowledge-graph-glow)" />
+        {edges.map((edge) => {
+          const source = positions.get(edge.source);
+          const target = positions.get(edge.target);
+          if (!source || !target) return null;
+          return (
+            <g key={edge.id}>
+              <line
+                x1={source.x}
+                y1={source.y}
+                x2={target.x}
+                y2={target.y}
+                stroke="rgba(255,255,255,0.16)"
+                strokeWidth="1.2"
+              />
+              {edge.label && (
+                <text
+                  x={(source.x + target.x) / 2}
+                  y={(source.y + target.y) / 2}
+                  textAnchor="middle"
+                  className="fill-white/30 text-[9px]"
+                >
+                  {edge.label.slice(0, 18)}
+                </text>
+              )}
+            </g>
+          );
+        })}
+        {nodes.map((node) => {
+          const position = positions.get(node.id);
+          if (!position) return null;
+          const color = graphNodeColor(node.type);
+          return (
+            <g key={node.id}>
+              <circle cx={position.x} cy={position.y} r="10" fill={color} opacity="0.18" />
+              <circle cx={position.x} cy={position.y} r="5.5" fill={color} />
+              <text
+                x={position.x + 10}
+                y={position.y + 4}
+                className="fill-white/75 text-[10px]"
+              >
+                {node.label.slice(0, 34)}
+              </text>
+              <text
+                x={position.x + 10}
+                y={position.y + 17}
+                className="fill-white/35 text-[8px] uppercase tracking-[0.12em]"
+              >
+                {node.type.replace("_", " ")}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    </div>
+  );
+}
+
+export function KnowledgeWorkspace() {
+  const [notes, setNotes] = useState<KnowledgeNote[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [draft, setDraft] = useState<KnowledgeNote | null>(null);
+  const [query, setQuery] = useState("");
+  const [view, setView] = useState<"edit" | "preview" | "graph">("edit");
+  const [graph, setGraph] = useState<KnowledgeGraph>({ nodes: [], edges: [] });
+  const [sync, setSync] = useState<SyncStatus | null>(null);
+  const [message, setMessage] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [entitySearch, setEntitySearch] = useState("");
+  const [entityResults, setEntityResults] = useState<Array<{ id: string; name: string; type: string }>>([]);
+  const [entitySearching, setEntitySearching] = useState(false);
+
+  // Richer Knowledge graph filters: tag, ref type, entity, source, freshness, workflow.
+  // The same filter state drives both the note list (refresh) and the graph (refreshGraph),
+  // so what you see in the vault list is exactly what's plotted in the graph.
+  const [filters, setFilters] = useState<KnowledgeFilters>(EMPTY_FILTERS);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [allTags, setAllTags] = useState<string[]>([]);
+  const [workflows, setWorkflows] = useState<Array<{ id: string; name: string }>>([]);
+  const [filterEntitySearch, setFilterEntitySearch] = useState("");
+  const [filterEntityResults, setFilterEntityResults] = useState<Array<{ id: string; name: string; type: string }>>([]);
+
+  const activeFilterCount =
+    filters.tags.length + filters.sources.length + (filters.entityId ? 1 : 0) + (filters.workflowId ? 1 : 0) +
+    (filters.refType !== "any" ? 1 : 0) + (filters.freshness !== "all" ? 1 : 0);
+
+  function buildFilterParams(): string {
+    const params = new URLSearchParams();
+    if (query) params.set("q", query);
+    if (filters.tags.length) params.set("tags", filters.tags.join(","));
+    if (filters.sources.length) params.set("sources", filters.sources.join(","));
+    if (filters.refType !== "any") params.set("refType", filters.refType);
+    if (filters.freshness !== "all") params.set("freshness", filters.freshness);
+    if (filters.entityId) params.set("entityId", filters.entityId);
+    if (filters.workflowId) params.set("workflowId", filters.workflowId);
+    return params.toString();
+  }
+
+  async function refresh() {
+    const qs = buildFilterParams();
+    const res = await fetch(`/api/knowledge/notes${qs ? `?${qs}` : ""}`);
+    const json = await res.json();
+    if (!json.ok) throw new Error(json.error ?? "knowledge_load_failed");
+    const next = json.data.notes as KnowledgeNote[];
+    setNotes(next);
+    if (!selectedId && next[0]) {
+      setSelectedId(next[0].id);
+      setDraft(next[0]);
+    } else if (selectedId) {
+      const current = next.find((note) => note.id === selectedId);
+      if (current) setDraft(current);
+    }
+  }
+
+  async function refreshGraph() {
+    const qs = buildFilterParams();
+    const res = await fetch(`/api/knowledge/graph${qs ? `?${qs}` : ""}`);
+    const json = await res.json();
+    if (json.ok) setGraph(json.data as KnowledgeGraph);
+  }
+
+  async function refreshSync() {
+    const res = await fetch("/api/knowledge/sync");
+    const json = await res.json();
+    if (json.ok) setSync(json.data as SyncStatus);
+  }
+
+  async function fetchFacets() {
+    // Unfiltered pull so the tag picker always shows the full vault's tag universe,
+    // not just the tags present in the current filtered view.
+    const res = await fetch("/api/knowledge/notes?limit=500");
+    const json = await res.json();
+    if (!json.ok) return;
+    const tagSet = new Set<string>();
+    for (const note of json.data.notes as KnowledgeNote[]) for (const tag of note.tags) tagSet.add(tag);
+    setAllTags(Array.from(tagSet).sort((a, b) => a.localeCompare(b)));
+  }
+
+  async function fetchWorkflows() {
+    const res = await fetch("/api/workflow-twins");
+    const json = await res.json();
+    if (json.ok) setWorkflows((json.data.twins ?? []).map((twin: { id: string; name: string }) => ({ id: twin.id, name: twin.name })));
+  }
+
+  async function searchFilterEntities(q: string) {
+    if (!q.trim()) { setFilterEntityResults([]); return; }
+    try {
+      const res = await fetch(`/api/entities?search=${encodeURIComponent(q)}&limit=6`);
+      const json = await res.json();
+      if (json.ok) {
+        setFilterEntityResults((json.data?.entities ?? []).map((e: { id: string; name: string; type: string }) => ({
+          id: e.id, name: e.name, type: e.type
+        })));
+      }
+    } catch { /* search failure is non-fatal */ }
+  }
+
+  function toggleTagFilter(tag: string) {
+    setFilters((prev) => ({
+      ...prev,
+      tags: prev.tags.includes(tag) ? prev.tags.filter((t) => t !== tag) : [...prev.tags, tag]
+    }));
+  }
+
+  function toggleSourceFilter(source: string) {
+    setFilters((prev) => ({
+      ...prev,
+      sources: prev.sources.includes(source) ? prev.sources.filter((s) => s !== source) : [...prev.sources, source]
+    }));
+  }
+
+  function setEntityFilter(entity: { id: string; name: string }) {
+    setFilters((prev) => ({ ...prev, entityId: entity.id, entityLabel: entity.name }));
+    setFilterEntitySearch("");
+    setFilterEntityResults([]);
+  }
+
+  function clearFilters() {
+    setFilters(EMPTY_FILTERS);
+  }
+
+  useEffect(() => {
+    void refreshSync();
+    void fetchFacets();
+    void fetchWorkflows();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    void refresh().catch((err) => setMessage(err instanceof Error ? err.message : "Could not load knowledge notes."));
+    void refreshGraph();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filters]);
+
+  const grouped = useMemo(() => {
+    const map = new Map<string, KnowledgeNote[]>();
+    for (const root of ROOTS) map.set(root, []);
+    for (const note of notes) {
+      const folder = folderFor(note.path);
+      map.set(folder, [...(map.get(folder) ?? []), note]);
+    }
+    return map;
+  }, [notes]);
+
+  const backlinks = useMemo(() => {
+    if (!draft) return [];
+    const needle = `[[${draft.title}]]`.toLowerCase();
+    return notes.filter((note) => note.id !== draft.id && note.body.toLowerCase().includes(needle));
+  }, [draft, notes]);
+
+  async function selectNote(note: KnowledgeNote) {
+    setSelectedId(note.id);
+    const res = await fetch(`/api/knowledge/notes/${note.id}`);
+    const json = await res.json();
+    if (json.ok) setDraft(json.data.note as KnowledgeNote);
+  }
+
+  async function createNote() {
+    setBusy(true);
+    setMessage("");
+    try {
+      const title = `Untitled ${notes.length + 1}`;
+      const res = await fetch("/api/knowledge/notes", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title, path: `_Inbox/untitled-${Date.now()}.md`, body: `# ${title}\n\n`, tags: [] })
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error ?? "create_failed");
+      await refresh();
+      await refreshGraph();
+      await selectNote(json.data.note as KnowledgeNote);
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Could not create note.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveDraft() {
+    if (!draft) return;
+    setBusy(true);
+    setMessage("");
+    try {
+      const res = await fetch(`/api/knowledge/notes/${draft.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(draft)
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error ?? "save_failed");
+      setDraft(json.data.note as KnowledgeNote);
+      await refresh();
+      await refreshGraph();
+      setMessage("Note saved.");
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Could not save note.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function exportVault() {
+    const res = await fetch("/api/knowledge/export", { method: "POST" });
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "nexus-vault.zip";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function importVault(file: File) {
+    const form = new FormData();
+    form.append("file", file);
+    setBusy(true);
+    try {
+      const res = await fetch("/api/knowledge/import", { method: "POST", body: form });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error ?? "import_failed");
+      setMessage(`Imported ${json.data.imported} note${json.data.imported === 1 ? "" : "s"}.`);
+      await refresh();
+      await refreshGraph();
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Could not import vault.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function runPost(endpoint: string, body?: unknown) {
+    setBusy(true);
+    setMessage("");
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: body ? { "content-type": "application/json" } : undefined,
+        body: body ? JSON.stringify(body) : undefined
+      });
+      const json = await res.json();
+      if (!json.ok) throw new Error(json.error ?? "request_failed");
+      setMessage("Done.");
+      await refresh();
+      await refreshGraph();
+      await refreshSync();
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : "Request failed.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function searchEntities(q: string) {
+    if (!q.trim()) { setEntityResults([]); return; }
+    setEntitySearching(true);
+    try {
+      const res = await fetch(`/api/entities?search=${encodeURIComponent(q)}&limit=6`);
+      const json = await res.json();
+      if (json.ok) {
+        setEntityResults((json.data?.entities ?? []).map((e: { id: string; name: string; type: string }) => ({
+          id: e.id, name: e.name, type: e.type
+        })));
+      }
+    } catch { /* search failure is non-fatal */ }
+    finally { setEntitySearching(false); }
+  }
+
+  function linkEntity(entity: { id: string; name: string; type: string }) {
+    if (!draft) return;
+    if (draft.entityRefs.includes(entity.id)) return;
+    setDraft({ ...draft, entityRefs: [...draft.entityRefs, entity.id] });
+    setEntitySearch("");
+    setEntityResults([]);
+    setMessage(`Linked to ${entity.name}. Save to persist.`);
+  }
+
+  function unlinkEntity(id: string) {
+    if (!draft) return;
+    setDraft({ ...draft, entityRefs: draft.entityRefs.filter((ref) => ref !== id) });
+  }
+
+  return (
+    <div className="grid min-h-[74vh] gap-4 xl:grid-cols-[18rem_minmax(0,1fr)_20rem]">
+      <aside className="panel flex min-h-[20rem] flex-col gap-4">
+        <div className="flex items-center justify-between gap-2">
+          <div>
+            <p className="panel-title">Vault</p>
+            <p className="mt-1 text-xs text-white/45">{notes.length} note{notes.length === 1 ? "" : "s"}</p>
+          </div>
+          <button className="btn-subtle" disabled={busy} onClick={createNote}>New</button>
+        </div>
+        <form
+          className="flex gap-2"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void refresh();
+          }}
+        >
+          <input className="input min-w-0" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Quick search..." />
+          <button className="btn-subtle" type="submit">Go</button>
+        </form>
+
+        <div>
+          <button
+            className="flex w-full items-center justify-between rounded-md border border-white/10 bg-white/[0.025] px-3 py-2 text-xs text-white/65 hover:text-white"
+            onClick={() => setFiltersOpen((open) => !open)}
+          >
+            <span className="font-medium uppercase tracking-[0.12em]">Filters</span>
+            <span className="flex items-center gap-2">
+              {activeFilterCount > 0 && <span className="badge badge-green">{activeFilterCount}</span>}
+              <span className="text-white/35">{filtersOpen ? "−" : "+"}</span>
+            </span>
+          </button>
+
+          {filtersOpen && (
+            <div className="mt-2 space-y-3 rounded-md border border-white/10 bg-white/[0.02] p-3">
+              {allTags.length > 0 && (
+                <div>
+                  <p className="label">Tags</p>
+                  <div className="mt-1 flex flex-wrap gap-1">
+                    {allTags.map((tag) => (
+                      <button
+                        key={tag}
+                        className={`badge ${filters.tags.includes(tag) ? "badge-green" : "badge-muted"}`}
+                        onClick={() => toggleTagFilter(tag)}
+                      >
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <p className="label">Source</p>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {SOURCE_KINDS.map((source) => (
+                    <button
+                      key={source}
+                      className={`badge ${filters.sources.includes(source) ? "badge-green" : "badge-muted"}`}
+                      onClick={() => toggleSourceFilter(source)}
+                    >
+                      {source}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <p className="label">Has ref type</p>
+                <select
+                  className="input mt-1 w-full"
+                  value={filters.refType}
+                  onChange={(event) => setFilters((prev) => ({ ...prev, refType: event.target.value }))}
+                >
+                  {REF_TYPES.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <p className="label">Freshness</p>
+                <select
+                  className="input mt-1 w-full"
+                  value={filters.freshness}
+                  onChange={(event) => setFilters((prev) => ({ ...prev, freshness: event.target.value }))}
+                >
+                  {FRESHNESS_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <p className="label">Workflow</p>
+                <select
+                  className="input mt-1 w-full"
+                  value={filters.workflowId}
+                  onChange={(event) => setFilters((prev) => ({ ...prev, workflowId: event.target.value }))}
+                >
+                  <option value="">Any workflow</option>
+                  {workflows.map((wf) => (
+                    <option key={wf.id} value={wf.id}>{wf.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <p className="label">Entity</p>
+                {filters.entityId ? (
+                  <div className="mt-1 flex items-center justify-between rounded-md border border-nexus-accent/40 bg-nexus-accent/10 px-2 py-1 text-xs text-white">
+                    <span className="truncate">{filters.entityLabel}</span>
+                    <button
+                      className="px-1 text-white/40 hover:text-red-400"
+                      onClick={() => setFilters((prev) => ({ ...prev, entityId: null, entityLabel: "" }))}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ) : (
+                  <>
+                    <input
+                      className="input mt-1 w-full"
+                      value={filterEntitySearch}
+                      onChange={(event) => {
+                        setFilterEntitySearch(event.target.value);
+                        void searchFilterEntities(event.target.value);
+                      }}
+                      placeholder="Search entities..."
+                    />
+                    {filterEntityResults.length > 0 && (
+                      <div className="mt-1 max-h-32 space-y-1 overflow-y-auto">
+                        {filterEntityResults.map((entity) => (
+                          <button
+                            key={entity.id}
+                            className="block w-full truncate rounded-md border border-white/10 px-2 py-1 text-left text-xs text-white/65 hover:text-white hover:border-nexus-accent/40"
+                            onClick={() => setEntityFilter(entity)}
+                          >
+                            {entity.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {activeFilterCount > 0 && (
+                <button className="btn-subtle w-full" onClick={clearFilters}>Clear filters</button>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+          {Array.from(grouped.entries()).map(([folder, items]) => (
+            <div key={folder}>
+              <p className="mb-1 text-xs uppercase tracking-[0.16em] text-white/30">{folder}</p>
+              <div className="space-y-1">
+                {items.length ? items.map((note) => (
+                  <button
+                    key={note.id}
+                    className={[
+                      "w-full rounded-md border px-3 py-2 text-left text-sm transition",
+                      selectedId === note.id
+                        ? "border-nexus-accent/40 bg-nexus-accent/10 text-white"
+                        : "border-white/10 bg-white/[0.025] text-white/65 hover:text-white"
+                    ].join(" ")}
+                    onClick={() => void selectNote(note)}
+                  >
+                    <span className="block truncate font-medium">{note.title}</span>
+                    <span className="block truncate text-xs text-white/35">{note.path}</span>
+                  </button>
+                )) : <p className="rounded-md border border-white/10 px-3 py-2 text-xs text-white/35">Empty</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </aside>
+
+      <main className="panel min-w-0 space-y-4">
+        {draft ? (
+          <>
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div className="grid flex-1 gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+                <input className="input" value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} />
+                <input className="input" value={draft.path} onChange={(event) => setDraft({ ...draft, path: event.target.value })} />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button className={`badge ${view === "edit" ? "badge-green" : "badge-muted"}`} onClick={() => setView("edit")}>Edit</button>
+                <button className={`badge ${view === "preview" ? "badge-green" : "badge-muted"}`} onClick={() => setView("preview")}>Preview</button>
+                <button className={`badge ${view === "graph" ? "badge-green" : "badge-muted"}`} onClick={() => setView("graph")}>Graph</button>
+                <button className="btn-primary" disabled={busy} onClick={() => void saveDraft()}>Save</button>
+              </div>
+            </div>
+            {view === "edit" && (
+              <div className="overflow-hidden rounded-lg border border-white/10 bg-[#060a12]">
+                <textarea
+                  className="min-h-[56vh] w-full resize-none bg-transparent p-4 font-mono text-sm leading-6 text-white/80 outline-none placeholder:text-white/25"
+                  value={draft.body}
+                  spellCheck={false}
+                  onChange={(event) => setDraft({ ...draft, body: event.target.value })}
+                  placeholder="# Note title&#10;&#10;Write Markdown here..."
+                />
+              </div>
+            )}
+            {view === "preview" && (
+              <article className="min-h-[56vh] whitespace-pre-wrap rounded-lg border border-white/10 bg-black/20 p-4 text-sm leading-6 text-white/75">
+                {draft.body}
+              </article>
+            )}
+            {view === "graph" && (
+              <div className="h-[56vh] overflow-hidden rounded-lg border border-white/10 bg-black/20">
+                <MiniKnowledgeGraph graph={graph} />
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="flex min-h-[56vh] items-center justify-center rounded-lg border border-white/10 bg-black/20 text-sm text-white/50">
+            Create or import a note to start your Nexus vault.
+          </div>
+        )}
+      </main>
+
+      <aside className="panel space-y-4">
+        <div>
+          <p className="panel-title">Backlinks</p>
+          <div className="mt-2 space-y-2">
+            {backlinks.length ? backlinks.map((note) => (
+              <button key={note.id} className="block w-full rounded-md border border-white/10 px-3 py-2 text-left text-sm text-white/65 hover:text-white" onClick={() => void selectNote(note)}>
+                {note.title}
+              </button>
+            )) : <p className="text-sm text-white/45">No backlinks yet.</p>}
+          </div>
+        </div>
+        <div>
+          <p className="panel-title">Nexus Links</p>
+          <div className="mt-2 space-y-2">
+            {draft && extRefs(draft).length ? extRefs(draft).map((ref) => (
+              <div key={`${ref.type}:${ref.id}`} className="flex items-center gap-1 rounded-md border border-white/10 px-3 py-2 text-xs">
+                <a className="flex-1 text-white/65 hover:text-white truncate" href={ref.href}>
+                  {ref.type}: {ref.id}
+                </a>
+                {ref.type === "entity" && (
+                  <button
+                    className="text-white/30 hover:text-red-400 text-xs px-1"
+                    title="Unlink entity"
+                    onClick={() => unlinkEntity(ref.id)}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            )) : <p className="text-sm text-white/45">Use refs like evidence:ev-001 or workflow:wt-123.</p>}
+          </div>
+        </div>
+        {draft && (
+          <div>
+            <p className="panel-title">Link Entity</p>
+            <div className="mt-2 space-y-2">
+              <form
+                className="flex gap-2"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void searchEntities(entitySearch);
+                }}
+              >
+                <input
+                  className="input min-w-0"
+                  value={entitySearch}
+                  onChange={(event) => {
+                    setEntitySearch(event.target.value);
+                    void searchEntities(event.target.value);
+                  }}
+                  placeholder="Search entities..."
+                />
+              </form>
+              {entitySearching && <p className="text-xs text-white/30">Searching…</p>}
+              {entityResults.length > 0 && (
+                <div className="space-y-1 max-h-40 overflow-y-auto">
+                  {entityResults.map((entity) => (
+                    <button
+                      key={entity.id}
+                      className="block w-full rounded-md border border-white/10 px-3 py-2 text-left text-xs text-white/65 hover:text-white hover:border-nexus-accent/40"
+                      onClick={() => linkEntity(entity)}
+                    >
+                      <span className="block truncate font-medium">{entity.name}</span>
+                      <span className="block text-white/35">{entity.type}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+              {entitySearch && !entitySearching && entityResults.length === 0 && (
+                <p className="text-xs text-white/40">No entities found. Try a different name.</p>
+              )}
+            </div>
+          </div>
+        )}
+        <div className="space-y-2">
+          <p className="panel-title">Portability</p>
+          <button className="btn-subtle w-full" onClick={() => void exportVault()}>Export ZIP</button>
+          <label className="btn-subtle block w-full cursor-pointer text-center">
+            Import ZIP
+            <input className="hidden" type="file" accept=".zip" onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) void importVault(file);
+            }} />
+          </label>
+          <button className="btn-subtle w-full" disabled={busy} onClick={() => void runPost("/api/knowledge/triage")}>Triage Inbox</button>
+        </div>
+        <div className="space-y-2">
+          <p className="panel-title">Local Sync</p>
+          <p className="text-xs text-white/45">
+            {sync?.enabled ? `${sync.mode}: ${sync.vaultPath}` : "Disabled. Set NEXUS_VAULT_SYNC and NEXUS_LOCAL_VAULT_PATH locally."}
+          </p>
+          <button className="btn-subtle w-full" disabled={busy || !sync?.enabled} onClick={() => void runPost("/api/knowledge/sync")}>Sync Now</button>
+          <button className="btn-subtle w-full" disabled={busy || !sync?.enabled} onClick={() => void runPost("/api/knowledge/sync", { watch: true })}>Start Watcher</button>
+        </div>
+        {message ? <p className="rounded-md border border-white/10 bg-white/[0.035] px-3 py-2 text-xs text-white/60">{message}</p> : null}
+      </aside>
+    </div>
+  );
+}
