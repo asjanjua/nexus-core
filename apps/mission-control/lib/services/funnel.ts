@@ -16,6 +16,52 @@
 
 export type StageStatus = "done" | "current" | "pending";
 
+/**
+ * Funnel visibility policy (decision 2026-07-09, docs/USER_STRATEGY_AND_PIVOTS.md
+ * §Decisions): the funnel page is operator-only for now, but visibility is a
+ * policy, not a hard gate, so it can be re-opened per-workspace without code
+ * change.
+ *
+ *   - "admin" (default): the whole surface requires an operator identity.
+ *   - "workspace": any authenticated user sees their own pilot stages; the
+ *     cross-tenant acquisition section stays operator-only in BOTH modes.
+ *
+ * Operator identity: Clerk user ids listed in NEXUS_OPERATOR_USER_IDS (comma-
+ * separated). Note that requireScope cannot express this — Clerk session users
+ * carry wildcard scope, so scope checks only constrain bearer tokens.
+ */
+export type FunnelVisibility = "admin" | "workspace";
+
+export function resolveFunnelVisibility(raw: string | undefined): FunnelVisibility {
+  return raw === "workspace" ? "workspace" : "admin";
+}
+
+export function isOperatorUser(userId: string, allowlistRaw: string | undefined): boolean {
+  if (!allowlistRaw) return false;
+  return allowlistRaw
+    .split(",")
+    .map((id) => id.trim())
+    .filter(Boolean)
+    .includes(userId);
+}
+
+export interface FunnelAccess {
+  /** Caller may see the page at all. */
+  pageAllowed: boolean;
+  /** Caller may see the cross-tenant acquisition section. */
+  acquisitionAllowed: boolean;
+  /** Caller may see their workspace pilot stages. */
+  pilotStagesAllowed: boolean;
+}
+
+export function resolveFunnelAccess(visibility: FunnelVisibility, operator: boolean): FunnelAccess {
+  if (operator) return { pageAllowed: true, acquisitionAllowed: true, pilotStagesAllowed: true };
+  if (visibility === "workspace") {
+    return { pageAllowed: true, acquisitionAllowed: false, pilotStagesAllowed: true };
+  }
+  return { pageAllowed: false, acquisitionAllowed: false, pilotStagesAllowed: false };
+}
+
 export interface AcquisitionFunnel {
   submitted: number;
   claimsSent: number;

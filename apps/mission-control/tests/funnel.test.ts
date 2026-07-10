@@ -1,5 +1,46 @@
 import { describe, expect, it } from "vitest";
-import { deriveAcquisitionFunnel, derivePilotStages } from "@/lib/services/funnel";
+import {
+  deriveAcquisitionFunnel,
+  derivePilotStages,
+  isOperatorUser,
+  resolveFunnelAccess,
+  resolveFunnelVisibility,
+} from "@/lib/services/funnel";
+
+describe("funnel visibility policy", () => {
+  it("defaults to admin and only accepts the explicit workspace value", () => {
+    expect(resolveFunnelVisibility(undefined)).toBe("admin");
+    expect(resolveFunnelVisibility("")).toBe("admin");
+    expect(resolveFunnelVisibility("everything")).toBe("admin");
+    expect(resolveFunnelVisibility("workspace")).toBe("workspace");
+  });
+
+  it("resolves operators from the comma-separated allowlist", () => {
+    expect(isOperatorUser("user_a", undefined)).toBe(false);
+    expect(isOperatorUser("user_a", "")).toBe(false);
+    expect(isOperatorUser("user_a", "user_a")).toBe(true);
+    expect(isOperatorUser("user_b", " user_a , user_b ")).toBe(true);
+    expect(isOperatorUser("user_c", "user_a,user_b")).toBe(false);
+  });
+
+  it("keeps the cross-tenant acquisition section operator-only in BOTH modes", () => {
+    // admin mode, non-operator: no page at all.
+    expect(resolveFunnelAccess("admin", false)).toEqual({
+      pageAllowed: false,
+      acquisitionAllowed: false,
+      pilotStagesAllowed: false,
+    });
+    // workspace mode, non-operator: own pilot stages only, never acquisition.
+    expect(resolveFunnelAccess("workspace", false)).toEqual({
+      pageAllowed: true,
+      acquisitionAllowed: false,
+      pilotStagesAllowed: true,
+    });
+    // operator: everything, in either mode.
+    expect(resolveFunnelAccess("admin", true).acquisitionAllowed).toBe(true);
+    expect(resolveFunnelAccess("workspace", true).acquisitionAllowed).toBe(true);
+  });
+});
 
 describe("acquisition funnel derivation", () => {
   it("counts the three readiness events and computes redeem rate", () => {

@@ -116,6 +116,16 @@ services:
         sync: false
       - key: NEXUS_FROM_EMAIL
         sync: false
+      # Funnel visibility policy (decision 2026-07-09): "admin" (default,
+      # operator-only) or "workspace" (customers see own pilot stages;
+      # acquisition stays operator-only). Operators = Clerk user ids.
+      - key: NEXUS_FUNNEL_VISIBILITY
+        sync: false
+      - key: NEXUS_OPERATOR_USER_IDS
+        sync: false
+      # Build-time: set to "visible" to show the Pilot Funnel nav entry.
+      - key: NEXT_PUBLIC_NEXUS_FUNNEL_NAV
+        sync: false
   - type: cron
     name: nexus-dispatch-cron
     runtime: node

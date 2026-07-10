@@ -15,7 +15,8 @@ import { PageShell } from "@/components/page-shell";
 import type { AcquisitionFunnel, PilotStage } from "@/lib/services/funnel";
 
 type FunnelData = {
-  acquisition: AcquisitionFunnel;
+  /** Null when the caller is not an operator (acquisition is operator-only). */
+  acquisition: AcquisitionFunnel | null;
   pilotStages: PilotStage[];
   generatedAt: string;
 };
@@ -49,6 +50,8 @@ export default function FunnelPage() {
         const json = (await res.json()) as { ok: boolean; data?: FunnelData; error?: string };
         if (cancelled) return;
         if (json.ok && json.data) setData(json.data);
+        else if (json.error === "funnel_operator_only")
+          setError("This view is operator-only. Ask a Pinavia operator for access.");
         else setError("Could not load funnel data.");
       } catch {
         if (!cancelled) setError("Network error loading funnel data.");
@@ -76,6 +79,7 @@ export default function FunnelPage() {
         </div>
       ) : data ? (
         <>
+          {data.acquisition ? (
           <div className={panel}>
             <p className="label">Acquisition</p>
             <div className="mt-3 grid gap-3 sm:grid-cols-4">
@@ -94,6 +98,7 @@ export default function FunnelPage() {
               </p>
             ) : null}
           </div>
+          ) : null}
 
           <div className={panel}>
             <p className="label">Pilot lifecycle (this workspace)</p>

@@ -74,7 +74,12 @@ const navSections = [
       { href: "/recommendations", label: "Recommendations" },
       { href: "/decisions", label: "Decisions" },
       { href: "/workflows", label: "Workflow Twins" },
-      { href: "/funnel", label: "Pilot Funnel" },
+      // Funnel is operator-only by default (decision 2026-07-09). The nav entry
+      // is opt-in via build-time env so customers never see a dead operator link;
+      // the API enforces access regardless (NEXUS_FUNNEL_VISIBILITY).
+      ...(process.env.NEXT_PUBLIC_NEXUS_FUNNEL_NAV === "visible"
+        ? [{ href: "/funnel", label: "Pilot Funnel" }]
+        : []),
       { href: "/pilot/afterlife", label: "Pilot Afterlife" },
       { href: "/entities", label: "Company Memory" },
       { href: "/knowledge", label: "Knowledge Workspace" },
