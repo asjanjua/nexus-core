@@ -177,6 +177,14 @@ self-serve launch (~4 weeks), paid pilot signing (~6 weeks).
    for every funnel stage, but nothing aggregates them. An operator-facing
    funnel/pilot-lifecycle panel is backlogged (P2) for launch preparation.
 
+## Decisions 2026-07-09 (unknowns-first session #3)
+
+The 2026-07-07 decisions moved to code faster than planned (reviewer seat, funnel, afterlife, waitlist all shipped by 2026-07-09). New decisions from that inversion:
+
+1. **Demo reviewer story: live two-account loop.** The demo shows invite -> accept -> identity-bound approval live, with a pre-staged fallback mode locked at rehearsal if the Clerk org-switch misbehaves. Runbook §2a is canonical.
+2. **Funnel visibility is a policy, not a page.** `NEXUS_FUNNEL_VISIBILITY` env: `admin` (default, operator-only via `NEXUS_OPERATOR_USER_IDS`) or `workspace` (customers see own pilot stages). The cross-tenant acquisition section is operator-only in BOTH modes, permanently. Long-term: the acquisition half grows into an internal GTM console; the pilot-stage half grows into the sponsor value-proof surface. Note: `requireScope` cannot gate humans — Clerk session users carry wildcard scope — so operator identity is an explicit allowlist.
+3. **Pro intent goes public via the readiness flow (queued, post-demo).** The public readiness result (which already captures email, rate-limited) gains a Pro-interest capture that links to the workspace waitlist row at claim time. No new anonymous write surface.
+
 ## Current Plan
 
 1. **Finish the v0.25.0 release gate.**

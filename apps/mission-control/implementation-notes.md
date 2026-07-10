@@ -1,3 +1,37 @@
+# Implementation Notes — 2026-07-09 Funnel Gate + Runbook v2 (audit #3)
+
+Unknowns-first session #3. Delete after review.
+
+## Assumptions
+1. "Admin-only everything for now" + "most flexible option" = env-driven policy
+   (`NEXUS_FUNNEL_VISIBILITY`, default admin) rather than a hard gate, with the
+   acquisition section operator-only in both modes permanently.
+2. Operator identity must be an explicit Clerk-user-id allowlist
+   (`NEXUS_OPERATOR_USER_IDS`) because `requireScope` gives session users
+   wildcard scope (repo evidence: `lib/api-auth.ts` header comment). This is the
+   product's first human operator concept — reuse it for future admin surfaces.
+3. Nav hiding is build-time (`NEXT_PUBLIC_NEXUS_FUNNEL_NAV`), acceptable because
+   the API enforces access regardless; the nav flag is cosmetic.
+
+## Conservative choices
+- No schema change; `acquisition: null` in the API response for non-operators
+  keeps the page component tolerant in either mode.
+- Runbook keeps both reviewer demo modes with a rehearsal go/no-go instead of
+  betting on the live org switch.
+
+## Open questions (human decision)
+- Which Clerk user ids go into `NEXUS_OPERATOR_USER_IDS` in Render.
+- Whether the demo shows /funnel at all (runbook landmine 4.6).
+
+## Verification
+- Sandbox mount degraded mid-session (vitest binary unreadable: "Resource
+  deadlock avoided"). Funnel policy tests were written but NOT executed here.
+  On Ali's machine before push: `npm test` (expect prior 472 + 3 new funnel
+  policy cases), `npx tsc --noEmit`, and a real `npm run build` (per
+  ENGINEERING_GUARDRAILS §7 — tests+tsc do not catch build hangs).
+
+---
+
 # Implementation Notes — 2026-07-07 Demo Week Package (B + A + C)
 
 Unknowns-first session #2. Direction chosen: scorer signal-confidence (A),
