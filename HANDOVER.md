@@ -4,6 +4,17 @@
 
 ---
 
+## 2026-07-10 — Architecture Review Second Verification
+
+- Re-verified the external architecture review against code and migrations. The adoption record is `docs/ARCH_REVIEW_2026-07-10_ADOPTION.md`; it now distinguishes implemented, locally verified, production-pending, and operationally verified controls and contains the finalized execution order.
+- Closed the sole application LLM-routing bypass: `/api/eval/run` now uses the `audit_refusal` policy surface, and `ask()` requires a typed `surfaceId` so new callers cannot silently fall back to the legacy environment-provider path.
+- Production-build fix: the optional local-vault watcher now keeps `chokidar` and native `fsevents` external to the Next.js server bundle.
+- Verification passed: `npm run check:boundaries`, application TypeScript, 69 test files / 475 tests, and `npm run build`.
+- No deploy or vendor-console control was changed in this pass. Before the regulated demo, directly verify non-sleeping Render/Neon, Neon production-branch protection/snapshots/restore window, managed uptime checks, deployed SHA, and authenticated smoke.
+- First post-demo engineering slice: dedicated worker plus heartbeat, lease recovery, dead-letter state, idempotency key, trace ID, graceful stop, and operator visibility. Then worker-based secure ingestion, minimal OTEL, DB roles/RLS, and database-backed operator assignments.
+
+---
+
 ## ⚠ Standing Build Constraints (do not violate — see `docs/ENGINEERING_GUARDRAILS.md` §7)
 
 Since commit `68a5a0b` (2026-07-09), the production `next build` is green only because these are kept OUT of the build path. Reintroducing any of them hangs `next build` before compile output, and tests + `tsc` will NOT catch it:

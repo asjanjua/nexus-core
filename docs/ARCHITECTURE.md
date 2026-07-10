@@ -1,7 +1,7 @@
 # NexusAI Mission Control Architecture
 
 Updated: 2026-07-10
-Current product state: v0.25.0 (verified locally 2026-06-17). Covers U2 Agent Control Profiles, U3 output history/rollback, U4 learning signals, Phase 8A Decision & Action Twin, AI decision proposals, persistent Ask memory, entity extraction and Company Memory pages, P2 AI trust controls, the Executive Synthesis Layer, synthesis source/entity traceability, scheduled synthesis core, workflow twin primitives, billing tiers with Stripe integration, the orchestration dispatcher, the first Slack connector ingestion path, v0.23.1 production hardening/auth-navigation fixes, Connector Settings policy UX, Workflow Twin Scorer, U6 backcasting, U7 shadow ROI instrumentation, and v0.25.0 Knowledge Workspace with Markdown import/export, optional local vault sync, MCP memory tools, and Ask note refs.
+Current product state: v0.25.x (2026-07-09). Since v0.25.0 this also covers: server-side lane assignment and single-use readiness claim codes (migrations 0033-0034), the identity-bound reviewer seat with invite/accept flow and approval restriction (0035), pilot funnel + afterlife surfaces (0036), the Pro waitlist (0037), the hosted-Clerk auth handoff and production build constraints (`docs/ENGINEERING_GUARDRAILS.md` §7), and the operator allowlist (`NEXUS_OPERATOR_USER_IDS` — note that Clerk session users carry wildcard scope, so human-facing gates cannot use bearer scopes). Earlier v0.25.0 scope: covers U2 Agent Control Profiles, U3 output history/rollback, U4 learning signals, Phase 8A Decision & Action Twin, AI decision proposals, persistent Ask memory, entity extraction and Company Memory pages, P2 AI trust controls, the Executive Synthesis Layer, synthesis source/entity traceability, scheduled synthesis core, workflow twin primitives, billing tiers with Stripe integration, the orchestration dispatcher, the first Slack connector ingestion path, v0.23.1 production hardening/auth-navigation fixes, Connector Settings policy UX, Workflow Twin Scorer, U6 backcasting, U7 shadow ROI instrumentation, and v0.25.0 Knowledge Workspace with Markdown import/export, optional local vault sync, MCP memory tools, and Ask note refs.
 
 ## 1. Purpose
 
@@ -35,7 +35,7 @@ The product is not designed to replace ERP, CRM, HRIS, core banking, BI, legal r
 | Object storage | Cloudflare R2 | Original-file retention path when enabled |
 | Knowledge vault | Postgres + Markdown import/export | Postgres is canonical for hosted governance; Markdown is the portability/sync layer |
 | Local sync | Optional filesystem watcher | Enabled only with `NEXUS_VAULT_SYNC` and an absolute `NEXUS_LOCAL_VAULT_PATH` |
-| LLM providers | DeepSeek/OpenAI/Anthropic-style routing | Centralized LLM service. Route policy declared in `model-routing.ts` (10 surfaces, fallback chains) but NOT yet wired into `llm.ts` execution path. See §12. |
+| LLM providers | DeepSeek/OpenAI/Anthropic-style routing | Centralized LLM service. The `model-routing.ts` 10-surface policy IS wired into execution via `callLLMWithRouting()` in `llm.ts` (closed 2026-06-25, Task #36; §12 preserved as the historical review record). DeepSeek retires `deepseek-chat`/`deepseek-reasoner` 2026-07-24; defaults moved to `deepseek-v4-flash`/`-pro`. |
 | Edge/security | Cloudflare selective services | DNS/CDN/WAF/AI Gateway/R2; no full Workers migration in V1 |
 
 Mission Control intentionally remains one deployable pilot application. This is not permission to couple UI and server internals: client components call relative `/api/*` routes, route handlers enforce auth/contracts, and domain/provider logic stays outside route files. The first future extraction target is asynchronous ingestion/agent execution, only after measured scale, compliance, or release-cadence triggers are met.
@@ -531,6 +531,8 @@ Backcasting and ROI are stored in `workflow_twins.config` for V1 speed, with aud
 Recurring operating review: blockers, KPIs, overdue owners, department status, follow-up actions.
 
 ## 12. Architecture Review Findings (2026-06-25)
+
+> Historical record. The LLM routing gap below was CLOSED on 2026-06-25 (Task #36): `callLLMWithRouting()` in `lib/services/llm.ts` executes the `model-routing.ts` policy across all call sites. Kept for provenance of the decision.
 
 ### LLM Routing: Policy vs Execution Gap
 

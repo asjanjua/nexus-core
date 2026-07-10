@@ -168,7 +168,10 @@ describe("ask() budget gate", () => {
 
   it("returns budget-exceeded message when budget exhausted", async () => {
     setUsed(500_000, 500_000);
-    const response = await ask("test prompt", "system", { workspaceId: WS });
+    const response = await ask("test prompt", "system", {
+      workspaceId: WS,
+      surfaceId: "ask_web_quick"
+    });
     expect(response).toContain("monthly AI budget");
     expect(response).toContain("100%");
   });
@@ -176,7 +179,9 @@ describe("ask() budget gate", () => {
   it("no workspaceId bypasses budget gate", async () => {
     // Without workspaceId, ask() should not gate on budget.
     // It will fall through to LLM (which returns fallback without API key).
-    const response = await ask("test prompt", "system", {});
+    const response = await ask("test prompt", "system", {
+      surfaceId: "ask_web_quick"
+    });
     expect(response).not.toContain("monthly AI budget");
   });
 });

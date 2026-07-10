@@ -32,6 +32,10 @@ const securityHeaders = [
 ];
 
 const nextConfig = {
+  // Vault watching is an optional Node-only capability. Keep Chokidar and its
+  // platform-specific fsevents binary out of webpack's server bundle; they are
+  // loaded at runtime only when NEXUS_VAULT_SYNC enables the watcher.
+  serverExternalPackages: ["chokidar", "fsevents"],
   outputFileTracingExcludes: {
     "/*": [
       "./node_modules/.vite*/**/*",

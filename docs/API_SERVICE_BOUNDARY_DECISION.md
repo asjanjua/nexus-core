@@ -34,6 +34,13 @@ A second API service would add:
 
 The pilot needs stronger boundaries, not more processes.
 
+## Existing Seams (use these first)
+
+Two boundary facts already exist and should shape any extraction:
+
+1. **The cron seam.** Three Render cron services (dispatch, billing, synthesis) already run as separate scheduled processes calling protected HTTP endpoints with `NEXUS_CRON_SECRET`. Background work is therefore already extracted at the scheduler level; the first real extraction (async ingestion/agent execution) should reuse this endpoint-plus-secret seam rather than invent a new transport.
+2. **The authz asymmetry.** Bearer scopes constrain agent/API callers only — Clerk session users carry wildcard scope. Human-facing access control must use explicit mechanisms (e.g. the `NEXUS_OPERATOR_USER_IDS` allowlist). Any extracted service that authorizes humans inherits this constraint; do not assume `requireScope` gates people.
+
 ## Extraction Triggers
 
 Create a separately deployed API/worker service when at least one trigger is sustained by real usage:

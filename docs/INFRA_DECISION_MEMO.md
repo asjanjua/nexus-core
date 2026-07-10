@@ -26,7 +26,7 @@ The goal is not infrastructure purity. The goal is a reliable, understandable pi
 | Product routing | Shared Render app + hostname detection | Keeps Quorum, Meridian, Vantage, Nucleus, and NexusAI on one runtime until isolation is commercially required |
 | Database | Neon Postgres | Managed Postgres, direct migration URL, good pilot fit |
 | Vector search | `pgvector` | Keeps semantic search close to evidence and governance joins |
-| Auth | Clerk | Already integrated for signup, login, and organizations |
+| Auth | Clerk | Already integrated for signup, login, and organizations. Operational constraint since 2026-07-09: Clerk CLIENT components are excluded from the production build (`docs/ENGINEERING_GUARDRAILS.md` §7); sign-in/up use hosted handoff via `NEXT_PUBLIC_CLERK_HOSTED_SIGN_IN_URL`/`_SIGN_UP_URL`, which must be set in Render |
 | Email | Clerk + managed product email provider | Clerk handles auth verification and account lifecycle email; Nexus product/cron email uses Resend or Cloudflare Email Sending |
 | File storage | Cloudflare R2 | Low-cost original-file retention with S3-compatible APIs |
 | Edge/security | Cloudflare selective services | DNS, CDN, WAF, AI Gateway where useful |
@@ -145,7 +145,7 @@ Use explicit names in discussions and paperwork: `Render production`, `UI V0.1 b
 
 ## Cost and Scale Notes
 
-Render free services may sleep when idle. That is acceptable for demos and early pilots. Paid Render instances should be used when:
+Render free services may sleep when idle. REVERSED 2026-07-10 (architecture review adoption, `docs/ARCH_REVIEW_2026-07-10_ADOPTION.md`): sleeping services are NOT acceptable for regulated-buyer demos or paid pilots — a cold start in front of a bank reads as an outage. Use a paid non-sleeping web service and keep Neon off scale-to-zero for any demo or pilot window. Paid Render instances should also be used when:
 
 - a customer expects instant first-load response
 - onboarding calls depend on live demos

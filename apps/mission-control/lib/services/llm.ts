@@ -569,7 +569,7 @@ export async function callLLM(
 export async function ask(
   userPrompt: string,
   systemPrompt: string,
-  opts: Omit<LLMOptions, "systemPrompt"> = {}
+  opts: Omit<LLMOptions, "systemPrompt" | "surfaceId"> & { surfaceId: SurfaceId }
 ): Promise<string> {
   // Plan-level token budget gate
   if (opts.workspaceId && opts.workspaceId !== "_global_") {

@@ -2,6 +2,16 @@
 
 ---
 
+## Unreleased — Architecture Review Second Verification (2026-07-10)
+
+Re-ran the external architecture review against the current repository and corrected the adoption record to distinguish implemented, locally verified, production-pending, and operationally verified controls. Closed the one remaining application-level model-routing bypass: the eval harness now routes through the governed `audit_refusal` surface, and the shared `ask()` TypeScript contract requires every caller to declare a routing surface so the legacy single-provider path cannot silently return through a new application caller.
+
+The finalized adoption sequence keeps pre-demo work to external reliability controls, then prioritizes the dedicated worker and dispatch leases/dead-letter/idempotency/trace support, secure worker-based ingestion, correlation-first OTEL, and finally DB-role/RLS/operator-assignment work in a quiet window. The review also records that the existing `check:boundaries` script is a build/client-server guard, not yet full dependency-graph enforcement.
+
+The verification build also exposed Chokidar's optional native `fsevents` binary being pulled into the Next.js server bundle through local vault sync. `chokidar` and `fsevents` are now explicit server externals, preserving the opt-in Node-only watcher without asking webpack to parse the native binary. Final current-tree verification: boundary check passed, TypeScript passed, 69 test files / 475 tests passed, and the Next.js production build passed.
+
+---
+
 ## Unreleased — Build and Commit Reliability Controls (2026-07-10)
 
 Recovered the repository after an interrupted Git/index state produced a 13-file commit tree, while preserving all feature work in recovery commit `37af988`. Added staged-tree preflight with mass-deletion/large-commit protection, conflict/generated/secret path checks, a Next.js client/server build-boundary scanner, Node 20 project lock, timed typecheck/test/build verification with diagnostics, repository pre-commit hook, and CI timeouts. Documented the API decision to keep Mission Control as a modular monolith and extract asynchronous workers only after measured scale/compliance/release triggers.

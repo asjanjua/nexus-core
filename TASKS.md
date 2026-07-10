@@ -109,6 +109,7 @@ Three dated events drive priority (decisions in `docs/USER_STRATEGY_AND_PIVOTS.m
 **Weeks 5-6 — pilot readiness (signing ~2026-08-18):**
 11. [~] Pilot afterlife surface — shipped v1 (migration 0036 `pilot_outcomes`, `/pilot/afterlife`, on-demand sponsor digest email). Remaining: productize the expand/stop decision record into pilot paperwork and the success scorecard.
 12. [ ] Remaining P1 ops trust items: uptime monitoring, Neon backup restore test, R2 versioning decision, support/security mailbox, SLA doc linked in paperwork.
+12a. [~] Architecture-review adoption (second repo verification 2026-07-10; sequenced in `docs/ARCH_REVIEW_2026-07-10_ADOPTION.md`): the sole unrouted application LLM caller (eval) now uses the `audit_refusal` policy surface. Pre-demo external controls remain open: non-sleeping Render/Neon, branch protection/snapshots/restore window, and managed uptime checks. Post-demo: dedicated worker + job lease/dead-letter/idempotency/trace, ingestion malware/MIME hardening, minimal OTEL, restore drill; launch->pilot: DB roles, RLS, `operator_assignments`, audit hash chaining, credential key separation, email deliverability. The existing `check:boundaries` is narrower than full dependency-direction enforcement.
 13. [x] Pilot paperwork reviewer honesty — superseded: the seat is real; paperwork should now DESCRIBE the identity-bound reviewer model instead of caveating it. Verify `docs/PILOT_SOW_TEMPLATE.md` language matches.
 14. [ ] Stripe checkout for SME self-serve — post-launch, not a launch blocker.
 
