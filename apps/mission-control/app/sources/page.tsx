@@ -1,5 +1,5 @@
 import { PageShell } from "@/components/page-shell";
-import { safeAuth } from "@/lib/safe-auth";
+import { requireWorkspaceId } from "@/lib/safe-auth";
 import { repository } from "@/lib/data/repository";
 import { DeleteEvidenceButton } from "@/components/delete-evidence-button";
 import { EvidenceTrustLink } from "@/components/ui/trust-drawer-trigger";
@@ -15,8 +15,7 @@ export default async function SourcesPage({
   searchParams: Promise<{ department?: string; status?: string }>;
 }) {
   const filters = await searchParams;
-  const { orgId, userId } = await safeAuth();
-  const workspaceId = orgId ?? userId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
+  const workspaceId = await requireWorkspaceId("/sources");
   const allRows = await repository.getEvidenceForWorkspace(workspaceId);
   const departments = Array.from(
     new Set(allRows.map((row) => row.department).filter((item): item is string => Boolean(item)))

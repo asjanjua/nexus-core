@@ -5,13 +5,12 @@
  * Each export type has its own page for print/download.
  */
 
-import { safeAuth } from "@/lib/safe-auth";
+import { requireWorkspaceId } from "@/lib/safe-auth";
 import { repository } from "@/lib/data/repository";
 import { EvidenceTrustLink } from "@/components/ui/trust-drawer-trigger";
 
 export default async function ExportHubPage() {
-  const { userId, orgId } = await safeAuth();
-  const workspaceId = orgId ?? userId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
+  const workspaceId = await requireWorkspaceId("/export");
   const [settings, evidence] = await Promise.all([
     repository.getWorkspaceSettings(workspaceId),
     repository.getEvidenceForWorkspace(workspaceId),

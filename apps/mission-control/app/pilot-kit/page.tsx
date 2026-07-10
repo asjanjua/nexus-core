@@ -5,12 +5,11 @@
  * Given to the pilot sponsor at kickoff. Not a product tutorial — a business readiness guide.
  */
 
-import { safeAuth } from "@/lib/safe-auth";
+import { requireWorkspaceId } from "@/lib/safe-auth";
 import { repository } from "@/lib/data/repository";
 
 export default async function PilotKitPage() {
-  const { userId, orgId } = await safeAuth();
-  const workspaceId = orgId ?? userId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
+  const workspaceId = await requireWorkspaceId("/pilot-kit");
   const settings = await repository.getWorkspaceSettings(workspaceId);
   const workspaceName = settings?.name ?? "Your Organisation";
   const today = new Date().toLocaleDateString("en-GB", { day: "2-digit", month: "long", year: "numeric" });

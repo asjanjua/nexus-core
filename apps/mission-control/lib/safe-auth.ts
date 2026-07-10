@@ -13,6 +13,7 @@
  * unauthenticated branch (middleware will redirect on the next navigation).
  */
 
+import { redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 
 export type SafeAuthResult = {
@@ -32,4 +33,23 @@ export async function safeAuth(): Promise<SafeAuthResult> {
   } catch {
     return { userId: null, orgId: null, orgSlug: null };
   }
+}
+
+/**
+ * requireWorkspaceId — resolves the authenticated workspace id (org or user)
+ * for pages that render real workspace data, redirecting to sign-in when
+ * there is no session instead of silently falling back to a demo workspace.
+ *
+ * Do NOT use this on pre-auth funnel pages that intentionally support
+ * unauthenticated visitors (e.g. /onboarding via a readiness claim token,
+ * /start-pilot, /readiness) — those pages branch on `isAuthenticated`
+ * themselves and must keep working without a session.
+ */
+export async function requireWorkspaceId(currentPath: string): Promise<string> {
+  const { orgId, userId } = await safeAuth();
+  const workspaceId = orgId ?? userId;
+  if (!workspaceId) {
+    redirect(`/sign-in?redirect_url=${encodeURIComponent(currentPath)}`);
+  }
+  return workspaceId;
 }

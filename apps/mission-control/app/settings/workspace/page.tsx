@@ -1,6 +1,6 @@
 import { PageShell } from "@/components/page-shell";
 import { repository } from "@/lib/data/repository";
-import { safeAuth } from "@/lib/safe-auth";
+import { requireWorkspaceId } from "@/lib/safe-auth";
 
 function BoolBadge({ enabled }: { enabled: boolean }) {
   return (
@@ -18,8 +18,7 @@ function BoolBadge({ enabled }: { enabled: boolean }) {
 }
 
 export default async function WorkspaceSettingsPage() {
-  const { orgId, userId } = await safeAuth();
-  const workspaceId = orgId ?? userId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
+  const workspaceId = await requireWorkspaceId("/settings/workspace");
   const settings = await repository.getWorkspaceSettings(workspaceId);
 
   return (

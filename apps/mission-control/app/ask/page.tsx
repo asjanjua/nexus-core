@@ -1,6 +1,6 @@
 import { AskPanel } from "@/components/ask-panel";
 import { PageShell } from "@/components/page-shell";
-import { safeAuth } from "@/lib/safe-auth";
+import { requireWorkspaceId, safeAuth } from "@/lib/safe-auth";
 import { repository } from "@/lib/data/repository";
 
 export default async function AskPage({
@@ -9,8 +9,8 @@ export default async function AskPage({
   searchParams: Promise<{ q?: string }>;
 }) {
   const params = await searchParams;
-  const { orgId, userId } = await safeAuth();
-  const workspaceId = orgId ?? userId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
+  const workspaceId = await requireWorkspaceId("/ask");
+  const { userId } = await safeAuth();
 
   const allRows = await repository.getEvidenceForWorkspace(workspaceId);
   const departments = Array.from(

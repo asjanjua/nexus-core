@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { safeAuth } from "@/lib/safe-auth";
+import { requireWorkspaceId } from "@/lib/safe-auth";
 import { PageShell } from "@/components/page-shell";
 import { getEntityMemory } from "@/lib/services/entity-memory";
 
@@ -16,8 +16,7 @@ function badgeClass(status: string): string {
 
 export default async function EntityDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { orgId, userId } = await safeAuth();
-  const workspaceId = orgId ?? userId ?? process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
+  const workspaceId = await requireWorkspaceId(`/entities/${id}`);
   const memory = await getEntityMemory(workspaceId, id);
   if (!memory) return notFound();
   const { entity, evidence, recommendations, decisions, actions, timeline } = memory;
