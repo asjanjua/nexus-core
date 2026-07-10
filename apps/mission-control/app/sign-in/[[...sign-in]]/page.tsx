@@ -1,27 +1,22 @@
 import { headers } from "next/headers";
+import { applicationOrigin, hostedClerkUrl } from "@/lib/auth/hosted-clerk-url";
 import { PRODUCT_META, productFromHost, productSignInRedirect } from "@/lib/product-detection";
-
-function externalClerkUrl(kind: "sign-in" | "sign-up", redirectUrl: string): string | null {
-  const configured =
-    kind === "sign-in"
-      ? process.env.NEXT_PUBLIC_CLERK_HOSTED_SIGN_IN_URL
-      : process.env.NEXT_PUBLIC_CLERK_HOSTED_SIGN_UP_URL;
-  if (!configured || configured.startsWith("/")) return null;
-  try {
-    const url = new URL(configured);
-    url.searchParams.set("redirect_url", redirectUrl);
-    return url.toString();
-  } catch {
-    return null;
-  }
-}
 
 export default async function SignInPage() {
   const hdrs = await headers();
   const productKey = productFromHost(hdrs.get("x-nexus-product") ?? hdrs.get("host") ?? "");
   const product = PRODUCT_META[productKey];
   const fallbackRedirectUrl = productSignInRedirect(productKey);
-  const hostedSignIn = externalClerkUrl("sign-in", fallbackRedirectUrl);
+  const appOrigin = applicationOrigin({
+    host: hdrs.get("x-forwarded-host") ?? hdrs.get("host"),
+    forwardedProto: hdrs.get("x-forwarded-proto"),
+    configuredAppUrl: process.env.NEXT_PUBLIC_APP_URL
+  });
+  const hostedSignIn = hostedClerkUrl({
+    configuredUrl: process.env.NEXT_PUBLIC_CLERK_HOSTED_SIGN_IN_URL,
+    redirectPath: fallbackRedirectUrl,
+    appOrigin
+  });
 
   return (
     <main className="flex min-h-screen items-center justify-center px-6 py-12">

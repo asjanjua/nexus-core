@@ -4,6 +4,15 @@
 
 ---
 
+## 2026-07-10 — Hosted Clerk Production Handoff Repair
+
+- Live `b268a25` deploy was confirmed, but auth smoke found missing hosted Clerk env values. Set the Render web-service values to `https://accounts.pinavia.co/sign-in` and `/sign-up`; the environment rebuild went live.
+- Second live check found Clerk 404 because Nexus supplied a relative `redirect_url`, which Clerk resolved on `accounts.pinavia.co`. Sign-in/sign-up now build a same-origin absolute return URL from forwarded request host/protocol, falling back to `NEXT_PUBLIC_APP_URL`.
+- Added `lib/auth/hosted-clerk-url.ts`, regression tests, and the two Clerk Account Portal URLs to `render.yaml` so a future Blueprint sync preserves them.
+- Required next: run boundary/type/test/build, commit/push, wait for Render, then authenticated smoke `/dashboard/ceo`, `/knowledge`, `/settings/connectors`, `/workflows`, `/reviewer-seat`, and `/api/health`.
+
+---
+
 ## 2026-07-10 — Architecture Review Second Verification
 
 - Re-verified the external architecture review against code and migrations. The adoption record is `docs/ARCH_REVIEW_2026-07-10_ADOPTION.md`; it now distinguishes implemented, locally verified, production-pending, and operationally verified controls and contains the finalized execution order.

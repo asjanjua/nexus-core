@@ -2,6 +2,12 @@
 
 ---
 
+## Unreleased — Hosted Clerk Redirect Repair (2026-07-10)
+
+Fixed the production sign-in handoff after the `b268a25` release exposed two missing layers: Render did not have `NEXT_PUBLIC_CLERK_HOSTED_SIGN_IN_URL` / `_SIGN_UP_URL`, and the handoff passed Clerk a relative redirect such as `/dashboard/ceo`. Render now receives the Clerk Account Portal URLs through the blueprint, while sign-in and sign-up construct same-origin absolute return URLs from the active application host. This prevents Clerk from resolving the return path on `accounts.pinavia.co` and rendering a 404. Added regression coverage for active-host redirects, configured-origin fallback, and cross-origin rejection.
+
+---
+
 ## Unreleased — Architecture Review Second Verification (2026-07-10)
 
 Re-ran the external architecture review against the current repository and corrected the adoption record to distinguish implemented, locally verified, production-pending, and operationally verified controls. Closed the one remaining application-level model-routing bypass: the eval harness now routes through the governed `audit_refusal` surface, and the shared `ask()` TypeScript contract requires every caller to declare a routing surface so the legacy single-provider path cannot silently return through a new application caller.

@@ -1,17 +1,18 @@
-function hostedSignUpUrl(): string | null {
-  const configured = process.env.NEXT_PUBLIC_CLERK_HOSTED_SIGN_UP_URL;
-  if (!configured || configured.startsWith("/")) return null;
-  try {
-    const url = new URL(configured);
-    url.searchParams.set("redirect_url", "/onboarding");
-    return url.toString();
-  } catch {
-    return null;
-  }
-}
+import { headers } from "next/headers";
+import { applicationOrigin, hostedClerkUrl } from "@/lib/auth/hosted-clerk-url";
 
-export default function SignUpPage() {
-  const hostedSignUp = hostedSignUpUrl();
+export default async function SignUpPage() {
+  const hdrs = await headers();
+  const appOrigin = applicationOrigin({
+    host: hdrs.get("x-forwarded-host") ?? hdrs.get("host"),
+    forwardedProto: hdrs.get("x-forwarded-proto"),
+    configuredAppUrl: process.env.NEXT_PUBLIC_APP_URL
+  });
+  const hostedSignUp = hostedClerkUrl({
+    configuredUrl: process.env.NEXT_PUBLIC_CLERK_HOSTED_SIGN_UP_URL,
+    redirectPath: "/onboarding",
+    appOrigin
+  });
 
   return (
     <main className="flex min-h-screen items-center justify-center px-6 py-12">
