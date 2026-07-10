@@ -41,6 +41,7 @@ The goal is not infrastructure purity. The goal is a reliable, understandable pi
 - No replacement of Clerk during pilot packaging
 - No custom auth-email confirmation flow or self-hosted mail server for V1 demos
 - No separate infrastructure per product until a product needs dedicated region, database, compliance boundary, or scale profile
+- No separate API deployment during the pilot; preserve a modular service boundary and use the extraction triggers in `docs/API_SERVICE_BOUNDARY_DECISION.md`
 
 ## Why This Fits NexusAI
 

@@ -13,6 +13,8 @@ Thanks for helping improve Nexus.
 - include reproduction steps for bugs
 - include an example input and expected output for feature requests
 - avoid large unrelated refactors in the same pull request
+- install the repository hook once with `npm run hooks:install`
+- run `npm run commit:check` after staging and `npm run verify:release` before pushing
 
 ## Issue Quality
 Best issues include:
@@ -40,3 +42,4 @@ nexus init /tmp/nexus-demo
 ## Mission Control build constraints
 If you touch `apps/mission-control` front-end, read `docs/ENGINEERING_GUARDRAILS.md` §7 first. In short: no Clerk client components in bundles (auth handoff is hosted via `NEXT_PUBLIC_CLERK_HOSTED_SIGN_IN_URL` / `NEXT_PUBLIC_CLERK_HOSTED_SIGN_UP_URL`); no Sentry runtime instrumentation, middleware tracing, or force-graph in the build path; and verify with a real `npm run build`, not just tests + `tsc`, since those do not catch the build hang those triggers cause.
 
+For every code commit, follow `docs/ENGINEERING_GUARDRAILS.md` §8. The preflight blocks suspicious repository-tree shrink, conflict-copy routes, generated caches, nested dependency installs, and oversized accidental commits. GitHub CI remains the clean-environment release authority.

@@ -24,6 +24,7 @@ jobs:
   verify:
     name: Typecheck, test, build
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     # The scheduled run only needs the audit job, not a full rebuild.
     if: github.event_name != 'schedule'
     steps:
@@ -37,13 +38,19 @@ jobs:
       - name: Install
         run: npm ci
 
+      - name: Build boundary checks
+        run: npm run check:boundaries
+
       - name: Typecheck
+        timeout-minutes: 4
         run: npm exec -w @nexus/mission-control tsc -- --noEmit
 
       - name: Test
+        timeout-minutes: 4
         run: npm test
 
       - name: Build
+        timeout-minutes: 8
         run: npm run build
         env:
           # Build must succeed without external secrets; services no-op when unset.

@@ -2,6 +2,14 @@
 
 ---
 
+## Unreleased — Build and Commit Reliability Controls (2026-07-10)
+
+Recovered the repository after an interrupted Git/index state produced a 13-file commit tree, while preserving all feature work in recovery commit `37af988`. Added staged-tree preflight with mass-deletion/large-commit protection, conflict/generated/secret path checks, a Next.js client/server build-boundary scanner, Node 20 project lock, timed typecheck/test/build verification with diagnostics, repository pre-commit hook, and CI timeouts. Documented the API decision to keep Mission Control as a modular monolith and extract asynchronous workers only after measured scale/compliance/release triggers.
+
+Local regression evidence during recovery: 69 test files / 472 tests passed. Local standalone TypeScript remained intermittently blocked in a kernel file read; the new verifier now times out with diagnostics and GitHub CI is the clean-environment authority.
+
+---
+
 ## Unreleased — Reviewer Seat Slice 1 + Pilot-Status Lane + Org-Switch Fix (2026-07-08)
 
 **Reviewer seat, slice 1 (identity-bound reviewer).** Migration 0035 `reviewer_seats`: invite flow with single-use sha256-hashed invite codes (7-day expiry), acceptance binds the seat to the accepting Clerk user id, one accepted seat per workspace (partial unique index), revoke is workspace-scoped and audited. New API: `GET/POST/DELETE /api/reviewer-seat` (invite code returned exactly once; delivery is the caller's responsibility this slice) and `POST /api/reviewer-seat/accept` (also writes reviewerName/reviewerEmail to the strategy profile so the scorer gate reflects the bound identity). Approvals are now identity-bound: the recorded actor is the server-resolved identity (client `actor` only as legacy bearer fallback), and each approval audit records whether the approver IS the bound reviewer (`approvedByBoundReviewer`). Not yet done (next slices): invite email delivery, accept UI, gating `pilotReady` on an accepted seat, restricting approval rights to the bound reviewer. Tests: `tests/reviewer-seat.test.ts` (6). No-DB store fallback included.

@@ -1,6 +1,6 @@
 # NexusAI Mission Control Architecture
 
-Updated: 2026-06-25
+Updated: 2026-07-10
 Current product state: v0.25.0 (verified locally 2026-06-17). Covers U2 Agent Control Profiles, U3 output history/rollback, U4 learning signals, Phase 8A Decision & Action Twin, AI decision proposals, persistent Ask memory, entity extraction and Company Memory pages, P2 AI trust controls, the Executive Synthesis Layer, synthesis source/entity traceability, scheduled synthesis core, workflow twin primitives, billing tiers with Stripe integration, the orchestration dispatcher, the first Slack connector ingestion path, v0.23.1 production hardening/auth-navigation fixes, Connector Settings policy UX, Workflow Twin Scorer, U6 backcasting, U7 shadow ROI instrumentation, and v0.25.0 Knowledge Workspace with Markdown import/export, optional local vault sync, MCP memory tools, and Ask note refs.
 
 ## 1. Purpose
@@ -26,6 +26,7 @@ The product is not designed to replace ERP, CRM, HRIS, core banking, BI, legal r
 | Layer | Current choice | Notes |
 |---|---|---|
 | Web app | Next.js App Router in `apps/mission-control` | Mission Control UI and API routes |
+| API boundary | Modular monolith | Thin route handlers; domain logic in services/data/connectors. Separate-service triggers are documented in `docs/API_SERVICE_BOUNDARY_DECISION.md` |
 | Hosting | Render Web Service | Primary pilot deployment path, configured by `render.yaml` |
 | Auth | Clerk | Browser sessions and organization-scoped tenancy |
 | Agent/API auth | Scoped Bearer tokens | Used for non-browser/agent callers |
@@ -36,6 +37,8 @@ The product is not designed to replace ERP, CRM, HRIS, core banking, BI, legal r
 | Local sync | Optional filesystem watcher | Enabled only with `NEXUS_VAULT_SYNC` and an absolute `NEXUS_LOCAL_VAULT_PATH` |
 | LLM providers | DeepSeek/OpenAI/Anthropic-style routing | Centralized LLM service. Route policy declared in `model-routing.ts` (10 surfaces, fallback chains) but NOT yet wired into `llm.ts` execution path. See §12. |
 | Edge/security | Cloudflare selective services | DNS/CDN/WAF/AI Gateway/R2; no full Workers migration in V1 |
+
+Mission Control intentionally remains one deployable pilot application. This is not permission to couple UI and server internals: client components call relative `/api/*` routes, route handlers enforce auth/contracts, and domain/provider logic stays outside route files. The first future extraction target is asynchronous ingestion/agent execution, only after measured scale, compliance, or release-cadence triggers are met.
 
 ## 4. System Diagram
 

@@ -15,6 +15,18 @@ Since commit `68a5a0b` (2026-07-09), the production `next build` is green only b
 
 ---
 
+## 2026-07-10 — Repository Recovery + Build/Commit Guardrails
+
+- Recovered the full repository tree in commit `37af988` after stale Git locks/index state produced a prior commit containing only 13 files. The recovered tree contains 597 files; recovery artifacts are preserved locally under `.git/recovery-2026-07-10`.
+- Removed two untracked conflict-copy auth pages from the source tree (preserved outside the repo). They imported Clerk client components and would still have been compiled by Next.js despite being untracked.
+- Moved a stale pnpm-style `apps/mission-control/node_modules` aside; Nexus is an npm workspace and nested foreign installs may shadow the root dependency graph.
+- Added `scripts/preflight-commit.mjs`, `scripts/check-build-boundaries.mjs`, `scripts/verify-build.mjs`, `.githooks/pre-commit`, Node 20 project metadata, and GitHub CI boundary/time limits.
+- Architecture decision: no separate API deployment during the pilot. Keep a modular monolith; extract async ingestion/agent workers only after the triggers in `docs/API_SERVICE_BOUNDARY_DECISION.md` are met.
+- Verification: 69 test files / 472 tests passed. Local `tsc` remained intermittently blocked in a kernel read even after cache/dependency cleanup; use `npm run verify:release` for fail-fast diagnostics and require clean GitHub CI before Render deploy.
+- Next operator action: run `npm run hooks:install`, stage this guardrail slice, run `npm run commit:check`, commit, push, and confirm CI before Render deployment.
+
+---
+
 ## Session Info
 
 - **Last updated:** 2026-07-07 (v0.25.x — session #54: demo week package. Prior: session #53+ readiness-to-onboarding lane inheritance, strategy-profile authz fix, read+write API auth sweeps, workflow scorer pilot bridge, unified pilot-gate enforcement, strategy-profile store fallback, pre-pilot readiness lifecycle hardening.)

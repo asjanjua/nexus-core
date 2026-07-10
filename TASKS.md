@@ -5,7 +5,7 @@
 > For the visual finish-line map, see `docs/DEVELOPMENT_FINISH_LINE_VISUAL.md`.
 > For the markdown estate review, see `docs/MARKDOWN_ESTATE_REVIEW_2026-06-25.md`.
 > For typed runtime/state/effect safety rules, see `docs/ENGINEERING_GUARDRAILS.md`.
-> Last reviewed and tightened: 2026-07-06.
+> Last reviewed and tightened: 2026-07-10.
 
 ---
 
@@ -56,7 +56,8 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 
 **The product is demo-ready and pilot-design-ready for GCC fintech, professional services, and SaaS buyers. First paid pilot production readiness still requires the open operations, monitoring, backup, support, and authenticated-smoke items below.**
 
-**Priority order (updated 2026-07-04):**
+**Priority order (updated 2026-07-10):**
+0. [x] Harden the build/commit pipeline after the July build hang and Git index incident — boundary scanner, staged-tree safety gate, timed release verifier, Node 20 lock, repository hook, CI timeouts, and API service-boundary decision added 2026-07-10. Recovery commit: `37af988`.
 1. [x] Finish and verify v0.23.1 hardening -- local auth/CTA behavior, TypeScript, tests, and build pass. Commit/deploy next.
 2. [x] Connector Settings UX -- Slack channel allowlist, sync status, source sensitivity, last ingest, and policy audit trail.
 3. [x] Workflow Twin Scorer product path -- UI/API scoring flow from company profile, data readiness, risk, pain, and speed benefit.

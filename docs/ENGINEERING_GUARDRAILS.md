@@ -1,6 +1,6 @@
 # NexusAI Engineering Guardrails
 
-Updated: 2026-06-25
+Updated: 2026-07-10
 
 This note translates the FP-style review into practical Nexus engineering rules. The goal is not to make the codebase academic. The goal is to prevent invalid workflow, auth, runner, and sync states from reaching production.
 
@@ -189,3 +189,34 @@ Contract layer landed 2026-06-25 in `apps/mission-control/lib/guardrails.ts` (te
 - [x] Add tests for impossible state rejection and exhaustive outcome handling. (`tests/guardrails.test.ts`)
 - [ ] Before merging front-end work: no Clerk client components in bundles, hosted-Clerk envs used for auth handoff, and `npm run build` completes (see §7).
 
+---
+
+## 8. Build and Commit Safety Protocol
+
+The July 2026 hang/recovery exposed three independent failure classes: expensive Next.js import/tracing paths, stale local dependency/cache state, and damaged Git index/ref state. Treat them as separate gates.
+
+### Before staging
+
+1. Work from the repository root with Node 20 (`nvm use`).
+2. Run `npm ci` at the root. Do not run pnpm/yarn inside `apps/mission-control`.
+3. Run `npm run check:boundaries`.
+4. Remove or move conflict-copy routes such as `page 2.tsx` and `route 2.ts`; untracked files under `app/` still enter the Next.js build.
+
+### Before committing
+
+1. Stage only the logical slice.
+2. Run `npm run commit:check`.
+3. Inspect `git diff --cached --stat` and `git diff --cached --name-status`.
+4. Large commits over 250 files and suspicious mass deletions are blocked. Use `NEXUS_ALLOW_LARGE_COMMIT=1` only for a reviewed migration/recovery whose staged tree count is understood.
+5. Install the repository hook once with `npm run hooks:install`.
+
+### Before pushing/deploying
+
+1. Run `npm run verify:release` for boundary check, typecheck, full tests, cache-clean production build, and per-phase timeouts.
+2. A local filesystem stall is not a pass. The wrapper fails with process diagnostics rather than waiting indefinitely.
+3. GitHub CI is the clean-environment authority. Render deployment starts only after CI is green.
+4. Confirm the deployed commit SHA separately; `/api/health` proves dependencies, not release identity.
+
+### Dependency layout rule
+
+This is an npm workspace. A nested `apps/mission-control/node_modules/.pnpm` or `.modules.yaml` is a stale foreign install and must not remain. It can shadow root dependencies and make TypeScript/build behavior non-deterministic.

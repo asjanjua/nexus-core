@@ -36,6 +36,9 @@ cd apps/mission-control
 npx tsc --noEmit
 npm run test
 npm run build
+npm run check:boundaries
+npm run commit:check
+npm run verify:release
 ```
 
 ## Production Build Constraints (READ BEFORE WRITING FRONT-END)
@@ -46,6 +49,8 @@ Since commit `68a5a0b`, four things are banned from the production build path be
 2. Auth handoff is HOSTED: use envs `NEXT_PUBLIC_CLERK_HOSTED_SIGN_IN_URL` / `NEXT_PUBLIC_CLERK_HOSTED_SIGN_UP_URL`; gate signed-out UI with a plain `/sign-in` link (see `app/reviewer-seat/accept/page.tsx`), never `<SignedOut>`.
 3. New client pages should be fetch-only against server APIs (e.g. `/reviewer-seat`, `/funnel`, `/pilot/afterlife`).
 4. Do not reintroduce Sentry runtime instrumentation, middleware tracing, or force-graph rendering into the build path without confirming `npm run build` still completes. Always verify with a real `npm run build` (or Render CI), not just tests + tsc.
+5. Use Node 20 and the root npm workspace only. Treat a nested `apps/mission-control/node_modules/.pnpm`, duplicate route filename, or stale `.next`/`tsconfig.tsbuildinfo` as invalid build state.
+6. Run `npm run commit:check` after staging and `npm run verify:release` before pushing. Never bypass a tree-shrink gate without inspecting the staged file count and deletion list.
 
 ## Development Standards
 
@@ -133,4 +138,3 @@ For multi-step tasks, state a brief plan:
 Strong success criteria let you loop independently. Weak criteria ("make it work") require constant clarification.
 
 **These guidelines are working if:** fewer unnecessary changes in diffs, fewer rewrites due to overcomplication, and clarifying questions come before implementation rather than after mistakes.
-

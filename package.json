@@ -25,6 +25,13 @@
     "lmstudio:capability": "node scripts/lmstudio/capability-lock.mjs",
     "lmstudio:benchmark": "node scripts/lmstudio/baseline-benchmark.mjs",
     "lmstudio:moe-probe": "bash scripts/lmstudio/moe-probe.sh",
-    "lmstudio:all": "npm run lmstudio:capability && npm run lmstudio:benchmark && npm run lmstudio:moe-probe"
+    "lmstudio:all": "npm run lmstudio:capability && npm run lmstudio:benchmark && npm run lmstudio:moe-probe",
+    "check:boundaries": "node scripts/check-build-boundaries.mjs",
+    "commit:check": "node scripts/preflight-commit.mjs",
+    "verify:release": "node scripts/verify-build.mjs",
+    "hooks:install": "git config core.hooksPath .githooks"
+  },
+  "engines": {
+    "node": ">=20 <21"
   }
 }

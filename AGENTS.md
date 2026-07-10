@@ -46,6 +46,9 @@ npx tsc --noEmit
 npm run test
 npm run build
 npm run db:migrate
+npm run check:boundaries
+npm run commit:check
+npm run verify:release
 ```
 
 ## Work Standards
@@ -56,6 +59,9 @@ npm run db:migrate
 - Keep UX executive-friendly: avoid internal terms like "Task 22", raw IDs, or implementation jargon in user-facing copy.
 - All intelligence outputs should be evidence-backed, workspace-scoped, and sensitivity-aware.
 - Browser-test important UI changes against the live or local app when feasible.
+- Before every commit, compare staged tree size/status through `npm run commit:check`; do not bypass a mass-delete or large-commit block without reviewing the staged tree.
+- Use Node 20 and install dependencies only from the repository root with npm. A nested pnpm-style `apps/mission-control/node_modules` is invalid local state.
+- Keep route handlers thin and services modular. Do not introduce `NEXUS_API_BASE_URL` until a real separate service is approved under `docs/API_SERVICE_BOUNDARY_DECISION.md`.
 
 ## Agent Trust and Approval Boundaries
 

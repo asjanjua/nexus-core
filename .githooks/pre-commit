@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+
+node scripts/preflight-commit.mjs
+node scripts/check-build-boundaries.mjs
