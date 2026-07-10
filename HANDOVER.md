@@ -9,7 +9,8 @@
 - Live `b268a25` deploy was confirmed, but auth smoke found missing hosted Clerk env values. Set the Render web-service values to `https://accounts.pinavia.co/sign-in` and `/sign-up`; the environment rebuild went live.
 - Second live check found Clerk 404 because Nexus supplied a relative `redirect_url`, which Clerk resolved on `accounts.pinavia.co`. Sign-in/sign-up now build a same-origin absolute return URL from forwarded request host/protocol, falling back to `NEXT_PUBLIC_APP_URL`.
 - Added `lib/auth/hosted-clerk-url.ts`, regression tests, and the two Clerk Account Portal URLs to `render.yaml` so a future Blueprint sync preserves them.
-- Required next: run boundary/type/test/build, commit/push, wait for Render, then authenticated smoke `/dashboard/ceo`, `/knowledge`, `/settings/connectors`, `/workflows`, `/reviewer-seat`, and `/api/health`.
+- Authenticated smoke then exposed Clerk server auth failures on every protected API because `68a5a0b` had deleted `middleware.ts` while route handlers retained `auth()`. Restored a minimal `clerkMiddleware` layer for auth context, request pathname/product metadata, security headers, and CORS; authorization stays in `requireScope()`.
+- Required next: run boundary/type/test/build again, amend or follow up the auth-handoff commit, push, wait for Render, then repeat the authenticated route smoke.
 
 ---
 

@@ -6,6 +6,8 @@
 
 Fixed the production sign-in handoff after the `b268a25` release exposed two missing layers: Render did not have `NEXT_PUBLIC_CLERK_HOSTED_SIGN_IN_URL` / `_SIGN_UP_URL`, and the handoff passed Clerk a relative redirect such as `/dashboard/ceo`. Render now receives the Clerk Account Portal URLs through the blueprint, while sign-in and sign-up construct same-origin absolute return URLs from the active application host. This prevents Clerk from resolving the return path on `accounts.pinavia.co` and rendering a 404. Added regression coverage for active-host redirects, configured-origin fallback, and cross-origin rejection.
 
+The resulting authenticated smoke exposed a third issue: commit `68a5a0b` had removed `middleware.ts` while API routes still called Clerk `auth()`, causing every protected API to throw `auth() was called but Clerk can't detect usage of clerkMiddleware()`. Restored a deliberately minimal Clerk middleware that injects auth context and Nexus request metadata without reintroducing the build-heavy instrumentation removed by that commit. Route handlers remain the authorization boundary and continue to support bearer tokens.
+
 ---
 
 ## Unreleased — Architecture Review Second Verification (2026-07-10)
