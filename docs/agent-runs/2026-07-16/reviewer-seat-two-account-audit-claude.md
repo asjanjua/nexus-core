@@ -119,3 +119,26 @@ M .claude/skills/BUILDEROS_LICENSE.txt
 **Blockers:** Waiting on Ali to complete the identity-bound accept step. No further mutation attempted until then.
 
 **Next exact action:** On Ali's confirmation that he's accepted the seat, re-check `/reviewer-seat` live to confirm "Current reviewer" is bound and seat history shows `accepted`, then test the duplicate-invite 409 and reconcile paperwork.
+
+### 2026-07-16T01:05:30+05:00 — accept confirmed live, criteria 1-4 closed, paperwork reconciled
+
+**Status:** `operationally verified` for invite + identity-bound accept. `deferred` for the approval-from-reviewer-account leg (separate, not attempted this slice — no approval action was taken, no recommendation/decision record was touched).
+
+**Evidence (live, `https://app.pinavia.co/reviewer-seat`, re-checked after Ali's confirmation):**
+
+- "CURRENT REVIEWER" now shows `ali.janjua@leap-associates.me`, badge `Accepted`, `accepted Jul 16, 2026, 12:59 AM`, with a `Revoke` action.
+- "INVITE A REVIEWER" panel now reads "One reviewer per workspace in this version. Revoke the current reviewer first to invite a different one." — the UI itself refuses a second concurrent invite while one is accepted. This satisfies acceptance criterion 4 (one-seat constraint holds in production) without needing a raw duplicate-POST/409 probe; the UI-level block is the same constraint surfacing to the actual admin, which is the more relevant proof for a demo rehearsal.
+- "SEAT HISTORY" shows exactly one entry: `ali.janjua@leap-associates.me · invited Jul 16, 2026, 12:57 AM`, badge `Accepted`. No other seat, no other workspace record, changed.
+- Acceptance criteria 1-4 from this packet: all confirmed. Criterion 5 (no unrelated record mutated): confirmed — the pre-existing "evidence records older than 7 days" banner is unchanged and unrelated to this slice.
+
+**Not in scope for this checkpoint, left open:** an approval action made from the `ali.janjua@leap-associates.me` reviewer identity, and the org-switch behavior described in the demo runbook's Mode A. These are a separate rehearsal step (TASKS.md Week 1 item 3, now marked partial) and were not attempted — no approval/decision data exists to mutate yet, and attempting one wasn't part of the authorized mutation boundary for this slice.
+
+**Paperwork reconciled this checkpoint:**
+
+- `HANDOVER.md`: new dated section "2026-07-16 — Reviewer-Seat Invite/Accept Verified Live (Two-Account Rehearsal, Part 1)" added above the 2026-07-15 entry.
+- `TASKS.md`: Week 1 item 3 changed `[ ]` → `[~]` with the verified/remaining split noted; item 6's trailing note updated to reflect the same.
+- `CHANGELOG.md`: not touched — nothing user-visible changed; this was an operational verification of an already-shipped feature, not a behavior change.
+
+**Acceptance criteria for this slice's own objective (from the top of this ledger):** met — the packet defined starting state, mutation boundary, test-identity requirement, acceptance criteria, rollback, and proof plan, and the mutation-boundary portion of the rehearsal (invite + accept) is now live-verified with evidence in this file.
+
+**Next exact action for a future slice:** rehearse the approval-from-reviewer-account leg and the org-switch check (TASKS.md Week 1 item 3 remainder) once there is a real recommendation to approve; that is a new mutation boundary and should get its own ledger, not be folded into this one.
