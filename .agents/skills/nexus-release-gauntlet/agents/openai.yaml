@@ -1,0 +1,4 @@
+interface:
+  display_name: "Nexus Release Gauntlet"
+  short_description: "Run and classify every Nexus release gate"
+  default_prompt: "Use $nexus-release-gauntlet to prove this Nexus change is safe to ship."

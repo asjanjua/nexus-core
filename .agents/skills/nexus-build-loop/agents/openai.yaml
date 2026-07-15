@@ -1,0 +1,4 @@
+interface:
+  display_name: "Nexus Build Loop"
+  short_description: "Build, review, test, and fix Nexus slices"
+  default_prompt: "Use $nexus-build-loop to implement this Nexus slice through review and verification."

@@ -9,8 +9,11 @@ const root = fileURLToPath(new URL("..", import.meta.url));
 const appRoot = join(root, "apps/mission-control");
 const nodeMajor = Number(process.versions.node.split(".")[0]);
 
-if (nodeMajor !== 20) {
-  console.warn(`[verify-build] Node ${process.versions.node} detected; Render/CI use Node 20. Run \`nvm use\` for parity.`);
+if (nodeMajor !== 24) {
+  console.warn(
+    `[verify-build] Node ${process.versions.node} detected; Node 24 is the Render/primary CI baseline. ` +
+      "Node 22.12+ is compatibility-only; run `nvm use` for production parity.",
+  );
 }
 
 function diagnostics(label) {

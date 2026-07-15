@@ -17,7 +17,12 @@
     "dev": "npm run dev -w @nexus/mission-control",
     "build": "npm run build -w @nexus/mission-control",
     "lint": "npm run lint -w @nexus/mission-control",
-    "test": "npm run test -w @nexus/mission-control",
+    "pretest": "node scripts/file-provider-deps.mjs check",
+    "test": "npm run test:relay && npm run test:deps && npm run test -w @nexus/mission-control",
+    "test:relay": "python3 -m unittest discover -s tests -p 'test_relay.py'",
+    "test:deps": "node --test tests/file-provider-deps.test.mjs",
+    "deps:check": "node scripts/file-provider-deps.mjs check",
+    "deps:repair": "node scripts/file-provider-deps.mjs repair",
     "db:generate": "npm run db:generate -w @nexus/mission-control",
     "db:migrate": "npm run db:migrate -w @nexus/mission-control",
     "db:seed": "npm run db:seed -w @nexus/mission-control",
@@ -32,6 +37,6 @@
     "hooks:install": "git config core.hooksPath .githooks"
   },
   "engines": {
-    "node": ">=20 <21"
+    "node": ">=22.12.0 <23 || >=24 <25"
   }
 }

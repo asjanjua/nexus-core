@@ -22,9 +22,13 @@ concurrency:
 
 jobs:
   verify:
-    name: Typecheck, test, build
+    name: Typecheck, test, build (Node ${{ matrix.node }})
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
     # The scheduled run only needs the audit job, not a full rebuild.
     if: github.event_name != 'schedule'
     steps:
@@ -32,7 +36,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: ${{ matrix.node }}
           cache: npm
 
       - name: Install
@@ -64,7 +68,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 24
           cache: npm
 
       - name: Install

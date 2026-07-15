@@ -1,0 +1,4 @@
+interface:
+  display_name: "Nexus Recovery"
+  short_description: "Recover interrupted or failed Nexus work safely"
+  default_prompt: "Use $nexus-recovery to diagnose this failure and resume from durable repo state."
