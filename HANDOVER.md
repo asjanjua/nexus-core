@@ -6,11 +6,24 @@
 
 ## 2026-07-16 — Reviewer-Seat Invite/Accept Verified Live (Two-Account Rehearsal, Part 1)
 
+**Superseded by the correction entry below this one — the identity-binding claim here was wrong; treat it as unverified until re-tested with a genuine second Clerk identity.**
+
 - Read-only code audit of the reviewer-seat feature (migration 0035, all three API routes, 8-case test suite, admin + accept UI) found no gaps: manual-link fallback works when Resend isn't configured, acceptance binds to the real Clerk `userId` of the accepting identity, and one-accepted-seat-per-workspace is enforced at the DB layer, not just in application code.
 - Executed the one real mutation the rehearsal requires: sent a live invite from `/reviewer-seat` to a real second-account email (`ali.janjua@leap-associates.me`) with Ali's explicit authorization. Confirmed by the UI: seat moved `invited` → `accepted` after Ali opened the single-use link as that identity; "Current reviewer" now shows bound and accepted; the invite form itself now reports "One reviewer per workspace in this version," confirming the one-seat constraint holds live, not just in the 8 repository tests.
 - Not yet done: an approval made FROM the bound reviewer account, and the org-switch behavior noted in the runbook's Mode A description. These remain the open part of TASKS.md Week 1 item 3.
 - Full execution packet, live evidence, and the exact mutation boundary are in `docs/agent-runs/2026-07-16/reviewer-seat-two-account-audit-claude.md`. The single-use accept code was deliberately not written into that committed file (relayed to Ali in chat only) since it is a live bearer token for a public repo.
 - Published as PR #5 (`claude/reviewer-seat-two-account-audit`, commits `e96a2e6`, `70ef36f`), not merged — merge authority was not granted for this slice.
+
+---
+
+## 2026-07-16 — CORRECTION: Reviewer-Seat "Verified" Claim Was Wrong; Real Separation-of-Duties Gap Found
+
+- The entry immediately below this one ("Reviewer-Seat Invite/Accept Verified Live, Part 1") overclaimed. The audit log shows the invite, the accept, and a subsequent test approval were all performed by the **same Clerk user ID** (`user_3GAQ0sQcikQviKCCDyMIse51oEY`), not two distinct identities. No cross-account binding was actually exercised.
+- Root cause: `app/api/reviewer-seat/accept/route.ts` binds the seat to whichever Clerk user is authenticated when the invite code is redeemed, with no check that the accepting user's own verified emails include the invited email. Opening the accept link while still signed in as the admin (or having the invited address as a secondary email on the same account) silently self-binds the seat.
+- Product impact: the reviewer-seat page's promise ("approvals are bound to the reviewer's own identity") implies separation of duties. As built, an admin can invite themselves and approve their own recommendation, and the audit trail looks like a legitimate second-party sign-off. This is a real gap for a regulated-buyer demo, not cosmetic.
+- Side effect: one demo recommendation (CFO duration-reduction item, `rec-b6261f9c-6b1b-4829-beeb-ad2a7970375e`) is now genuinely `approved` in the database as a result of the test, not a real reviewer decision. Left as-is pending Ali's call — no revert-to-draft endpoint exists; a manual DB fix was considered and deliberately not done without explicit sign-off.
+- Recommended fix (not implemented yet): validate in `accept/route.ts` that the invited email matches one of the accepting Clerk user's verified emails before binding the seat. Small, isolated change.
+- Full evidence: `docs/agent-runs/2026-07-16/reviewer-seat-two-account-audit-claude.md`, checkpoint `2026-07-16T01:15:13+05:00`.
 
 ---
 

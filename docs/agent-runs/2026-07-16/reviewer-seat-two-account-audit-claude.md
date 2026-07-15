@@ -142,3 +142,31 @@ M .claude/skills/BUILDEROS_LICENSE.txt
 **Acceptance criteria for this slice's own objective (from the top of this ledger):** met — the packet defined starting state, mutation boundary, test-identity requirement, acceptance criteria, rollback, and proof plan, and the mutation-boundary portion of the rehearsal (invite + accept) is now live-verified with evidence in this file.
 
 **Next exact action for a future slice:** rehearse the approval-from-reviewer-account leg and the org-switch check (TASKS.md Week 1 item 3 remainder) once there is a real recommendation to approve; that is a new mutation boundary and should get its own ledger, not be folded into this one.
+
+### 2026-07-16T01:15:13+05:00 — CORRECTION: prior checkpoint's identity-binding claim was wrong, and a real gap was found
+
+**Status:** `blocked on user decision` — this supersedes this ledger's earlier "operationally verified" language for cross-account separation. Do not treat the 00:58/01:05 checkpoints' identity-binding conclusion as settled; read this checkpoint first.
+
+**What actually happened:** with Ali's authorization, I clicked Approve on the CFO recommendation ("Execute duration reduction programme...") from the browser session already open in this task — expecting either a `403 approval_requires_bound_reviewer` (proving the restriction holds against a non-reviewer) or, if that session happened to already be the reviewer, a legitimate positive-path approval. It returned `200` and the recommendation is now `approved` (`rec-b6261f9c-6b1b-4829-beeb-ad2a7970375e`).
+
+**Checked the Audit Log (`/settings` → Audit Log) to see which identity did what. All three events carry the identical Clerk user ID `user_3GAQ0sQcikQviKCCDyMIse51oEY`:**
+
+- `reviewer seat.invited` — `user_3GAQ0sQcikQviKCCDyMIse51oEY` — 12:57:44 AM
+- `reviewer seat.accepted` — `user_3GAQ0sQcikQviKCCDyMIse51oEY` — 12:59:40 AM (email `ali.janjua@leap-associates.me`)
+- `approval.decision` — `user_3GAQ0sQcikQviKCCDyMIse51oEY` — 1:11:44 AM (`status: approved`)
+
+**This means the invite, the accept, and the approval were all performed by the same Clerk account.** The earlier claim in this ledger ("proves real cross-account binding, not just a UI click-through") was wrong. No second identity was ever actually involved. The whole rehearsal so far has exercised one account acting on its own invite.
+
+**Read `app/api/reviewer-seat/accept/route.ts` to understand why.** The accept endpoint binds the seat to `auth.userId` — whichever Clerk user is currently authenticated when the invite code is redeemed — with no check that this user's own verified email addresses include the invited email (`seat.email`). It never required Ali to actually authenticate as a distinct second identity; opening the accept link while still signed in as the admin account (or having `ali.janjua@leap-associates.me` as a secondary verified email on the same account) silently binds the seat to that same account.
+
+**Why this matters for the demo:** the reviewer-seat page's own copy is "approvals are bound to the reviewer's own identity" — the implied promise is separation of duties (someone other than the person who drafted/invited must sign off). As built, an org admin can invite themselves, "accept" without switching identity, and approve their own recommendation, and the audit log will show a clean-looking `approval.decision` with a real `reviewerSeatId` that a reviewer walking through the demo could mistake for genuine second-party sign-off. For a regulated-buyer audience (SBP/SAMA-style governance expectations around segregation of duties), this is a real control gap, not a cosmetic one.
+
+**Also note:** `getAcceptedReviewerSeat` + the 403 branch in the approvals route IS real and did fire correctly in the unit tests (`tests/approvals-authz.test.ts`, all 4 cases pass) — the code does exactly what it was written to do. The gap is one level up: nothing stops the accept step from being redeemed by the wrong (or same) identity in the first place.
+
+**Side effect requiring a decision:** the CFO recommendation is now genuinely `approved` in the database, not via a real second-reviewer sign-off. It is demo-workspace data (`mode: pilot`, `DEMO` badge), and the API has no revert-to-draft endpoint (only `approved`/`rejected`). Options: (a) leave it — plausible demo content, no real-world consequence; (b) click Reject to move it out of `approved` (note: this creates a `rejected` audit entry, also not reflecting a real decision); (c) a direct DB update back to `draft` via Neon's console, which I have not done and will not do without explicit sign-off since it bypasses the app entirely.
+
+**Recommended fix (not yet implemented, no code changed this checkpoint):** in `accept/route.ts`, before calling `repository.acceptReviewerSeat`, fetch the authenticated user's verified email addresses from Clerk and reject the accept with a clear error unless one of them matches `seat.email` (case-insensitive). This forces the accepting browser session to actually be signed in as the invited identity, closing the self-accept path. Estimated size: small, isolated to one route + one new Clerk lookup + a test.
+
+**Blockers:** waiting on Ali's decision on (1) whether to implement the email-match fix now, (2) what to do with the already-approved CFO recommendation, (3) how he wants to actually exercise a genuine second identity for a real rehearsal (a real second person, or a private-window sign-up with an email he doesn't already have added as a secondary address on his own account).
+
+**Next exact action:** present this correction to Ali directly, do not touch `accept/route.ts` or the CFO recommendation until he responds.
