@@ -1,0 +1,64 @@
+# Cost-bearing scheduled services are intentionally isolated from the primary
+# web-service Blueprint. Attach and sync this file only after explicit approval
+# to create Render Starter cron resources.
+services:
+  - type: cron
+    name: nexus-dispatch-cron
+    runtime: node
+    plan: starter
+    region: oregon
+    schedule: "*/2 * * * *"
+    buildCommand: npm ci --production
+    startCommand: node -e "fetch(process.env.NEXT_PUBLIC_APP_URL+'/api/cron/dispatch',{method:'POST',headers:{Authorization:'Bearer '+process.env.NEXUS_CRON_SECRET,'Content-Type':'application/json'}}).then(r=>{if(!r.ok){console.error(r.status);process.exit(1)}r.json().then(d=>{console.log(JSON.stringify(d));process.exit(0)})}).catch(e=>{console.error(e);process.exit(1)})"
+    envVars:
+      - key: NODE_VERSION
+        value: 24
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+      - key: NEXUS_CRON_SECRET
+        sync: false
+  - type: cron
+    name: nexus-billing-cron
+    runtime: node
+    plan: starter
+    region: oregon
+    schedule: "0 0 * * *"
+    buildCommand: npm ci --production
+    startCommand: node -e "fetch(process.env.NEXT_PUBLIC_APP_URL+'/api/cron/billing',{method:'POST',headers:{Authorization:'Bearer '+process.env.NEXUS_CRON_SECRET,'Content-Type':'application/json'}}).then(r=>{if(!r.ok){console.error(r.status);process.exit(1)}r.json().then(d=>{console.log(JSON.stringify(d));process.exit(0)})}).catch(e=>{console.error(e);process.exit(1)})"
+    envVars:
+      - key: NODE_VERSION
+        value: 24
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+      - key: NEXUS_CRON_SECRET
+        sync: false
+  - type: cron
+    name: nexus-synthesis-cron
+    runtime: node
+    plan: starter
+    region: oregon
+    schedule: "0 1 * * *"
+    buildCommand: npm ci --production
+    startCommand: node -e "fetch(process.env.NEXT_PUBLIC_APP_URL+'/api/cron/synthesis',{method:'POST',headers:{Authorization:'Bearer '+process.env.NEXUS_CRON_SECRET,'Content-Type':'application/json'}}).then(r=>{if(!r.ok){console.error(r.status);process.exit(1)}r.json().then(d=>{console.log(JSON.stringify(d));process.exit(0)})}).catch(e=>{console.error(e);process.exit(1)})"
+    envVars:
+      - key: NODE_VERSION
+        value: 24
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+      - key: NEXUS_CRON_SECRET
+        sync: false
+  - type: cron
+    name: nexus-readiness-prune-cron
+    runtime: node
+    plan: starter
+    region: oregon
+    schedule: "30 1 * * *"
+    buildCommand: npm ci --production
+    startCommand: node -e "fetch(process.env.NEXT_PUBLIC_APP_URL+'/api/cron/readiness-prune',{method:'POST',headers:{Authorization:'Bearer '+process.env.NEXUS_CRON_SECRET,'Content-Type':'application/json'}}).then(r=>{if(!r.ok){console.error(r.status);process.exit(1)}r.json().then(d=>{console.log(JSON.stringify(d));process.exit(0)})}).catch(e=>{console.error(e);process.exit(1)})"
+    envVars:
+      - key: NODE_VERSION
+        value: 24
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+      - key: NEXUS_CRON_SECRET
+        sync: false
