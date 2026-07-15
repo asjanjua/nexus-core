@@ -1,0 +1,4 @@
+interface:
+  display_name: "Nexus Live Smoke"
+  short_description: "Verify deployed Nexus domains and workflows"
+  default_prompt: "Use $nexus-live-smoke to verify the deployed Nexus release with durable evidence."

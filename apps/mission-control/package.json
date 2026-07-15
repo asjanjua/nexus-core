@@ -5,9 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node ../../scripts/file-provider-deps.mjs check",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "pretest": "node ../../scripts/file-provider-deps.mjs check",
     "test": "vitest run",
     "cron:synthesis": "node scripts/run-scheduled-synthesis.mjs",
     "smoke:domain": "node scripts/smoke-domain.mjs",

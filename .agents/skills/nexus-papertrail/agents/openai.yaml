@@ -1,0 +1,4 @@
+interface:
+  display_name: "Nexus Papertrail"
+  short_description: "Keep Nexus ledgers and operating docs truthful"
+  default_prompt: "Use $nexus-papertrail to checkpoint this slice and reconcile the Nexus operating documents."

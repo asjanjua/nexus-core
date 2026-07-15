@@ -1,0 +1,4 @@
+interface:
+  display_name: "Nexus Frontend Orchestrator"
+  short_description: "Coordinate production-grade Nexus UI slices"
+  default_prompt: "Use $nexus-frontend-orchestrator to build and verify this Nexus interface slice end to end."

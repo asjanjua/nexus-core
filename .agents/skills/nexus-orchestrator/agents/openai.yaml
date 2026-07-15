@@ -1,0 +1,4 @@
+interface:
+  display_name: "Nexus Orchestrator"
+  short_description: "Coordinate Nexus delivery from queue to proof"
+  default_prompt: "Use $nexus-orchestrator to select and execute the next verified Nexus delivery slice."

@@ -11,13 +11,9 @@ function git(args) {
   return execFileSync("git", args, {
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
+    timeout: 15_000,
+    killSignal: "SIGTERM",
   }).trim();
-}
-
-function countTree(ref) {
-  if (!ref) return 0;
-  const output = git(["ls-tree", "-r", "--name-only", ref]);
-  return output ? output.split("\n").length : 0;
 }
 
 function stagedEntries() {
@@ -37,10 +33,12 @@ if (entries.length === 0) {
 
 const paths = entries.flatMap((entry) => entry.paths);
 const deletions = entries.filter((entry) => entry.status.startsWith("D")).length;
-const headExists = spawnSync("git", ["rev-parse", "--verify", "HEAD"], { stdio: "ignore" }).status === 0;
-const beforeCount = headExists ? countTree("HEAD") : 0;
-const stagedTree = git(["write-tree"]);
-const afterCount = countTree(stagedTree);
+const additions = entries.filter(
+  (entry) => entry.status.startsWith("A") || entry.status.startsWith("C"),
+).length;
+const trackedPaths = git(["ls-files", "-z"]);
+const afterCount = trackedPaths ? trackedPaths.split("\0").filter(Boolean).length : 0;
+const beforeCount = Math.max(0, afterCount - additions + deletions);
 
 const forbidden = paths.filter((file) => {
   if (/(^|\/)\.env\.example$/.test(file)) return false;
@@ -78,8 +76,12 @@ if (!override && beforeCount >= 100) {
 const whitespace = spawnSync("git", ["diff", "--cached", "--check"], {
   encoding: "utf8",
   stdio: ["ignore", "pipe", "pipe"],
+  timeout: 15_000,
+  killSignal: "SIGTERM",
 });
-if (whitespace.status !== 0) {
+if (whitespace.error) {
+  failures.push(`Staged whitespace check could not complete: ${whitespace.error.message}`);
+} else if (whitespace.status !== 0) {
   failures.push(`Staged whitespace errors:\n${(whitespace.stdout || whitespace.stderr).trim()}`);
 }
 

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Nexus Commit and PR"
+  short_description: "Create safe Nexus commits and reviewable PRs"
+  default_prompt: "Use $nexus-commit-and-pr to commit and publish this verified Nexus slice safely."
