@@ -1322,3 +1322,13 @@ M .gitignore
 - **Node 24 proof:** Node 24.14.1 passed the same suites plus `npm run verify:release` (boundaries, standalone TypeScript, Vitest, clean 163-page build) and `npm audit --audit-level=critical` with zero vulnerabilities.
 - **Current state:** code is `locally_verified` and runtime/tooling is `committed but unpushed`. GitHub CI has not run; Render still uses the currently deployed commit/runtime until this branch is merged and deployed; production live smoke has not run.
 - **Next exact action:** commit this paperwork, push the branch, open a draft PR, babysit the Node 22/24 CI matrix to green, then obtain merge/deploy authority before Render promotion and live smoke.
+
+---
+
+## 2026-07-15 — PR #4 Remote Verification Green
+
+- Pushed `a1607cb` and paperwork commit `120afc3` to `codex/node-24-runtime-upgrade`; opened draft [PR #4](https://github.com/asjanjua/nexus-core/pull/4).
+- GitHub CI passed at `120afc3`: Node 22 and Node 24 typecheck/test/build jobs, dependency advisory gate, and CodeQL Actions/JavaScript/Python analyses are all green.
+- Status advances from `committed but unpushed` to `ci_green`. It does not advance to deployed or operationally verified.
+- This append-only CI checkpoint will be pushed as a paperwork-only commit and will retrigger final-head checks. No merge or production action is authorized by this status update.
+- Next exact action: wait for final-head checks, mark PR #4 ready if green, then obtain explicit merge/deploy authority before Render Node 24 promotion and live smoke.

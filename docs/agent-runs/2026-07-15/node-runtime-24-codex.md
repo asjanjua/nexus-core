@@ -4,7 +4,7 @@
 - **Agent:** codex
 - **Branch:** `codex/node-24-runtime-upgrade`
 - **Starting HEAD:** `7401e409dfa358b024e1b2e64869fb3af7197af8`
-- **Status:** `locally_verified`
+- **Status:** `ci_green`
 
 ## Objective
 
@@ -157,9 +157,19 @@ M .gitignore
 - **Git status:** Runtime/tooling committed locally; paperwork remains uncommitted. Branch not pushed.
 - **Next exact action:** Append central handover truth, stage only paperwork/evidence files, run preflight, and create the documentation commit.
 
-### 2026-07-15T22:43:00+05:00 — paperwork staged
+### 2026-07-15T22:41:30+05:00 — paperwork staged
 
 - **Staged scope:** 14 central instruction, backlog, task, changelog, handover, guardrail, learning, and append-only ledger files; 998 insertions / 27 deletions.
 - **Safety:** Cached whitespace check passed. `npm run commit:check` completed: 14 files, zero deletions, tree 638 to 644, safe to commit.
 - **Truth boundary:** Runtime/tooling is committed at `a1607cb`; branch remains unpushed; CI, deployment, and live smoke remain pending.
 - **Next exact action:** Create the paperwork commit, then push the branch and open a draft PR.
+
+### 2026-07-15T22:42:30+05:00 — pushed and remote CI green
+
+- **Commits:** `a1607cb` runtime/tooling; `120afc3` paperwork.
+- **Push:** Branch `codex/node-24-runtime-upgrade` pushed to origin.
+- **Pull request:** Draft [PR #4](https://github.com/asjanjua/nexus-core/pull/4).
+- **CI proof at `120afc3`:** Node 22 typecheck/test/build passed in 1m52s; Node 24 typecheck/test/build passed in 1m51s; dependency advisory gate passed; CodeQL Actions, JavaScript/TypeScript, and Python analyses passed.
+- **Classification:** `ci_green`; deployment remains pending.
+- **Production boundary:** No merge, Render deployment, environment mutation, or live smoke performed.
+- **Next exact action:** Commit and push this paperwork-only CI checkpoint, wait for the final head checks, then mark the PR ready without merging.
