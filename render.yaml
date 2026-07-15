@@ -133,7 +133,7 @@ services:
   - type: cron
     name: nexus-dispatch-cron
     runtime: node
-    plan: free
+    plan: starter
     region: oregon
     schedule: "*/2 * * * *"
     buildCommand: npm ci --production
@@ -148,7 +148,7 @@ services:
   - type: cron
     name: nexus-billing-cron
     runtime: node
-    plan: free
+    plan: starter
     region: oregon
     schedule: "0 0 * * *"
     buildCommand: npm ci --production
@@ -163,7 +163,7 @@ services:
   - type: cron
     name: nexus-synthesis-cron
     runtime: node
-    plan: free
+    plan: starter
     region: oregon
     schedule: "0 1 * * *"
     buildCommand: npm ci --production
@@ -178,7 +178,7 @@ services:
   - type: cron
     name: nexus-readiness-prune-cron
     runtime: node
-    plan: free
+    plan: starter
     region: oregon
     schedule: "30 1 * * *"
     buildCommand: npm ci --production
