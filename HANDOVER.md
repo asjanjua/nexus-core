@@ -4,6 +4,16 @@
 
 ---
 
+## 2026-07-16 — Reviewer-Seat Invite/Accept Verified Live (Two-Account Rehearsal, Part 1)
+
+- Read-only code audit of the reviewer-seat feature (migration 0035, all three API routes, 8-case test suite, admin + accept UI) found no gaps: manual-link fallback works when Resend isn't configured, acceptance binds to the real Clerk `userId` of the accepting identity, and one-accepted-seat-per-workspace is enforced at the DB layer, not just in application code.
+- Executed the one real mutation the rehearsal requires: sent a live invite from `/reviewer-seat` to a real second-account email (`ali.janjua@leap-associates.me`) with Ali's explicit authorization. Confirmed by the UI: seat moved `invited` → `accepted` after Ali opened the single-use link as that identity; "Current reviewer" now shows bound and accepted; the invite form itself now reports "One reviewer per workspace in this version," confirming the one-seat constraint holds live, not just in the 8 repository tests.
+- Not yet done: an approval made FROM the bound reviewer account, and the org-switch behavior noted in the runbook's Mode A description. These remain the open part of TASKS.md Week 1 item 3.
+- Full execution packet, live evidence, and the exact mutation boundary are in `docs/agent-runs/2026-07-16/reviewer-seat-two-account-audit-claude.md`. The single-use accept code was deliberately not written into that committed file (relayed to Ali in chat only) since it is a live bearer token for a public repo.
+- Published as PR #5 (`claude/reviewer-seat-two-account-audit`, commits `e96a2e6`, `70ef36f`), not merged — merge authority was not granted for this slice.
+
+---
+
 ## 2026-07-15 — Node 24 Production Promotion Complete
 
 - Merged PR #4 and promoted the supported Node 24 runtime through GitHub and Render. Render reached live at application commit `32166903b55b2ce8239bd5eb21fc0bd4121811e2`; CI and CodeQL were green on the same SHA.
