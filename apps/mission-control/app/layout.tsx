@@ -12,6 +12,7 @@ import { headers } from "next/headers";
 import { repository } from "@/lib/data/repository";
 import { isDbRequired } from "@/lib/data/db-policy";
 import { PRODUCT_META, productFromHost, type ProductKey } from "@/lib/product-detection";
+import { ClerkProvider } from "@clerk/nextjs";
 
 export const metadata: Metadata = {
   title: "NexusAI Mission Control",
@@ -62,6 +63,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     return (
       <html lang="en">
         <body>
+          <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up">
           <PwaRegister />
           <header className="sticky top-0 z-20 border-b border-white/10 bg-[#090f1b]/88 backdrop-blur">
             <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
@@ -86,6 +88,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </div>
           </header>
           {children}
+          </ClerkProvider>
         </body>
       </html>
     );
@@ -96,6 +99,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     return (
       <html lang="en">
         <body>
+          <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up">
           <PwaRegister />
           <main className="mx-auto min-h-screen max-w-3xl px-6 py-12 text-white">
             <h1 className="mb-3 text-2xl font-semibold">
@@ -106,6 +110,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               Set a valid <code>DATABASE_URL</code> and run migrations before retrying.
             </p>
           </main>
+          </ClerkProvider>
         </body>
       </html>
     );
@@ -120,11 +125,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     return (
       <html lang="en">
         <body>
+          <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up">
           <PwaRegister />
           <header className="flex items-center justify-end gap-3 border-b border-white/10 px-6 py-3">
             <a href="/sign-in" className="btn-primary text-sm">Sign in</a>
           </header>
           <main className="min-h-screen p-6">{children}</main>
+          </ClerkProvider>
         </body>
       </html>
     );
@@ -142,6 +149,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en">
       <body>
+        <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up">
         <PwaRegister />
         <main className="flex min-h-screen flex-col md:flex-row">
           <TrustDrawerProvider>
@@ -201,6 +209,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </TrustDrawerProvider>
         </main>
         <FeedbackButton />
+        </ClerkProvider>
       </body>
     </html>
   );

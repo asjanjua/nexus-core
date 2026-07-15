@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { applicationOrigin, hostedClerkUrl } from "@/lib/auth/hosted-clerk-url";
+
+const rootLayoutSource = readFileSync(
+  fileURLToPath(new URL("../app/layout.tsx", import.meta.url)),
+  "utf8"
+);
 
 describe("hosted Clerk URL handoff", () => {
   it("builds an absolute redirect back to the active application host", () => {
@@ -35,5 +42,11 @@ describe("hosted Clerk URL handoff", () => {
       redirectPath: "https://evil.example/steal",
       appOrigin: "https://app.pinavia.co"
     })).toBeNull();
+  });
+
+  it("keeps the Clerk session provider without restoring build-heavy client widgets", () => {
+    expect(rootLayoutSource).toContain('import { ClerkProvider } from "@clerk/nextjs"');
+    expect(rootLayoutSource).toContain("<ClerkProvider");
+    expect(rootLayoutSource).not.toMatch(/\b(?:SignedIn|SignedOut|SignInButton|UserButton|OrganizationSwitcher)\b/);
   });
 });
