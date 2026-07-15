@@ -49,6 +49,8 @@ npm run db:migrate
 npm run check:boundaries
 npm run commit:check
 npm run verify:release
+npm run deps:check
+npm run deps:repair
 ```
 
 ## Work Standards
@@ -60,8 +62,22 @@ npm run verify:release
 - All intelligence outputs should be evidence-backed, workspace-scoped, and sensitivity-aware.
 - Browser-test important UI changes against the live or local app when feasible.
 - Before every commit, compare staged tree size/status through `npm run commit:check`; do not bypass a mass-delete or large-commit block without reviewing the staged tree.
-- Use Node 20 and install dependencies only from the repository root with npm. A nested pnpm-style `apps/mission-control/node_modules` is invalid local state.
+- Use Node 24 for production parity and install dependencies only from the repository root with npm. Node 22.12+ is a CI compatibility rung; Node 20, Node 23, and other majors are unsupported. A nested pnpm-style `apps/mission-control/node_modules` is invalid local state.
+- This checkout is under iCloud Drive. If npm, Vitest, TypeScript, or build processes sleep in kernel reads, run `npm run deps:check`; repair dataless dependencies with `npm run deps:repair`. The repair keeps major-specific Node 22/24 dependency trees in a machine-local cache outside File Provider and symlinks root `node_modules` to the active runtime's cache.
 - Keep route handlers thin and services modular. Do not introduce `NEXUS_API_BASE_URL` until a real separate service is approved under `docs/API_SERVICE_BOUNDARY_DECISION.md`.
+
+## Nexus Delivery Skills
+
+The canonical shared delivery skills live under `.agents/skills/`.
+
+- Use `$nexus-orchestrator` for roadmap continuation, milestone execution, or multi-agent coordination.
+- Use `$nexus-frontend-orchestrator` for any user-facing page/component slice; it owns UI states, craft, accessibility, responsive behavior, and browser proof.
+- Use `$nexus-build-loop` for implementation/review/test/fix cycles.
+- Use `$nexus-papertrail` before edits, at every meaningful checkpoint, and before stopping or handing off.
+- Use `$nexus-release-gauntlet`, `$nexus-commit-and-pr`, and `$nexus-live-smoke` in that order when publishing production work.
+- Use `$nexus-recovery` after unexpected failures, stalls, partial edits, or uncertain repo state.
+
+Parallel writers require separate worktrees and disjoint file ownership. Only the integration agent updates `TASKS.md`, `BACKLOG.md`, `HANDOVER.md`, `CHANGELOG.md`, and shared release/runbook documents.
 
 ## Agent Trust and Approval Boundaries
 
@@ -85,14 +101,6 @@ npm run verify:release
 
 ## Handoff
 
-When completing a logical unit, update the relay state:
+Use `$nexus-papertrail` to append the slice ledger and a concise dated `HANDOVER.md` section containing the current branch/HEAD, verification evidence, warnings, and next exact action.
 
-```bash
-python3 relay.py \
-  --from-model codex \
-  --done "What was completed" \
-  --next "What should happen next" \
-  --notes "Warnings, test status, or decisions"
-```
-
-By default, `relay.py` updates `HANDOVER.md` without committing. Use `--commit` only when you intentionally want the relay to stage and commit selected files.
+`relay.py` is the regression-tested compatibility adapter for agents that need a single handoff command. Preview with `python3 relay.py --from-model <agent> --done <summary> --next <action> --dry-run`; a normal run appends one locked, fingerprinted section to `HANDOVER.md` and creates one unique ledger under `docs/agent-runs/YYYY-MM-DD/`. The papertrail skill remains canonical. `--commit` requires explicit `--files` and refuses pre-existing staged changes; `--launch` is always optional.

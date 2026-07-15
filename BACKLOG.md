@@ -7,7 +7,7 @@
 > Architecture review: `TASKS.md` § Architecture Review Action Items.
 > Distribution plan: `NexusAI_Distribution_Plan.docx` and `docs/INFRA_DECISION_MEMO.md`.
 > UI/UX workplan: `docs/UI_UX_WORKPLAN.md` (MCP-aware design-to-code pipeline).
-> Last reviewed: 2026-07-10.
+> Last reviewed: 2026-07-15.
 > Calendar anchor (2026-07-07): regulated-buyer demo ~week of 2026-07-13, public self-serve launch ~2026-08-04, paid pilot signing ~2026-08-18. Execution sequence: `TASKS.md` § Demo/Launch/Pilot Calendar Plan; demo runbook: `docs/DEMO_RUNBOOK_REGULATED.md`; decisions: `docs/USER_STRATEGY_AND_PIVOTS.md` §Decisions 2026-07-07.
 
 ---
@@ -21,6 +21,8 @@
 5. **Keep strategy in the paperwork.** Readiness, buyer lane, first workflow, sponsor/reviewer, evidence bundle, governance boundary, and shadow ROI should appear in the backlog, tasks, and pilot docs before a pilot is sold.
 6. **Make runtime state explicit.** Workflow runners, sync jobs, local/on-prem auth, and verifier loops should use typed state machines, append-only events, visible async results, and exhaustive error taxonomies.
 7. **Protect the repository and release path.** Every code slice passes staged-tree preflight, build-boundary checks, timed local verification, and clean GitHub CI before Render deployment.
+8. **Use one cross-agent delivery system.** Canonical workflows live under `.agents/skills/`; every meaningful slice gets a unique `docs/agent-runs/` ledger, parallel writers use disjoint worktrees, and only the integration agent reconciles central operating documents.
+9. **Keep the runtime on a supported LTS line.** Node 24 is the production baseline; Node 22.12+ remains a temporary compatibility rung. CI proves both while Render and local defaults stay on Node 24.
 
 ## Architecture Watch: API Extraction
 

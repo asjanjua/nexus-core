@@ -2,6 +2,43 @@
 
 ---
 
+## Unreleased — Node 24 Runtime Baseline (2026-07-15)
+
+- Replaced the EOL Node 20 runtime contract with Node 24 for local development, Render web/cron services, dependency audit, and primary CI verification.
+- Retained Node 22.12+ as an explicit compatibility rung in GitHub Actions while rejecting non-LTS Node 23 and unsupported majors.
+- Made File Provider dependency repair caches Node-major- and schema-specific, preserved locked workspace-local dependency layers, and added cross-major/cache-layout rejection plus runtime-policy regression tests.
+- Local proof: Node 22.22.3 and Node 24.14.1 both passed dependency preflight, standalone TypeScript, 6 relay tests, 5 runtime-policy tests, 70 Mission Control files / 478 assertions, and the 163-page production build; Node 24 also passed the timed release wrapper and a zero-vulnerability audit.
+
+---
+
+## Unreleased — File Provider Test-Stall Repair (2026-07-15)
+
+- Diagnosed the local npm/Vitest/TypeScript stall as iCloud File Provider eviction: 68,605 of 69,007 dependency files were remote-only `dataless` stubs, leaving all four libuv filesystem workers blocked in kernel reads.
+- Added `deps:check` and stale-lock-safe `deps:repair` tooling. The repair installs a locked, Node-major-specific dependency tree under `~/.cache/nexus-core-deps/` and symlinks root `node_modules` to the hydrated cache.
+- Moved the Vitest cache outside the synced workspace and added pretest/prebuild checks so Node-version, dataless dependency, and nested-install failures stop with a remediation message instead of hanging.
+- Local proof: representative test 22/22, root test 70 files / 478 Mission Control assertions plus 6 relay tests, standalone TypeScript, build-boundary scan, and the 163-page production build all passed.
+
+---
+
+## Unreleased — Append-Only Relay Repair (2026-07-15)
+
+- Replaced the destructive `relay.py` handoff rewrite with a locked append-only compatibility adapter that preserves the existing `HANDOVER.md` bytes, fingerprints handoffs to reject duplicates, and writes a unique dated run ledger.
+- Added no-write `--dry-run` and `--print-only` modes, explicit-file commit safety, staged-state protection, malformed-input rejection, and serialized concurrent writes.
+- Wired six relay regression tests into the root `npm test` command before the Mission Control Vitest suite.
+- Updated Codex, Claude, papertrail, and recovery guidance: the papertrail skill remains canonical; relay is now safe for previewed compatibility handoffs.
+
+---
+
+## Unreleased — Cross-Agent Delivery Skill Suite (2026-07-14)
+
+- Added eight canonical repo-scoped skills under `.agents/skills/`: orchestration, front-end orchestration, build loop, papertrail, release gauntlet, live smoke, commit/PR publication, and recovery.
+- Added a deterministic non-overwriting slice-ledger generator and the `docs/agent-runs/YYYY-MM-DD/` continuity convention.
+- Routed Codex and Claude instructions to the same skill suite, with separate-worktree/disjoint-file rules and one integration owner for central paperwork.
+- Disabled `relay.py` in agent instructions until its destructive `HANDOVER.md` rewrite behavior is replaced by a regression-tested append mode.
+- Validation: all eight skills passed the official skill validator; reference links resolve; the ledger generator passed a dry run; `git diff --check` and `npm run check:boundaries` passed.
+
+---
+
 ## Unreleased — Hosted Clerk Redirect Repair (2026-07-10)
 
 Fixed the production sign-in handoff after the `b268a25` release exposed two missing layers: Render did not have `NEXT_PUBLIC_CLERK_HOSTED_SIGN_IN_URL` / `_SIGN_UP_URL`, and the handoff passed Clerk a relative redirect such as `/dashboard/ceo`. Render now receives the Clerk Account Portal URLs through the blueprint, while sign-in and sign-up construct same-origin absolute return URLs from the active application host. This prevents Clerk from resolving the return path on `accounts.pinavia.co` and rendering a 404. Added regression coverage for active-host redirects, configured-origin fallback, and cross-origin rejection.

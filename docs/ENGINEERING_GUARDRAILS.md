@@ -1,6 +1,6 @@
 # NexusAI Engineering Guardrails
 
-Updated: 2026-07-10
+Updated: 2026-07-15
 
 This note translates the FP-style review into practical Nexus engineering rules. The goal is not to make the codebase academic. The goal is to prevent invalid workflow, auth, runner, and sync states from reaching production.
 
@@ -197,8 +197,8 @@ The July 2026 hang/recovery exposed three independent failure classes: expensive
 
 ### Before staging
 
-1. Work from the repository root with Node 20 (`nvm use`).
-2. Run `npm ci` at the root. Do not run pnpm/yarn inside `apps/mission-control`.
+1. Work from the repository root with Node 24 (`nvm use`) for production parity. Node 22.12+ is retained only as a compatibility rung.
+2. Run `npm run deps:check`. On a normal local/CI checkout, install with `npm ci` at the root. In this iCloud Drive checkout, use `npm run deps:repair` so dependencies live in the machine-local cache outside File Provider; do not reinstall a large `node_modules` tree into iCloud.
 3. Run `npm run check:boundaries`.
 4. Remove or move conflict-copy routes such as `page 2.tsx` and `route 2.ts`; untracked files under `app/` still enter the Next.js build.
 
@@ -220,3 +220,15 @@ The July 2026 hang/recovery exposed three independent failure classes: expensive
 ### Dependency layout rule
 
 This is an npm workspace. A nested `apps/mission-control/node_modules/.pnpm` or `.modules.yaml` is a stale foreign install and must not remain. It can shadow root dependencies and make TypeScript/build behavior non-deterministic.
+
+In an iCloud/File Provider checkout, a normal-looking dependency file may be only a remote metadata stub (`compressed,dataless`). Concurrent npm/Vite reads can then exhaust libuv's filesystem worker pool and leave the process asleep in kernel `read()` with no test output. `scripts/file-provider-deps.mjs` prevents this failure class by:
+
+- requiring Node 24 primary or Node 22.12+ compatibility while rejecting EOL and non-LTS majors;
+- failing fast on dataless root dependencies or nested workspace installs;
+- installing the lockfile-defined tree under a Node-major-specific path in `~/.cache/nexus-core-deps/`;
+- rejecting an external cache created by a different Node major;
+- preserving npm's locked workspace-local dependency layer through managed external symlinks and validating every direct workspace dependency version;
+- allowing normal npm-created workspace-local dependencies in CI/Render while continuing to reject pnpm markers and unmanaged File Provider cache links;
+- serializing multi-agent repair through a stale-aware lock;
+- symlinking root `node_modules` to the hydrated external tree;
+- keeping Vitest cache data under `~/.cache/nexus-core/` rather than `apps/mission-control/node_modules/.vite`.

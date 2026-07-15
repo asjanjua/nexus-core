@@ -41,6 +41,21 @@ npm run commit:check
 npm run verify:release
 ```
 
+## Shared Nexus Delivery Skills
+
+The canonical cross-agent workflows live under `.agents/skills/`. Read the matching `SKILL.md` completely when the task triggers it, even if the current client does not auto-discover that repository skill path.
+
+- `nexus-orchestrator` — milestone selection, multi-agent ownership, and end-to-end delivery.
+- `nexus-frontend-orchestrator` — UI routes/components, design craft, all user-visible states, accessibility, responsive behavior, and browser proof.
+- `nexus-build-loop` — implementation, review, test, and fix loop.
+- `nexus-papertrail` — durable slice ledger and central paperwork reconciliation.
+- `nexus-release-gauntlet` — local release gates and honest timeout/failure classification.
+- `nexus-live-smoke` — deployed SHA, domain, Clerk, authenticated, and workflow proof.
+- `nexus-commit-and-pr` — safe staging, commit sequencing, push, PR, and CI follow-through.
+- `nexus-recovery` — interruption, stall, Git, build, auth, and paperwork recovery.
+
+For parallel work, use separate worktrees and disjoint file ownership. Only the integration agent may update central operating documents.
+
 ## Production Build Constraints (READ BEFORE WRITING FRONT-END)
 
 Since commit `68a5a0b`, four things are banned from the production build path because they hung `next build` before any compile output (tests + tsc stayed green — a build cannot be verified by those alone). Full detail: `docs/ENGINEERING_GUARDRAILS.md` §7.
@@ -49,7 +64,7 @@ Since commit `68a5a0b`, four things are banned from the production build path be
 2. Auth handoff is HOSTED: use envs `NEXT_PUBLIC_CLERK_HOSTED_SIGN_IN_URL` / `NEXT_PUBLIC_CLERK_HOSTED_SIGN_UP_URL`; gate signed-out UI with a plain `/sign-in` link (see `app/reviewer-seat/accept/page.tsx`), never `<SignedOut>`.
 3. New client pages should be fetch-only against server APIs (e.g. `/reviewer-seat`, `/funnel`, `/pilot/afterlife`).
 4. Do not reintroduce Sentry runtime instrumentation, middleware tracing, or force-graph rendering into the build path without confirming `npm run build` still completes. Always verify with a real `npm run build` (or Render CI), not just tests + tsc.
-5. Use Node 20 and the root npm workspace only. Treat a nested `apps/mission-control/node_modules/.pnpm`, duplicate route filename, or stale `.next`/`tsconfig.tsbuildinfo` as invalid build state.
+5. Use Node 24 and the root npm workspace for production parity. Node 22.12+ is compatibility-only; Node 20, Node 23, and other majors are unsupported. Treat a nested `apps/mission-control/node_modules/.pnpm`, duplicate route filename, or stale `.next`/`tsconfig.tsbuildinfo` as invalid build state. This checkout is under iCloud Drive; `npm run deps:check` detects evicted or cross-major dependencies and `npm run deps:repair` selects a hydrated major-specific machine-local cache outside File Provider.
 6. Run `npm run commit:check` after staging and `npm run verify:release` before pushing. Never bypass a tree-shrink gate without inspecting the staged file count and deletion list.
 
 ## Development Standards
@@ -63,17 +78,9 @@ Since commit `68a5a0b`, four things are banned from the production build path be
 
 ## Handoff
 
-At the end of a logical unit:
+Use `.agents/skills/nexus-papertrail/SKILL.md` to append the slice ledger and a concise dated `HANDOVER.md` section with branch/HEAD, verification evidence, warnings, and next exact action.
 
-```bash
-python3 relay.py \
-  --from-model claude \
-  --done "What was completed" \
-  --next "What should happen next" \
-  --notes "Warnings, test status, or decisions"
-```
-
-Use `--commit` only if you intentionally want the relay script to stage and commit selected files. Do not blindly commit the whole repo.
+`relay.py` is the regression-tested compatibility adapter for agents that need a single handoff command. Preview with `python3 relay.py --from-model <agent> --done <summary> --next <action> --dry-run`; a normal run appends one locked, fingerprinted section to `HANDOVER.md` and creates one unique ledger under `docs/agent-runs/YYYY-MM-DD/`. The papertrail skill remains canonical. `--commit` requires explicit `--files` and refuses pre-existing staged changes; `--launch` is always optional.
 
 ---
 

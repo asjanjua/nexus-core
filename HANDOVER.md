@@ -4,6 +4,18 @@
 
 ---
 
+## 2026-07-14 — Shared Nexus Delivery Skill Suite
+
+- Added eight canonical repository skills under `.agents/skills/`: `nexus-orchestrator`, `nexus-frontend-orchestrator`, `nexus-build-loop`, `nexus-papertrail`, `nexus-release-gauntlet`, `nexus-live-smoke`, `nexus-commit-and-pr`, and `nexus-recovery`.
+- The front-end lane coordinates design/API scouts, a single UI writer per worktree, a separate browser verifier, complete loading/empty/error/forbidden/signed-out states, accessibility/responsive checks, and the fragile Next.js production-build gates.
+- `nexus-papertrail` adds unique append-only ledgers at `docs/agent-runs/YYYY-MM-DD/`; its generator refuses overwrites and was dry-run tested. Parallel agents write their own ledgers; only the integration agent edits the central operating documents.
+- `AGENTS.md` and `CLAUDE.md` now route Codex and Claude to the same canonical workflows. Both disable `relay.py` until its destructive handover rewrite has a regression-tested append mode.
+- Verification: all eight skills passed the official skill validator, reference links resolve, no template/TODO residue remains, the ledger generator dry run passed, `git diff --check` passed, and `npm run check:boundaries` passed.
+- Current state: changes are local and uncommitted on `main`; no application runtime, deployment, migration, or live environment was changed.
+- Next exact action: review the skill-suite diff, then use `nexus-commit-and-pr` to create a focused documentation/tooling commit if authorized.
+
+---
+
 ## 2026-07-10 — Hosted Clerk Production Handoff Repair
 
 - Live `b268a25` deploy was confirmed, but auth smoke found missing hosted Clerk env values. Set the Render web-service values to `https://accounts.pinavia.co/sign-in` and `/sign-up`; the environment rebuild went live.
@@ -1215,3 +1227,98 @@ Known missing:
 
 Start by confirming git status, then read the files above, then proceed.
 ```
+
+---
+
+<!-- relay-fingerprint: 1437de6519581a6d425e2db8d7a9eda72dfc07688474244b6019f6c672eb92cd -->
+## 2026-07-15T20:45:00+05:00 — Relay #59: codex to claude
+
+- **Branch:** `main`
+- **Commit:** `7401e40`
+- **Ledger:** `docs/agent-runs/2026-07-15/relay-059-codex-to-claude.md`
+
+### Completed
+
+Repaired relay.py into a locked append-only papertrail adapter with unique run ledgers, duplicate protection, no-write previews, explicit-file commit safety, concurrency serialization, and six regression tests wired into root npm test.
+
+### Immediate Next Task
+
+Review the uncommitted delivery-skill and relay-repair slice, then use nexus-commit-and-pr if a focused commit and push are authorized.
+
+### Notes and Warnings
+
+Relay tests, Python compilation, build-boundary checks, and scoped diff checks pass. The existing Mission Control Vitest process still stalls during collection at zero CPU; no application test failure was observed, so the full app suite is locally inconclusive rather than green.
+
+### Files Changed / Dirty Context
+
+```text
+M .learnings/ERRORS.md
+ M AGENTS.md
+ M BACKLOG.md
+ M CHANGELOG.md
+ M CLAUDE.md
+ M HANDOVER.md
+ M TASKS.md
+ M package.json
+ M relay.py
+?? .agents/
+?? docs/agent-runs/
+?? tests/
+```
+
+---
+
+<!-- relay-fingerprint: 40f35ae01fbf1f1feb466ebe021cc730beb2a227aae928cf33c41332438a3caf -->
+## 2026-07-15T22:08:07+05:00 — Relay #60: codex to claude
+
+- **Branch:** `main`
+- **Commit:** `7401e40`
+- **Ledger:** `docs/agent-runs/2026-07-15/relay-060-codex-to-claude.md`
+
+### Completed
+
+Diagnosed and fixed the local npm/Vitest stall: iCloud File Provider had evicted 68,605 dependency files into dataless stubs. Added Node 20 hydration preflight, external locked dependency repair, external Vitest cache, multi-agent repair locking, and durable recovery documentation.
+
+### Immediate Next Task
+
+Review the uncommitted delivery-tooling slice and use nexus-commit-and-pr only if a focused commit and push are authorized.
+
+### Notes and Warnings
+
+Locally verified on Node 20.20.2: npm ls completes, representative test 22/22, root npm test passes 6 relay tests plus 70 Mission Control files/478 assertions, standalone TypeScript passes, boundaries pass, and the 163-page production build passes. Default shell Node 22 remains unsupported; use Node 20. No commit, push, CI, deployment, or live smoke was performed.
+
+### Files Changed / Dirty Context
+
+```text
+M .gitignore
+ M .learnings/ERRORS.md
+ M AGENTS.md
+ M BACKLOG.md
+ M CHANGELOG.md
+ M CLAUDE.md
+ M HANDOVER.md
+ M TASKS.md
+ M apps/mission-control/package.json
+ M apps/mission-control/vitest.config.ts
+ M docs/ENGINEERING_GUARDRAILS.md
+ M package.json
+ M relay.py
+?? .agents/
+?? docs/agent-runs/
+?? scripts/file-provider-deps.mjs
+?? tests/
+```
+
+---
+
+## 2026-07-15 — Node 24 Runtime and Delivery Automation Locally Verified
+
+- **Branch / base:** `codex/node-24-runtime-upgrade` from `7401e40`.
+- **Runtime/tooling commit:** `a1607cb` (`chore: automate Nexus delivery and Node 24 verification`).
+- **Delivered:** eight canonical repository delivery skills; append-only locked `relay.py`; File Provider-safe dependency and Vitest caches; Node 24 production/default runtime with Node 22.12+ compatibility; dual-runtime CI; Node 24 Render web/cron pins; bounded release and commit preflights.
+- **Dependency safety:** cache schema v2 keys by lockfile, Node major, and schema; preserves npm workspace-local dependencies through managed external links; validates every direct workspace version; rejects cross-major, obsolete, pnpm, dataless, and unmanaged cache state.
+- **Stall recovery:** the original npm/Vitest stall was iCloud-evicted dependency data. The later commit-hook stall was 2,766 dataless `.git` files reached by unnecessary `git ls-tree` traversal. The hook now uses staged-index arithmetic and 15-second subprocess limits; no Git lock or index reset was used.
+- **Node 22 proof:** Node 22.22.3 passed dependency repair/check, standalone TypeScript, 6 relay tests, 5 runtime-policy tests, 70 Mission Control files / 478 assertions, and the 163-page Next.js build.
+- **Node 24 proof:** Node 24.14.1 passed the same suites plus `npm run verify:release` (boundaries, standalone TypeScript, Vitest, clean 163-page build) and `npm audit --audit-level=critical` with zero vulnerabilities.
+- **Current state:** code is `locally_verified` and runtime/tooling is `committed but unpushed`. GitHub CI has not run; Render still uses the currently deployed commit/runtime until this branch is merged and deployed; production live smoke has not run.
+- **Next exact action:** commit this paperwork, push the branch, open a draft PR, babysit the Node 22/24 CI matrix to green, then obtain merge/deploy authority before Render promotion and live smoke.
