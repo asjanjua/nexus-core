@@ -14,6 +14,7 @@ import { useRouter } from "next/navigation";
 import type { ExecutiveSynthesis } from "@/lib/contracts";
 import { ConfidenceBadge } from "@/components/ui/trust-drawer-trigger";
 import { HelpLabel } from "@/components/ui/help-dialog";
+import { formatTimeUtc } from "@/lib/date-format";
 
 // Confidence badge moved to components/ui/trust-drawer-trigger.tsx — it now
 // opens the Trust Drawer on click and uses locked design tokens instead of
@@ -169,10 +170,7 @@ export function ExecutiveSynthesisBrief({
             Synthesised from {synthesis.agentCardCount} specialist agent brief
             {synthesis.agentCardCount !== 1 ? "s" : ""} and {synthesis.totalEvidenceRefs.length} evidence
             source{synthesis.totalEvidenceRefs.length !== 1 ? "s" : ""}. Updated{" "}
-            {new Date(synthesis.generatedAt).toLocaleTimeString([], {
-              hour: "2-digit",
-              minute: "2-digit",
-            })}
+            <time dateTime={synthesis.generatedAt}>{formatTimeUtc(synthesis.generatedAt)}</time>
             .
           </p>
         </div>
