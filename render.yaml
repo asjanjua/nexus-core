@@ -5,7 +5,7 @@ services:
     plan: free
     region: oregon
     rootDir: .
-    buildCommand: npm ci && npm run build
+    buildCommand: npm ci && npm run build && npm run db:migrate
     startCommand: npm run start -w @nexus/mission-control -- -p $PORT
     autoDeploy: true
     healthCheckPath: /api/health

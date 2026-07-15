@@ -20,6 +20,17 @@ test("Render Blueprint keeps the web service on Node 24", () => {
   assert.match(web, /^      - key: NODE_VERSION\n        value: 24$/m);
 });
 
+test("Render applies idempotent migrations only after a successful web build", () => {
+  const web = webServices.find((service) => /^  - type: web$/m.test(service));
+  const buildCommand = web?.match(/^    buildCommand: (.+)$/m)?.[1] ?? "";
+
+  assert.equal(buildCommand, "npm ci && npm run build && npm run db:migrate");
+  assert.ok(
+    buildCommand.indexOf("npm run build") < buildCommand.indexOf("npm run db:migrate"),
+    "database migrations must run after the production build succeeds"
+  );
+});
+
 test("Render cron services use a supported plan and Node 24", () => {
   const crons = cronServices.filter((service) => /^  - type: cron$/m.test(service));
 
