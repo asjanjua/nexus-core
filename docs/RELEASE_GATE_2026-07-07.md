@@ -213,3 +213,14 @@ currently active deployment:
     `window.Clerk.setActive(...)` then `window.Clerk.session.touch()`.
   - Treat this as an operator/runtime nuance, not a blocker for demoing a single
     already-selected workspace.
+
+## 11. Node 24 Production Promotion — 2026-07-15
+
+- **Release identity:** PR #4 was merged and Render deployment `dep-d9btcjmq1p3s73975msg` reached `live` at application commit `32166903b55b2ce8239bd5eb21fc0bd4121811e2`. GitHub CI and CodeQL completed successfully for the same SHA.
+- **Runtime:** Render selected Node 24.18.0. Node 24.14.1 locally passed boundaries, TypeScript, 71 Vitest files / 481 assertions, and the 163-page production build; Node 22.22.3 remains the CI compatibility rung.
+- **Public smoke:** `app.pinavia.co` passed all 8 canonical checks: health, home, HSTS, CSP, frame protection, protected-route redirect, expected-origin CORS, and unknown-origin rejection.
+- **Hydration repair:** dashboard timestamps now render through a deterministic UTC formatter. The live dashboard showed the UTC value and no current React hydration error.
+- **Session repair:** root `<ClerkProvider>` was restored without the previously removed Clerk widgets/hooks. Beyond the one-minute token window, `/knowledge`, `/settings/connectors`, `/workflows`, and `/reviewer-seat` remained organization-authenticated with no Nexus console errors.
+- **Schema repair:** free-tier Render builds now run `npm ci && npm run build && npm run db:migrate`; migrations cannot run after a failed build. The authenticated reviewer-seat page moved from a network error to its legitimate empty-seat state, providing live read-path proof for migration `0035`. Additive migrations `0036` and `0037` share the same idempotent ordered runner; their feature behavior still needs dedicated smoke.
+- **Cost boundary:** the production Blueprint remains web-only. Four `starter` cron definitions are isolated in opt-in `render.cron.yaml` and were not activated.
+- **Remaining gates:** two-account reviewer invite/accept/approval, Pro waitlist behavior, pilot-afterlife behavior, scheduled product email, and any extra demo domain must be proven separately. Paperwork-only commits after this record may advance `main` without changing the verified application artifact.

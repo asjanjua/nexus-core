@@ -2,6 +2,14 @@
 
 ---
 
+## Unreleased — Node 24 Production Promotion (2026-07-15)
+
+- Promoted Node 24 through GitHub CI/CodeQL and Render, with public domain smoke passing 8/8 on the verified application commit.
+- Fixed server/browser timestamp hydration by rendering dashboard synthesis time deterministically in UTC.
+- Restored the root Clerk provider as the narrow session-refresh boundary while keeping Clerk UI widgets and client auth hooks out of page bundles.
+- Added an ordered free-tier Render build migration gate (`install -> build -> migrate`) and restored the live reviewer-seat read path.
+- Kept the primary Render Blueprint web-only; optional paid cron services are isolated in `render.cron.yaml` pending explicit activation and billing approval.
+
 ## Unreleased — Node 24 Runtime Baseline (2026-07-15)
 
 - Replaced the EOL Node 20 runtime contract with Node 24 for local development, Render web/cron services, dependency audit, and primary CI verification.

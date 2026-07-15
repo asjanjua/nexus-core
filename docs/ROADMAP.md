@@ -34,9 +34,9 @@ Autonomous loops, workflow runners, local/on-prem auth, connector sync, and veri
 
 ---
 
-## Where We Are -- Current State (v0.25.0, verified locally 2026-06-17)
+## Where We Are -- Current State (Node 24 production verified 2026-07-15)
 
-The product is demo-ready and pilot-ready. v0.25.0 adds the Nexus Knowledge Workspace: an Obsidian-like company second brain with markdown notes, wikilinks, backlinks, graph view, import/export, optional local vault sync, MCP access, and Ask note citations. TypeScript, 29 test files / 187 tests, production build, and production dependency audit passed on 2026-06-17. Authenticated browser smoke for protected routes should be run in the logged-in Chrome/Render session after deploy.
+The product is demo-ready and pilot-design-ready on a Node 24 production baseline. On 2026-07-15, GitHub CI/CodeQL, Render deployment, the 8/8 public domain smoke, dashboard hydration, Clerk session refresh, and authenticated read smoke for `/knowledge`, `/workflows`, `/settings/connectors`, and `/reviewer-seat` passed. Mutable customer-demo flows remain separately gated: upload/approval, Ask citations, two-account reviewer acceptance/approval, waitlist behavior, pilot-afterlife behavior, and scheduled product email.
 
 **What is built and verified:**
 
@@ -67,7 +67,7 @@ The product is demo-ready and pilot-ready. v0.25.0 adds the Nexus Knowledge Work
 
 - Additional live connector data flows beyond Slack: Google Drive, Teams, SharePoint, Jira, GitHub, CRM, finance, and social platforms.
 - Connector scheduler/sync history for non-event-based sources.
-- Authenticated production smoke for v0.25.0 after Render deploy, including `/knowledge`, `/workflows`, `/settings/connectors`, and Ask note citations.
+- Full mutable production smoke for upload/approval, Ask note citations, reviewer invitation/acceptance/approval, waitlist, pilot-afterlife, and scheduled product email.
 
 ---
 
@@ -109,8 +109,8 @@ The dashboard starts with one evidence-backed leadership brief per role, with so
 
 **Infrastructure and wiring (do first, unblocks everything):**
 
-1. **Current deploy/smoke:** confirm Render is serving commit `c55417e` or newer, then smoke `/knowledge`, `/workflows`, `/settings/connectors`, `/board`, product subdomains, and Ask note citations in a logged-in browser session. Migrations 0025-0026 and production `/api/health` were previously confirmed, but the current SHA still needs live confirmation.
-2. **Add cron entries to `render.yaml`:** dispatch runner, billing reset, trial-to-free conversion. Cron handlers exist in code but are not declared in the Render blueprint. Without these: no auto-synthesis, no monthly token budget reset, no trial conversion. Single-file change.
+1. **Complete mutable live smoke:** release identity and protected read routes are proven. Next prove upload/approval, Ask note citations, two-account reviewer acceptance/approval, waitlist, pilot-afterlife, and any additional demo domains actually used.
+2. **Activate cron Blueprint deliberately:** dispatch, billing, synthesis, and readiness-prune definitions exist in opt-in `render.cron.yaml`. Sync only with explicit billing approval, `NEXUS_CRON_SECRET`, and schedule verification.
 3. **Wire LLM routing table into execution path:** `model-routing.ts` defines a 10-surface routing policy with provider fallback chains. `llm.ts` ignores it and uses a single env var. Connect `routePolicyFor(surfaceId)` into `callLLM()` so executive briefs use premium models, ingestion triage uses economy models, and fallback fires when a provider is down.
 4. **Configure production email delivery:** keep Clerk responsible for auth email verification, configure `pinavia.io` sender authentication for Nexus product email, set `NEXUS_RESEND_API_KEY`/`NEXUS_FROM_EMAIL` or an equivalent managed-provider adapter, then run one scheduled synthesis email test.
 5. **Add Sentry error tracking:** tag errors by workspaceId, route, and error type. No production error visibility exists today.

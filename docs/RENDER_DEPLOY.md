@@ -29,7 +29,7 @@ Set the pooled value in Render:
 DATABASE_URL=<pooled Neon connection string>
 ```
 
-Run migrations locally with the direct URL:
+For manual recovery or a controlled local run, migrations can still be applied with the direct URL:
 
 ```bash
 cd /Users/alijanjua/Documents/Playground/nexus-core/apps/mission-control
@@ -48,9 +48,13 @@ Recommended path:
 Render uses:
 
 ```bash
-npm ci && npm run build
+npm ci && npm run build && npm run db:migrate
 npm run start -w @nexus/mission-control -- -p $PORT
 ```
+
+The ordering is intentional: a failed install or production build prevents database mutation. The repository migration runner is transactional and records applied files, so later builds skip completed migrations. This build-time gate is the current free-tier compromise because Render Shell, one-off jobs, and pre-deploy commands require a paid service. If the web service is upgraded, move migrations to `preDeployCommand` so schema changes are separated from artifact construction.
+
+The primary `render.yaml` declares only the web service. Optional cost-bearing cron services are isolated in `render.cron.yaml`; sync that Blueprint only after billing approval and after setting `NEXUS_CRON_SECRET`.
 
 ## 3. Configure Product Custom Domains
 
@@ -155,7 +159,7 @@ NEXUS_EXTRA_CORS_ORIGINS=
 
 `NEXUS_RESEND_API_KEY` and `NEXUS_FROM_EMAIL` are for Nexus product email only, including scheduled synthesis briefs. Keep Clerk responsible for auth email verification and password reset. Authenticate the `pinavia.io` sender domain before production demos, then run one scheduled synthesis email delivery test.
 
-**Render cron jobs to configure (Render dashboard → Cron Jobs):**
+**Optional paid cron jobs (`render.cron.yaml`):**
 
 | Job | URL | Schedule | Purpose |
 |---|---|---|---|

@@ -169,7 +169,7 @@ Established after commit `68a5a0b` (2026-07-09) "fix: unblock mission-control pr
 
 Rules, in force for all new code:
 
-1. **Do not import Clerk CLIENT components into page or component bundles.** `SignedIn`, `SignedOut`, `SignInButton`, `UserButton` and similar client widgets from `@clerk/nextjs` are banned from the build path. Server-side auth is unchanged and still required: keep using `auth()` in route handlers and `requireScope`/`resolveAuth` in APIs.
+1. **Keep Clerk client integration provider-only.** Root `app/layout.tsx` must retain `<ClerkProvider>` so one-minute browser session tokens refresh during long-lived navigation. `SignedIn`, `SignedOut`, `SignInButton`, `UserButton`, `OrganizationSwitcher`, and Clerk client auth hooks remain banned from page/component bundles unless a full production build proves the new boundary. Server-side auth is unchanged and still required: keep using `auth()` in route handlers and `requireScope`/`resolveAuth` in APIs.
 2. **Auth handoff is hosted.** Sign-in/sign-up go through the hosted Clerk URLs in env: `NEXT_PUBLIC_CLERK_HOSTED_SIGN_IN_URL` and `NEXT_PUBLIC_CLERK_HOSTED_SIGN_UP_URL`. To gate signed-out UI, render a plain `/sign-in` link, not `<SignedOut>`. Reference implementation: `app/reviewer-seat/accept/page.tsx`.
 3. **New client pages should be fetch-only against server APIs.** Pages that only `fetch()` their data (for example `/reviewer-seat`, `/funnel`, `/pilot/afterlife`) are safe and were unaffected by the hang.
 4. **Do not reintroduce, into the production build path:** Sentry runtime instrumentation, middleware request tracing, or client-side force-graph rendering, without confirming `next build` still completes.
@@ -187,7 +187,7 @@ Contract layer landed 2026-06-25 in `apps/mission-control/lib/guardrails.ts` (te
 - [x] Add error taxonomies for verifier/runner outcomes. (`VerifierOutcome` + `isRetryableOutcome`/`isUserActionable`)
 - [x] Add auth-mode contracts before shipping local/on-prem client work. (`AuthMode` + `canSyncToCloud()` + `authModeTransitionEvent()`)
 - [x] Add tests for impossible state rejection and exhaustive outcome handling. (`tests/guardrails.test.ts`)
-- [ ] Before merging front-end work: no Clerk client components in bundles, hosted-Clerk envs used for auth handoff, and `npm run build` completes (see §7).
+- [ ] Before merging front-end work: root Clerk provider retained, no Clerk UI widgets/hooks in page bundles, hosted-Clerk envs used for auth handoff, and `npm run build` completes (see §7).
 
 ---
 

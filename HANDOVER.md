@@ -4,6 +4,15 @@
 
 ---
 
+## 2026-07-15 — Node 24 Production Promotion Complete
+
+- Merged PR #4 and promoted the supported Node 24 runtime through GitHub and Render. Render reached live at application commit `32166903b55b2ce8239bd5eb21fc0bd4121811e2`; CI and CodeQL were green on the same SHA.
+- Repaired three production-only boundaries found by authenticated smoke: deterministic UTC dashboard timestamps (`d51cb0b`), provider-only Clerk session refresh without reintroducing the banned client widgets (`570d43a`), and ordered idempotent database migrations after a successful free-tier Render build (`3216690`).
+- Production proof: public domain smoke passed 8/8; `/knowledge`, `/settings/connectors`, `/workflows`, and `/reviewer-seat` stayed authenticated after the one-minute session-token window; reviewer-seat rendered its legitimate empty state with a clean browser console.
+- Primary `render.yaml` is deliberately web-only. Cost-bearing `starter` cron resources live in opt-in `render.cron.yaml` and were not activated. Approval and product-email tests remain explicit follow-ups, not hidden release claims.
+- Publication ran from `/Users/alijanjua/.codex/worktrees/nexus-core-production-promotion`; the original iCloud-hosted checkout still stalls while hydrating Git objects and should not be used for release publication until repaired.
+- Detailed evidence: `docs/agent-runs/2026-07-15/node-24-production-promotion-codex.md` and `docs/RELEASE_GATE_2026-07-07.md` §11.
+
 ## 2026-07-14 — Shared Nexus Delivery Skill Suite
 
 - Added eight canonical repository skills under `.agents/skills/`: `nexus-orchestrator`, `nexus-frontend-orchestrator`, `nexus-build-loop`, `nexus-papertrail`, `nexus-release-gauntlet`, `nexus-live-smoke`, `nexus-commit-and-pr`, and `nexus-recovery`.
@@ -39,9 +48,9 @@
 
 ## ⚠ Standing Build Constraints (do not violate — see `docs/ENGINEERING_GUARDRAILS.md` §7)
 
-Since commit `68a5a0b` (2026-07-09), the production `next build` is green only because these are kept OUT of the build path. Reintroducing any of them hangs `next build` before compile output, and tests + `tsc` will NOT catch it:
+Since commit `68a5a0b` (2026-07-09), the production `next build` is green only because the build-heavy Clerk widgets below and the other fragile integrations are kept OUT of the build path. Tests + `tsc` do not catch this class of build failure:
 
-- No Clerk CLIENT components (`SignedIn`/`SignedOut`/`SignInButton`/`UserButton`) in bundles. Server-side Clerk auth stays as-is.
+- Root `ClerkProvider` is the one reviewed exception required to refresh browser sessions. No Clerk UI widgets (`SignedIn`/`SignedOut`/`SignInButton`/`UserButton`/`OrganizationSwitcher`) or client auth hooks in page/component bundles. Server-side Clerk auth stays authoritative.
 - Auth handoff is hosted via `NEXT_PUBLIC_CLERK_HOSTED_SIGN_IN_URL` / `NEXT_PUBLIC_CLERK_HOSTED_SIGN_UP_URL`; gate signed-out UI with a `/sign-in` link (pattern: `app/reviewer-seat/accept/page.tsx`).
 - No Sentry runtime instrumentation, middleware tracing, or force-graph rendering in the build path.
 - Verify front-end changes with a real `npm run build` (or Render CI), not just tests + `tsc`.

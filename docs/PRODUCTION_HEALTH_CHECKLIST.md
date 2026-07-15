@@ -8,8 +8,8 @@ Neon, Cloudflare, Clerk, GitHub, or the command line.
 
 ## 1. Required Services
 
-- [ ] Render web service is deployed from the intended Git commit.
-- [ ] Render service has `NODE_ENV=production`.
+- [x] Render web service is deployed from the intended application Git commit. Verified `32166903b55b2ce8239bd5eb21fc0bd4121811e2` live on 2026-07-15; paperwork-only commits may advance `main` afterward.
+- [x] Render service is running the production build on Node 24. Verified in deployment logs on 2026-07-15.
 - [ ] Clerk sign-in and sign-up URLs point to the live app URL.
 - [ ] Product custom domains are attached in Render if demoing `app`, `nexus`, `quorum`, `meridian`, `vantage`, or `nucleus.pinavia.io`.
 - [ ] Cloudflare DNS records for product custom domains are proxied/active and resolve to the Render service.
@@ -155,6 +155,15 @@ Expected:
 ---
 
 ## 5. Browser Smoke Test
+
+### 2026-07-15 verified release subset
+
+- [x] Public `app.pinavia.co` domain smoke passed 8/8.
+- [x] Hosted Clerk sign-in returned to the authenticated organization workspace.
+- [x] Dashboard, `/knowledge`, `/workflows`, and `/settings/connectors` rendered after the one-minute Clerk refresh window.
+- [x] `/reviewer-seat` rendered the legitimate empty-seat state after the migration-enabled deploy; browser console was clean.
+- [x] Dashboard timestamp hydrated deterministically in UTC with no React hydration error.
+- [ ] Complete the full mutable flow below before a customer demo that depends on upload, approval, Ask citations, or reviewer invitation.
 
 - [ ] Open the live app.
 - [ ] Sign up or sign in through Clerk.

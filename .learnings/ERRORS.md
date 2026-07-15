@@ -421,3 +421,286 @@ Calculate the prior tree size from the staged index count minus staged additions
 - **Notes**: Removed HEAD object traversal, derived tree counts from the staged index and add/delete deltas, and added 15-second subprocess timeouts. Preflight completed in under three seconds with 39 files, zero deletions, and tree 610 to 638.
 
 ---
+
+## [ERR-20260715-014] git-fetch-dataless-object-stall
+
+**Logged**: 2026-07-15T22:52:00+05:00
+**Priority**: high
+**Status**: mitigated
+**Area**: infra
+
+### Summary
+Normal `git fetch` can still sleep indefinitely in the iCloud-hosted checkout even after the commit preflight stopped traversing historical objects.
+
+### Error
+
+Three fetch attempts slept at zero CPU with an empty `FETCH_HEAD` while child processes ran `git rev-list --objects --stdin --not --exclude-hidden=fetch --all --quiet --alternate-refs`.
+
+### Context
+- GitHub and `git ls-remote` independently confirmed `origin/main` at merge commit `eefebad105a11a586c9eed74f750dc57b26e0d74`.
+- `.git` still contains 2,766 dataless File Provider objects.
+- Only the fetch processes launched by this run were terminated; no locks, refs, index, or user files were changed.
+
+### Suggested Fix
+Keep active Git metadata outside File Provider, or add a supported repository relocation/migration runbook. Use a clean external clone for publication work until the original checkout is migrated.
+
+### Metadata
+- Reproducible: yes
+- Related Files: `.git`, `.learnings/ERRORS.md`
+- See Also: ERR-20260715-013
+
+---
+
+## [ERR-20260715-015] render-blueprint-invalid-cron-plan
+
+**Logged**: 2026-07-15T23:02:00+05:00
+**Priority**: high
+**Status**: resolved
+**Area**: infra
+
+### Summary
+Render could not sync the committed Node 24 Blueprint because all four cron services used the unsupported `free` plan.
+
+### Error
+
+`services[1-4].plan: free not a valid plan for service type cron`
+
+### Context
+- The initial deployment of merge commit `eefebad` correctly failed because the existing Blueprint-managed service still held `NODE_VERSION=20`.
+- Service-level environment edits triggered rebuilds but were reverted to the Blueprint-managed value.
+- Render's Blueprint parser showed `NODE_VERSION: 24` in the committed file but refused the entire sync on the invalid cron plans.
+
+### Suggested Fix
+Use a Render-supported cron plan and test the Blueprint's runtime/plan invariants in the repository before deployment.
+
+### Metadata
+- Reproducible: yes
+- Related Files: `render.yaml`, `tests/render-blueprint.test.mjs`, `package.json`
+- See Also: ERR-20260715-013
+
+### Resolution
+- **Resolved**: 2026-07-15T23:06:00+05:00
+- **Notes**: Moved the four cost-bearing cron services to the explicit opt-in `render.cron.yaml` Blueprint with Render's supported `starter` plan. The primary `render.yaml` remains web-only. Added a root Node test that pins both Blueprints to Node 24 and rejects `free` cron plans. Node 24 focused tests and the full release gauntlet passed.
+
+---
+
+## [ERR-20260715-016] stale-frontend-skill-path
+
+**Logged**: 2026-07-15T23:20:00+05:00
+**Priority**: low
+**Status**: resolved
+**Area**: docs
+
+### Summary
+The first frontend-orchestrator read targeted the older iCloud checkout, where the newly merged `.agents` skill catalog was not present.
+
+### Error
+
+`sed: nexus-core/.agents/skills/nexus-frontend-orchestrator/SKILL.md: No such file or directory`
+
+### Context
+- Git publication and production evidence had already moved to the clean external clone because the iCloud checkout cannot fetch reliably.
+- The canonical skill exists in the external clone at `.agents/skills/nexus-frontend-orchestrator/SKILL.md`.
+
+### Suggested Fix
+Resolve repository-local skills from the active worktree rather than a stale sibling checkout.
+
+### Metadata
+- Reproducible: yes
+- Related Files: `AGENTS.md`, `.agents/skills/nexus-frontend-orchestrator/SKILL.md`
+- See Also: ERR-20260715-014
+
+### Resolution
+- **Resolved**: 2026-07-15T23:20:00+05:00
+- **Notes**: Switched the working directory to the clean external clone, read the current frontend/build-loop skill instructions and references in full, and continued without changing the stale checkout.
+
+---
+
+## [ERR-20260715-017] node-24-nvm-path-assumption
+
+**Logged**: 2026-07-15T23:22:00+05:00
+**Priority**: low
+**Status**: resolved
+**Area**: infra
+
+### Summary
+The first Node 24 verification command assumed an NVM installation that this workstation does not use.
+
+### Error
+
+`zsh:source:1: no such file or directory: /Users/alijanjua/.nvm/nvm.sh`
+
+### Context
+- The command stopped before running any test or build.
+- Codex's bundled runtime and Homebrew both provide Node 24; the interactive shell's first `node` remains the Node 22 compatibility rung.
+
+### Suggested Fix
+Resolve the configured desktop runtime or prepend `/opt/homebrew/opt/node@24/bin` instead of assuming NVM.
+
+### Metadata
+- Reproducible: yes
+- Related Files: `AGENTS.md`, `.learnings/ERRORS.md`
+
+### Resolution
+- **Resolved**: 2026-07-15T23:23:00+05:00
+- **Notes**: Confirmed the bundled runtime is Node 24.14.0 and selected the Homebrew Node 24 binary directory for repository verification.
+
+---
+
+## [ERR-20260715-018] smoke-script-wrong-working-directory
+
+**Logged**: 2026-07-15T23:26:00+05:00
+**Priority**: low
+**Status**: resolved
+**Area**: infra
+
+### Summary
+The first post-deploy domain smoke invoked the Mission Control script from the monorepo root.
+
+### Error
+
+`Cannot find module '/Users/alijanjua/.codex/worktrees/nexus-core-production-promotion/scripts/smoke-domain.mjs'`
+
+### Context
+- The script is declared in `apps/mission-control/package.json` and resolves its path relative to that workspace.
+- No production request was made before the path error.
+
+### Suggested Fix
+Run the package script through the Mission Control npm workspace.
+
+### Metadata
+- Reproducible: yes
+- Related Files: `apps/mission-control/package.json`, `apps/mission-control/scripts/smoke-domain.mjs`
+
+### Resolution
+- **Resolved**: 2026-07-15T23:26:00+05:00
+- **Notes**: Re-ran with `npm run --workspace apps/mission-control smoke:domain` under Node 24.
+
+---
+
+## [ERR-20260715-019] smoke-script-positional-url-assumption
+
+**Logged**: 2026-07-15T23:27:00+05:00
+**Priority**: low
+**Status**: resolved
+**Area**: infra
+
+### Summary
+The corrected workspace smoke still passed the production URL as a positional argument, but the runner accepts only environment variables.
+
+### Error
+
+`Missing APP_URL or NEXT_PUBLIC_APP_URL.`
+
+### Context
+- The runner's header documents `APP_URL=https://app.pinavia.co npm run smoke:domain -w @nexus/mission-control`.
+- It exited before making a production request.
+
+### Suggested Fix
+Set `APP_URL` and, when verifying the production allowlist, `EXPECT_CORS_ORIGIN` in the command environment.
+
+### Metadata
+- Reproducible: yes
+- Related Files: `apps/mission-control/scripts/smoke-domain.mjs`
+
+### Resolution
+- **Resolved**: 2026-07-15T23:27:00+05:00
+- **Notes**: Re-ran with the runner's documented environment contract and the canonical Pinavia origin.
+
+---
+
+## [ERR-20260715-020] github-remote-commit-refs-rejection
+
+**Logged**: 2026-07-15T23:35:00+05:00
+**Priority**: medium
+**Status**: resolved
+**Area**: infra
+
+### Summary
+GitHub rejected the first non-force push of the locally committed Clerk session-refresh fix with a remote internal ref error.
+
+### Error
+
+`remote: fatal error in commit_refs`
+
+### Context
+- Local commit `570d43a` was created successfully.
+- The push used the normal `main -> main` fast-forward path; no force option was used.
+- The remote response reported `failure` without moving the ref.
+
+### Suggested Fix
+Confirm `origin/main` still points to the expected parent, then retry the identical non-force push once as a transient GitHub failure.
+
+### Metadata
+- Reproducible: unknown
+- Related Files: `.git`, `.learnings/ERRORS.md`
+
+### Resolution
+- **Resolved**: 2026-07-15T23:36:00+05:00
+- **Notes**: Confirmed the remote still pointed to the expected parent and retried the identical non-force push; GitHub accepted it and both checks completed successfully.
+
+---
+
+## [ERR-20260715-021] browser-hold-tool-timeout
+
+**Logged**: 2026-07-15T23:40:00+05:00
+**Priority**: low
+**Status**: resolved
+**Area**: infra
+
+### Summary
+A 30-second in-browser hold used the browser-control tool's default 30-second execution timeout and reset the automation kernel.
+
+### Error
+
+`js execution timed out; kernel reset, rerun your request`
+
+### Context
+- The Chrome tab remained open; only the automation binding reset.
+- The hold was intended to prove Clerk session refresh beyond the one-minute token TTL without inspecting cookies.
+
+### Suggested Fix
+Use a tool timeout longer than the requested hold or split the hold into shorter checks.
+
+### Metadata
+- Reproducible: yes
+- Related Files: `.learnings/ERRORS.md`
+
+### Resolution
+- **Resolved**: 2026-07-15T23:41:00+05:00
+- **Notes**: Reconnected to the existing Chrome session and reused the elapsed wall time for the token-refresh verification.
+
+---
+
+## [ERR-20260715-022] clerk-provider-browser-goto-timeout
+
+**Logged**: 2026-07-15T23:42:00+05:00
+**Priority**: medium
+**Status**: resolved
+**Area**: frontend
+
+### Summary
+After the provider-only Clerk repair deployed, browser automation did not consider a protected-route navigation complete within its 30-second execution window.
+
+### Error
+
+`js execution timed out; kernel reset, rerun your request`
+
+### Context
+- The tab had already remained on the authenticated dashboard beyond Clerk's one-minute session-token TTL.
+- The timeout occurred while awaiting navigation to `/knowledge`; it may reflect persistent Clerk background activity rather than a failed render.
+- The automation kernel reset but the Chrome tab remained open.
+
+### Suggested Fix
+Reconnect and inspect the tab's current URL and DOM directly. Treat visible app state and scoped console errors as readiness evidence instead of relying on a network-idle navigation wait.
+
+### Metadata
+- Reproducible: unknown
+- Related Files: `apps/mission-control/app/layout.tsx`, `.learnings/ERRORS.md`
+- See Also: ERR-20260715-021
+
+### Resolution
+- **Resolved**: 2026-07-15T23:56:00+05:00
+- **Notes**: Used a fresh tab and explicit `waitUntil: domcontentloaded` navigation, then separated DOM and console inspection from navigation. Protected routes rendered correctly; persistent Clerk background activity was the harness readiness mismatch.
+
+---
