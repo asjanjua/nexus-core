@@ -111,6 +111,16 @@ function NewDecisionForm({
     status: "open" as DecisionStatus
   });
 
+  useEffect(() => {
+    if (!prefillTitle && !prefillRationale) return;
+    setOpen(true);
+    setForm(f => ({
+      ...f,
+      title: prefillTitle || f.title,
+      rationale: prefillRationale || f.rationale
+    }));
+  }, [prefillTitle, prefillRationale]);
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -539,8 +549,8 @@ export default function DecisionsPage() {
       const params = new URLSearchParams(window.location.search);
       const t = params.get("prefill");
       const r = params.get("rationale");
-      if (t) setPrefillTitle(decodeURIComponent(t));
-      if (r) setPrefillRationale(decodeURIComponent(r));
+      if (t) setPrefillTitle(t);
+      if (r) setPrefillRationale(r);
     }
   }, []);
 

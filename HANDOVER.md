@@ -4,6 +4,16 @@
 
 ---
 
+## 2026-07-25 — Pinavia Product Family Final IA Screens (Figma, Design-Only)
+
+- Read and applied the verified Pinavia product-family screen plan against Figma file `NcQ8F5a0hczwGwZua2gfun`.
+- Added `12 Audit Findings` (`101:30`) with scoped fix-list rows for `01 Nexus System`, Quorum `78:3`, Quorum workflow `80:3`, and vertical input/action board `87:3`.
+- Added final hub/arc pages: `13 NexusAI Executive Room Final` (`101:158`), `14 Quorum Board Room Final` (`101:329`), `15 Meridian Submission Room Final` (`101:517`), `16 Vantage Deal Room Final` (`101:677`), and `17 Nucleus Engagement Room` (`101:837`).
+- Added `18 IA & States Reference` (`101:97`) plus local Pinavia token/text styles for easier future design changes.
+- Preserved existing history and added reconciliation markers to `78:3`, `80:3`, and `87:3`; no existing boards were deleted or replaced.
+- Follow-up exact-change review fix: replaced the 450x390 Nucleus stub cards with eight full 1440x900 desktop screens, including a proper `Firm Profile & Brand` white-label boundary comparison, and expanded the audit checklist to 12 checks.
+- Code implementation remains pending. Recommended order is NexusAI nav consolidation first, then Quorum reconciliation in `/board`, Meridian route, Vantage route, and Nucleus registry/routes last.
+
 ## 2026-07-25 — Clerk Two-Host CSP Correction (Local, Pending CI and Deploy)
 
 - Clerk custom domains use two hosts in production: `clerk.pinavia.co` serves the browser SDK and `accounts.pinavia.co` hosts sign-in/sign-up. `security-headers.ts` now derives and allowlists both from the frontend-domain and hosted-auth URL configuration. Keep `NEXT_PUBLIC_CLERK_DOMAIN` set to the frontend API host, not the hosted-auth host.

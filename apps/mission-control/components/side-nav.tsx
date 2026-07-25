@@ -5,6 +5,16 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 // ---------------------------------------------------------------------------
+// Three-tier IA (locked 2026-07-25, see Figma "18 IA & States Reference"):
+//   Tier 1 — Room: the Executive Room hub, always first.
+//   Tier 2 — Arcs: 1. Connect · 2. Analyse · 3. Decide · 4. Prove, numbered
+//            in workflow order. The numbering is the teaching mechanism.
+//   Tier 3 — Spine: collapsed-by-default Workspace group (Settings et al.)
+//            plus Specialist Rooms (role dashboards, drill-down surfaces).
+// Hard cap: 6 top-level entries (Room + 4 arcs + collapsed spine).
+// Lifecycle/admin surfaces (reviewer seat, waitlist, funnel, afterlife)
+// live in the spine, not the arcs.
+//
 // Nav Health Badges — locked signature pattern (see nexus-design-system
 // skill). Quiet counts for the four states that genuinely need a human:
 // approvals pending, risks open, evidence below threshold, workflows
@@ -53,27 +63,73 @@ function badgeFor(href: string, health: NavHealth | null): { count: number; tone
   }
 }
 
-const navSections = [
+type NavItem = { href: string; label: string };
+type NavSection = { label: string; items: NavItem[] };
+
+/** Tier 1 — the Room. Always first, never grouped. */
+const roomItem: NavItem = { href: "/dashboard/ceo", label: "Executive Room" };
+
+/** Tier 2 — the four numbered arcs, in workflow order. */
+const arcSections: NavSection[] = [
   {
-    label: "Agent Rooms",
+    label: "1. Connect",
     items: [
-      { href: "/dashboard/ceo", label: "Executive Room" },
+      { href: "/sources", label: "Sources" },
+      { href: "/ingestion", label: "Ingestion" },
+      { href: "/settings/connectors", label: "Connectors" },
+    ],
+  },
+  {
+    label: "2. Analyse",
+    items: [
+      { href: "/ask", label: "Ask" },
+      { href: "/workflows", label: "Workflow Twins" },
+      { href: "/entities", label: "Company Memory" },
+      { href: "/knowledge", label: "Knowledge Workspace" },
+    ],
+  },
+  {
+    label: "3. Decide",
+    items: [
+      { href: "/recommendations", label: "Recommendations" },
+      { href: "/approvals", label: "Approvals" },
+      { href: "/decisions", label: "Decisions" },
+      { href: "/review", label: "Review Queue" },
+    ],
+  },
+  {
+    label: "4. Prove",
+    items: [
+      { href: "/export", label: "Export Hub" },
+      { href: "/export/weekly-brief", label: "Weekly Brief" },
+      { href: "/export/one-pager", label: "One-Pager" },
+      { href: "/pilot-kit", label: "Pilot Kit" },
+    ],
+  },
+];
+
+/** Tier 3 — collapsed-by-default spine groups. */
+const spineSections: NavSection[] = [
+  {
+    label: "Specialist Rooms",
+    items: [
       { href: "/dashboard/coo", label: "Operating Room" },
       { href: "/dashboard/cbo", label: "Growth Room" },
       { href: "/dashboard/cto", label: "Technology Room" },
       { href: "/dashboard/cfo", label: "Finance Room" },
       { href: "/dashboard/cro", label: "Risk Room" },
-      { href: "/dashboard/chro", label: "People Room" }
-    ]
+      { href: "/dashboard/chro", label: "People Room" },
+      { href: "/board", label: "Board Room" },
+    ],
   },
   {
-    label: "Intelligence",
+    label: "Workspace",
     items: [
-      { href: "/ask", label: "Ask" },
-      { href: "/board", label: "Board Room" },
-      { href: "/recommendations", label: "Recommendations" },
-      { href: "/decisions", label: "Decisions" },
-      { href: "/workflows", label: "Workflow Twins" },
+      { href: "/settings", label: "Settings" },
+      { href: "/settings/workspace", label: "Workspace" },
+      { href: "/settings/policies", label: "Policies" },
+      { href: "/reviewer-seat", label: "Reviewer Seat" },
+      { href: "/pro-waitlist", label: "Nexus Pro" },
       // Funnel is operator-only by default (decision 2026-07-09). The nav entry
       // is opt-in via build-time env so customers never see a dead operator link;
       // the API enforces access regardless (NEXUS_FUNNEL_VISIBILITY).
@@ -81,40 +137,34 @@ const navSections = [
         ? [{ href: "/funnel", label: "Pilot Funnel" }]
         : []),
       { href: "/pilot/afterlife", label: "Pilot Afterlife" },
-      { href: "/entities", label: "Company Memory" },
-      { href: "/knowledge", label: "Knowledge Workspace" },
-      { href: "/approvals", label: "Approvals" },
-      { href: "/review", label: "Review Queue" }
-    ]
+    ],
   },
-  {
-    label: "Data",
-    items: [
-      { href: "/sources", label: "Sources" },
-      { href: "/ingestion", label: "Ingestion" }
-    ]
-  },
-  {
-    label: "Exports",
-    items: [
-      { href: "/export", label: "Export Hub" },
-      { href: "/export/weekly-brief", label: "Weekly Brief" },
-      { href: "/export/one-pager", label: "One-Pager" },
-      { href: "/pilot-kit", label: "Pilot Kit" },
-    ]
-  },
-  {
-    label: "Configuration",
-    items: [
-      { href: "/settings", label: "Settings" },
-      { href: "/settings/connectors", label: "Connectors" },
-      { href: "/settings/workspace", label: "Workspace" },
-      { href: "/settings/policies", label: "Policies" },
-      { href: "/reviewer-seat", label: "Reviewer Seat" },
-      { href: "/pro-waitlist", label: "Nexus Pro" },
-    ]
-  }
 ];
+
+function NavLink({
+  item,
+  active,
+  badge,
+}: {
+  item: NavItem;
+  active: boolean;
+  badge: { count: number; tone: BadgeTone } | null;
+}) {
+  return (
+    <Link
+      href={item.href}
+      className={[
+        "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition",
+        active
+          ? "border-nexus-accent/30 bg-nexus-accent/10 text-white font-medium"
+          : "border-transparent text-white/60 hover:border-white/10 hover:bg-white/[0.045] hover:text-white",
+      ].join(" ")}
+    >
+      <span>{item.label}</span>
+      {badge && <NavBadge count={badge.count} tone={badge.tone} />}
+    </Link>
+  );
+}
 
 export function SideNav() {
   const pathname = usePathname();
@@ -140,6 +190,47 @@ export function SideNav() {
     return pathname === href || pathname.startsWith(href + "/");
   }
 
+  /** A spine group renders open if the current route lives inside it. */
+  function spineGroupOpen(section: NavSection) {
+    return section.items.some((item) => isActive(item.href));
+  }
+
+  const renderArcs = (
+    <>
+      {/* Tier 1 — Room */}
+      <div>
+        <NavLink item={roomItem} active={isActive(roomItem.href)} badge={badgeFor(roomItem.href, health)} />
+      </div>
+
+      {/* Tier 2 — numbered arcs */}
+      {arcSections.map((section) => (
+        <div key={section.label}>
+          <p className="mb-1.5 px-3 text-xs uppercase text-white/30">{section.label}</p>
+          <div className="space-y-0.5">
+            {section.items.map((item) => (
+              <NavLink key={item.href} item={item} active={isActive(item.href)} badge={badgeFor(item.href, health)} />
+            ))}
+          </div>
+        </div>
+      ))}
+
+      {/* Tier 3 — collapsed spine */}
+      {spineSections.map((section) => (
+        <details key={section.label} className="group/spine" open={spineGroupOpen(section)}>
+          <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-1 text-xs uppercase text-white/30 transition hover:text-white/50">
+            <span>{section.label}</span>
+            <span className="transition group-open/spine:rotate-180">⌄</span>
+          </summary>
+          <div className="mt-1 space-y-0.5">
+            {section.items.map((item) => (
+              <NavLink key={item.href} item={item} active={isActive(item.href)} badge={badgeFor(item.href, health)} />
+            ))}
+          </div>
+        </details>
+      ))}
+    </>
+  );
+
   return (
     <>
       <div className="border-b border-white/10 bg-[#090f1b]/95 p-3 md:hidden">
@@ -154,31 +245,7 @@ export function SideNav() {
             <span className="text-white/40 transition group-open:rotate-180">⌄</span>
           </summary>
           <nav className="mt-3 max-h-[70vh] space-y-4 overflow-y-auto rounded-lg border border-white/10 bg-[#0b1220] p-3">
-            {navSections.map((section) => (
-              <div key={section.label}>
-                <p className="mb-1.5 px-2 text-xs uppercase text-white/30">{section.label}</p>
-                <div className="space-y-0.5">
-                  {section.items.map((item) => {
-                    const badge = badgeFor(item.href, health);
-                    return (
-                      <Link
-                        key={item.href}
-                        href={item.href}
-                        className={[
-                          "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition",
-                          isActive(item.href)
-                            ? "bg-white/10 text-white font-medium"
-                            : "text-white/60 hover:bg-white/10 hover:text-white"
-                        ].join(" ")}
-                      >
-                        <span>{item.label}</span>
-                        {badge && <NavBadge count={badge.count} tone={badge.tone} />}
-                      </Link>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
+            {renderArcs}
           </nav>
         </details>
       </div>
@@ -193,33 +260,7 @@ export function SideNav() {
             <p className="text-xs text-white/40">Mission Control</p>
           </div>
         </div>
-        <nav className="space-y-5">
-          {navSections.map((section) => (
-            <div key={section.label}>
-              <p className="mb-1.5 px-3 text-xs uppercase text-white/30">{section.label}</p>
-              <div className="space-y-0.5">
-                {section.items.map((item) => {
-                  const badge = badgeFor(item.href, health);
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={[
-                        "flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition",
-                        isActive(item.href)
-                          ? "border-nexus-accent/30 bg-nexus-accent/10 text-white font-medium"
-                          : "border-transparent text-white/60 hover:border-white/10 hover:bg-white/[0.045] hover:text-white"
-                      ].join(" ")}
-                    >
-                      <span>{item.label}</span>
-                      {badge && <NavBadge count={badge.count} tone={badge.tone} />}
-                    </Link>
-                  );
-                })}
-              </div>
-            </div>
-          ))}
-        </nav>
+        <nav className="space-y-5">{renderArcs}</nav>
       </aside>
     </>
   );

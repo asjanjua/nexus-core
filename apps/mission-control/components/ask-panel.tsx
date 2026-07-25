@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { ConfidenceBadge } from "@/components/ui/trust-drawer-trigger";
 import { HelpLabel } from "@/components/ui/help-dialog";
+import { AiPanel } from "@/components/ui/nexus-primitives";
 
 type AskResult = {
   answer: string;
@@ -285,6 +287,28 @@ export function AskPanel({
 
       {result ? (
         <section className="panel space-y-3">
+          {/* Evidence FIRST — the governance order (Figma "20 NexusAI Ask").
+              The reader sees what the answer rests on before the answer itself. */}
+          {result.evidenceRefs.length > 0 && (
+            <div className="rounded-lg border border-nexus-sky/25 bg-nexus-sky/5 px-3 py-2">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-nexus-sky">
+                Evidence used — {result.evidenceRefs.length} source{result.evidenceRefs.length !== 1 ? "s" : ""}
+              </p>
+              <div className="mt-1.5 flex flex-wrap gap-1.5">
+                {result.evidenceRefs.slice(0, 6).map((ref) => (
+                  <span key={ref} className="max-w-[16rem] truncate rounded-md bg-nexus-sky/10 px-2 py-0.5 font-mono text-[11px] text-nexus-sky/90">
+                    {ref}
+                  </span>
+                ))}
+                {result.evidenceRefs.length > 6 && (
+                  <span className="rounded-md px-2 py-0.5 text-[11px] text-white/40">
+                    +{result.evidenceRefs.length - 6} more
+                  </span>
+                )}
+              </div>
+            </div>
+          )}
+
           <p className="panel-title">
             <HelpLabel
               title="Ask answer"
@@ -295,7 +319,9 @@ export function AskPanel({
           </p>
 
           {result.answer ? (
-            <p className="whitespace-pre-wrap text-sm leading-relaxed text-white/85">{result.answer}</p>
+            <AiPanel>
+              <p className="whitespace-pre-wrap pr-10 text-sm leading-relaxed text-white/85">{result.answer}</p>
+            </AiPanel>
           ) : (
             <p className="rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-sm text-amber-200">
               AI returned an empty response. Verify your LLM API key is set and the model name is correct.
@@ -333,17 +359,30 @@ export function AskPanel({
             <p className="text-xs text-amber-200/80">Escalation: {result.escalationReason}</p>
           )}
 
-          {result.evidenceRefs.length > 0 && (
-            <details className="rounded-lg border border-white/10 bg-black/10 px-3 py-2">
-              <summary className="cursor-pointer text-xs text-white/45 transition hover:text-white/70">
-                {result.evidenceRefs.length} source{result.evidenceRefs.length !== 1 ? "s" : ""} used
-              </summary>
-              <ul className="mt-2 space-y-1">
-                {result.evidenceRefs.map((ref) => (
-                  <li key={ref} className="truncate font-mono text-xs text-white/30">{ref}</li>
-                ))}
-              </ul>
-            </details>
+          {/* Next action — answers never become decisions automatically.
+              Routing to the decision flow keeps the human approval boundary. */}
+          {!result.refused && result.answer && (
+            <div className="flex flex-wrap items-center gap-3 border-t border-white/10 pt-3">
+              <Link
+                href={`/decisions?prefill=${encodeURIComponent(query.slice(0, 300))}&rationale=${encodeURIComponent(
+                  [
+                    // Answer truncated to keep the URL well under browser limits;
+                    // the full answer stays in Ask history.
+                    result.answer.slice(0, 1200),
+                    result.evidenceRefs.length > 0
+                      ? `\n\nEvidence: ${result.evidenceRefs.join(", ")}`
+                      : "",
+                    `\nConfidence: ${Math.round(result.confidence * 100)}% · via Ask`,
+                  ].join("")
+                )}`}
+                className="btn-primary inline-flex items-center text-sm"
+              >
+                Draft decision for approval
+              </Link>
+              <span className="text-xs text-white/40">
+                Answers never become decisions automatically — drafting routes to the approval queue with this evidence attached.
+              </span>
+            </div>
           )}
         </section>
       ) : null}

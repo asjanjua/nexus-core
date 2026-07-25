@@ -2,6 +2,17 @@
 
 ---
 
+## Unreleased — Pinavia Product Family Final IA Screens (2026-07-25)
+
+- Finalized a design-only Figma pass in `Nexus System` (`NcQ8F5a0hczwGwZua2gfun`) using the verified Pinavia product-family screen plan and locked design-system rules.
+- Added page `12 Audit Findings` with a fix-list for the scoped existing boards, plus reconciliation markers on legacy boards `78:3`, `80:3`, and `87:3` without deleting history.
+- Added final product pages for NexusAI, Quorum, Meridian, Vantage, and Nucleus with the shared three-tier IA, one-primary-action hub skeleton, Trust Drawer entry, consequence preview, Now/Next strip, state coverage, and arc landings.
+- Added `17 Nucleus Engagement Room` with the greenfield Engagement Room hub, four state treatments, and eight planned Nucleus screens, including the white-label override boundary panel.
+- Follow-up exact-change review fix: rebuilt the eight Nucleus product screens as full 1440x900 desktop frames and expanded the Audit Findings pre-ship checklist to all 12 checks.
+- Added `18 IA & States Reference` and local Pinavia token/text styles so future Figma changes have a visible, editable system reference.
+
+---
+
 ## Unreleased — Reviewer Separation and Guided Company Setup (2026-07-25)
 
 - Fixed Clerk custom-domain CSP handling: Nexus now allowlists both the Clerk frontend API host and the separately configured hosted authentication host.
