@@ -643,7 +643,7 @@ export default function HomePage() {
                 Enter NexusAI
               </Link>
               <Link href="/readiness" className="btn-subtle px-5 py-3" prefetch={false}>
-                Run readiness check
+                Run the diagnostic
               </Link>
               <Link href="/product-brief" className="btn-subtle px-5 py-3" prefetch={false}>
                 View product brief
