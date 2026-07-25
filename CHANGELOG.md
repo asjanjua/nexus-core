@@ -2,6 +2,12 @@
 
 ---
 
+## Unreleased — Reviewer Separation and Guided Company Setup (2026-07-25)
+
+- Hardened reviewer-seat acceptance: the invite is consumed only by a Clerk user with a verified email matching the invite and a non-admin organization role. This blocks an administrator from self-accepting a reviewer seat through a secondary email.
+- Added a first-run, dismissible Company Setup helper for authenticated users. It guides company context, evidence intake, approval, and first-workflow selection without claiming server-owned readiness steps are complete.
+- Added `docs/DEMO_ACCESS_RUNBOOK.md` with the recommended three-identity Clerk demo model: owner/admin, executive/member, and reviewer/member. Passwords remain managed exclusively by Clerk and are never stored in Nexus code or configuration.
+
 ## Unreleased — Node 24 Production Promotion (2026-07-15)
 
 - Promoted Node 24 through GitHub CI/CodeQL and Render, with public domain smoke passing 8/8 on the verified application commit.

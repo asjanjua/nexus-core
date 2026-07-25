@@ -922,13 +922,16 @@ export const store = {
   acceptReviewerSeat(
     inviteCodeHash: string,
     clerkUserId: string,
+    verifiedEmails: readonly string[],
     now = new Date()
   ): ReviewerSeat | null {
+    const normalizedEmails = new Set(verifiedEmails.map((email) => email.trim().toLowerCase()));
     for (const seat of reviewerSeatStore.values()) {
       if (
         seat.inviteCodeHash === inviteCodeHash &&
         seat.status === "invited" &&
-        new Date(seat.expiresAt) > now
+        new Date(seat.expiresAt) > now &&
+        normalizedEmails.has(seat.email.trim().toLowerCase())
       ) {
         const accepted: StoredReviewerSeat = {
           ...seat,

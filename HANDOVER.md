@@ -4,6 +4,15 @@
 
 ---
 
+## 2026-07-25 — Reviewer Separation Fix + Company Setup Helper (Local, Not Yet Deployed)
+
+- Closed the reviewer-seat self-accept loophole locally. `POST /api/reviewer-seat/accept` now requires the accepting Clerk user to be a non-admin organization member and to hold a verified email matching the invited address before the single-use invite can be consumed. Repository and in-memory paths also require the normalized verified email list, so a future server caller cannot bypass that check accidentally.
+- Added `components/company-setup-helper.tsx` to the authenticated shell. The first-run popup recommends the actual four-step product sequence: company context, small evidence pack, approval, and first workflow. It is dismissible per browser and can be reopened from the floating button.
+- Added `docs/DEMO_ACCESS_RUNBOOK.md`: owner/admin, executive/member, reviewer/member. Clerk is the only credential authority; no shared/default/admin password is stored in Nexus. `NEXUS_OPERATOR_USER_IDS` is reserved for the owner if the internal funnel view is required.
+- Verification pending at handoff: focused reviewer-seat acceptance tests, full suite, typecheck/build, commit, Node 24 CI, deployment, then a genuine two-account browser rehearsal.
+
+---
+
 ## 2026-07-16 — Reviewer-Seat Invite/Accept Verified Live (Two-Account Rehearsal, Part 1)
 
 **Superseded by the correction entry below this one — the identity-binding claim here was wrong; treat it as unverified until re-tested with a genuine second Clerk identity.**

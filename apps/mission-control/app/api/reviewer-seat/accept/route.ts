@@ -9,6 +9,7 @@
 
 import { createHash } from "crypto";
 import { z } from "zod";
+import { currentUser } from "@clerk/nextjs/server";
 import { ok, fail } from "@/lib/api";
 import { resolveAuth } from "@/lib/api-auth";
 import { repository } from "@/lib/data/repository";
@@ -26,6 +27,10 @@ export async function POST(request: Request) {
   const auth = await resolveAuth(request);
   if (!auth) return fail("unauthorized", 401);
 
+  // A reviewer is a genuine second set of eyes. An org admin can invite and
+  // manage the seat, but cannot redeem it and then approve their own work.
+  if (auth.isOrgAdmin) return fail("reviewer_requires_non_admin_member", 403);
+
   const limit = rateLimit(`reviewer-accept:${auth.userId}`, RATE_LIMIT, RATE_WINDOW_MS);
   if (!limit.allowed) return fail("rate_limited", 429, { retryAfter: limit.retryAfter });
 
@@ -33,9 +38,19 @@ export async function POST(request: Request) {
   const parsed = acceptSchema.safeParse(body);
   if (!parsed.success) return fail("invalid_request", 400);
 
+  const clerkUser = await currentUser().catch(() => null);
+  if (!clerkUser || clerkUser.id !== auth.userId) {
+    return fail("reviewer_identity_verification_failed", 403);
+  }
+
+  const verifiedEmails = clerkUser.emailAddresses
+    .filter((address) => address.verification?.status === "verified")
+    .map((address) => address.emailAddress.trim().toLowerCase());
+  if (verifiedEmails.length === 0) return fail("reviewer_email_unverified", 403);
+
   const inviteCodeHash = createHash("sha256").update(parsed.data.inviteCode).digest("hex");
-  const seat = await repository.acceptReviewerSeat(inviteCodeHash, auth.userId);
-  if (!seat) return fail("invite_invalid_or_expired", 404);
+  const seat = await repository.acceptReviewerSeat(inviteCodeHash, auth.userId, verifiedEmails);
+  if (!seat) return fail("invite_invalid_expired_or_email_mismatch", 404);
 
   // Reflect the identity-bound reviewer on the seat's workspace profile.
   await repository

@@ -37,7 +37,7 @@ describe("reviewer seat lifecycle (migration 0035)", () => {
   it("accept binds the seat to the accepting Clerk user", async () => {
     const ws = `ws-reviewer-${Date.now()}-b`;
     const { inviteCodeHash } = await createSeat(ws);
-    const accepted = await repository.acceptReviewerSeat(inviteCodeHash, "user_reviewer_1");
+    const accepted = await repository.acceptReviewerSeat(inviteCodeHash, "user_reviewer_1", ["reviewer@example.com"]);
     expect(accepted?.status).toBe("accepted");
     expect(accepted?.clerkUserId).toBe("user_reviewer_1");
     expect(accepted?.acceptedAt).toBeTruthy();
@@ -46,11 +46,21 @@ describe("reviewer seat lifecycle (migration 0035)", () => {
     expect(active?.id).toBe(accepted?.id);
   });
 
+  it("does not consume an invite when the verified Clerk email does not match", async () => {
+    const ws = `ws-reviewer-${Date.now()}-email-mismatch`;
+    const { inviteCodeHash } = await createSeat(ws);
+
+    const accepted = await repository.acceptReviewerSeat(inviteCodeHash, "user_wrong_email", ["other@example.com"]);
+
+    expect(accepted).toBeNull();
+    expect((await repository.listReviewerSeats(ws))[0]?.status).toBe("invited");
+  });
+
   it("invite codes are single-use", async () => {
     const ws = `ws-reviewer-${Date.now()}-c`;
     const { inviteCodeHash } = await createSeat(ws);
-    const first = await repository.acceptReviewerSeat(inviteCodeHash, "user_one");
-    const second = await repository.acceptReviewerSeat(inviteCodeHash, "user_two");
+    const first = await repository.acceptReviewerSeat(inviteCodeHash, "user_one", ["reviewer@example.com"]);
+    const second = await repository.acceptReviewerSeat(inviteCodeHash, "user_two", ["reviewer@example.com"]);
     expect(first?.clerkUserId).toBe("user_one");
     expect(second).toBeNull();
   });
@@ -60,14 +70,14 @@ describe("reviewer seat lifecycle (migration 0035)", () => {
     const { inviteCodeHash } = await createSeat(ws, {
       expiresAt: new Date(Date.now() - 1000),
     });
-    const accepted = await repository.acceptReviewerSeat(inviteCodeHash, "user_late");
+    const accepted = await repository.acceptReviewerSeat(inviteCodeHash, "user_late", ["reviewer@example.com"]);
     expect(accepted).toBeNull();
   });
 
   it("revoking an accepted seat clears the active reviewer", async () => {
     const ws = `ws-reviewer-${Date.now()}-e`;
     const { inviteCodeHash } = await createSeat(ws);
-    const accepted = await repository.acceptReviewerSeat(inviteCodeHash, "user_reviewer_2");
+    const accepted = await repository.acceptReviewerSeat(inviteCodeHash, "user_reviewer_2", ["reviewer@example.com"]);
     expect(accepted).not.toBeNull();
 
     const revoked = await repository.revokeReviewerSeat(ws, accepted!.id);
@@ -94,15 +104,15 @@ describe("reviewer seat lifecycle (migration 0035)", () => {
     const refreshed = await repository.refreshReviewerInvite(ws, seat.id, newHash, new Date(Date.now() + 86_400_000));
     expect(refreshed?.id).toBe(seat.id);
 
-    expect(await repository.acceptReviewerSeat(oldHash, "user_old")).toBeNull();
-    const accepted = await repository.acceptReviewerSeat(newHash, "user_new");
+    expect(await repository.acceptReviewerSeat(oldHash, "user_old", ["reviewer@example.com"])).toBeNull();
+    const accepted = await repository.acceptReviewerSeat(newHash, "user_new", ["reviewer@example.com"]);
     expect(accepted?.clerkUserId).toBe("user_new");
   });
 
   it("refresh only works on invited seats, not accepted ones", async () => {
     const ws = `ws-reviewer-${Date.now()}-h`;
     const { inviteCodeHash } = await createSeat(ws);
-    const accepted = await repository.acceptReviewerSeat(inviteCodeHash, "user_bound");
+    const accepted = await repository.acceptReviewerSeat(inviteCodeHash, "user_bound", ["reviewer@example.com"]);
     const rotated = await repository.refreshReviewerInvite(ws, accepted!.id, "deadbeef", new Date(Date.now() + 86_400_000));
     expect(rotated).toBeNull();
   });

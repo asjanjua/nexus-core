@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { verifyPassword } from "@/lib/auth";
@@ -4032,8 +4032,11 @@ export const repository = {
    */
   async acceptReviewerSeat(
     inviteCodeHash: string,
-    clerkUserId: string
+    clerkUserId: string,
+    verifiedEmails: readonly string[]
   ): Promise<ReviewerSeat | null> {
+    const normalizedEmails = [...new Set(verifiedEmails.map((email) => email.trim().toLowerCase()).filter(Boolean))];
+    if (normalizedEmails.length === 0) return null;
     const now = new Date();
     const rows = await runDb((db) =>
       db
@@ -4043,12 +4046,13 @@ export const repository = {
           and(
             eq(reviewerSeats.inviteCodeHash, inviteCodeHash),
             eq(reviewerSeats.status, "invited"),
-            gt(reviewerSeats.expiresAt, now)
+            gt(reviewerSeats.expiresAt, now),
+            inArray(reviewerSeats.email, normalizedEmails)
           )
         )
         .returning()
     );
-    if (rows === null) return store.acceptReviewerSeat(inviteCodeHash, clerkUserId, now);
+    if (rows === null) return store.acceptReviewerSeat(inviteCodeHash, clerkUserId, normalizedEmails, now);
     if (rows.length === 0) return null;
     return mapReviewerSeatRow(rows[0]);
   },

@@ -55,7 +55,9 @@ export async function POST(request: Request) {
   const seat = await repository.createReviewerSeat({
     id: `rs_${randomUUID()}`,
     workspaceId: auth.workspaceId,
-    email: parsed.data.email,
+    // Reviewer acceptance compares against Clerk's verified email addresses.
+    // Normalize once at the boundary so the DB and no-DB fallback agree.
+    email: parsed.data.email.trim().toLowerCase(),
     name: parsed.data.name ?? null,
     inviteCodeHash,
     invitedBy: auth.userId,

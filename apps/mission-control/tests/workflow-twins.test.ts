@@ -215,7 +215,7 @@ describe("workflow twin primitives", () => {
 	      invitedBy: "user_sponsor",
 	      expiresAt: new Date(Date.now() + 86_400_000),
 	    });
-	    await repository.acceptReviewerSeat(inviteCodeHash, "user_reviewer_gate");
+	    await repository.acceptReviewerSeat(inviteCodeHash, "user_reviewer_gate", ["reviewer@example.com"]);
 	    const reviewerBound = await buildWorkflowTwinRunInput(scorerTwin, workspaceId);
 	    const gates3 = reviewerBound.payload.pilotGates as Array<{ key: string; blocked: boolean }>;
 	    expect(gates3.find((g) => g.key === "reviewer_named")?.blocked).toBe(false);
