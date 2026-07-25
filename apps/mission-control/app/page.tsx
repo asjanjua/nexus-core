@@ -7,7 +7,7 @@ import { PinaviaLockup } from "@/components/ui/pinavia-mark";
 const productFamily = [
   {
     name: "NexusAI",
-    href: "https://nexus.pinavia.io",
+    href: "/workspace",
     label: "Executive room",
     body: "Governed Ask, evidence, decisions, approvals, and audit-ready operating memory.",
     status: "Live core",
@@ -15,7 +15,7 @@ const productFamily = [
   },
   {
     name: "Quorum",
-    href: "https://quorum.pinavia.io",
+    href: "/board",
     label: "Board room",
     body: "Board packs, quorum, conflicts, resolutions, minutes, and director handoff.",
     status: "Live route",
@@ -23,7 +23,7 @@ const productFamily = [
   },
   {
     name: "Meridian",
-    href: "https://meridian.pinavia.io",
+    href: "/product-brief",
     label: "Regulatory room",
     body: "Jurisdiction scope, requirement evidence, gaps, caveats, and filing-pack prep.",
     status: "Design candidate",
@@ -31,7 +31,7 @@ const productFamily = [
   },
   {
     name: "Vantage",
-    href: "https://vantage.pinavia.io",
+    href: "/product-brief",
     label: "Deal room",
     body: "Data-room coverage, red flags, diligence questions, and investment memo handoff.",
     status: "Design candidate",
@@ -39,7 +39,7 @@ const productFamily = [
   },
   {
     name: "Nucleus",
-    href: "https://nucleus.pinavia.io",
+    href: "/product-brief",
     label: "Engagement room",
     body: "Consulting methodology packs, deliverables, evidence coverage, and white-label controls.",
     status: "Design candidate",
@@ -50,15 +50,35 @@ const productFamily = [
 // The demo path — the one sentence that explains what the product does.
 const demoPath = ["Landing", "NexusAI", "Ask", "Decision", "Approval"];
 
+// Proof numerals. Every figure carries its source — the landing page should
+// demonstrate the product's own evidence-first principle.
+const proofStats = [
+  {
+    figure: "100%",
+    body: "of answers carry their sources. Nexus refuses rather than guessing when evidence is missing.",
+    credit: "Product guarantee",
+  },
+  {
+    figure: "0",
+    body: "consequential actions leave the system without a named, identity-bound human approving them first.",
+    credit: "Governance boundary",
+  },
+  {
+    figure: "5",
+    body: "regulated rooms on one governed core — executive, board, regulatory, deal, and engagement.",
+    credit: "Product family",
+  },
+];
+
 const footerLinks: Array<{ heading: string; items: Array<{ label: string; href: string }> }> = [
   {
     heading: "Product",
     items: [
-      { label: "NexusAI", href: "https://nexus.pinavia.io" },
-      { label: "Quorum", href: "https://quorum.pinavia.io" },
-      { label: "Meridian", href: "https://meridian.pinavia.io" },
-      { label: "Vantage", href: "https://vantage.pinavia.io" },
-      { label: "Nucleus", href: "https://nucleus.pinavia.io" },
+      { label: "NexusAI", href: "/workspace" },
+      { label: "Quorum", href: "/board" },
+      { label: "Meridian", href: "/product-brief" },
+      { label: "Vantage", href: "/product-brief" },
+      { label: "Nucleus", href: "/product-brief" },
     ],
   },
   {
@@ -197,10 +217,11 @@ function MiniRoomMap() {
 
         <div className="space-y-3">
           {productFamily.map((product, index) => (
-            <a
+            <Link
               key={product.name}
               href={product.href}
               className="group block rounded-lg border border-white/10 bg-white/[0.035] p-3 transition duration-150 hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nexus-accent motion-reduce:hover:translate-y-0"
+              prefetch={false}
             >
               <div className="flex items-center justify-between gap-3">
                 <div>
@@ -211,7 +232,7 @@ function MiniRoomMap() {
                   {String(index + 1).padStart(2, "0")}
                 </span>
               </div>
-            </a>
+            </Link>
           ))}
         </div>
       </div>
@@ -230,15 +251,19 @@ export default function HomePage() {
             <div className="space-y-7">
               <PinaviaLockup />
 
-              <div className="space-y-5">
-                <h1 className="max-w-3xl text-4xl font-semibold leading-tight text-white sm:text-5xl lg:text-6xl">
-                  Every AI decision. Evidence-backed. Human-approved.
+              <div className="space-y-6">
+                <p className="micro-label text-white/35">01 &nbsp;/&nbsp; The governed operating layer</p>
+                <h1 className="display-hero max-w-3xl text-white">
+                  Every AI decision.
+                  <br />
+                  Evidence-backed.
+                  <br />
+                  <span className="display-accent text-nexus-accent">Human-approved.</span>
                 </h1>
-                <p className="max-w-2xl text-base leading-7 text-white/70 sm:text-lg">
+                <p className="max-w-xl text-base leading-7 text-white/60 sm:text-lg">
                   Your team already has the documents. Pinavia reads them, runs specialist analysis
-                  across strategy, risk and compliance, and returns one answer you can act on — with
-                  every claim traceable to its source and every consequential action approved by a
-                  named human.
+                  across strategy, risk and compliance, and returns one answer you can act on — every
+                  claim traceable to its source, every consequential action approved by a named human.
                 </p>
               </div>
 
@@ -257,11 +282,11 @@ export default function HomePage() {
               </div>
             </div>
 
-            <div className="grid gap-3 pt-10 sm:grid-cols-2">
+            <div className="grid gap-3 pt-12 sm:grid-cols-2">
               {trustSignals.map(([title, body]) => (
-                <div key={title} className="rounded-lg border border-white/10 bg-white/[0.035] p-4">
+                <div key={title} className="border-l border-white/10 pl-4">
                   <p className="text-sm font-semibold text-white">{title}</p>
-                  <p className="mt-1 text-xs leading-5 text-white/50">{body}</p>
+                  <p className="mt-1 text-xs leading-5 text-white/45">{body}</p>
                 </div>
               ))}
             </div>
@@ -271,25 +296,46 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-8">
-        <div className="border-y border-white/10 py-8">
+      {/* Proof band — large numerals, each with its source credit. */}
+      <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8">
+        <p className="micro-label text-white/35">02 &nbsp;/&nbsp; Why it holds up</p>
+        <h2 className="display-hero mt-5 max-w-3xl text-white" style={{ fontSize: "clamp(2rem,4vw,3rem)" }}>
+          An answer you can <span className="display-accent text-nexus-accent">prove</span> you were
+          right to approve.
+        </h2>
+        <div className="mt-14 grid gap-10 md:grid-cols-3">
+          {proofStats.map((stat) => (
+            <div key={stat.credit} className="border-t border-white/10 pt-6">
+              <p className="stat-numeral">{stat.figure}</p>
+              <p className="mt-4 max-w-xs text-sm leading-6 text-white/60">{stat.body}</p>
+              <p className="micro-label mt-4 text-white/30">{stat.credit}</p>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="mx-auto max-w-7xl px-4 pb-24 sm:px-6 lg:px-8">
+        <div className="border-t border-white/10 pt-14">
           <div className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="text-xs uppercase tracking-wide text-white/35">Product family</p>
-              <h2 className="mt-2 text-2xl font-semibold text-white">One governed core, five rooms.</h2>
+              <p className="micro-label text-white/35">03 &nbsp;/&nbsp; Product family</p>
+              <h2 className="display-hero mt-5 text-white" style={{ fontSize: "clamp(2rem,4vw,3rem)" }}>
+                One governed core, <span className="display-accent text-nexus-accent">five rooms</span>.
+              </h2>
             </div>
-            <p className="max-w-xl text-sm leading-6 text-white/50">
-              Subdomains create clean buyer entrypoints. The runtime stays shared until each vertical
-              deserves its own route, model, tests, and operating P&L.
+            <p className="max-w-md text-sm leading-6 text-white/45">
+              Same skeleton, same trust patterns, different first screen and vocabulary. Learn one
+              room and you have learned all five.
             </p>
           </div>
 
-          <div className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+          <div className="mt-10 grid gap-3 md:grid-cols-2 xl:grid-cols-5">
             {productFamily.map((product) => (
-              <a
+              <Link
                 key={product.name}
                 href={product.href}
                 className="group rounded-lg border border-white/10 bg-white/[0.035] p-4 transition duration-150 hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/[0.06] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nexus-accent motion-reduce:hover:translate-y-0"
+                prefetch={false}
               >
                 <div className="flex items-center justify-between gap-3">
                   <p className="font-semibold text-white">{product.name}</p>
@@ -299,7 +345,7 @@ export default function HomePage() {
                 </div>
                 <p className="mt-2 text-xs uppercase tracking-wide text-white/35">{product.label}</p>
                 <p className="mt-3 text-sm leading-6 text-white/55">{product.body}</p>
-              </a>
+              </Link>
             ))}
           </div>
         </div>
@@ -322,12 +368,22 @@ export default function HomePage() {
                 <ul className="mt-3 space-y-2">
                   {group.items.map((item) => (
                     <li key={item.label}>
-                      <a
-                        href={item.href}
-                        className="rounded text-sm text-white/55 transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nexus-accent"
-                      >
-                        {item.label}
-                      </a>
+                      {item.href.startsWith("/") ? (
+                        <Link
+                          href={item.href}
+                          className="rounded text-sm text-white/55 transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nexus-accent"
+                          prefetch={false}
+                        >
+                          {item.label}
+                        </Link>
+                      ) : (
+                        <a
+                          href={item.href}
+                          className="rounded text-sm text-white/55 transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nexus-accent"
+                        >
+                          {item.label}
+                        </a>
+                      )}
                     </li>
                   ))}
                 </ul>
