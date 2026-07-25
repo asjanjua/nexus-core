@@ -110,6 +110,86 @@ const comparisonRows = [
   ["Boundary", "May imply approval", "Human owner required before action"],
 ];
 
+const specialUsps = [
+  {
+    title: "Human approval is a product primitive",
+    proof: "The machine can draft, route, summarize, and compare. It cannot approve, sign, file, certify, or mark a matter complete.",
+    detail:
+      "That boundary is designed into the workflow, not hidden in a policy note. Every consequential output lands with an owner, a status, and an approval path.",
+    signal: "approval boundary",
+  },
+  {
+    title: "Evidence is visible before the answer becomes useful",
+    proof: "Sources, caveats, confidence, and missing-evidence warnings sit beside the answer rather than behind a separate audit export.",
+    detail:
+      "A buyer can see what the system relied on before they turn an answer into a decision, minutes note, filing pack, or investment memo.",
+    signal: "source-first UI",
+  },
+  {
+    title: "Each vertical owns its own workflow",
+    proof: "Quorum, Meridian, Vantage, and Nucleus are not skins over one generic chatbot arc.",
+    detail:
+      "Board governance, regulatory filings, diligence, and consulting delivery each use their own objects, stages, refusal rules, and user inputs.",
+    signal: "domain registry",
+  },
+  {
+    title: "Regulated work is designed around what AI must not do",
+    proof: "The product describes no-go zones as clearly as capabilities.",
+    detail:
+      "For Meridian that means no automatic filing or certification. For Vantage, no autonomous investable/rejected decision. For Quorum, no silent approval of board actions.",
+    signal: "refusal logic",
+  },
+  {
+    title: "One governed core, many product P&Ls",
+    proof: "Ingestion, governance, evidence, agent controls, and billing are shared. Buyer-facing workflows stay separate.",
+    detail:
+      "This lets Pinavia sell credible vertical products without rebuilding the infrastructure layer each time or forcing every buyer into the same vocabulary.",
+    signal: "shared engine",
+  },
+  {
+    title: "White-label governance for advisory firms",
+    proof: "Nucleus is designed for partners that need their own methodology and brand on top of Pinavia controls.",
+    detail:
+      "Logos, accents, and templates can flex; status colours, trust patterns, human approval, and consequence previews stay contractually fixed.",
+    signal: "partner-ready",
+  },
+];
+
+const regulatedCaseStudies = [
+  {
+    entity: "Digital bank or EMI",
+    stage: "Regulatory expansion",
+    question: "Can we expand a product while our evidence file still has licensing and customer-protection gaps?",
+    workflow: "Meridian scopes the jurisdiction, maps requirements, shows missing evidence, drafts a filing-pack outline, and routes caveats to counsel or compliance.",
+    proof: "Requirement matrix, clause-level citations, missing-evidence list, human sign-off trail.",
+    boundary: "Pinavia does not submit, certify, or sign the filing.",
+  },
+  {
+    entity: "Board of a regulated company",
+    stage: "Board meeting and circular resolution",
+    question: "Do we have quorum, conflicts, and source-backed rationale before this agenda item is approved?",
+    workflow: "Quorum assembles the board pack, checks quorum and conflicts, tracks director inputs, drafts minutes, and separates recommendations from approved resolutions.",
+    proof: "Attendance record, agenda evidence, conflict register, minutes draft, approval status.",
+    boundary: "Pinavia does not approve board decisions or replace directors' duties.",
+  },
+  {
+    entity: "Investment manager or regulated fund",
+    stage: "Deal diligence and IC memo",
+    question: "Which red flags need investment committee attention before we move this deal forward?",
+    workflow: "Vantage reads the deal room, measures coverage, clusters red flags, produces diligence questions, and drafts the IC handoff with cited evidence.",
+    proof: "Coverage map, red-flag register, source-linked IC memo, unresolved questions.",
+    boundary: "Pinavia does not mark a deal approved, investable, or rejected.",
+  },
+  {
+    entity: "Professional services firm",
+    stage: "Client delivery and white-label workflow",
+    question: "Can our methodology become a governed client-facing workflow without losing our brand or control model?",
+    workflow: "Nucleus packages methodology, deliverables, evidence requirements, reviewer checkpoints, and client-ready outputs under the firm's brand layer.",
+    proof: "Method pack, deliverable coverage, reviewer queue, white-label boundary panel.",
+    boundary: "Brand can change; core trust patterns and approval controls cannot.",
+  },
+];
+
 const footerLinks: Array<{ heading: string; items: Array<{ label: string; href: string }> }> = [
   {
     heading: "Product",
@@ -354,13 +434,105 @@ function ProofBand() {
   );
 }
 
+function USPSection() {
+  return (
+    <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8" id="usp">
+      <div className="grid gap-10 lg:grid-cols-[0.72fr_1.28fr] lg:items-start">
+        <div className="lg:sticky lg:top-24">
+          <p className="micro-label text-white/35">04 / What is uniquely Pinavia</p>
+          <h2 className="display-hero mt-5 text-white" style={{ fontSize: "clamp(2rem,4vw,3rem)" }}>
+            Built for the moment after an AI answer sounds convincing.
+          </h2>
+          <p className="mt-5 max-w-xl text-sm leading-6 text-white/55">
+            Pinavia is not trying to be the loudest model interface. Its job is to make high-stakes
+            AI work legible, sourced, bounded, and safe enough for regulated teams to use in front of
+            boards, committees, clients, and regulators.
+          </p>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          {specialUsps.map((item) => (
+            <article key={item.title} className="rounded-lg border border-white/10 bg-white/[0.035] p-4">
+              <div className="flex items-start justify-between gap-4">
+                <h3 className="text-base font-semibold leading-6 text-white">{item.title}</h3>
+                <span className="shrink-0 rounded-md border border-nexus-accent/30 bg-nexus-accent/5 px-2 py-1 text-[10px] text-nexus-accent">
+                  {item.signal}
+                </span>
+              </div>
+              <p className="mt-4 text-sm leading-6 text-white/70">{item.proof}</p>
+              <p className="mt-3 text-xs leading-5 text-white/45">{item.detail}</p>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function RegulatedCaseStudiesSection() {
+  return (
+    <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8" id="case-studies">
+      <div className="border-t border-white/10 pt-14">
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="micro-label text-white/35">05 / Regulated entity case studies</p>
+            <h2 className="display-hero mt-5 max-w-4xl text-white" style={{ fontSize: "clamp(2rem,4vw,3rem)" }}>
+              The pitch gets stronger when the boundary is visible.
+            </h2>
+          </div>
+          <p className="max-w-md text-sm leading-6 text-white/45">
+            These are representative regulated workflows for demos and pilots. They show the
+            operating pattern without implying public customer endorsements.
+          </p>
+        </div>
+
+        <div className="mt-10 grid gap-4 lg:grid-cols-2">
+          {regulatedCaseStudies.map((study) => (
+            <article key={study.entity} className="rounded-lg border border-white/10 bg-white/[0.035] p-5">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="micro-label text-nexus-accent">{study.stage}</p>
+                  <h3 className="mt-2 text-xl font-semibold text-white">{study.entity}</h3>
+                </div>
+                <span className="rounded-md border border-white/15 px-2.5 py-1 text-xs text-white/50">
+                  Representative
+                </span>
+              </div>
+
+              <div className="mt-5 rounded-lg border border-white/10 bg-black/20 p-4">
+                <p className="micro-label text-white/35">Buyer question</p>
+                <p className="mt-2 text-sm leading-6 text-white/75">{study.question}</p>
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase text-white/35">Workflow</p>
+                  <p className="mt-2 text-xs leading-5 text-white/55">{study.workflow}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase text-white/35">Proof artifact</p>
+                  <p className="mt-2 text-xs leading-5 text-white/55">{study.proof}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-semibold uppercase text-white/35">Boundary</p>
+                  <p className="mt-2 text-xs leading-5 text-nexus-warn">{study.boundary}</p>
+                </div>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function ProductFamilySection() {
   return (
     <section className="mx-auto max-w-7xl px-4 pb-24 sm:px-6 lg:px-8" id="rooms">
       <div className="border-t border-white/10 pt-14">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="micro-label text-white/35">04 / Product family</p>
+            <p className="micro-label text-white/35">06 / Product family</p>
             <h2 className="display-hero mt-5 text-white" style={{ fontSize: "clamp(2rem,4vw,3rem)" }}>
               One governed core, <span className="display-accent text-nexus-accent">five rooms</span>.
             </h2>
@@ -494,6 +666,8 @@ export default function HomePage() {
 
       <MechanismBand />
       <ProofBand />
+      <USPSection />
+      <RegulatedCaseStudiesSection />
       <ProductFamilySection />
 
       <section className="mx-auto max-w-7xl px-4 pb-24 sm:px-6 lg:px-8">
