@@ -224,8 +224,19 @@ Corrections and residual risk from Wave 3:
 - **`no-html-link-for-pages` is set to `warn`, not `error`.** The 10 plain `<a href="/sign-in">` elements it flags are deliberate: CLAUDE.md requires signed-out UI to use a plain link rather than Clerk client components, and `components/logout-button.tsx` says the same in its docstring. Rewriting them to `next/link` would swap a hard navigation for client-side routing in the hosted-Clerk handoff. Left visible as a warning rather than switched off.
 - **ESLint adds 9 high advisories, all dev-only** (`brace-expansion` DoS, six nested copies inside plugin trees). Production dependencies are unchanged at 3. CI now reports `npm audit --omit=dev` separately so the shipped-dependency signal is not drowned out.
 
-**Wave 4 — structural, do deliberately**
-16. 6.1 Decompose `settings/page.tsx` and `onboarding/wizard.tsx`
-17. 5.2 Split `repository.ts` by domain
-18. 6.3 Central validated config module
-19. 6.5 / 6.6 Delete stale deploy scripts; clean the stray `node_modules 2` directories
+**Wave 4 — structural, do deliberately — PARTLY DONE**
+16. 6.1 Decompose `settings/page.tsx` and `onboarding/wizard.tsx` — **not done, see below**
+17. 5.2 Split `repository.ts` by domain — **not done, see below**
+18. 6.3 Central validated config module — **done**: `lib/config/env.ts` validates the five variables a running production process cannot function without and reports all missing ones at once. Deliberately not a typed accessor for all ~76 env reads: most are optional connector credentials whose services no-op when unset, and CI builds with no secrets at all. `npm run check:env` runs it against a deploy environment
+19. 6.5 / 6.6 Delete stale deploy scripts; clean the stray `node_modules 2` directories — **done**: removed five one-off `git add <hardcoded list> && commit && push` scripts superseded by Render auto-deploy and the `commit:check`/`verify:release` workflow, plus two empty `node_modules 2` directories and 31 `filename 2.ext` sync-conflict copies
+
+Verified: `check:boundaries` clean, `deps:check` healthy, `tsc --noEmit` clean, `npm run lint` exits 0, 555 tests across 81 files pass (was 547/80), `npm run build` exits 0.
+
+**Why 16 and 17 were stopped rather than done.** Both are refactors of working code, and both have failure modes that this repo's verification does not cover:
+
+- **`repository.ts` holds module-level singleton state** — `dbInstance`, `dbPool` (the Postgres connection pool) and a Stripe event cache. Splitting the module requires extracting that into a shared internal module every domain file imports. Getting it wrong yields *two connection pools*, which no test would catch because the suite runs without a database. Separately, 13 test files mock the repository wholesale, so they would validate a barrel re-export while saying nothing about whether function bodies moved correctly.
+- **`settings/page.tsx` (3,579 lines) and `onboarding/wizard.tsx` (2,219) have no rendering tests.** The suite is unit and API level; nothing mounts these components. Neither `tsc` nor `next build` executes a page. A decomposition that subtly breaks state wiring would pass every gate and fail in front of a user.
+
+Neither is a hard blocker — both are doable — but they should be paired with manual QA (or component tests added first), not shipped on a green `tsc`. The maintainability gain is real but it is not a correctness or security gain, and the repo's own guideline is "don't refactor things that aren't broken". Recommended sequencing if picked up: add rendering tests for the two components first, then decompose; and for the repository, extract the shared DB-state module as its own reviewed commit before moving any query code.
+
+`HANDOVER.md` retains historical references to the deleted deploy scripts. It is an append-only reverse-chronological log, so those entries were left intact rather than rewritten.
