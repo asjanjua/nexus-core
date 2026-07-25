@@ -51,6 +51,30 @@ describe("Security headers", () => {
     expect(CSP_DIRECTIVES).toContain("default-src 'self'");
   });
 
+  it("uses a nonce instead of unsafe-inline for scripts when one is supplied", async () => {
+    const { cspDirectives } = await import("@/lib/security-headers");
+    const withNonce = cspDirectives("test-nonce-value");
+
+    const scriptSrc = withNonce.split("; ").find((d) => d.startsWith("script-src"))!;
+    expect(scriptSrc).toContain("'nonce-test-nonce-value'");
+    expect(scriptSrc).not.toContain("'unsafe-inline'");
+  });
+
+  it("keeps the Clerk host allowlist rather than relying on strict-dynamic", async () => {
+    // strict-dynamic would make browsers ignore these hosts and break hosted auth.
+    const { cspDirectives } = await import("@/lib/security-headers");
+    const withNonce = cspDirectives("n");
+    const scriptSrc = withNonce.split("; ").find((d) => d.startsWith("script-src"))!;
+
+    expect(scriptSrc).not.toContain("strict-dynamic");
+    expect(scriptSrc).toContain("https://challenges.cloudflare.com");
+  });
+
+  it("keeps style-src unsafe-inline, which Tailwind and React inline styles need", async () => {
+    const { cspDirectives } = await import("@/lib/security-headers");
+    expect(cspDirectives("n")).toContain("style-src 'self' 'unsafe-inline'");
+  });
+
   it("CSP allows Clerk's Cloudflare challenge resources for social auth", () => {
     expect(CSP_DIRECTIVES).toContain("script-src");
     expect(CSP_DIRECTIVES).toContain("https://challenges.cloudflare.com");

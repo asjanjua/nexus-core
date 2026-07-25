@@ -115,8 +115,14 @@ The CI `Typecheck` step has `timeout-minutes: 4`. A clean local `tsc --noEmit` o
 
 ## 5. Data Layer
 
-### 5.1 MEDIUM — Schema/migration index drift
-`db/schema.ts` declares **zero** indexes across its 39 `pgTable` definitions. The migrations contain 51 `CREATE INDEX` statements. Drizzle's view of the schema therefore does not match the database. The next `drizzle-kit generate` is liable to emit `DROP INDEX` for indexes it does not know about, or to lose them silently on a rebuild.
+### 5.1 ~~MEDIUM — Schema/migration index drift~~ — WITHDRAWN, false positive
+The original finding said `db/schema.ts` declares zero indexes against 51 `CREATE INDEX` statements in the migrations, and that the next `drizzle-kit generate` would emit `DROP INDEX`.
+
+That conclusion was wrong, and rested on an unchecked assumption that drizzle-kit drives migrations here. It does not. There is no `db/migrations/meta/` directory, no journal and no snapshots. The migrations are **hand-written SQL** with human commentary, applied by a custom runner (`scripts/db-migrate.mjs`) that tracks state in its own table. `db/schema.ts` serves only as the typed query-builder layer, and Drizzle's query builder does not need index declarations to function — indexes are purely a database concern owned by the SQL.
+
+Declaring 51 indexes in `db/schema.ts` would therefore be churn that could *introduce* drift rather than remove it. No change made.
+
+The one real residual is a footgun worth knowing about: `npm run db:generate` (`npx --yes drizzle-kit generate`) is still wired up, and running it against this schema would emit a from-scratch migration that ignores the hand-written history. It is not called by CI or the Render build — both use `db:migrate` — so nothing runs it today.
 
 ### 5.2 MEDIUM — `repository.ts` is a 4,215-line single module
 The entire data access layer for 39 tables lives in one file. Every service imports the same `repository` object. This is the highest-churn file in the codebase and the most likely source of merge pain and accidental cross-tenant mistakes.
@@ -201,13 +207,22 @@ Corrections and residual work from Wave 2:
 - **Credential re-encryption has not been run.** The rotation machinery exists and is tested, but no stored blob has been rewritten, so existing credentials are still v1 under `AUTH_SECRET`. Splitting the secret for real means setting `NEXUS_CREDENTIALS_SECRET` and running a re-encryption pass over the connectors table — a scheduled maintenance step, not a code change.
 - `isProductionRuntime()` was removed from `lib/security.ts`; the Wave 2 change to `requireAuthSecret` left it with no callers anywhere.
 
-**Wave 3 — hardening and hygiene**
-10. 2.6 Nonce-based CSP, drop `unsafe-inline`
-11. 2.8 Prompt-injection fencing on ingested content
-12. 4.2 Add a real ESLint config and wire lint into CI
-13. 6.2 Route audit-write failures to Sentry instead of swallowing them
-14. 5.1 Reconcile `db/schema.ts` indexes with the migrations
-15. 2.7 / 6.4 Extract a shared `cronAuthorized` using `timingSafeEqualString`
+**Wave 3 — hardening and hygiene — DONE**
+10. 2.6 Nonce-based CSP, drop `unsafe-inline` — **done for `script-src`**. Middleware mints a per-request nonce and sets it on both the request CSP (so Next stamps its own inline bootstrap scripts) and the response. `next.config.mjs` no longer sets a CSP, so there is one source rather than two competing headers. `style-src` keeps `unsafe-inline` — Tailwind and React inline styles need it, and it carries no script-execution risk. Deliberately **not** using `'strict-dynamic'`, which would make browsers ignore the Clerk and Cloudflare host allowlists and break hosted auth
+11. 2.8 Prompt-injection fencing on ingested content — **done**: `lib/security/prompt-fencing.ts` wraps evidence and knowledge-note text in a named delimiter, strips forged or early-closing tags, sanitises provenance attributes (a filename is attacker-controllable), and prepends a trust-boundary rule to the Ask system prompt
+12. 4.2 Add a real ESLint config and wire lint into CI — **done**: flat config via `FlatCompat` (eslint-config-next 15.x is eslintrc-only), `npm run lint` replaces the broken `next lint`, and CI runs it. 12 errors down to 0; 47 warnings remain visible and non-blocking
+13. 6.2 Route audit-write failures to Sentry instead of swallowing them — **done differently, see below**
+14. 5.1 Reconcile `db/schema.ts` indexes with the migrations — **withdrawn as a false positive**, see 5.1
+15. 2.7 / 6.4 Extract a shared `cronAuthorized` using `timingSafeEqualString` — **done**: one constant-time implementation in `lib/security.ts` replaces five copy-pasted `===` comparisons
+
+Verified: `check:boundaries` clean, `tsc --noEmit` clean, `npm run lint` exits 0, 547 tests across 80 files pass (was 521/77), `npm run build` exits 0. Middleware bundle 84.4 kB to 84.5 kB.
+
+Corrections and residual risk from Wave 3:
+
+- **Item 13 could not be done as written.** `captureHandledError` is a deliberate no-op: Sentry's runtime is disabled because it hung the Next 15 middleware build, and CLAUDE.md forbids reintroducing it. Routing audit failures there would have routed them into a stub. Instead the helpers now write a structured line to stderr, which Render captures, and `pushAudit` catches and reports its own failures rather than letting them propagate into a caller that discards them. Payloads are excluded from the log because audit events carry customer PII. Real Sentry reporting remains blocked on the build issue.
+- **The CSP change needs browser verification before it ships.** Neither the test suite nor `next build` executes a page in a browser, so a CSP that blocks a legitimate script would pass every gate here and fail only in front of a user. Load an authenticated page and a sign-in handoff with devtools open and confirm there are no `Content-Security-Policy` violations in the console. This is the one Wave 3 change I could not verify end to end.
+- **`no-html-link-for-pages` is set to `warn`, not `error`.** The 10 plain `<a href="/sign-in">` elements it flags are deliberate: CLAUDE.md requires signed-out UI to use a plain link rather than Clerk client components, and `components/logout-button.tsx` says the same in its docstring. Rewriting them to `next/link` would swap a hard navigation for client-side routing in the hosted-Clerk handoff. Left visible as a warning rather than switched off.
+- **ESLint adds 9 high advisories, all dev-only** (`brace-expansion` DoS, six nested copies inside plugin trees). Production dependencies are unchanged at 3. CI now reports `npm audit --omit=dev` separately so the shipped-dependency signal is not drowned out.
 
 **Wave 4 — structural, do deliberately**
 16. 6.1 Decompose `settings/page.tsx` and `onboarding/wizard.tsx`

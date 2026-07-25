@@ -77,7 +77,7 @@ export default async function ExportHubPage() {
               <p className="text-xs font-medium uppercase tracking-wide text-white/40">Evidence behind these exports</p>
               <p className="mt-1 text-xs text-white/50">
                 {processedEvidence.length} of {evidence.length} source{evidence.length !== 1 ? "s" : ""} cleared into synthesis.
-                Check what's backing these before sharing externally.
+                Check what&apos;s backing these before sharing externally.
               </p>
             </div>
             <EvidenceTrustLink

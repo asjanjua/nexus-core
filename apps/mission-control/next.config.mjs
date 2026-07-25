@@ -1,23 +1,4 @@
 /** @type {import('next').NextConfig} */
-const clerkDomain = (process.env.NEXT_PUBLIC_CLERK_DOMAIN ?? "clerk.accounts.dev").replace(/\/+$/, "");
-
-const cspDirectives = [
-  "default-src 'self'",
-  process.env.NODE_ENV === "production"
-    ? `script-src 'self' 'unsafe-inline' https://${clerkDomain} https://*.clerk.accounts.dev https://challenges.cloudflare.com`
-    : `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://${clerkDomain} https://*.clerk.accounts.dev https://challenges.cloudflare.com`,
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https:",
-  "font-src 'self' data:",
-  `connect-src 'self' https://api.anthropic.com https://api.deepseek.com https://*.clerk.accounts.dev https://${clerkDomain} https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io wss:`,
-  "frame-src https://challenges.cloudflare.com",
-  "worker-src 'self' blob:",
-  "frame-ancestors 'none'",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "upgrade-insecure-requests",
-].join("; ");
 
 const securityHeaders = [
   { key: "x-content-type-options", value: "nosniff" },
@@ -25,7 +6,11 @@ const securityHeaders = [
   { key: "referrer-policy", value: "strict-origin-when-cross-origin" },
   { key: "permissions-policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
   { key: "cross-origin-opener-policy", value: "same-origin-allow-popups" },
-  { key: "content-security-policy", value: cspDirectives },
+  // Content-Security-Policy is deliberately absent here. It carries a
+  // per-request nonce so script-src can drop 'unsafe-inline', which a static
+  // next.config header cannot express. middleware.ts is the single source; it
+  // matches every HTML document route. Setting it in both places would emit
+  // two CSP headers and browsers would enforce the intersection.
   ...(process.env.NODE_ENV === "production"
     ? [{ key: "strict-transport-security", value: "max-age=31536000; includeSubDomains; preload" }]
     : []),

@@ -13,6 +13,7 @@ import { assertDbConfigured, isDbRequired } from "@/lib/data/db-policy";
 const stripeProcessedEventCache = new Set<string>();
 import { normalizeDatabaseUrl } from "@/lib/data/postgres-url";
 import { encryptCredentials, decryptCredentials } from "@/lib/crypto";
+import { captureHandledError } from "@/lib/observability/sentry";
 import { buildDefaultAgentControlProfile, buildDefaultAgentControlProfiles } from "@/lib/agents/default-passports";
 import type { AgentControlProfile, AgentControlProfileInput } from "@/lib/contracts";
 import {
@@ -1160,15 +1161,34 @@ export const repository = {
     return store.getAuditEvents(workspaceId, limit);
   },
 
+  /**
+   * Append an audit event.
+   *
+   * Never rejects. Callers are overwhelmingly fire-and-forget
+   * (`void repository.pushAudit(...).catch(() => {})`), so a throw here was
+   * swallowed and the lost audit row left no trace anywhere — a poor property
+   * for a product sold on its evidence and decision trail. Failures are now
+   * reported instead.
+   */
   async pushAudit(event: AuditInput): Promise<void> {
-    const wrote = await runDb(async (db) => {
-      await db.insert(auditEvents).values({
-        id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        ...event
+    try {
+      const wrote = await runDb(async (db) => {
+        await db.insert(auditEvents).values({
+          id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          ...event
+        });
+        return true;
       });
-      return true;
-    });
-    if (!wrote) store.pushAudit(event);
+      if (!wrote) store.pushAudit(event);
+    } catch (error) {
+      captureHandledError(error, {
+        route: "repository.pushAudit",
+        errorType: "audit_write_failed",
+        workspaceId: event.workspaceId,
+        // Deliberately not the payload: audit events carry customer PII.
+        extra: { auditType: event.type },
+      });
+    }
   },
 
   async listAgentOutputs(input: {

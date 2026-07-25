@@ -49,6 +49,11 @@ jobs:
         timeout-minutes: 4
         run: npm exec -w @nexus/mission-control tsc -- --noEmit
 
+      # Fails on errors only; warnings stay visible in the log without blocking.
+      - name: Lint
+        timeout-minutes: 4
+        run: npm run lint
+
       - name: Test
         timeout-minutes: 4
         run: npm test
@@ -98,3 +103,12 @@ jobs:
       - name: Report high/moderate advisories (non-blocking)
         if: always()
         run: npm audit --audit-level=high || true
+
+      # Production dependencies only. ESLint's tree contributes 9 high
+      # advisories (brace-expansion DoS, six nested copies) that never ship, so
+      # the unscoped report above overstates real exposure. This narrower view
+      # is the one to watch: it should stay at the documented sharp/postcss
+      # residuals and nothing more.
+      - name: Report advisories in shipped dependencies (non-blocking)
+        if: always()
+        run: npm audit --omit=dev --audit-level=high || true

@@ -1,3 +1,4 @@
+import { createHmac } from "crypto";
 import {
   type Action,
   type ActionStatus,
@@ -844,7 +845,6 @@ export const store = {
   },
 
   verifyAgentKey(rawSecret: string, workspaceId: string): AgentKey | null {
-    const { createHmac } = require("crypto");
     const keyHash = createHmac("sha256", process.env.AUTH_SECRET ?? "nexus-dev-secret")
       .update(rawSecret)
       .digest("hex");

@@ -35,3 +35,22 @@ export function timingSafeEqualString(left: string, right: string, encoding: Buf
 export function signHmacHex(input: string, secret = requireAuthSecret()): string {
   return crypto.createHmac("sha256", secret).update(input).digest("hex");
 }
+
+/**
+ * Whether a request carries the cron shared secret, via either
+ * `Authorization: Bearer <secret>` or `x-cron-secret: <secret>`.
+ *
+ * Returns false when NEXUS_CRON_SECRET is unset so an unconfigured deployment
+ * fails closed. Comparison is constant-time; this was previously five
+ * copy-pasted `===` comparisons, one per cron route.
+ */
+export function cronAuthorized(request: Request): boolean {
+  const secret = process.env.NEXUS_CRON_SECRET;
+  if (!secret) return false;
+  const auth = request.headers.get("authorization") ?? "";
+  const header = request.headers.get("x-cron-secret") ?? "";
+  return (
+    timingSafeEqualString(auth, `Bearer ${secret}`) ||
+    timingSafeEqualString(header, secret)
+  );
+}

@@ -8,7 +8,7 @@
     "prebuild": "node ../../scripts/file-provider-deps.mjs check",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "pretest": "node ../../scripts/file-provider-deps.mjs check",
     "test": "vitest run",
     "cron:synthesis": "node scripts/run-scheduled-synthesis.mjs",
@@ -40,6 +40,7 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.6",
     "@types/mailparser": "^3.4.5",
     "@types/node": "^22.10.1",
     "@types/pdf-parse": "^1.1.5",
@@ -47,6 +48,8 @@
     "@types/react": "^18.3.13",
     "@types/react-dom": "^18.3.1",
     "autoprefixer": "^10.4.20",
+    "eslint": "^9.39.5",
+    "eslint-config-next": "^15.5.21",
     "postcss": "^8.5.15",
     "tailwindcss": "^3.4.16",
     "typescript": "^5.7.2",
