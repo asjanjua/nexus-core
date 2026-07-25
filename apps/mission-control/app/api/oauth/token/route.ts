@@ -23,10 +23,23 @@ import { agentScopeSchema } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
 import { NextResponse } from "next/server";
 import { signToken, TOKEN_TTL_SECONDS } from "@/lib/tokens";
+import { clientKey, rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
+/** Token issuance is the client_secret brute-force surface. */
+const RATE_LIMIT = 20;
+const RATE_WINDOW_MS = 60 * 1000;
+
 export async function POST(request: Request) {
+  const limit = rateLimit(clientKey(request, "oauth-token"), RATE_LIMIT, RATE_WINDOW_MS);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: "rate_limited" },
+      { status: 429, headers: { "retry-after": String(limit.retryAfter) } }
+    );
+  }
+
   const contentType = request.headers.get("content-type") ?? "";
 
   let grantType: string | null = null;

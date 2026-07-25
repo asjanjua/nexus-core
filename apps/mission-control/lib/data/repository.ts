@@ -1,4 +1,4 @@
-import { and, desc, eq, gt, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
+import { and, desc, eq, gt, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { verifyPassword } from "@/lib/auth";
@@ -13,6 +13,7 @@ import { assertDbConfigured, isDbRequired } from "@/lib/data/db-policy";
 const stripeProcessedEventCache = new Set<string>();
 import { normalizeDatabaseUrl } from "@/lib/data/postgres-url";
 import { encryptCredentials, decryptCredentials } from "@/lib/crypto";
+import { captureHandledError } from "@/lib/observability/sentry";
 import { buildDefaultAgentControlProfile, buildDefaultAgentControlProfiles } from "@/lib/agents/default-passports";
 import type { AgentControlProfile, AgentControlProfileInput } from "@/lib/contracts";
 import {
@@ -1160,15 +1161,34 @@ export const repository = {
     return store.getAuditEvents(workspaceId, limit);
   },
 
+  /**
+   * Append an audit event.
+   *
+   * Never rejects. Callers are overwhelmingly fire-and-forget
+   * (`void repository.pushAudit(...).catch(() => {})`), so a throw here was
+   * swallowed and the lost audit row left no trace anywhere — a poor property
+   * for a product sold on its evidence and decision trail. Failures are now
+   * reported instead.
+   */
   async pushAudit(event: AuditInput): Promise<void> {
-    const wrote = await runDb(async (db) => {
-      await db.insert(auditEvents).values({
-        id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-        ...event
+    try {
+      const wrote = await runDb(async (db) => {
+        await db.insert(auditEvents).values({
+          id: `audit-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          ...event
+        });
+        return true;
       });
-      return true;
-    });
-    if (!wrote) store.pushAudit(event);
+      if (!wrote) store.pushAudit(event);
+    } catch (error) {
+      captureHandledError(error, {
+        route: "repository.pushAudit",
+        errorType: "audit_write_failed",
+        workspaceId: event.workspaceId,
+        // Deliberately not the payload: audit events carry customer PII.
+        extra: { auditType: event.type },
+      });
+    }
   },
 
   async listAgentOutputs(input: {
@@ -2183,6 +2203,27 @@ export const repository = {
     });
     if (updated === null) return store.revokeAgentKey(id);
     return updated;
+  },
+
+  /**
+   * Whether an already-issued bearer token's key may still be used.
+   *
+   * Bearer tokens are self-contained HMAC blobs with a 1h TTL, so without this
+   * check a revoked key kept working until its tokens expired. Called on every
+   * bearer request through resolveAuth(), behind a short TTL cache.
+   */
+  async isAgentKeyUsable(id: string): Promise<boolean> {
+    const rows = await runDb((db) =>
+      db
+        .select({ active: agentKeys.active, expiresAt: agentKeys.expiresAt })
+        .from(agentKeys)
+        .where(eq(agentKeys.id, id))
+        .limit(1)
+    );
+    if (rows === null) return store.isAgentKeyUsable(id);
+    const row = rows[0];
+    if (!row || !row.active) return false;
+    return !row.expiresAt || row.expiresAt.getTime() > Date.now();
   },
 
   async verifyAgentKey(rawSecret: string, workspaceId: string): Promise<AgentKey | null> {
@@ -3991,8 +4032,11 @@ export const repository = {
    */
   async acceptReviewerSeat(
     inviteCodeHash: string,
-    clerkUserId: string
+    clerkUserId: string,
+    verifiedEmails: readonly string[]
   ): Promise<ReviewerSeat | null> {
+    const normalizedEmails = [...new Set(verifiedEmails.map((email) => email.trim().toLowerCase()).filter(Boolean))];
+    if (normalizedEmails.length === 0) return null;
     const now = new Date();
     const rows = await runDb((db) =>
       db
@@ -4002,12 +4046,13 @@ export const repository = {
           and(
             eq(reviewerSeats.inviteCodeHash, inviteCodeHash),
             eq(reviewerSeats.status, "invited"),
-            gt(reviewerSeats.expiresAt, now)
+            gt(reviewerSeats.expiresAt, now),
+            inArray(reviewerSeats.email, normalizedEmails)
           )
         )
         .returning()
     );
-    if (rows === null) return store.acceptReviewerSeat(inviteCodeHash, clerkUserId, now);
+    if (rows === null) return store.acceptReviewerSeat(inviteCodeHash, clerkUserId, normalizedEmails, now);
     if (rows.length === 0) return null;
     return mapReviewerSeatRow(rows[0]);
   },

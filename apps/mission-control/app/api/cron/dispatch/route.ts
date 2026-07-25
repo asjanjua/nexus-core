@@ -9,16 +9,10 @@
  * Recommended schedule: every 2 minutes on Render.
  */
 import { fail, ok } from "@/lib/api";
+import { cronAuthorized } from "@/lib/security";
 import { repository } from "@/lib/data/repository";
 import { runDispatchCycle } from "@/lib/services/dispatcher";
 
-function cronAuthorized(request: Request): boolean {
-  const secret = process.env.NEXUS_CRON_SECRET;
-  if (!secret) return false;
-  const auth   = request.headers.get("authorization") ?? "";
-  const header = request.headers.get("x-cron-secret") ?? "";
-  return auth === `Bearer ${secret}` || header === secret;
-}
 
 export async function POST(request: Request) {
   if (!process.env.NEXUS_CRON_SECRET) return fail("cron_not_configured", 503);

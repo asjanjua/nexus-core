@@ -38,7 +38,7 @@ export default async function EvidenceDetailPage({ params }: { params: Promise<{
               rel="noreferrer"
               className="btn-primary inline-flex"
             >
-              Open original document
+              Download original document
             </a>
           ) : (
             <p className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white/45">

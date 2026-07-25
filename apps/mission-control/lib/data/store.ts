@@ -1,3 +1,4 @@
+import { createHmac } from "crypto";
 import {
   type Action,
   type ActionStatus,
@@ -837,8 +838,13 @@ export const store = {
     return true;
   },
 
+  isAgentKeyUsable(id: string): boolean {
+    const key = agentKeyStore.find((k) => k.id === id);
+    if (!key || !key.active) return false;
+    return !key.expiresAt || new Date(key.expiresAt).getTime() > Date.now();
+  },
+
   verifyAgentKey(rawSecret: string, workspaceId: string): AgentKey | null {
-    const { createHmac } = require("crypto");
     const keyHash = createHmac("sha256", process.env.AUTH_SECRET ?? "nexus-dev-secret")
       .update(rawSecret)
       .digest("hex");
@@ -916,13 +922,16 @@ export const store = {
   acceptReviewerSeat(
     inviteCodeHash: string,
     clerkUserId: string,
+    verifiedEmails: readonly string[],
     now = new Date()
   ): ReviewerSeat | null {
+    const normalizedEmails = new Set(verifiedEmails.map((email) => email.trim().toLowerCase()));
     for (const seat of reviewerSeatStore.values()) {
       if (
         seat.inviteCodeHash === inviteCodeHash &&
         seat.status === "invited" &&
-        new Date(seat.expiresAt) > now
+        new Date(seat.expiresAt) > now &&
+        normalizedEmails.has(seat.email.trim().toLowerCase())
       ) {
         const accepted: StoredReviewerSeat = {
           ...seat,

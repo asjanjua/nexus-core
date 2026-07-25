@@ -78,7 +78,11 @@ const steps = [
     label: "TypeScript",
     command: "npm",
     args: ["exec", "-w", "@nexus/mission-control", "tsc", "--", "--noEmit", "--incremental", "false"],
-    timeoutMs: Number(process.env.NEXUS_TYPECHECK_TIMEOUT_MS ?? 120_000),
+    // Measured at 207s on an M-series Mac with a clean cache (2026-07-25).
+    // The previous 120s budget could not be met by a passing typecheck, so the
+    // release gate failed on the stopwatch rather than on any real error.
+    // 420s is ~2x measured, leaving headroom for slower or loaded machines.
+    timeoutMs: Number(process.env.NEXUS_TYPECHECK_TIMEOUT_MS ?? 420_000),
   },
   {
     label: "Vitest",

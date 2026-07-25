@@ -6,6 +6,34 @@ import { extractAndStoreEntitiesForEvidence } from "@/lib/services/entity-extrac
 
 export const MAX_UPLOAD_BYTES = 50 * 1024 * 1024; // 50 MB hard cap
 
+/**
+ * Upload types the extractor understands (see lib/services/extract.ts), mapped
+ * to the content type the stored original is served with.
+ *
+ * This map is authoritative for two reasons. The browser `accept` attribute is
+ * only a hint and any client can post past it. And a client-supplied content
+ * type must never decide how a stored original is later served back, or an
+ * uploaded text/html file becomes stored XSS on the app origin.
+ */
+const ALLOWED_UPLOAD_CONTENT_TYPES: Record<string, string> = {
+  ".pdf": "application/pdf",
+  ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ".pptx": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  ".txt": "text/plain",
+  ".md": "text/markdown",
+};
+
+/**
+ * Server-derived content type for an upload, or null if the extension is not
+ * on the allowlist. Callers must treat null as a rejected upload.
+ */
+export function contentTypeForUpload(fileName: string): string | null {
+  const dot = fileName.lastIndexOf(".");
+  if (dot < 0) return null;
+  return ALLOWED_UPLOAD_CONTENT_TYPES[fileName.slice(dot).toLowerCase()] ?? null;
+}
+
 type IngestionInput = {
   workspaceId: string;
   tenantId: string;

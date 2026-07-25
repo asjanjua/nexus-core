@@ -39,6 +39,30 @@ beforeEach(() => {
 });
 
 describe("strategy-profile authz", () => {
+  it("GET rejects an unauthenticated caller instead of serving the demo workspace", async () => {
+    mockResolveAuth.mockResolvedValue(null);
+
+    const res = await GET(new Request("http://localhost/api/strategy-profile"));
+
+    expect(res.status).toBe(401);
+    expect(repository.getStrategyProfile).not.toHaveBeenCalled();
+  });
+
+  it("PATCH rejects an unauthenticated caller instead of writing to the demo workspace", async () => {
+    mockResolveAuth.mockResolvedValue(null);
+
+    const res = await PATCH(
+      new Request("http://localhost/api/strategy-profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ buyerLane: "business_advisory" }),
+      })
+    );
+
+    expect(res.status).toBe(401);
+    expect(repository.upsertStrategyProfile).not.toHaveBeenCalled();
+  });
+
   it("GET ignores workspaceId query param and uses the caller's workspace", async () => {
     await GET(new Request("http://localhost/api/strategy-profile?workspaceId=workspace-victim"));
     expect(repository.getStrategyProfile).toHaveBeenCalledWith("workspace-alice");

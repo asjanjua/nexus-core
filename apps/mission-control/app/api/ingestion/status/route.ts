@@ -3,7 +3,7 @@ import { z } from "zod";
 import { fail, ok } from "@/lib/api";
 import { evidenceSourceTypeSchema, sensitivitySchema } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
-import { ingestEvidence, MAX_UPLOAD_BYTES } from "@/lib/services/ingestion";
+import { contentTypeForUpload, ingestEvidence, MAX_UPLOAD_BYTES } from "@/lib/services/ingestion";
 import { extractTextFromBuffer } from "@/lib/services/extract";
 import { isOriginalStorageEnabled, storeOriginalFile } from "@/lib/services/object-storage";
 import { requireScope } from "@/lib/api-auth";
@@ -71,6 +71,11 @@ export async function POST(request: Request) {
   if (!(file instanceof File)) return fail("file_required", 400);
   if (file.size > MAX_UPLOAD_BYTES) return fail("file_too_large", 413);
 
+  // Content type is derived from the allowlisted extension, never taken from
+  // the client-supplied file.type.
+  const uploadContentType = contentTypeForUpload(file.name);
+  if (!uploadContentType) return fail("unsupported_file_type", 415);
+
   const parsed = formSchema.safeParse({
     workspaceId: asOptionalString(form.get("workspaceId")),
     tenantId: asOptionalString(form.get("tenantId")),
@@ -106,7 +111,7 @@ export async function POST(request: Request) {
       const stored = await storeOriginalFile({
         workspaceId,
         fileName: file.name,
-        contentType: file.type,
+        contentType: uploadContentType,
         hash,
         buffer: buf
       });

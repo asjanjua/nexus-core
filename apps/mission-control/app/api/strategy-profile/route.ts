@@ -5,7 +5,7 @@
  * Connected to public /readiness assessment and post-signup onboarding routing.
  */
 import { fail, ok } from "@/lib/api";
-import { resolveAuth, DEFAULT_WORKSPACE } from "@/lib/api-auth";
+import { resolveAuth } from "@/lib/api-auth";
 import { strategyProfileInputSchema } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
 
@@ -15,21 +15,23 @@ function hasLaneChangeReason(reason: string | null | undefined) {
 
 export async function GET(request: Request) {
   const auth = await resolveAuth(request);
+  if (!auth) return fail("unauthorized", 401);
   // Authz: always the caller's own workspace. A caller-supplied workspaceId
   // must never widen access to another workspace's strategy profile.
-  const workspaceId = auth?.workspaceId ?? DEFAULT_WORKSPACE;
+  const workspaceId = auth.workspaceId;
   const profile = await repository.getStrategyProfile(workspaceId);
   return ok(profile ?? null);
 }
 
 export async function PATCH(request: Request) {
   const auth = await resolveAuth(request);
+  if (!auth) return fail("unauthorized", 401);
   const body = await request.json().catch(() => null);
   const parsed = strategyProfileInputSchema.safeParse(body);
   if (!parsed.success) return fail("invalid_request", 400);
 
   // Authz: same rule as GET — ignore any workspaceId supplied in the body.
-  const workspaceId = auth?.workspaceId ?? DEFAULT_WORKSPACE;
+  const workspaceId = auth.workspaceId;
   const existing = await repository.getStrategyProfile(workspaceId);
   const requestedLane = parsed.data.buyerLane;
   const currentLane = existing?.buyerLane;

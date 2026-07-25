@@ -27,6 +27,7 @@ import { filterEvidenceByPassport } from "@/lib/agents/passport-policy";
 import { evaluateOutputGate } from "@/lib/agents/output-gate";
 import { getPrompt } from "@/lib/prompts/registry";
 import { checkOutput } from "@/lib/security/red-team";
+import { fenceUntrusted, UNTRUSTED_CONTENT_RULE } from "@/lib/security/prompt-fencing";
 import { shouldRouteOutputToReview } from "@/lib/security/ai-policy";
 
 // ---------------------------------------------------------------------------
@@ -146,22 +147,32 @@ async function rankEvidence(
 // LLM synthesis
 // ---------------------------------------------------------------------------
 
-const ASK_SYSTEM_PROMPT = getPrompt("ask.synthesis");
+// The trust-boundary rule leads, so it is not buried after task instructions.
+const ASK_SYSTEM_PROMPT = `${UNTRUSTED_CONTENT_RULE}\n\n${getPrompt("ask.synthesis")}`;
 
 function buildEvidenceContext(records: EvidenceRecord[]): string {
   return records
-    .map(
-      (r, i) =>
-        `[Evidence ${i + 1}] Source: ${r.sourcePath} | Type: ${r.sourceType} | Age: ${r.freshnessHours}h | Confidence: ${Math.round(r.extractionConfidence * 100)}%\n${r.text}`
+    .map((r, i) =>
+      fenceUntrusted(r.text, {
+        ref: `Evidence ${i + 1}`,
+        source: r.sourcePath,
+        type: r.sourceType,
+        age: `${r.freshnessHours}h`,
+        confidence: `${Math.round(r.extractionConfidence * 100)}%`,
+      })
     )
     .join("\n\n");
 }
 
 function buildNoteContext(notes: KnowledgeNote[]): string {
   return notes
-    .map(
-      (note, i) =>
-        `[Note ${i + 1}] Title: ${note.title} | Path: ${note.path} | Sensitivity: ${note.sensitivity}\n${note.body.slice(0, 1800)}`
+    .map((note, i) =>
+      fenceUntrusted(note.body.slice(0, 1800), {
+        ref: `Note ${i + 1}`,
+        title: note.title,
+        path: note.path,
+        sensitivity: note.sensitivity,
+      })
     )
     .join("\n\n");
 }

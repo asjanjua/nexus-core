@@ -4,6 +4,7 @@ import { PwaRegister } from "@/components/pwa-register";
 import { SideNav } from "@/components/side-nav";
 import { TrialBanner } from "@/components/trial-banner";
 import { FeedbackButton } from "@/components/feedback-button";
+import { CompanySetupHelper } from "@/components/company-setup-helper";
 import { ModeProvider, ModeIndicator } from "@/lib/mode-context";
 import { TrustDrawerProvider } from "@/lib/trust-drawer-context";
 import { TrustDrawer } from "@/components/trust-drawer";
@@ -57,6 +58,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     pathname.startsWith("/acceptable-use") ||
     pathname.startsWith("/data-processing") ||
     pathname.startsWith("/product-brief");
+  const showCompanySetupHelper =
+    !pathname.startsWith("/onboarding") &&
+    !pathname.startsWith("/reviewer-seat/accept");
 
   if (isPublicShell) {
     const logoInitial = product.name.charAt(0);
@@ -208,6 +212,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           </ModeProvider>
           </TrustDrawerProvider>
         </main>
+        {showCompanySetupHelper && <CompanySetupHelper />}
         <FeedbackButton />
         </ClerkProvider>
       </body>

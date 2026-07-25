@@ -8,7 +8,8 @@
  * resolveAuth()   — returns caller identity or null
  * requireScope()  — enforces a required scope; returns context or an error Response
  *
- * Session (Clerk) users have wildcard scope and always pass scope checks.
+ * Session (Clerk) users hold wildcard scope for ordinary work, but
+ * ADMIN_ONLY_SCOPES additionally require Clerk org-admin — see isOrgAdmin.
  * Bearer (agent) tokens must carry the specific scope being requested.
  * "admin" scope in a Bearer token is treated as wildcard.
  *
@@ -25,10 +26,55 @@ export type AuthContext = {
   userId: string;
   scopes: string[];
   authType: "session" | "bearer";
+  /**
+   * Whether the caller may exercise ADMIN_ONLY_SCOPES. True for Clerk
+   * org-admins and for personal (org-less) workspaces, where the user is the
+   * workspace's only member. False for ordinary org members.
+   */
+  isOrgAdmin: boolean;
 };
+
+/**
+ * Clerk's built-in admin role. Clerk guarantees this system role exists on
+ * every org and cannot be deleted, so custom roles never displace it.
+ */
+const CLERK_ADMIN_ROLE = "org:admin";
+
+/**
+ * Scopes that a plain org member must not hold. These gate destructive or
+ * tenant-wide operations — workspace purge, agent-key issue/revoke, connector
+ * install, prompt and eval management, audit log access.
+ */
+const ADMIN_ONLY_SCOPES = new Set(["admin", "read:admin"]);
 
 export const DEFAULT_WORKSPACE =
   process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
+
+/**
+ * Revocation state for issued bearer tokens, cached briefly.
+ *
+ * Mirrors the workspace access cache below: a DB round-trip on every agent
+ * request would be wasteful, and a revocation taking up to 30s to propagate is
+ * a large improvement on the previous behaviour of up to the token's full 1h
+ * TTL. Unlike that cache this one does NOT fail open — a key the operator
+ * explicitly revoked (typically because it leaked) must stop working, so an
+ * unknown key resolves to unusable.
+ */
+const agentKeyCache = new Map<string, { usable: boolean; expiresAt: number }>();
+const AGENT_KEY_CACHE_TTL_MS = 30 * 1000;
+
+async function agentKeyUsable(keyId: string): Promise<boolean> {
+  const cached = agentKeyCache.get(keyId);
+  if (cached && cached.expiresAt > Date.now()) return cached.usable;
+  const usable = await repository.isAgentKeyUsable(keyId);
+  agentKeyCache.set(keyId, { usable, expiresAt: Date.now() + AGENT_KEY_CACHE_TTL_MS });
+  return usable;
+}
+
+/** Drop a key's cached revocation state so a revoke takes effect immediately. */
+export function invalidateAgentKeyCache(keyId: string): void {
+  agentKeyCache.delete(keyId);
+}
 
 /**
  * Attempt to resolve caller identity from the incoming request.
@@ -40,7 +86,7 @@ export const DEFAULT_WORKSPACE =
  */
 export async function resolveAuth(request: Request): Promise<AuthContext | null> {
   // --- Clerk session (browser / human user) ---
-  const { userId, orgId } = await auth();
+  const { userId, orgId, orgRole } = await auth();
   if (userId) {
     // If the user has an active Clerk org, use orgId as the workspace (multi-user tenant).
     // Otherwise fall back to their personal userId so each user gets an isolated workspace
@@ -50,17 +96,26 @@ export async function resolveAuth(request: Request): Promise<AuthContext | null>
       userId,
       scopes: ["*"],
       authType: "session",
+      // No org means a personal workspace whose only member is this user, so
+      // they are its admin. Inside an org, only Clerk org-admins qualify.
+      isOrgAdmin: !orgId || orgRole === CLERK_ADMIN_ROLE,
     };
   }
 
   // --- Bearer token (agent / API key caller) ---
   const payload = decodeBearerToken(request.headers.get("authorization"));
   if (payload) {
+    // Tokens are self-contained HMAC blobs with a 1h TTL, so signature and exp
+    // alone would keep a revoked key working until its tokens aged out.
+    if (!(await agentKeyUsable(payload.keyId))) return null;
     return {
       workspaceId: payload.workspaceId,
       userId: payload.keyId,
       scopes: payload.scopes,
       authType: "bearer",
+      // Bearer privilege is carried by the token's own scopes, which
+      // requireScope checks directly; this mirrors that for callers reading ctx.
+      isOrgAdmin: payload.scopes.includes("*") || payload.scopes.includes("admin"),
     };
   }
 
@@ -120,6 +175,12 @@ export async function requireScope(
     !ctx.scopes.includes(scope)
   ) {
     return { ctx: null, error: fail("insufficient_scope", 403) };
+  }
+  // A Clerk session carries wildcard scope, so admin-only scopes are gated on
+  // the caller's org role instead. Without this an ordinary org member could
+  // purge the workspace or revoke agent keys.
+  if (ADMIN_ONLY_SCOPES.has(scope) && !ctx.isOrgAdmin) {
+    return { ctx: null, error: fail("admin_role_required", 403) };
   }
   if (!options.allowWhenBlocked) {
     const access = await checkWorkspaceAccess(ctx.workspaceId);

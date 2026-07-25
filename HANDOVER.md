@@ -4,6 +4,38 @@
 
 ---
 
+## 2026-07-25 — Reviewer Separation Fix + Company Setup Helper (Local, Not Yet Deployed)
+
+- Closed the reviewer-seat self-accept loophole locally. `POST /api/reviewer-seat/accept` now requires the accepting Clerk user to be a non-admin organization member and to hold a verified email matching the invited address before the single-use invite can be consumed. Repository and in-memory paths also require the normalized verified email list, so a future server caller cannot bypass that check accidentally.
+- Added `components/company-setup-helper.tsx` to the authenticated shell. The first-run popup recommends the actual four-step product sequence: company context, small evidence pack, approval, and first workflow. It is dismissible per browser and can be reopened from the floating button.
+- Added `docs/DEMO_ACCESS_RUNBOOK.md`: owner/admin, executive/member, reviewer/member. Clerk is the only credential authority; no shared/default/admin password is stored in Nexus. `NEXUS_OPERATOR_USER_IDS` is reserved for the owner if the internal funnel view is required.
+- Verification pending at handoff: focused reviewer-seat acceptance tests, full suite, typecheck/build, commit, Node 24 CI, deployment, then a genuine two-account browser rehearsal.
+
+---
+
+## 2026-07-16 — Reviewer-Seat Invite/Accept Verified Live (Two-Account Rehearsal, Part 1)
+
+**Superseded by the correction entry below this one — the identity-binding claim here was wrong; treat it as unverified until re-tested with a genuine second Clerk identity.**
+
+- Read-only code audit of the reviewer-seat feature (migration 0035, all three API routes, 8-case test suite, admin + accept UI) found no gaps: manual-link fallback works when Resend isn't configured, acceptance binds to the real Clerk `userId` of the accepting identity, and one-accepted-seat-per-workspace is enforced at the DB layer, not just in application code.
+- Executed the one real mutation the rehearsal requires: sent a live invite from `/reviewer-seat` to a real second-account email (`ali.janjua@leap-associates.me`) with Ali's explicit authorization. Confirmed by the UI: seat moved `invited` → `accepted` after Ali opened the single-use link as that identity; "Current reviewer" now shows bound and accepted; the invite form itself now reports "One reviewer per workspace in this version," confirming the one-seat constraint holds live, not just in the 8 repository tests.
+- Not yet done: an approval made FROM the bound reviewer account, and the org-switch behavior noted in the runbook's Mode A description. These remain the open part of TASKS.md Week 1 item 3.
+- Full execution packet, live evidence, and the exact mutation boundary are in `docs/agent-runs/2026-07-16/reviewer-seat-two-account-audit-claude.md`. The single-use accept code was deliberately not written into that committed file (relayed to Ali in chat only) since it is a live bearer token for a public repo.
+- Published as PR #5 (`claude/reviewer-seat-two-account-audit`, commits `e96a2e6`, `70ef36f`), not merged — merge authority was not granted for this slice.
+
+---
+
+## 2026-07-16 — CORRECTION: Reviewer-Seat "Verified" Claim Was Wrong; Real Separation-of-Duties Gap Found
+
+- The entry immediately below this one ("Reviewer-Seat Invite/Accept Verified Live, Part 1") overclaimed. The audit log shows the invite, the accept, and a subsequent test approval were all performed by the **same Clerk user ID** (`user_3GAQ0sQcikQviKCCDyMIse51oEY`), not two distinct identities. No cross-account binding was actually exercised.
+- Root cause: `app/api/reviewer-seat/accept/route.ts` binds the seat to whichever Clerk user is authenticated when the invite code is redeemed, with no check that the accepting user's own verified emails include the invited email. Opening the accept link while still signed in as the admin (or having the invited address as a secondary email on the same account) silently self-binds the seat.
+- Product impact: the reviewer-seat page's promise ("approvals are bound to the reviewer's own identity") implies separation of duties. As built, an admin can invite themselves and approve their own recommendation, and the audit trail looks like a legitimate second-party sign-off. This is a real gap for a regulated-buyer demo, not cosmetic.
+- Side effect: one demo recommendation (CFO duration-reduction item, `rec-b6261f9c-6b1b-4829-beeb-ad2a7970375e`) is now genuinely `approved` in the database as a result of the test, not a real reviewer decision. Left as-is pending Ali's call — no revert-to-draft endpoint exists; a manual DB fix was considered and deliberately not done without explicit sign-off.
+- Recommended fix (not implemented yet): validate in `accept/route.ts` that the invited email matches one of the accepting Clerk user's verified emails before binding the seat. Small, isolated change.
+- Full evidence: `docs/agent-runs/2026-07-16/reviewer-seat-two-account-audit-claude.md`, checkpoint `2026-07-16T01:15:13+05:00`.
+
+---
+
 ## 2026-07-15 — Node 24 Production Promotion Complete
 
 - Merged PR #4 and promoted the supported Node 24 runtime through GitHub and Render. Render reached live at application commit `32166903b55b2ce8239bd5eb21fc0bd4121811e2`; CI and CodeQL were green on the same SHA.
@@ -1341,3 +1373,16 @@ M .gitignore
 - Status advances from `committed but unpushed` to `ci_green`. It does not advance to deployed or operationally verified.
 - This append-only CI checkpoint will be pushed as a paperwork-only commit and will retrigger final-head checks. No merge or production action is authorized by this status update.
 - Next exact action: wait for final-head checks, mark PR #4 ready if green, then obtain explicit merge/deploy authority before Render Node 24 promotion and live smoke.
+## 2026-07-25 — Clerk custom-domain deployment guard
+
+- **State:** local configuration change pending commit/CI; prior CSP/release-gate commit `b8dec90` is CI-green on Node 22 and Node 24.
+- **Change:** `render.yaml` now declares `NEXT_PUBLIC_CLERK_DOMAIN=accounts.pinavia.co`. This is a public Clerk frontend host, not a secret, and it removes the CSP/auth outage risk caused by a manually omitted `sync: false` value.
+- **Still external:** Render must synchronize the updated Blueprint during the next `main` deployment. `CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, and credential-encryption secrets remain dashboard-managed.
+- **Verification next:** after production promotion, run `NODE_ENV=production node scripts/check-env.mjs` in the deploy environment and browser-smoke the hosted sign-in handoff through `https://accounts.pinavia.co/sign-in`.
+
+## 2026-07-25 — Sharp dependency hardening
+
+- **State:** local dependency-security change pending commit/CI.
+- **Change:** the `next.sharp` override pins `sharp@0.35.3`; a clean `npm ci` resolves the patched binary/runtime tree successfully.
+- **Verification:** 561 tests passed and the local production build completed after the clean install. `npm audit --omit=dev` now reports one high, three moderate, and zero critical findings.
+- **Residual:** `next@15.5.21` pins `postcss@8.4.31`. Its advisory applies to trusted build-time CSS processing in this product, not customer-controlled runtime CSS. The correct remediation is a planned, tested Next major upgrade; do not use `npm audit fix --force`, which proposes a Next 9 downgrade.

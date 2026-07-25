@@ -17,11 +17,34 @@ const ALLOWED_ORIGINS = new Set([
 
 const CLERK_DOMAIN = (process.env.NEXT_PUBLIC_CLERK_DOMAIN ?? "clerk.accounts.dev").replace(/\/+$/, "");
 
-export const CSP_DIRECTIVES = [
+/**
+ * Build the CSP. When a nonce is supplied, script-src carries `'nonce-<v>'`
+ * instead of `'unsafe-inline'`, which is the directive that actually matters
+ * for XSS: an injected inline `<script>` no longer executes.
+ *
+ * Deliberately NOT using `'strict-dynamic'`. That would make browsers ignore
+ * the host allowlist, and Clerk's hosted auth and Cloudflare challenge scripts
+ * are allowlisted by host. Nonce plus host allowlist is the lower-risk pairing
+ * here.
+ *
+ * style-src keeps 'unsafe-inline'. Tailwind and React inline styles depend on
+ * it, and removing it is a separate piece of work with no XSS-execution
+ * benefit comparable to locking down script-src.
+ */
+export function cspDirectives(nonce?: string): string {
+  const scriptSources = [
+    "'self'",
+    nonce ? `'nonce-${nonce}'` : "'unsafe-inline'",
+    // next dev's HMR and React refresh need eval; production never gets it.
+    process.env.NODE_ENV === "production" ? null : "'unsafe-eval'",
+    `https://${CLERK_DOMAIN}`,
+    "https://*.clerk.accounts.dev",
+    "https://challenges.cloudflare.com",
+  ].filter(Boolean);
+
+  return [
   "default-src 'self'",
-  process.env.NODE_ENV === "production"
-    ? `script-src 'self' 'unsafe-inline' https://${CLERK_DOMAIN} https://*.clerk.accounts.dev https://challenges.cloudflare.com`
-    : `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://${CLERK_DOMAIN} https://*.clerk.accounts.dev https://challenges.cloudflare.com`,
+  `script-src ${scriptSources.join(" ")}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
@@ -33,16 +56,23 @@ export const CSP_DIRECTIVES = [
   "base-uri 'self'",
   "form-action 'self'",
   "upgrade-insecure-requests",
-].join("; ");
+  ].join("; ");
+}
 
-export function securityHeaderEntries(): Array<{ key: string; value: string }> {
+/**
+ * Nonce-less policy, kept as a named export for tests and for any caller that
+ * renders outside the middleware request path.
+ */
+export const CSP_DIRECTIVES = cspDirectives();
+
+export function securityHeaderEntries(nonce?: string): Array<{ key: string; value: string }> {
   const entries = [
     { key: "x-content-type-options", value: "nosniff" },
     { key: "x-frame-options", value: "DENY" },
     { key: "referrer-policy", value: "strict-origin-when-cross-origin" },
     { key: "permissions-policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
     { key: "cross-origin-opener-policy", value: "same-origin-allow-popups" },
-    { key: "content-security-policy", value: CSP_DIRECTIVES },
+    { key: "content-security-policy", value: cspDirectives(nonce) },
   ];
 
   if (process.env.NODE_ENV === "production") {
@@ -55,8 +85,12 @@ export function securityHeaderEntries(): Array<{ key: string; value: string }> {
   return entries;
 }
 
-export function withSecurityHeaders(response: NextResponse, request: NextRequest): NextResponse {
-  for (const { key, value } of securityHeaderEntries()) response.headers.set(key, value);
+export function withSecurityHeaders(
+  response: NextResponse,
+  request: NextRequest,
+  nonce?: string
+): NextResponse {
+  for (const { key, value } of securityHeaderEntries(nonce)) response.headers.set(key, value);
 
   const origin = request.headers.get("origin") ?? "";
   if (request.nextUrl.pathname.startsWith("/api/")) {
