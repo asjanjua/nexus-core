@@ -97,13 +97,9 @@ There is no key version in the stored blob format (`base64url(iv + ciphertext + 
 
 **Wave 1 outcome:** `npm audit fix` took next 15.5.18 to 15.5.21 and postcss 8.5.15 to 8.5.23, clearing all 8 Next.js CVEs. High advisories dropped 7 to 3.
 
-The remaining 3 are **not fixable from this repo** and are now recorded as reviewed exceptions in `ci.yml`:
-- `sharp` 0.34.5 and `postcss` 8.4.31 are both pinned inside next@15.5.21 itself
-- the root `overrides` block does not reach them — npm never writes overrides into the lock here, so the pre-existing `postcss` override has in fact never taken effect either
-- `npm audit fix --force` "resolves" them by installing **next@9.3.3**, a catastrophic downgrade
-- adding `sharp` as a direct pinned dependency only produces a second copy; next keeps its own
+**Follow-up outcome:** a nested `next.sharp` override now resolves `sharp@0.35.3` (including its platform binaries) in a clean `npm ci`, removing the libvips high advisory. The shipped-dependency audit is now **one high, three moderate, zero critical**.
 
-Real exposure of the two residuals is low: the app imports `next/image` nowhere and configures no `remotePatterns`, so the sharp/libvips path is unreachable, and the postcss issue is build-time only. The gate therefore stays at `critical`; raise it to `high` once a Next.js release bumps its pinned postcss and sharp.
+The remaining high is `next/node_modules/postcss@8.4.31`. Next 15.5.21 pins it exactly, and npm does not rewrite that nested lock entry through the existing override. `npm audit fix --force` proposes a catastrophic Next 9 downgrade, so it is not an acceptable remediation. Its applicability is limited to Nexus's trusted build-time CSS pipeline; no customer-controlled CSS is compiled at runtime. The gate remains at `critical`; resolve this properly through a tested Next major upgrade when a supported release removes the pinned PostCSS version.
 
 ### 4.2 MEDIUM — Lint has never run; no ESLint config exists
 `npm run lint` invokes `next lint`, which is deprecated and, finding no ESLint config anywhere in the repo, drops into an interactive setup prompt and exits 1. CI runs `check:boundaries`, `tsc`, `npm test`, and `build` — it never invokes lint. The `lint` script is therefore dead and misleading, and the codebase has had zero lint enforcement for its lifetime.
@@ -182,7 +178,7 @@ Recorded so the priorities above are read fairly:
 
 **Wave 1 — before any further client exposure — DONE (commit `06f5ec9`)**
 1. 2.1 RBAC: introduce Clerk org roles; stop granting `["*"]` to every session — **done**
-2. 4.1 `npm audit fix` for the Next.js / postcss / sharp advisories; raise the CI gate to `--audit-level=high` — **partly done**: 7 high to 3, all Next.js CVEs cleared; gate stays at `critical` because the 3 residuals are pinned inside next and cannot be fixed here (see 4.1)
+2. 4.1 `npm audit fix` for the Next.js / postcss / sharp advisories; raise the CI gate to `--audit-level=high` — **partly done**: 7 high to 1, all Next.js CVEs cleared and Sharp upgraded through a nested override. The remaining PostCSS advisory requires a tested Next major upgrade (see 4.1), so the gate stays at `critical`.
 3. 2.2 Server-side MIME allowlist on upload + force `content-disposition: attachment` on evidence originals — **done**
 4. 2.3 Remove the `DEFAULT_WORKSPACE` fallback from `strategy-profile` and `workspace/status` — **done**
 
@@ -222,7 +218,7 @@ Corrections and residual risk from Wave 3:
 - **Item 13 could not be done as written.** `captureHandledError` is a deliberate no-op: Sentry's runtime is disabled because it hung the Next 15 middleware build, and CLAUDE.md forbids reintroducing it. Routing audit failures there would have routed them into a stub. Instead the helpers now write a structured line to stderr, which Render captures, and `pushAudit` catches and reports its own failures rather than letting them propagate into a caller that discards them. Payloads are excluded from the log because audit events carry customer PII. Real Sentry reporting remains blocked on the build issue.
 - **The CSP change needs browser verification before it ships.** Neither the test suite nor `next build` executes a page in a browser, so a CSP that blocks a legitimate script would pass every gate here and fail only in front of a user. Load an authenticated page and a sign-in handoff with devtools open and confirm there are no `Content-Security-Policy` violations in the console. This is the one Wave 3 change I could not verify end to end.
 - **`no-html-link-for-pages` is set to `warn`, not `error`.** The 10 plain `<a href="/sign-in">` elements it flags are deliberate: CLAUDE.md requires signed-out UI to use a plain link rather than Clerk client components, and `components/logout-button.tsx` says the same in its docstring. Rewriting them to `next/link` would swap a hard navigation for client-side routing in the hosted-Clerk handoff. Left visible as a warning rather than switched off.
-- **ESLint adds 9 high advisories, all dev-only** (`brace-expansion` DoS, six nested copies inside plugin trees). Production dependencies are unchanged at 3. CI now reports `npm audit --omit=dev` separately so the shipped-dependency signal is not drowned out.
+- **ESLint adds 9 high advisories, all dev-only** (`brace-expansion` DoS, six nested copies inside plugin trees). The shipped-dependency audit is now one high (the pinned Next/PostCSS build-time residual). CI reports `npm audit --omit=dev` separately so the production signal is not drowned out.
 
 **Wave 4 — structural, do deliberately — PARTLY DONE**
 16. 6.1 Decompose `settings/page.tsx` and `onboarding/wizard.tsx` — **not done, see below**

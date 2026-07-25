@@ -1379,3 +1379,10 @@ M .gitignore
 - **Change:** `render.yaml` now declares `NEXT_PUBLIC_CLERK_DOMAIN=accounts.pinavia.co`. This is a public Clerk frontend host, not a secret, and it removes the CSP/auth outage risk caused by a manually omitted `sync: false` value.
 - **Still external:** Render must synchronize the updated Blueprint during the next `main` deployment. `CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, and credential-encryption secrets remain dashboard-managed.
 - **Verification next:** after production promotion, run `NODE_ENV=production node scripts/check-env.mjs` in the deploy environment and browser-smoke the hosted sign-in handoff through `https://accounts.pinavia.co/sign-in`.
+
+## 2026-07-25 — Sharp dependency hardening
+
+- **State:** local dependency-security change pending commit/CI.
+- **Change:** the `next.sharp` override pins `sharp@0.35.3`; a clean `npm ci` resolves the patched binary/runtime tree successfully.
+- **Verification:** 561 tests passed and the local production build completed after the clean install. `npm audit --omit=dev` now reports one high, three moderate, and zero critical findings.
+- **Residual:** `next@15.5.21` pins `postcss@8.4.31`. Its advisory applies to trusted build-time CSS processing in this product, not customer-controlled runtime CSS. The correct remediation is a planned, tested Next major upgrade; do not use `npm audit fix --force`, which proposes a Next 9 downgrade.

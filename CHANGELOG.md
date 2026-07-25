@@ -8,6 +8,7 @@
 - Added a first-run, dismissible Company Setup helper for authenticated users. It guides company context, evidence intake, approval, and first-workflow selection without claiming server-owned readiness steps are complete.
 - Added `docs/DEMO_ACCESS_RUNBOOK.md` with the recommended three-identity Clerk demo model: owner/admin, executive/member, and reviewer/member. Passwords remain managed exclusively by Clerk and are never stored in Nexus code or configuration.
 - Declared the verified public Clerk frontend host, `accounts.pinavia.co`, in the Render Blueprint. This keeps the nonce-based CSP allowlist aligned with the hosted sign-in domain without placing any credential in Git.
+- Overrode Next's optional Sharp dependency to `0.35.3`, removing the high-severity libvips advisory from the shipped dependency tree. The remaining high PostCSS advisory is pinned in Next 15's trusted build pipeline and is tracked for a tested Next major upgrade.
 
 ## Unreleased — Node 24 Production Promotion (2026-07-15)
 
