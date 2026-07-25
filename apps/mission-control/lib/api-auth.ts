@@ -51,6 +51,32 @@ export const DEFAULT_WORKSPACE =
   process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
 
 /**
+ * Revocation state for issued bearer tokens, cached briefly.
+ *
+ * Mirrors the workspace access cache below: a DB round-trip on every agent
+ * request would be wasteful, and a revocation taking up to 30s to propagate is
+ * a large improvement on the previous behaviour of up to the token's full 1h
+ * TTL. Unlike that cache this one does NOT fail open — a key the operator
+ * explicitly revoked (typically because it leaked) must stop working, so an
+ * unknown key resolves to unusable.
+ */
+const agentKeyCache = new Map<string, { usable: boolean; expiresAt: number }>();
+const AGENT_KEY_CACHE_TTL_MS = 30 * 1000;
+
+async function agentKeyUsable(keyId: string): Promise<boolean> {
+  const cached = agentKeyCache.get(keyId);
+  if (cached && cached.expiresAt > Date.now()) return cached.usable;
+  const usable = await repository.isAgentKeyUsable(keyId);
+  agentKeyCache.set(keyId, { usable, expiresAt: Date.now() + AGENT_KEY_CACHE_TTL_MS });
+  return usable;
+}
+
+/** Drop a key's cached revocation state so a revoke takes effect immediately. */
+export function invalidateAgentKeyCache(keyId: string): void {
+  agentKeyCache.delete(keyId);
+}
+
+/**
  * Attempt to resolve caller identity from the incoming request.
  *
  * For Clerk sessions: workspaceId = Clerk orgId.
@@ -79,6 +105,9 @@ export async function resolveAuth(request: Request): Promise<AuthContext | null>
   // --- Bearer token (agent / API key caller) ---
   const payload = decodeBearerToken(request.headers.get("authorization"));
   if (payload) {
+    // Tokens are self-contained HMAC blobs with a 1h TTL, so signature and exp
+    // alone would keep a revoked key working until its tokens aged out.
+    if (!(await agentKeyUsable(payload.keyId))) return null;
     return {
       workspaceId: payload.workspaceId,
       userId: payload.keyId,

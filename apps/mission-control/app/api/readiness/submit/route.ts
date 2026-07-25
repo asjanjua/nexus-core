@@ -18,6 +18,7 @@ import { ok, fail } from "@/lib/api";
 import { repository } from "@/lib/data/repository";
 import { buildReadinessClaimEmailHtml, resendConfigured, sendEmail } from "@/lib/email/resend";
 import { advisorFollowUpRecommended, assignLane } from "@/lib/services/lane-assignment";
+import { clientKey, rateLimit } from "@/lib/rate-limit";
 import { z } from "zod";
 
 const scoreSchema = z.record(z.number().int().min(1).max(7));
@@ -34,7 +35,18 @@ const readinessSubmitSchema = z.object({
 
 const CLAIM_TTL_HOURS = 72;
 
+/**
+ * Public and unauthenticated, and it sends mail through Resend, so flooding it
+ * costs both database rows and email spend. Generous enough for a human
+ * completing the assessment more than once.
+ */
+const RATE_LIMIT = 5;
+const RATE_WINDOW_MS = 10 * 60 * 1000;
+
 export async function POST(request: Request) {
+  const limit = rateLimit(clientKey(request, "readiness-submit"), RATE_LIMIT, RATE_WINDOW_MS);
+  if (!limit.allowed) return fail("rate_limited", 429, { retryAfter: limit.retryAfter });
+
   let body: unknown;
   try {
     body = await request.json();

@@ -837,6 +837,12 @@ export const store = {
     return true;
   },
 
+  isAgentKeyUsable(id: string): boolean {
+    const key = agentKeyStore.find((k) => k.id === id);
+    if (!key || !key.active) return false;
+    return !key.expiresAt || new Date(key.expiresAt).getTime() > Date.now();
+  },
+
   verifyAgentKey(rawSecret: string, workspaceId: string): AgentKey | null {
     const { createHmac } = require("crypto");
     const keyHash = createHmac("sha256", process.env.AUTH_SECRET ?? "nexus-dev-secret")

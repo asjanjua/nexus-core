@@ -2185,6 +2185,27 @@ export const repository = {
     return updated;
   },
 
+  /**
+   * Whether an already-issued bearer token's key may still be used.
+   *
+   * Bearer tokens are self-contained HMAC blobs with a 1h TTL, so without this
+   * check a revoked key kept working until its tokens expired. Called on every
+   * bearer request through resolveAuth(), behind a short TTL cache.
+   */
+  async isAgentKeyUsable(id: string): Promise<boolean> {
+    const rows = await runDb((db) =>
+      db
+        .select({ active: agentKeys.active, expiresAt: agentKeys.expiresAt })
+        .from(agentKeys)
+        .where(eq(agentKeys.id, id))
+        .limit(1)
+    );
+    if (rows === null) return store.isAgentKeyUsable(id);
+    const row = rows[0];
+    if (!row || !row.active) return false;
+    return !row.expiresAt || row.expiresAt.getTime() > Date.now();
+  },
+
   async verifyAgentKey(rawSecret: string, workspaceId: string): Promise<AgentKey | null> {
     const { createHmac } = await import("crypto");
     const keyHash = createHmac("sha256", process.env.AUTH_SECRET ?? "nexus-dev-secret")

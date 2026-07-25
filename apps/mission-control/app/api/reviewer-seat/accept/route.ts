@@ -12,14 +12,22 @@ import { z } from "zod";
 import { ok, fail } from "@/lib/api";
 import { resolveAuth } from "@/lib/api-auth";
 import { repository } from "@/lib/data/repository";
+import { rateLimit } from "@/lib/rate-limit";
 
 const acceptSchema = z.object({
   inviteCode: z.string().min(16).max(128),
 });
 
+/** Invite codes are secrets; keyed on the caller so rotating IPs does not help. */
+const RATE_LIMIT = 10;
+const RATE_WINDOW_MS = 60 * 1000;
+
 export async function POST(request: Request) {
   const auth = await resolveAuth(request);
   if (!auth) return fail("unauthorized", 401);
+
+  const limit = rateLimit(`reviewer-accept:${auth.userId}`, RATE_LIMIT, RATE_WINDOW_MS);
+  if (!limit.allowed) return fail("rate_limited", 429, { retryAfter: limit.retryAfter });
 
   const body = await request.json().catch(() => null);
   const parsed = acceptSchema.safeParse(body);

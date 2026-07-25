@@ -12,6 +12,11 @@ services:
     envVars:
       - key: NODE_VERSION
         value: 24
+      # Set explicitly rather than relying on `next start` to infer it. Any
+      # process here that is not `next start` (migrations, one-off scripts)
+      # must still be treated as production by lib/security.ts.
+      - key: NODE_ENV
+        value: production
       - key: NEXUS_ENV
         value: pilot
       - key: NEXT_PUBLIC_NEXUS_ENV
@@ -54,6 +59,13 @@ services:
         sync: false
       - key: AUTH_SECRET
         generateValue: true
+      # Connector credential encryption. Deliberately NOT generateValue: a
+      # regenerated value would make every stored credential undecryptable.
+      # Falls back to AUTH_SECRET when unset. See lib/crypto.ts for rotation.
+      - key: NEXUS_CREDENTIALS_SECRET
+        sync: false
+      - key: NEXUS_CREDENTIALS_SECRET_PREVIOUS
+        sync: false
       - key: DEEPSEEK_API_KEY
         sync: false
       - key: OPENAI_API_KEY

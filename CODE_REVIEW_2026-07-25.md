@@ -186,12 +186,20 @@ Two follow-ups surfaced while doing Wave 1, both new:
 - **Ad-hoc scope strings are unreachable by bearer tokens.** Routes call `requireScope` with `read:connectors` (11 routes), `write` (7), `read:workspace` (7), `read` (5), `read:admin` (1) — none of which exist in `agentScopeSchema`. `/api/oauth/token` filters requested scopes through that schema, so a narrowly-scoped agent key can never hold them and always gets 403 unless it carries `admin`. Either add them to the enum or change the routes to use enum members.
 - **`lib/auth.ts` is dead but ships a default `admin`/`admin` credential.** `verifyLoginCredentials`, `createSessionToken` and `readSession` have no callers; `/api/auth/login` returns 410 Gone. Only `verifyPassword` is still used (by `repository.ts`). Not currently reachable, but worth deleting rather than leaving a default-credential function in the tree.
 
-**Wave 2 — correctness and operational safety**
-5. 3.1 Key versioning + a documented rotation path for connector credentials; split the credential key from `AUTH_SECRET`
-6. 2.4 Revocation check in `decodeBearerToken` (cached lookup, mirroring the existing workspace-access cache)
-7. 2.5 Rate limiting on auth, token, claim and public POST routes
-8. 3.2 Cache the derived PBKDF2 key
-9. 2.9 Remove the `nexus-dev-secret` fallback; fail closed and set `NODE_ENV` explicitly in `render.yaml`
+**Wave 2 — correctness and operational safety — DONE**
+5. 3.1 Key versioning + a documented rotation path for connector credentials; split the credential key from `AUTH_SECRET` — **done**: blobs are now `v2.`-prefixed, keyed on `NEXUS_CREDENTIALS_SECRET` (falling back to `AUTH_SECRET`), with `NEXUS_CREDENTIALS_SECRET_PREVIOUS` for zero-downtime rotation. Legacy unversioned blobs still decrypt. `needsReencryption()` and `reencryptCredentials()` drive a migration; the procedure is documented at the top of `lib/crypto.ts`
+6. 2.4 Revocation check in `decodeBearerToken` (cached lookup, mirroring the existing workspace-access cache) — **done**, in `resolveAuth` rather than `decodeBearerToken` so the token module stays sync and DB-free. `DELETE /api/agent-keys/:id` invalidates the cache so revocation is immediate rather than TTL-delayed
+7. 2.5 Rate limiting on auth, token, claim and public POST routes — **done** for `/api/oauth/token`, `/api/reviewer-seat/accept`, `/api/readiness/claim`, `/api/readiness/submit`
+8. 3.2 Cache the derived PBKDF2 key — **done**, memoised per secret+salt
+9. 2.9 Remove the `nexus-dev-secret` fallback; fail closed and set `NODE_ENV` explicitly in `render.yaml` — **done**: the fallback is now an allowlist (`development`/`test`) rather than `!production`, so an unset `NODE_ENV` throws instead of silently using the published constant
+
+Verified: `check:boundaries` clean, `tsc --noEmit` clean, 521 tests across 77 files pass (was 493/73), `npm run build` exits 0.
+
+Corrections and residual work from Wave 2:
+- **`/api/waitlist` did not need rate limiting.** It is authenticated (`resolveAuth` + 401), so it is not the anonymous spam surface item 2.5 described. `/api/auth/login` likewise needed nothing — it returns 410 Gone.
+- **Rate limiting is per-instance.** The limiter is in-process, matching the existing caching approach. On the current single Render web service that covers the whole request surface; scaling past one instance would weaken the limits proportionally and would want a shared store.
+- **Credential re-encryption has not been run.** The rotation machinery exists and is tested, but no stored blob has been rewritten, so existing credentials are still v1 under `AUTH_SECRET`. Splitting the secret for real means setting `NEXUS_CREDENTIALS_SECRET` and running a re-encryption pass over the connectors table — a scheduled maintenance step, not a code change.
+- `isProductionRuntime()` was removed from `lib/security.ts`; the Wave 2 change to `requireAuthSecret` left it with no callers anywhere.
 
 **Wave 3 — hardening and hygiene**
 10. 2.6 Nonce-based CSP, drop `unsafe-inline`
