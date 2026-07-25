@@ -260,3 +260,74 @@ export function TrustCard({
     </div>
   );
 }
+
+// ---------------------------------------------------------------------------
+// InfoHint — one-line contextual hint under a control or metric. Quieter
+// than HelpLabel (no dialog): use it when the explanation fits in a
+// sentence and the user should absorb it without clicking.
+// ---------------------------------------------------------------------------
+
+export function InfoHint({ text }: { text: string }) {
+  return (
+    <p className="mt-1 flex items-start gap-1.5 text-xs leading-5 text-nexus-muted">
+      <span
+        aria-hidden
+        className="mt-0.5 inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-full border border-nexus-muted/40 text-[9px] text-nexus-muted/80"
+      >
+        i
+      </span>
+      {text}
+    </p>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// SkeletonLines — loading treatment for known layouts (design spec: skeleton,
+// not spinner; shimmer 1200ms loop ≈ Tailwind's animate-pulse). Line widths
+// stagger so the placeholder reads as text, not as bars.
+// ---------------------------------------------------------------------------
+
+export function SkeletonLines({ lines = 3 }: { lines?: number }) {
+  const widths = ["w-11/12", "w-9/12", "w-7/12", "w-10/12", "w-8/12"];
+  return (
+    <div className="animate-pulse space-y-2.5" role="status" aria-label="Loading">
+      {Array.from({ length: lines }).map((_, i) => (
+        <div key={i} className={`h-3.5 rounded-full bg-white/[0.06] ${widths[i % widths.length]}`} />
+      ))}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// GuidedActionCard — the "what should I do next" pattern from the guided
+// Executive Room. One card, one action, one plain-language reason. Use for
+// empty and cold-start states so a locked or empty surface teaches the user
+// what unlocks it instead of showing a blank table.
+// ---------------------------------------------------------------------------
+
+export function GuidedActionCard({
+  title,
+  reason,
+  href,
+  cta,
+  tone = "accent",
+}: {
+  title: string;
+  reason: string;
+  href: string;
+  cta: string;
+  tone?: Tone;
+}) {
+  return (
+    <div className={`rounded-lg border p-4 ${tone === "accent" ? "border-nexus-accent/30 bg-nexus-accent/5" : "border-nexus-border bg-nexus-panel"}`}>
+      <p className="text-sm font-semibold text-nexus-text">{title}</p>
+      <p className="mt-1 text-xs leading-5 text-nexus-muted">{reason}</p>
+      <a
+        href={href}
+        className="mt-3 inline-flex items-center rounded-lg bg-nexus-accent px-4 py-2 text-sm font-semibold text-[#04100d] transition hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nexus-accent"
+      >
+        {cta}
+      </a>
+    </div>
+  );
+}

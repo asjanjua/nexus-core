@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { ConfidenceBadge } from "@/components/ui/trust-drawer-trigger";
 import { HelpLabel } from "@/components/ui/help-dialog";
-import { AiPanel } from "@/components/ui/nexus-primitives";
+import { AiPanel, GuidedActionCard, InfoHint, SkeletonLines } from "@/components/ui/nexus-primitives";
 
 type AskResult = {
   answer: string;
@@ -108,6 +108,7 @@ export function AskPanel({
     if (!query.trim()) return;
     setLoading(true);
     setError(null);
+    setResult(null);
     try {
       const res = await fetch("/api/ask", {
         method: "POST",
@@ -143,7 +144,7 @@ export function AskPanel({
 
   return (
     <div className="space-y-4">
-      <section className="panel">
+      <section id="ask-question" className="panel">
         <div className="mb-2 block text-sm text-white/80">
           <HelpLabel
             title="Workspace-scoped question"
@@ -285,6 +286,20 @@ export function AskPanel({
 
       {error ? <section className="panel text-sm text-red-300">{error}</section> : null}
 
+      {/* Loading — skeleton with staged progress (design spec: skeleton for
+          known layouts, never a bare spinner; see Figma "20 NexusAI Ask"). */}
+      {loading && (
+        <section className="panel space-y-3" aria-live="polite">
+          <div className="space-y-1 text-xs">
+            <p className="font-medium text-nexus-accent">1. Reading evidence — done</p>
+            <p className="font-medium text-nexus-ai">2. Running analysis — streaming</p>
+            <p className="text-white/40">3. Checking coverage — queued</p>
+          </div>
+          <SkeletonLines lines={4} />
+          <InfoHint text="The answer streams into a violet-marked block. Actions stay disabled until the coverage check completes." />
+        </section>
+      )}
+
       {result ? (
         <section className="panel space-y-3">
           {/* Evidence FIRST — the governance order (Figma "20 NexusAI Ask").
@@ -406,7 +421,15 @@ export function AskPanel({
               <HistoryItem key={`${item.role}-${index}`} role={item.role} text={item.text} />
             ))
           ) : (
-            <li className="text-white/60">No messages yet.</li>
+            <li>
+              <GuidedActionCard
+                title="No governed questions yet"
+                reason="Start with a suggested question above. Nexus will show the evidence strip first, then the AI-marked answer, and only then offer a human-approved decision draft."
+                href="#ask-question"
+                cta="Ask a question"
+                tone="sky"
+              />
+            </li>
           )}
         </ul>
       </section>
