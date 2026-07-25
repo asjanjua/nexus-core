@@ -25,11 +25,14 @@ export async function GET(
   const file = await fetchOriginalFile(record.sourceUri);
   if (!file) return fail("original_not_available", 404);
 
+  // attachment, not inline: originals are user-supplied bytes, and rendering
+  // them in the app origin would let an uploaded HTML/SVG file run script
+  // against the viewer's session. Downloading is the only safe presentation.
   return new Response(file.body, {
     status: 200,
     headers: {
       "content-type": file.contentType,
-      "content-disposition": `inline; filename="${safeDownloadName(file.fileName)}"`,
+      "content-disposition": `attachment; filename="${safeDownloadName(file.fileName)}"`,
       "cache-control": "private, max-age=60"
     }
   });
