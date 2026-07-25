@@ -24,7 +24,8 @@ test("Render applies idempotent migrations only after a successful web build", (
   const web = webServices.find((service) => /^  - type: web$/m.test(service));
   const buildCommand = web?.match(/^    buildCommand: (.+)$/m)?.[1] ?? "";
 
-  assert.equal(buildCommand, "npm ci && npm run build && npm run db:migrate");
+  assert.equal(buildCommand, "npm ci --include=dev && npm run build && npm run db:migrate");
+  assert.match(buildCommand, /^npm ci --include=dev\b/);
   assert.ok(
     buildCommand.indexOf("npm run build") < buildCommand.indexOf("npm run db:migrate"),
     "database migrations must run after the production build succeeds"
