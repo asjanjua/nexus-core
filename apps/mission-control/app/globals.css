@@ -108,3 +108,114 @@ a {
   background-size: 32px 32px;
   mask-image: linear-gradient(180deg, black, rgba(0, 0, 0, 0.25));
 }
+
+/* Landing-only animated spend map. Kept in CSS so the public page gets motion
+   without shipping a client component just for decoration. */
+.spend-bar {
+  transform-origin: left center;
+  animation: spend-bar-in 900ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.spend-node {
+  animation: spend-node-float 4.5s ease-in-out infinite;
+}
+
+.spend-node:nth-of-type(2n) {
+  animation-delay: 900ms;
+}
+
+.spend-flow-line {
+  fill: none;
+  stroke: rgba(100, 216, 196, 0.6);
+  stroke-dasharray: 8 16;
+  stroke-linecap: round;
+  stroke-width: 2;
+  animation: spend-line-travel 2.9s linear infinite;
+}
+
+.spend-flow-line-delay-1 {
+  animation-delay: 250ms;
+}
+
+.spend-flow-line-delay-2 {
+  animation-delay: 500ms;
+}
+
+.spend-flow-line-delay-3 {
+  animation-delay: 750ms;
+}
+
+.spend-flow-line-delay-4 {
+  animation-delay: 1000ms;
+}
+
+.spend-flow-pulse {
+  fill: #64d8c4;
+  filter: drop-shadow(0 0 10px rgba(100, 216, 196, 0.7));
+  transform-origin: center;
+  animation: spend-pulse 2.4s ease-in-out infinite;
+}
+
+.spend-flow-pulse-delay-1 {
+  animation-delay: 300ms;
+}
+
+.spend-flow-pulse-delay-2 {
+  animation-delay: 600ms;
+}
+
+.spend-flow-pulse-delay-3 {
+  animation-delay: 900ms;
+}
+
+.spend-flow-pulse-delay-4 {
+  animation-delay: 1200ms;
+}
+
+@keyframes spend-bar-in {
+  from {
+    opacity: 0;
+    transform: scaleX(0);
+  }
+  to {
+    opacity: 1;
+    transform: scaleX(1);
+  }
+}
+
+@keyframes spend-node-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-5px);
+  }
+}
+
+@keyframes spend-line-travel {
+  to {
+    stroke-dashoffset: -48;
+  }
+}
+
+@keyframes spend-pulse {
+  0%,
+  100% {
+    opacity: 0.45;
+    transform: scale(0.8);
+  }
+  45% {
+    opacity: 1;
+    transform: scale(1.35);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spend-bar,
+  .spend-node,
+  .spend-flow-line,
+  .spend-flow-pulse {
+    animation: none;
+  }
+}

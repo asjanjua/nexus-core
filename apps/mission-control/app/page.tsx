@@ -110,6 +110,22 @@ const comparisonRows = [
   ["Boundary", "May imply approval", "Human owner required before action"],
 ];
 
+const spendLeakage = [
+  { label: "Context rebuilt", value: "$42", width: "w-[84%]", tone: "bg-nexus-danger/70" },
+  { label: "Unverified rework", value: "$24", width: "w-[58%]", tone: "bg-nexus-warn/70" },
+  { label: "Approval trail rebuilt", value: "$18", width: "w-[44%]", tone: "bg-[#D9834A]/75" },
+  { label: "Disconnected routing", value: "$10", width: "w-[28%]", tone: "bg-[#9AA6B8]/70" },
+  { label: "Reusable proof", value: "$6", width: "w-[16%]", tone: "bg-nexus-accent/70" },
+];
+
+const governedSpend = [
+  { label: "Evidence memory", value: "$32", width: "w-[72%]", tone: "bg-nexus-accent/80" },
+  { label: "Verification", value: "$24", width: "w-[56%]", tone: "bg-nexus-sky/80" },
+  { label: "Human approval path", value: "$22", width: "w-[52%]", tone: "bg-nexus-warn/80" },
+  { label: "Audit-ready proof", value: "$14", width: "w-[36%]", tone: "bg-[#C0A062]/80" },
+  { label: "Model run cost", value: "$8", width: "w-[22%]", tone: "bg-white/35" },
+];
+
 const specialUsps = [
   {
     title: "Human approval is a product primitive",
@@ -392,12 +408,147 @@ function HeroQueryPanel() {
   );
 }
 
+function SpendBar({
+  label,
+  value,
+  width,
+  tone,
+}: {
+  label: string;
+  value: string;
+  width: string;
+  tone: string;
+}) {
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between gap-3">
+        <span className="text-xs text-white/55">{label}</span>
+        <span className="text-xs font-semibold text-white">{value}</span>
+      </div>
+      <div className="h-2 overflow-hidden rounded-full bg-white/10">
+        <div className={`spend-bar h-full rounded-full ${width} ${tone}`} />
+      </div>
+    </div>
+  );
+}
+
+function AnimatedSpendGraph() {
+  const nodes = [
+    { label: "Evidence", x: 52, y: 36, tone: "border-nexus-accent/50 bg-nexus-accent/15 text-nexus-accent" },
+    { label: "Ask", x: 172, y: 76, tone: "border-nexus-sky/50 bg-nexus-sky/15 text-nexus-sky" },
+    { label: "Caveat", x: 102, y: 168, tone: "border-nexus-warn/50 bg-nexus-warn/15 text-nexus-warn" },
+    { label: "Owner", x: 244, y: 170, tone: "border-[#C0A062]/50 bg-[#C0A062]/15 text-[#E4D08F]" },
+    { label: "Proof", x: 302, y: 62, tone: "border-nexus-accent/50 bg-nexus-accent/15 text-nexus-accent" },
+  ];
+
+  return (
+    <div className="relative min-h-[340px] overflow-hidden rounded-lg border border-white/10 bg-[#08111f] p-4">
+      <div className="surface-grid pointer-events-none absolute inset-0 opacity-40" />
+      <svg
+        aria-hidden="true"
+        viewBox="0 0 380 230"
+        className="absolute inset-x-0 top-4 mx-auto h-[230px] w-full max-w-[520px]"
+      >
+        <path className="spend-flow-line" d="M70 52 C130 32, 154 56, 188 82" />
+        <path className="spend-flow-line spend-flow-line-delay-1" d="M188 86 C150 116, 130 138, 116 168" />
+        <path className="spend-flow-line spend-flow-line-delay-2" d="M126 176 C178 210, 222 198, 254 178" />
+        <path className="spend-flow-line spend-flow-line-delay-3" d="M266 164 C312 138, 326 102, 314 74" />
+        <path className="spend-flow-line spend-flow-line-delay-4" d="M302 58 C210 24, 140 20, 70 52" />
+        <circle className="spend-flow-pulse" cx="72" cy="52" r="4" />
+        <circle className="spend-flow-pulse spend-flow-pulse-delay-1" cx="188" cy="84" r="4" />
+        <circle className="spend-flow-pulse spend-flow-pulse-delay-2" cx="116" cy="170" r="4" />
+        <circle className="spend-flow-pulse spend-flow-pulse-delay-3" cx="258" cy="176" r="4" />
+        <circle className="spend-flow-pulse spend-flow-pulse-delay-4" cx="314" cy="66" r="4" />
+      </svg>
+
+      {nodes.map((node) => (
+        <div
+          key={node.label}
+          className={`spend-node absolute rounded-lg border px-3 py-2 text-xs font-semibold shadow-lg shadow-black/30 ${node.tone}`}
+          style={{ left: `${node.x / 3.8}%`, top: `${node.y / 4.2}%` }}
+        >
+          {node.label}
+        </div>
+      ))}
+
+      <div className="absolute bottom-4 left-4 right-4 rounded-lg border border-white/10 bg-black/30 p-3">
+        <p className="micro-label text-white/35">Animated proof loop</p>
+        <p className="mt-2 text-sm leading-6 text-white/65">
+          Source memory feeds the answer, the answer exposes caveats, the owner approves, and the
+          proof artifact survives the meeting.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function SpendAnimationSection() {
+  return (
+    <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8" id="money-map">
+      <div className="grid gap-8 lg:grid-cols-[0.7fr_1.3fr] lg:items-start">
+        <div>
+          <p className="micro-label text-white/35">02 / Where the money goes</p>
+          <h2 className="display-hero mt-5 text-white" style={{ fontSize: "clamp(2rem,4vw,3rem)" }}>
+            Generic AI spend leaks before it becomes governed value.
+          </h2>
+          <p className="mt-5 max-w-xl text-sm leading-6 text-white/55">
+            The diagnostic turns this from a generic chart into your actual workflow map. Until then,
+            this animation shows the pattern we expect to test: money disappears into context rebuild,
+            rework, and after-the-fact approval reconstruction unless the workflow is designed around
+            evidence, owners, and proof.
+          </p>
+          <Link href="/readiness" className="btn-primary mt-6 px-5 py-3" prefetch={false}>
+            Run the diagnostic
+          </Link>
+        </div>
+
+        <div className="grid gap-4 xl:grid-cols-[0.8fr_1.05fr_0.8fr]">
+          <div className="rounded-lg border border-nexus-danger/25 bg-nexus-danger/5 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="micro-label text-nexus-danger">Before governance</p>
+              <span className="rounded-md border border-white/10 px-2 py-1 text-xs text-white/45">
+                $100
+              </span>
+            </div>
+            <div className="mt-5 space-y-4">
+              {spendLeakage.map((item) => (
+                <SpendBar key={item.label} {...item} />
+              ))}
+            </div>
+          </div>
+
+          <AnimatedSpendGraph />
+
+          <div className="rounded-lg border border-nexus-accent/25 bg-nexus-accent/5 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <p className="micro-label text-nexus-accent">With Pinavia</p>
+              <span className="rounded-md border border-nexus-accent/30 px-2 py-1 text-xs text-nexus-accent">
+                $100
+              </span>
+            </div>
+            <div className="mt-5 space-y-4">
+              {governedSpend.map((item) => (
+                <SpendBar key={item.label} {...item} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <p className="micro-label mt-5 text-white/25">
+        Illustrative allocation only. Real values should come from the diagnostic using your workflow,
+        evidence estate, approval model, and deployment costs.
+      </p>
+    </section>
+  );
+}
+
 function MechanismBand() {
   return (
     <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8" id="platform">
       <div className="grid gap-10 lg:grid-cols-[0.7fr_1.3fr] lg:items-start">
         <div>
-          <p className="micro-label text-white/35">02 / The operating layer</p>
+          <p className="micro-label text-white/35">03 / The operating layer</p>
           <h2 className="display-hero mt-5 text-white" style={{ fontSize: "clamp(2rem,4vw,3rem)" }}>
             Add evidence once. Use it everywhere decisions happen.
           </h2>
@@ -455,7 +606,7 @@ function MechanismBand() {
 function ProofBand() {
   return (
     <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8" id="trust">
-      <p className="micro-label text-white/35">03 / Why it holds up</p>
+      <p className="micro-label text-white/35">04 / Why it holds up</p>
       <h2 className="display-hero mt-5 max-w-3xl text-white" style={{ fontSize: "clamp(2rem,4vw,3rem)" }}>
         An answer you can <span className="display-accent text-nexus-accent">prove</span> you were
         right to approve.
@@ -478,7 +629,7 @@ function USPSection() {
     <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8" id="usp">
       <div className="grid gap-10 lg:grid-cols-[0.72fr_1.28fr] lg:items-start">
         <div className="lg:sticky lg:top-24">
-          <p className="micro-label text-white/35">04 / What is uniquely Pinavia</p>
+          <p className="micro-label text-white/35">05 / What is uniquely Pinavia</p>
           <h2 className="display-hero mt-5 text-white" style={{ fontSize: "clamp(2rem,4vw,3rem)" }}>
             Built for the moment after an AI answer sounds convincing.
           </h2>
@@ -514,7 +665,7 @@ function RegulatedCaseStudiesSection() {
       <div className="border-t border-white/10 pt-14">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="micro-label text-white/35">06 / Regulated entity case studies</p>
+            <p className="micro-label text-white/35">07 / Regulated entity case studies</p>
             <h2 className="display-hero mt-5 max-w-4xl text-white" style={{ fontSize: "clamp(2rem,4vw,3rem)" }}>
               The pitch gets stronger when the boundary is visible.
             </h2>
@@ -571,7 +722,7 @@ function CompetitiveDifferenceSection() {
       <div className="overflow-hidden rounded-lg border border-white/10 bg-white/[0.035]">
         <div className="grid gap-8 border-b border-white/10 p-5 sm:p-6 lg:grid-cols-[0.78fr_1.22fr]">
           <div>
-            <p className="micro-label text-white/35">05 / Why Pinavia is different</p>
+            <p className="micro-label text-white/35">06 / Why Pinavia is different</p>
             <h2 className="display-hero mt-5 text-white" style={{ fontSize: "clamp(2rem,4vw,3rem)" }}>
               Context memory is necessary. Governed action is the product.
             </h2>
@@ -640,7 +791,7 @@ function ProductFamilySection() {
       <div className="border-t border-white/10 pt-14">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="micro-label text-white/35">07 / Product family</p>
+            <p className="micro-label text-white/35">08 / Product family</p>
             <h2 className="display-hero mt-5 text-white" style={{ fontSize: "clamp(2rem,4vw,3rem)" }}>
               One governed core, <span className="display-accent text-nexus-accent">five rooms</span>.
             </h2>
@@ -772,6 +923,7 @@ export default function HomePage() {
         </div>
       </section>
 
+      <SpendAnimationSection />
       <MechanismBand />
       <ProofBand />
       <USPSection />
