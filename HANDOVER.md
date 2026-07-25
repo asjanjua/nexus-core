@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-07-25 — Pinavia Public Landing Page (Local, Pending Deploy)
+
+- Replaced the public `/` page with a Pinavia parent-company landing page. It now presents the Pinavia mark, the governed AI execution-room positioning, the NexusAI command-map hero, and the five-product family: NexusAI, Quorum, Meridian, Vantage, and Nucleus.
+- Kept buyer actions grounded in existing routes: `Enter NexusAI` uses `/workspace`, readiness uses `/readiness`, and the product brief uses `/product-brief`.
+- Updated public-shell metadata and header logic so `/` says Pinavia, while sign-in/product-aware public routes can still use the detected product brand.
+
+---
+
 ## 2026-07-25 — Pinavia Product Family Final IA Screens (Figma, Design-Only)
 
 - Read and applied the verified Pinavia product-family screen plan against Figma file `NcQ8F5a0hczwGwZua2gfun`.

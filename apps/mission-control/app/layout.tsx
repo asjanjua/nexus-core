@@ -16,9 +16,9 @@ import { PRODUCT_META, productFromHost, type ProductKey } from "@/lib/product-de
 import { ClerkProvider } from "@clerk/nextjs";
 
 export const metadata: Metadata = {
-  title: "NexusAI Mission Control",
-  description: "Executive intelligence pilot control surface",
-  applicationName: "NexusAI Mission Control",
+  title: "Pinavia | Governed AI execution rooms",
+  description: "Governed AI products for executive, board, regulatory, diligence, and advisory workflows.",
+  applicationName: "Pinavia",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
@@ -63,7 +63,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     !pathname.startsWith("/reviewer-seat/accept");
 
   if (isPublicShell) {
-    const logoInitial = product.name.charAt(0);
+    const isHome = pathname === "/";
+    const shellName = isHome ? "Pinavia" : product.name;
+    const shellSubtitle = isHome ? "AI governance and execution" : product.subtitle;
+    const logoInitial = shellName.charAt(0);
     return (
       <html lang="en">
         <body>
@@ -76,8 +79,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   {logoInitial}
                 </span>
                 <div className="flex flex-col">
-                  <span className="font-semibold leading-tight">{product.name}</span>
-                  <span className="text-[10px] leading-tight text-white/35">{product.subtitle}</span>
+                  <span className="font-semibold leading-tight">{shellName}</span>
+                  <span className="text-[10px] leading-tight text-white/35">{shellSubtitle}</span>
                 </div>
               </a>
               <div className="flex items-center gap-2">

@@ -2,6 +2,14 @@
 
 ---
 
+## Unreleased — Pinavia Public Landing Page (2026-07-25)
+
+- Replaced the public root Nexus Core marketing page with a Pinavia parent-brand landing page that introduces the governed product family: NexusAI, Quorum, Meridian, Vantage, and Nucleus.
+- Added a premium Pinavia monogram mark, executive command-map hero, evidence/approval trust signals, and product-family routing CTAs while keeping the live app entrypoint on `/workspace` and readiness path on `/readiness`.
+- Updated public-shell metadata and homepage header treatment so `/` reads as Pinavia while product/auth surfaces remain product-aware.
+
+---
+
 ## Unreleased — Pinavia Product Family Final IA Screens (2026-07-25)
 
 - Finalized a design-only Figma pass in `Nexus System` (`NcQ8F5a0hczwGwZua2gfun`) using the verified Pinavia product-family screen plan and locked design-system rules.
