@@ -87,13 +87,23 @@ There is no key version in the stored blob format (`base64url(iv + ciphertext + 
 
 ## 4. Supply Chain and CI
 
-### 4.1 HIGH — Seven high-severity advisories pass the CI gate
-`npm audit` reports 7 high-severity vulnerabilities, all with fixes available:
+### 4.1 HIGH — Seven high-severity advisories pass the CI gate — PARTLY FIXED (Wave 1)
+`npm audit` reported 7 high-severity vulnerabilities:
 - **Next.js** (8 CVEs) including unauthenticated disclosure of internal Server Function endpoints, SSRF via rewrites, cache confusion on request bodies, and Server Actions DoS
 - **postcss** — path traversal via `sourceMappingURL`
 - **sharp** — inherited libvips CVEs
 
-`.github/workflows/` gates on `npm audit --audit-level=critical`, so all seven pass silently. The gate is set one level below the actual exposure. Next is pinned `^15.5.18`; `npm audit fix` reports these as fixable.
+`.github/workflows/ci.yml` gates hard on `npm audit --audit-level=critical`. Correction to the original draft of this review: a non-blocking `--audit-level=high` reporting step already existed, so these were visible in the CI log, not silent. The gate was still one level below the exposure.
+
+**Wave 1 outcome:** `npm audit fix` took next 15.5.18 to 15.5.21 and postcss 8.5.15 to 8.5.23, clearing all 8 Next.js CVEs. High advisories dropped 7 to 3.
+
+The remaining 3 are **not fixable from this repo** and are now recorded as reviewed exceptions in `ci.yml`:
+- `sharp` 0.34.5 and `postcss` 8.4.31 are both pinned inside next@15.5.21 itself
+- the root `overrides` block does not reach them — npm never writes overrides into the lock here, so the pre-existing `postcss` override has in fact never taken effect either
+- `npm audit fix --force` "resolves" them by installing **next@9.3.3**, a catastrophic downgrade
+- adding `sharp` as a direct pinned dependency only produces a second copy; next keeps its own
+
+Real exposure of the two residuals is low: the app imports `next/image` nowhere and configures no `remotePatterns`, so the sharp/libvips path is unreachable, and the postcss issue is build-time only. The gate therefore stays at `critical`; raise it to `high` once a Next.js release bumps its pinned postcss and sharp.
 
 ### 4.2 MEDIUM — Lint has never run; no ESLint config exists
 `npm run lint` invokes `next lint`, which is deprecated and, finding no ESLint config anywhere in the repo, drops into an interactive setup prompt and exits 1. CI runs `check:boundaries`, `tsc`, `npm test`, and `build` — it never invokes lint. The `lint` script is therefore dead and misleading, and the codebase has had zero lint enforcement for its lifetime.
@@ -164,11 +174,17 @@ Recorded so the priorities above are read fairly:
 
 ## 8. Proposed Fix Order
 
-**Wave 1 — before any further client exposure**
-1. 2.1 RBAC: introduce Clerk org roles; stop granting `["*"]` to every session
-2. 4.1 `npm audit fix` for the Next.js / postcss / sharp advisories; raise the CI gate to `--audit-level=high`
-3. 2.2 Server-side MIME allowlist on upload + force `content-disposition: attachment` on evidence originals
-4. 2.3 Remove the `DEFAULT_WORKSPACE` fallback from `strategy-profile` and `workspace/status`
+**Wave 1 — before any further client exposure — DONE (commit `06f5ec9`)**
+1. 2.1 RBAC: introduce Clerk org roles; stop granting `["*"]` to every session — **done**
+2. 4.1 `npm audit fix` for the Next.js / postcss / sharp advisories; raise the CI gate to `--audit-level=high` — **partly done**: 7 high to 3, all Next.js CVEs cleared; gate stays at `critical` because the 3 residuals are pinned inside next and cannot be fixed here (see 4.1)
+3. 2.2 Server-side MIME allowlist on upload + force `content-disposition: attachment` on evidence originals — **done**
+4. 2.3 Remove the `DEFAULT_WORKSPACE` fallback from `strategy-profile` and `workspace/status` — **done**
+
+Verified at commit: `deps:check` healthy, `check:boundaries` clean, `tsc --noEmit` clean, 493 tests across 73 files pass (was 481/71), `npm run build` exits 0.
+
+Two follow-ups surfaced while doing Wave 1, both new:
+- **Ad-hoc scope strings are unreachable by bearer tokens.** Routes call `requireScope` with `read:connectors` (11 routes), `write` (7), `read:workspace` (7), `read` (5), `read:admin` (1) — none of which exist in `agentScopeSchema`. `/api/oauth/token` filters requested scopes through that schema, so a narrowly-scoped agent key can never hold them and always gets 403 unless it carries `admin`. Either add them to the enum or change the routes to use enum members.
+- **`lib/auth.ts` is dead but ships a default `admin`/`admin` credential.** `verifyLoginCredentials`, `createSessionToken` and `readSession` have no callers; `/api/auth/login` returns 410 Gone. Only `verifyPassword` is still used (by `repository.ts`). Not currently reachable, but worth deleting rather than leaving a default-credential function in the tree.
 
 **Wave 2 — correctness and operational safety**
 5. 3.1 Key versioning + a documented rotation path for connector credentials; split the credential key from `AUTH_SECRET`
