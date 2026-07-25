@@ -11,7 +11,13 @@
 import { describe, expect, it, beforeAll, afterAll, vi } from "vitest";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { withSecurityHeaders, CSP_DIRECTIVES, parseAllowedOrigins } from "@/lib/security-headers";
+import {
+  clerkCspHosts,
+  cspDirectives,
+  withSecurityHeaders,
+  CSP_DIRECTIVES,
+  parseAllowedOrigins,
+} from "@/lib/security-headers";
 
 function fakeRequest(path = "/dashboard/ceo", init?: { method?: string; origin?: string }): NextRequest {
   const headers = new Headers();
@@ -68,6 +74,20 @@ describe("Security headers", () => {
 
     expect(scriptSrc).not.toContain("strict-dynamic");
     expect(scriptSrc).toContain("https://challenges.cloudflare.com");
+  });
+
+  it("allows separate Clerk frontend API and hosted-auth custom domains", () => {
+    const config = {
+      frontendDomain: "clerk.pinavia.co",
+      hostedSignInUrl: "https://accounts.pinavia.co/sign-in",
+      hostedSignUpUrl: "https://accounts.pinavia.co/sign-up",
+    };
+    const hosts = clerkCspHosts(config);
+    const csp = cspDirectives("n", config);
+
+    expect(hosts).toEqual(["clerk.pinavia.co", "accounts.pinavia.co"]);
+    expect(csp).toContain("https://clerk.pinavia.co");
+    expect(csp).toContain("https://accounts.pinavia.co");
   });
 
   it("keeps style-src unsafe-inline, which Tailwind and React inline styles need", async () => {

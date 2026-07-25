@@ -4,6 +4,10 @@
 
 ---
 
+## 2026-07-25 — Clerk Two-Host CSP Correction (Local, Pending CI and Deploy)
+
+- Clerk custom domains use two hosts in production: `clerk.pinavia.co` serves the browser SDK and `accounts.pinavia.co` hosts sign-in/sign-up. `security-headers.ts` now derives and allowlists both from the frontend-domain and hosted-auth URL configuration. Keep `NEXT_PUBLIC_CLERK_DOMAIN` set to the frontend API host, not the hosted-auth host.
+
 ## 2026-07-25 — Reviewer Separation Fix + Company Setup Helper (Local, Not Yet Deployed)
 
 - Closed the reviewer-seat self-accept loophole locally. `POST /api/reviewer-seat/accept` now requires the accepting Clerk user to be a non-admin organization member and to hold a verified email matching the invited address before the single-use invite can be consumed. Repository and in-memory paths also require the normalized verified email list, so a future server caller cannot bypass that check accidentally.
@@ -1376,7 +1380,7 @@ M .gitignore
 ## 2026-07-25 — Clerk custom-domain deployment guard
 
 - **State:** local configuration change pending commit/CI; prior CSP/release-gate commit `b8dec90` is CI-green on Node 22 and Node 24.
-- **Change:** `render.yaml` now declares `NEXT_PUBLIC_CLERK_DOMAIN=accounts.pinavia.co`. This is a public Clerk frontend host, not a secret, and it removes the CSP/auth outage risk caused by a manually omitted `sync: false` value.
+- **Superseded:** `NEXT_PUBLIC_CLERK_DOMAIN` must be `clerk.pinavia.co` (the browser SDK host), not `accounts.pinavia.co` (the hosted-auth host). The 2026-07-25 two-host CSP correction derives and allowlists both hosts.
 - **Still external:** Render must synchronize the updated Blueprint during the next `main` deployment. `CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, and credential-encryption secrets remain dashboard-managed.
 - **Verification next:** after production promotion, run `NODE_ENV=production node scripts/check-env.mjs` in the deploy environment and browser-smoke the hosted sign-in handoff through `https://accounts.pinavia.co/sign-in`.
 

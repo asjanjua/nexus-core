@@ -15,7 +15,37 @@ const ALLOWED_ORIGINS = new Set([
   ...productOrigins().map((origin) => `https://${origin}`),
 ].filter(Boolean));
 
-const CLERK_DOMAIN = (process.env.NEXT_PUBLIC_CLERK_DOMAIN ?? "clerk.accounts.dev").replace(/\/+$/, "");
+type ClerkCspConfig = {
+  frontendDomain?: string;
+  hostedSignInUrl?: string;
+  hostedSignUpUrl?: string;
+};
+
+function hostnameFromUrl(value: string | undefined): string | null {
+  if (!value) return null;
+
+  try {
+    const url = new URL(value.includes("://") ? value : `https://${value}`);
+    return url.protocol === "https:" ? url.hostname : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Clerk's browser SDK and hosted auth can use distinct custom domains. */
+export function clerkCspHosts(config: ClerkCspConfig = {}): string[] {
+  return [
+    ...new Set(
+      [
+        hostnameFromUrl(
+          config.frontendDomain ?? process.env.NEXT_PUBLIC_CLERK_DOMAIN ?? "clerk.accounts.dev"
+        ),
+        hostnameFromUrl(config.hostedSignInUrl ?? process.env.NEXT_PUBLIC_CLERK_HOSTED_SIGN_IN_URL),
+        hostnameFromUrl(config.hostedSignUpUrl ?? process.env.NEXT_PUBLIC_CLERK_HOSTED_SIGN_UP_URL),
+      ].filter((host): host is string => Boolean(host))
+    ),
+  ];
+}
 
 /**
  * Build the CSP. When a nonce is supplied, script-src carries `'nonce-<v>'`
@@ -31,13 +61,14 @@ const CLERK_DOMAIN = (process.env.NEXT_PUBLIC_CLERK_DOMAIN ?? "clerk.accounts.de
  * it, and removing it is a separate piece of work with no XSS-execution
  * benefit comparable to locking down script-src.
  */
-export function cspDirectives(nonce?: string): string {
+export function cspDirectives(nonce?: string, clerkConfig?: ClerkCspConfig): string {
+  const clerkSources = clerkCspHosts(clerkConfig).map((host) => `https://${host}`);
   const scriptSources = [
     "'self'",
     nonce ? `'nonce-${nonce}'` : "'unsafe-inline'",
     // next dev's HMR and React refresh need eval; production never gets it.
     process.env.NODE_ENV === "production" ? null : "'unsafe-eval'",
-    `https://${CLERK_DOMAIN}`,
+    ...clerkSources,
     "https://*.clerk.accounts.dev",
     "https://challenges.cloudflare.com",
   ].filter(Boolean);
@@ -48,7 +79,7 @@ export function cspDirectives(nonce?: string): string {
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  `connect-src 'self' https://api.anthropic.com https://api.deepseek.com https://*.clerk.accounts.dev https://${CLERK_DOMAIN} https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io wss:`,
+  `connect-src 'self' https://api.anthropic.com https://api.deepseek.com https://*.clerk.accounts.dev ${clerkSources.join(" ")} https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io wss:`,
   "frame-src https://challenges.cloudflare.com",
   "worker-src 'self' blob:",
   "frame-ancestors 'none'",

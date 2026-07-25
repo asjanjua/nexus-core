@@ -144,9 +144,9 @@ NEXUS_VAULT_SYNC=disabled
 # Do not set NEXUS_LOCAL_VAULT_PATH on hosted Render unless running a controlled self-hosted/local deployment.
 
 # Clerk CSP domain (v0.23.0+, optional — default clerk.accounts.dev)
-# Set to your custom Clerk frontend API domain if you use a vanity domain (e.g. clerk.nexusai.io)
-# Used to build Content-Security-Policy script-src and connect-src. Wrong value breaks Clerk UI silently.
-NEXT_PUBLIC_CLERK_DOMAIN=clerk.accounts.dev
+# Set to your custom Clerk frontend API domain if you use a vanity domain (e.g. clerk.pinavia.co).
+# Hosted sign-in/sign-up hosts are derived separately into the CSP allowlist.
+NEXT_PUBLIC_CLERK_DOMAIN=clerk.pinavia.co
 
 # Optional: only needed for additional non-Pinavia origins.
 # The standard Pinavia product origins are already included by code.

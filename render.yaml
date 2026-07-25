@@ -52,10 +52,9 @@ services:
       - key: NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
         sync: false
       - key: NEXT_PUBLIC_CLERK_DOMAIN
-        # This is a public Clerk frontend host, not a secret. Declaring it
-        # prevents CSP from silently allowing the default Clerk host instead
-        # of the verified Pinavia authentication domain.
-        value: accounts.pinavia.co
+        # Clerk's browser SDK host. The hosted sign-in URL is configured
+        # separately above; Nexus allowlists both hosts in its CSP.
+        value: clerk.pinavia.co
       - key: CLERK_SECRET_KEY
         sync: false
       - key: CLERK_WEBHOOK_SECRET
