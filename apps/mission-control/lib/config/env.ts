@@ -33,6 +33,15 @@ const REQUIRED_IN_PRODUCTION: RequiredVar[] = [
   { key: "CLERK_SECRET_KEY", why: "Server-side Clerk session verification" },
   { key: "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY", why: "Clerk client configuration" },
   { key: "NEXT_PUBLIC_APP_URL", why: "Absolute URLs for OAuth callbacks, emails and exports" },
+  {
+    key: "NEXT_PUBLIC_CLERK_DOMAIN",
+    // Not just cosmetic. lib/security-headers.ts builds the CSP script-src
+    // allowlist from this, defaulting to clerk.accounts.dev. On a production
+    // Clerk instance with a custom domain, leaving it unset means the CSP
+    // allowlists the wrong host and the browser blocks Clerk's script — auth
+    // fails with nothing but a console violation to show for it.
+    why: "CSP script-src allowlist for Clerk; a wrong value blocks auth entirely",
+  },
 ];
 
 export type EnvReport = {

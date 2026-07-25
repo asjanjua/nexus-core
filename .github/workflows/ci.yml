@@ -45,8 +45,11 @@ jobs:
       - name: Build boundary checks
         run: npm run check:boundaries
 
+      # A clean non-incremental typecheck measures ~207s locally, so the
+      # previous 4-minute budget left ~30s of headroom and would flake on a
+      # loaded runner.
       - name: Typecheck
-        timeout-minutes: 4
+        timeout-minutes: 8
         run: npm exec -w @nexus/mission-control tsc -- --noEmit
 
       # Fails on errors only; warnings stay visible in the log without blocking.

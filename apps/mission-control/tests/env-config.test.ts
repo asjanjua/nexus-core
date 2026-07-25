@@ -13,6 +13,7 @@ const REQUIRED = [
   "CLERK_SECRET_KEY",
   "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
   "NEXT_PUBLIC_APP_URL",
+  "NEXT_PUBLIC_CLERK_DOMAIN",
 ];
 
 const saved = new Map<string, string | undefined>(
@@ -63,6 +64,18 @@ describe("checkRequiredEnv", () => {
     const report = checkRequiredEnv();
     expect(report.ok).toBe(false);
     expect(report.missing.map((m) => m.key).sort()).toEqual(["CLERK_SECRET_KEY", "DATABASE_URL"]);
+  });
+
+  it("requires NEXT_PUBLIC_CLERK_DOMAIN, which the CSP allowlist is built from", () => {
+    // Unset, the CSP allowlists clerk.accounts.dev and a custom-domain Clerk
+    // instance is blocked at the browser — auth fails with only a console
+    // violation to show for it.
+    setEnv("NODE_ENV", "production");
+    setEnv("NEXT_PHASE", undefined);
+    setAllRequired();
+    setEnv("NEXT_PUBLIC_CLERK_DOMAIN", undefined);
+
+    expect(checkRequiredEnv().missing.map((m) => m.key)).toContain("NEXT_PUBLIC_CLERK_DOMAIN");
   });
 
   it("treats a whitespace-only value as missing", () => {

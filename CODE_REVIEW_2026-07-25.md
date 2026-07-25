@@ -240,3 +240,39 @@ Verified: `check:boundaries` clean, `deps:check` healthy, `tsc --noEmit` clean, 
 Neither is a hard blocker — both are doable — but they should be paired with manual QA (or component tests added first), not shipped on a green `tsc`. The maintainability gain is real but it is not a correctness or security gain, and the repo's own guideline is "don't refactor things that aren't broken". Recommended sequencing if picked up: add rendering tests for the two components first, then decompose; and for the repository, extract the shared DB-state module as its own reviewed commit before moving any query code.
 
 `HANDOVER.md` retains historical references to the deleted deploy scripts. It is an append-only reverse-chronological log, so those entries were left intact rather than rewritten.
+
+---
+
+## 9. Production Readiness
+
+### 9.1 The CSP is now verified, not assumed
+
+Wave 3 shipped a nonce-based CSP that I flagged as unverified, because nothing in this repo executes a page. That gap is closed. The production build was served locally with the database disabled (production credentials were deliberately not used — a page load writes audit rows) and checked directly:
+
+- Exactly **one** `content-security-policy` response header, confirming `next.config.mjs` and middleware are no longer both emitting one
+- `script-src 'self' 'nonce-<per-request>' https://clerk... https://challenges.cloudflare.com` — no `'unsafe-inline'`
+- **26 inline script tags all carry the request's nonce.** Next's bootstrap and hydration scripts execute
+- The single un-nonced script is Clerk's, served from `*.clerk.accounts.dev` and covered by the host allowlist
+- **Zero CSP violations** in the browser console; the page renders with styling intact
+
+That last pair is the empirical case for not using `'strict-dynamic'`. Under strict-dynamic browsers ignore host allowlists, and Clerk's script carries no nonce — it would have been blocked and auth would have failed.
+
+### 9.2 `NEXT_PUBLIC_CLERK_DOMAIN` is a deploy-blocking variable
+
+Surfaced by the browser test. `lib/security-headers.ts` builds the CSP script-src allowlist from `NEXT_PUBLIC_CLERK_DOMAIN`, defaulting to `clerk.accounts.dev`. In `render.yaml` it is `sync: false`, so it must be set by hand in the Render dashboard.
+
+If it is unset or wrong on a Clerk instance with a custom domain, the CSP allowlists the wrong host and the browser blocks Clerk's script. Auth fails with nothing but a console violation to show for it — no server error, no failing health check. It is now in the required set checked by `npm run check:env`.
+
+This risk predates the nonce work: the old policy carried the same host list, and `'unsafe-inline'` never applied to external scripts.
+
+### 9.3 The release gate was failing on a stopwatch
+
+`npm run verify:release` failed with `RELEASE GATE FAILED: TypeScript timed out` against a 120s budget. A clean non-incremental typecheck measures **207s** and exits 0 — the gate could not be met by a passing typecheck. Raised to 420s (~2x measured). CI's typecheck budget was 4 minutes, ~30s above measured, and is now 8. `verify:release` passes end to end.
+
+### 9.4 Before the production run
+
+1. Set `NEXT_PUBLIC_CLERK_DOMAIN` in Render to the production Clerk domain (9.2). `npm run check:env` against the deploy environment verifies this and the other four required variables.
+2. Optionally set `NEXUS_CREDENTIALS_SECRET` to split credential encryption from `AUTH_SECRET`. Unset, it falls back and everything works; set, it removes the risk that regenerating `AUTH_SECRET` destroys every stored connector credential. If set, run a re-encryption pass — the machinery and procedure are in `lib/crypto.ts`.
+3. Confirm the Render dashboard carries a production Clerk key, not the `pk_test_` instance in the local `.env.production.local`.
+
+Not blocking, but still open: Sentry remains a no-op pending the middleware build-hang investigation, so production error visibility is stderr only.
