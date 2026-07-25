@@ -9,12 +9,9 @@
  * - Lime #86BC25 is brand/activation only and never signals status.
  * - Inside app chrome the mark renders monochrome (`tone="mono"`), so the
  *   brand never competes with operating status colour.
- *
- * KNOWN DIVERGENCE (2026-07-25): the Figma brand board
- * ("01a Pinavia Brand Assets") carries a different mark — governance ring +
- * geometric P + lime signal node. This component preserves the mark already
- * shipped in code. The two should be reconciled to one before launch; that
- * is a brand decision, not a refactor, so it is deliberately not made here.
+ * - The geometry mirrors the Figma brand board: governance ring, P stem,
+ *   P bowl/room, and lime signal node. Do not add decorative violet; violet
+ *   stays reserved for AI provenance.
  */
 
 type MarkTone = "brand" | "mono";
@@ -30,12 +27,13 @@ export function PinaviaMark({
   /** Supply to make the mark meaningful to screen readers; omit for decorative use. */
   title?: string;
 }) {
-  const glyph = tone === "brand" ? "#86BC25" : "#F7FAFF";
-  const rule = tone === "brand" ? "#8FC5FF" : "#A8B3C7";
+  const ring = tone === "brand" ? "#64D8C4" : "#A8B3C7";
+  const glyph = "#F7FAFF";
+  const signal = tone === "brand" ? "#86BC25" : "#F7FAFF";
 
   return (
     <svg
-      viewBox="0 0 64 64"
+      viewBox="0 0 96 96"
       className={`shrink-0 ${className}`}
       fill="none"
       role={title ? "img" : undefined}
@@ -43,13 +41,10 @@ export function PinaviaMark({
       aria-label={title}
     >
       {title ? <title>{title}</title> : null}
-      <rect x="6" y="6" width="52" height="52" rx="14" fill="#101826" />
-      <rect x="6.5" y="6.5" width="51" height="51" rx="13.5" stroke="white" strokeOpacity="0.16" />
-      <path
-        d="M20 47V17h17.5c8.1 0 13.5 4.9 13.5 12.4 0 7.3-5.4 12.3-13.5 12.3H29v5.3h-9Zm9-13h7.7c3.5 0 5.7-1.8 5.7-4.6 0-2.9-2.2-4.7-5.7-4.7H29V34Z"
-        fill={glyph}
-      />
-      <path d="M18 50h28" stroke={rule} strokeWidth="2.5" strokeLinecap="round" />
+      <circle cx="48" cy="48" r="45" stroke={ring} strokeWidth="6" />
+      <rect x="31.2" y="26.4" width="10.8" height="43.2" rx="5.4" fill={glyph} />
+      <circle cx="52.8" cy="40.8" r="9" stroke={glyph} strokeWidth="10.8" />
+      <circle cx="75.6" cy="10.8" r="7.2" fill={signal} />
     </svg>
   );
 }

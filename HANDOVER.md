@@ -9,6 +9,7 @@
 - Replaced the public `/` page with a Pinavia parent-company landing page. It now presents the Pinavia mark, the governed AI execution-room positioning, the NexusAI command-map hero, and the five-product family: NexusAI, Quorum, Meridian, Vantage, and Nucleus.
 - Kept buyer actions grounded in existing routes: `Enter NexusAI` uses `/workspace`, readiness uses `/readiness`, and the product brief uses `/product-brief`.
 - Updated public-shell metadata and header logic so `/` says Pinavia, while sign-in/product-aware public routes can still use the detected product brand.
+- Reconciled the code mark with Figma `01a Pinavia Brand Assets`: governance ring, P stem, P bowl/room, and lime signal node. The public shell now uses the reusable `PinaviaMark` instead of a separate initial badge.
 
 ---
 

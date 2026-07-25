@@ -5,7 +5,8 @@
 ## Unreleased — Pinavia Public Landing Page (2026-07-25)
 
 - Replaced the public root Nexus Core marketing page with a Pinavia parent-brand landing page that introduces the governed product family: NexusAI, Quorum, Meridian, Vantage, and Nucleus.
-- Added a premium Pinavia monogram mark, executive command-map hero, evidence/approval trust signals, and product-family routing CTAs while keeping the live app entrypoint on `/workspace` and readiness path on `/readiness`.
+- Added the Figma-aligned Pinavia governance-ring mark, executive command-map hero, evidence/approval trust signals, and product-family routing CTAs while keeping the live app entrypoint on `/workspace` and readiness path on `/readiness`.
+- Reconciled the landing-page and public-shell brand mark so code now uses the same governance ring, P stem, P bowl/room, and lime signal-node structure as the Figma brand board.
 - Updated public-shell metadata and homepage header treatment so `/` reads as Pinavia while product/auth surfaces remain product-aware.
 
 ---
