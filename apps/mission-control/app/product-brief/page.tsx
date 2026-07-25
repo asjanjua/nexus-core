@@ -1,3 +1,5 @@
+"use client";
+
 /**
  * /product-brief — NexusAI Mission Control Product Brief
  *
