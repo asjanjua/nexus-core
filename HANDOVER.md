@@ -1373,3 +1373,9 @@ M .gitignore
 - Status advances from `committed but unpushed` to `ci_green`. It does not advance to deployed or operationally verified.
 - This append-only CI checkpoint will be pushed as a paperwork-only commit and will retrigger final-head checks. No merge or production action is authorized by this status update.
 - Next exact action: wait for final-head checks, mark PR #4 ready if green, then obtain explicit merge/deploy authority before Render Node 24 promotion and live smoke.
+## 2026-07-25 — Clerk custom-domain deployment guard
+
+- **State:** local configuration change pending commit/CI; prior CSP/release-gate commit `b8dec90` is CI-green on Node 22 and Node 24.
+- **Change:** `render.yaml` now declares `NEXT_PUBLIC_CLERK_DOMAIN=accounts.pinavia.co`. This is a public Clerk frontend host, not a secret, and it removes the CSP/auth outage risk caused by a manually omitted `sync: false` value.
+- **Still external:** Render must synchronize the updated Blueprint during the next `main` deployment. `CLERK_SECRET_KEY`, `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`, and credential-encryption secrets remain dashboard-managed.
+- **Verification next:** after production promotion, run `NODE_ENV=production node scripts/check-env.mjs` in the deploy environment and browser-smoke the hosted sign-in handoff through `https://accounts.pinavia.co/sign-in`.

@@ -7,6 +7,7 @@
 - Hardened reviewer-seat acceptance: the invite is consumed only by a Clerk user with a verified email matching the invite and a non-admin organization role. This blocks an administrator from self-accepting a reviewer seat through a secondary email.
 - Added a first-run, dismissible Company Setup helper for authenticated users. It guides company context, evidence intake, approval, and first-workflow selection without claiming server-owned readiness steps are complete.
 - Added `docs/DEMO_ACCESS_RUNBOOK.md` with the recommended three-identity Clerk demo model: owner/admin, executive/member, and reviewer/member. Passwords remain managed exclusively by Clerk and are never stored in Nexus code or configuration.
+- Declared the verified public Clerk frontend host, `accounts.pinavia.co`, in the Render Blueprint. This keeps the nonce-based CSP allowlist aligned with the hosted sign-in domain without placing any credential in Git.
 
 ## Unreleased — Node 24 Production Promotion (2026-07-15)
 
