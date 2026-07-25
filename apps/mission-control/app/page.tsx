@@ -190,6 +190,45 @@ const regulatedCaseStudies = [
   },
 ];
 
+const competitorDifferences = [
+  {
+    topic: "Primary problem",
+    category: "Context-memory platforms reduce the cost and drift of repeatedly feeding knowledge back into AI.",
+    pinavia: "Pinavia turns evidence into governed workflows where answers become decisions, approvals, minutes, filings, memos, and audit trails.",
+  },
+  {
+    topic: "Buyer moment",
+    category: "Best when the buyer asks: why is our AI expensive, repetitive, or losing context?",
+    pinavia: "Best when the buyer asks: can we safely use AI in a board, regulatory, diligence, or client-delivery workflow?",
+  },
+  {
+    topic: "Unit of value",
+    category: "A better context layer: memory, retrieval, verification, and routing across AI usage.",
+    pinavia: "A governed decision loop: source, answer, caveat, draft, owner, approval status, and proof artifact.",
+  },
+  {
+    topic: "Governance boundary",
+    category: "Verification explains why an answer can be trusted.",
+    pinavia: "Verification plus authority control: the system also shows what AI is not allowed to approve, submit, sign, or decide.",
+  },
+  {
+    topic: "Domain shape",
+    category: "The layer is horizontal and model-adjacent, designed to improve many AI interactions.",
+    pinavia: "The verticals are product-specific: Quorum, Meridian, Vantage, and Nucleus each own their objects, gates, and buyer language.",
+  },
+  {
+    topic: "Pilot proof",
+    category: "A diagnostic can show re-read cost, learning gaps, token waste, and context failure.",
+    pinavia: "A diagnostic shows the first regulated workflow that can reach governed value proof: inputs, blockers, owner, approval path, and evidence readiness.",
+  },
+];
+
+const overlapPoints = [
+  "Both theses agree that model capability alone is not enough.",
+  "Both care about verified context, source traceability, and model-agnostic infrastructure.",
+  "Both reject the idea that a generic chat window is enough for enterprise AI.",
+];
+
 const footerLinks: Array<{ heading: string; items: Array<{ label: string; href: string }> }> = [
   {
     heading: "Product",
@@ -475,7 +514,7 @@ function RegulatedCaseStudiesSection() {
       <div className="border-t border-white/10 pt-14">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="micro-label text-white/35">05 / Regulated entity case studies</p>
+            <p className="micro-label text-white/35">06 / Regulated entity case studies</p>
             <h2 className="display-hero mt-5 max-w-4xl text-white" style={{ fontSize: "clamp(2rem,4vw,3rem)" }}>
               The pitch gets stronger when the boundary is visible.
             </h2>
@@ -526,13 +565,82 @@ function RegulatedCaseStudiesSection() {
   );
 }
 
+function CompetitiveDifferenceSection() {
+  return (
+    <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8" id="difference">
+      <div className="overflow-hidden rounded-lg border border-white/10 bg-white/[0.035]">
+        <div className="grid gap-8 border-b border-white/10 p-5 sm:p-6 lg:grid-cols-[0.78fr_1.22fr]">
+          <div>
+            <p className="micro-label text-white/35">05 / Why Pinavia is different</p>
+            <h2 className="display-hero mt-5 text-white" style={{ fontSize: "clamp(2rem,4vw,3rem)" }}>
+              Context memory is necessary. Governed action is the product.
+            </h2>
+          </div>
+          <div className="space-y-5">
+            <p className="text-sm leading-6 text-white/60">
+              A context-memory company helps AI remember, retrieve, verify, and route knowledge more
+              efficiently. Pinavia starts from the next operational question: what happens when that
+              sourced answer needs to become a regulated decision with a named human accountable for
+              the outcome?
+            </p>
+            <div className="grid gap-2 sm:grid-cols-3">
+              {overlapPoints.map((point) => (
+                <div key={point} className="rounded-lg border border-white/10 bg-black/20 p-3">
+                  <p className="text-xs leading-5 text-white/55">{point}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid border-b border-white/10 bg-black/15 px-5 py-3 text-xs font-semibold uppercase text-white/35 sm:grid-cols-[0.55fr_1fr_1fr] sm:px-6">
+          <span>Dimension</span>
+          <span className="hidden sm:block">Context-memory infrastructure</span>
+          <span className="hidden sm:block">Pinavia governed workflow infrastructure</span>
+        </div>
+
+        <div className="divide-y divide-white/10">
+          {competitorDifferences.map((row) => (
+            <article key={row.topic} className="grid gap-4 px-5 py-5 sm:grid-cols-[0.55fr_1fr_1fr] sm:px-6">
+              <h3 className="text-sm font-semibold text-white">{row.topic}</h3>
+              <div>
+                <p className="mb-1 text-[10px] font-semibold uppercase text-white/30 sm:hidden">
+                  Context-memory infrastructure
+                </p>
+                <p className="text-sm leading-6 text-white/50">{row.category}</p>
+              </div>
+              <div>
+                <p className="mb-1 text-[10px] font-semibold uppercase text-nexus-accent sm:hidden">
+                  Pinavia governed workflow infrastructure
+                </p>
+                <p className="text-sm leading-6 text-white/75">{row.pinavia}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <div className="grid gap-4 bg-nexus-accent/5 p-5 sm:p-6 lg:grid-cols-[1fr_auto] lg:items-center">
+          <p className="max-w-3xl text-sm leading-6 text-white/60">
+            The diagnostic should therefore measure a different thing: not only whether AI is wasting
+            tokens or losing context, but whether a specific high-stakes workflow has enough evidence,
+            owners, approvals, and refusal boundaries to be safely piloted.
+          </p>
+          <Link href="/readiness" className="btn-primary px-5 py-3" prefetch={false}>
+            Run the diagnostic
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function ProductFamilySection() {
   return (
     <section className="mx-auto max-w-7xl px-4 pb-24 sm:px-6 lg:px-8" id="rooms">
       <div className="border-t border-white/10 pt-14">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="micro-label text-white/35">06 / Product family</p>
+            <p className="micro-label text-white/35">07 / Product family</p>
             <h2 className="display-hero mt-5 text-white" style={{ fontSize: "clamp(2rem,4vw,3rem)" }}>
               One governed core, <span className="display-accent text-nexus-accent">five rooms</span>.
             </h2>
@@ -667,6 +775,7 @@ export default function HomePage() {
       <MechanismBand />
       <ProofBand />
       <USPSection />
+      <CompetitiveDifferenceSection />
       <RegulatedCaseStudiesSection />
       <ProductFamilySection />
 
