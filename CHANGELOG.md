@@ -15,7 +15,7 @@
 - Added Figma page `21 Commercial Pilot Loop V0.4` in `Nexus System`, with six 1440x900 desktop-browser frames mapping the current code-backed buyer path: landing CTA delta, priced diagnostic, Meridian Submission Room, trial invite admin portal, invite accept/redeem, and deploy storyboard.
 - Recorded the V0.4 candidate in `docs/UI_BASELINE_VERSIONING.md` and added `docs/UI_V0_4_COMMERCIAL_PILOT_LOOP_FIGMA_PLAN.md` so Figma, code routes, and Render verification stay aligned.
 - Hardened trial invite redemption so the one-time invite claim and Pro trial entitlement are provisioned together, with optional sector-pack sample material seeded server-side after redemption rather than via the admin-only demo-reset endpoint.
-- Deployed the commercial pilot loop to `pinavia.io`; public smoke passed for the home page, diagnostic page, invite accept page, and health endpoint. Staff invite issuance and full redemption smoke remain gated on the Render-managed `PINAVIA_ADMIN_PRINCIPALS` allowlist.
+- Deployed the commercial pilot loop with `app.pinavia.co` as the canonical authenticated application host; its full eight-check platform smoke passed. `pinavia.io` serves the public landing flow but is intentionally not an API CORS origin. Staff invite issuance and full redemption smoke remain gated on the Render-managed `PINAVIA_ADMIN_PRINCIPALS` allowlist.
 - Trial sample packs now refuse non-empty workspaces, preventing a forwarded invite from replacing a customer's existing evidence or recommendations.
 
 ---

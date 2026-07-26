@@ -51,7 +51,7 @@ These are the highest-priority operational items because they determine whether 
 
 | Item | Status | Source | Notes |
 |---|---|---|---|
-| Commercial pilot loop design-to-deploy | deployed, authenticated smoke pending | `docs/UI_V0_4_COMMERCIAL_PILOT_LOOP_FIGMA_PLAN.md`, Figma page `121:2` | Six code-backed desktop frames now map the buyer path from `/` -> `/diagnostic` -> trial invite -> `/meridian` -> human sign-off. Public smoke passed on `pinavia.io`; remaining gate is Render `PINAVIA_ADMIN_PRINCIPALS` plus authenticated staff invite and redemption smoke. |
+| Commercial pilot loop design-to-deploy | deployed, authenticated smoke pending | `docs/UI_V0_4_COMMERCIAL_PILOT_LOOP_FIGMA_PLAN.md`, Figma page `121:2` | Six code-backed desktop frames now map the buyer path from `/` -> `/diagnostic` -> trial invite -> `/meridian` -> human sign-off. The full 8-check platform smoke passes on `app.pinavia.co`; `pinavia.io` is the public landing surface, not an API CORS origin. Remaining gate is Render `PINAVIA_ADMIN_PRINCIPALS` plus authenticated staff invite and redemption smoke. |
 
 ### Initial Launch UI Final Pack V0.5
 
