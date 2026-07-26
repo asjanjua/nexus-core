@@ -64,6 +64,11 @@ services:
         sync: false
       - key: CLERK_WEBHOOK_SECRET
         sync: false
+      # Pinavia staff gate for /admin/invites and /api/admin/trial-invites.
+      # Set manually to comma-separated Clerk user and/or org IDs. It fails
+      # closed when unset, so customer admins can never issue product trials.
+      - key: PINAVIA_ADMIN_PRINCIPALS
+        sync: false
       - key: AUTH_SECRET
         generateValue: true
       # Connector credential encryption. Deliberately NOT generateValue: a

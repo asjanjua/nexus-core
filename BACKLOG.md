@@ -47,6 +47,12 @@ Status: `watch`, not an active build. Keep the pilot as a modular monolith. Reas
 
 These are the highest-priority operational items because they determine whether the current build can be safely shown or piloted.
 
+### Pinavia Trial-Invite Production Enablement
+
+| Item | Status | Source | Notes |
+|---|---|---|---|
+| Pinavia trial-invite production enablement | production pending | `bb2af6c`, `docs/TRIAL_INVITE_RUNBOOK.md` | Local code is complete but not pushed or deployed. Require green CI, migration 0038, a Render-managed `PINAVIA_ADMIN_PRINCIPALS` staff allowlist, and a real invite → Clerk sign-up → redeem → demo-pack smoke. In-memory fallback is not valid for real invites. |
+
 | Item | Status | Source | Notes |
 |---|---|---|---|
 | Confirm/apply migrations `0025-0026` in production database | done | `TASKS.md`, `HANDOVER.md`, `docs/PRODUCTION_HEALTH_CHECKLIST.md` | Applied successfully on 2026-06-25; `db:check` returned `ok=true` against `neondb`. |

@@ -4,6 +4,15 @@
 
 ---
 
+## 2026-07-26 — Trial Invite Portal Paperwork and Production Gate
+
+- Verified `bb2af6c` is present on local `main`, alongside three earlier local product commits. The branch is four commits ahead of `origin/main`; none of those commits are live.
+- Trial invites are code-complete locally, but not operationally ready: migration 0038 must be applied and `PINAVIA_ADMIN_PRINCIPALS` must be configured with Pinavia Clerk staff principals before `/admin/invites` can work. The gate deliberately fails closed while unset.
+- Added the non-secret allowlist placeholder to `.env.example`, `render.yaml`, and `docs/RENDER_DEPLOY.md`, and recorded the production sequence in `TASKS.md` and `BACKLOG.md`. The actual principal IDs remain Render-managed and must not be committed.
+- Next release action: validate the local four-commit batch, push it, require green CI, apply migration 0038, configure the allowlist, deploy, and complete a genuine invite → Clerk sign-up → redeem → demo-pack smoke.
+
+---
+
 ## 2026-07-25 — Pinavia Public Landing Page (Local, Pending Deploy)
 
 - Replaced the public `/` page with a Pinavia parent-company landing page. It now presents the Pinavia mark, the governed AI execution-room positioning, the NexusAI command-map hero, and the five-product family: NexusAI, Quorum, Meridian, Vantage, and Nucleus.

@@ -152,6 +152,11 @@ NEXUS_VAULT_SYNC=disabled
 # Hosted sign-in/sign-up hosts are derived separately into the CSP allowlist.
 NEXT_PUBLIC_CLERK_DOMAIN=clerk.pinavia.co
 
+# Platform trial-invite staff gate. Use comma-separated Clerk user IDs and/or
+# Clerk organization IDs for Pinavia staff only. The route fails closed when
+# this is unset.
+PINAVIA_ADMIN_PRINCIPALS=
+
 # Optional: only needed for additional non-Pinavia origins.
 # The standard Pinavia product origins are already included by code.
 NEXUS_EXTRA_CORS_ORIGINS=

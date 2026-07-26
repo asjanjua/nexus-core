@@ -24,6 +24,7 @@
 
 ## Unreleased — Reviewer Separation and Guided Company Setup (2026-07-25)
 
+- Added the local-only Pinavia trial-invite portal: single-use hashed trial links, fail-closed platform-staff authorization, Pro-plan trial provisioning, optional sector demo-pack seeding, audit events, and staff/invitee pages. Production enablement requires migration 0038 and a manually configured `PINAVIA_ADMIN_PRINCIPALS` allowlist.
 - Fixed Clerk custom-domain CSP handling: Nexus now allowlists both the Clerk frontend API host and the separately configured hosted authentication host.
 - Hardened reviewer-seat acceptance: the invite is consumed only by a Clerk user with a verified email matching the invite and a non-admin organization role. This blocks an administrator from self-accepting a reviewer seat through a secondary email.
 - Added a first-run, dismissible Company Setup helper for authenticated users. It guides company context, evidence intake, approval, and first-workflow selection without claiming server-owned readiness steps are complete.
