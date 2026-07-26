@@ -29,6 +29,7 @@ const DISALLOW = [
   "/ingestion",
   "/workflows",
   "/workspace",
+  "/meridian",
   "/settings",
   "/export",
   "/board",

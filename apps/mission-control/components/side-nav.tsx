@@ -120,6 +120,7 @@ const spineSections: NavSection[] = [
       { href: "/dashboard/cro", label: "Risk Room" },
       { href: "/dashboard/chro", label: "People Room" },
       { href: "/board", label: "Board Room" },
+      { href: "/meridian", label: "Submission Room" },
     ],
   },
   {
