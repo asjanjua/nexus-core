@@ -81,7 +81,7 @@ After homepage CTA alignment, the fifth frame was re-rendered again to verify th
 
 The sixth frame was rebuilt after an initial auto-layout sizing miss collapsed the content wrapper. The final static handoff frame renders cleanly and shows the product brief status, mobile card fix, route contract, and authority boundary. Live production smoke for `/product-brief` passes on desktop and mobile through `4e8b71f`: Pinavia shell present, stale NexusAI-only strings absent, three `/start-pilot` links, all five product-room links present, no body overflow, desktop table retained, mobile table hidden, and five mobile room cards rendered.
 
-The seventh frame renders cleanly and records the local `/readiness` result-flow smoke: high-score desktop/mobile flows produce the AI-Native result, carry the server claim code into signup, expose `/start-pilot`, remove stale personal-email/NexusAI-only copy, hide the contradictory advisor panel when a lane exists, and avoid horizontal overflow. Production deploy and live smoke are pending for this frame.
+The seventh frame renders cleanly and records the live `/readiness` result-flow smoke through `d1ac9b2`: high-score desktop/mobile flows produce the AI-Native result, carry the server claim code into signup, expose `/start-pilot`, remove stale personal-email/NexusAI-only copy, hide the contradictory advisor panel when a lane exists, and avoid horizontal overflow.
 
 ## Next Actions
 

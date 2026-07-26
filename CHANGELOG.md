@@ -17,6 +17,7 @@
 - Deployed the product brief through `4e8b71f`; live desktop/mobile smoke passes with the Pinavia shell, product-room links, no stale NexusAI-only contact strings, no mobile overflow, desktop table retained, and five mobile room cards.
 - Refreshed `/readiness` result routing so completed assessments use Pinavia copy, `/diagnostic` or `/start-pilot` CTAs, `hello@pinavia.io` advisor fallback, teal top-band treatment, and no contradictory advisor panel when a valid lane exists.
 - Added a seventh V0.7 Figma frame, `Launch Cockpit / 07 Readiness Result Path / 1440` (`143:2`), documenting the refreshed assessment result path.
+- Deployed the readiness result refresh through `d1ac9b2`; live desktop/mobile result-flow smoke passes with inherited signup, `/start-pilot`, no stale personal-email/NexusAI-only copy, no contradictory advisor panel, and no overflow.
 - Added `docs/UI_V0_7_INITIAL_LAUNCH_COCKPIT.md` and registered V0.7 in `docs/UI_BASELINE_VERSIONING.md`.
 
 ---
