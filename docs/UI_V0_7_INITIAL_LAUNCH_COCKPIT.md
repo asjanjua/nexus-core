@@ -38,7 +38,7 @@ The fifth frame was added after the `/start-pilot` route became a real public pa
 
 | Surface | Current route/demo stance | Design source |
 |---|---|---|
-| Pinavia | Show now from `https://pinavia.io`; after deploy, use `/start-pilot` as the governed pilot intake page. | `00 Executive Landing`, `21 Commercial Pilot Loop V0.4`, V0.7 frame `135:2` |
+| Pinavia | Show now from `https://pinavia.io`; use `/start-pilot` as the governed pilot intake page. | `00 Executive Landing`, `21 Commercial Pilot Loop V0.4`, V0.7 frame `135:2` |
 | NexusAI | Show as the core execution room; use Ask -> draft decision -> approval as the main demo beat. | `13 NexusAI Executive Room Final`, V0.2 full desktop prototype |
 | Quorum | Show the board lifecycle and governance roadmap through `/board`. | `14 Quorum Board Room Final`, `09 Quorum Governance Workflow V0.2` |
 | Meridian | Show the regulated filing-pack workflow through `/meridian`. | `15 Meridian Submission Room Final`, `21 Commercial Pilot Loop V0.4` |
@@ -72,8 +72,7 @@ The fifth frame initially had a wrapped title overlapping the preview panel and 
 ## Next Actions
 
 1. Use V0.7 as the first page for colleague design review.
-2. Deploy and smoke `/start-pilot` on the apex domain.
-3. Complete the external DNS cutover gate before showing product subdomain URLs.
-4. Run signed-in NexusAI Ask -> draft decision -> approval smoke as the core demo proof.
-5. Run signed-in smoke for `/meridian`, `/vantage`, and `/nucleus`.
-6. Configure `PINAVIA_ADMIN_PRINCIPALS`, then run the staff invite -> accept -> redeem pilot smoke.
+2. Complete the external DNS cutover gate before showing product subdomain URLs.
+3. Run signed-in NexusAI Ask -> draft decision -> approval smoke as the core demo proof.
+4. Run signed-in smoke for `/meridian`, `/vantage`, and `/nucleus`.
+5. Configure `PINAVIA_ADMIN_PRINCIPALS`, then run the staff invite -> accept -> redeem pilot smoke.
