@@ -1,7 +1,7 @@
 /**
  * Readiness Diagnostic — commercial offer registry.
  *
- * The paid diagnostic is the priced front door that sits between the free
+ * The diagnostic is the evidence-tested front door that sits between the free
  * `/readiness` self-assessment and a scoped pilot SOW. `/readiness` scores
  * seven dimensions from the client's own answers; this engagement tests those
  * same seven dimensions against their evidence. Keeping the dimension list in
@@ -14,22 +14,16 @@
  */
 
 /**
- * Rung one: the self-serve diagnostic. Priced to qualify, not to earn. At this
- * figure the revenue is immaterial; the function is a genuine intent signal and
- * a legitimately captured payment method.
+ * Rung one: the self-serve diagnostic. If a price is set, it qualifies intent
+ * rather than acting as a revenue line. Keep it hidden until checkout and
+ * customer receipt flows exist in production.
  *
- * Deliberately CHARGED rather than waived-with-card-capture. A waived fee that
- * later converts on a condition the customer triggered is a negative-option
- * enrollment: it carries FTC/ROSCA and card-network disclosure obligations, and
- * for a buyer whose interest in this product IS governance it reads as evidence
- * we do not practise what we sell. Charging removes the entire problem.
+ * If this becomes paid again, charge plainly rather than waiving with card
+ * capture. A waived fee that later converts on a condition the customer
+ * triggered can create negative-option disclosure problems and weakens the
+ * governance story.
  */
-export const FEE: { amount: string; basis: string; note: string } | null = {
-  amount: "USD 49",
-  basis: "One-off, per organisation",
-  note:
-    "Charged at sign-up. Covers the automated readiness assessment and findings output. Not a subscription and not a trial: nothing converts, renews, or bills again without you choosing it.",
-};
+export const FEE: { amount: string; basis: string; note: string } | null = null;
 
 /**
  * Rung two: the partner-delivered engagement. Kept distinct from FEE on
@@ -51,7 +45,7 @@ export const ENGAGEMENT: {
   fee: null,
 };
 
-/** What the USD 49 self-serve diagnostic returns. Automated, same day. */
+/** What the self-serve readiness assessment returns. Automated, same day. */
 export const SELF_SERVE_OUTPUT = [
   {
     title: "Scored readiness assessment",

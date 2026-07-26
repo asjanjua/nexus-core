@@ -18,6 +18,9 @@
 - Refreshed `/readiness` result routing so completed assessments use Pinavia copy, `/diagnostic` or `/start-pilot` CTAs, `hello@pinavia.io` advisor fallback, teal top-band treatment, and no contradictory advisor panel when a valid lane exists.
 - Added a seventh V0.7 Figma frame, `Launch Cockpit / 07 Readiness Result Path / 1440` (`143:2`), documenting the refreshed assessment result path.
 - Deployed the readiness result refresh through `d1ac9b2`; live desktop/mobile result-flow smoke passes with inherited signup, `/start-pilot`, no stale personal-email/NexusAI-only copy, no contradictory advisor panel, and no overflow.
+- Refreshed `/diagnostic` so it no longer implies an unwired paid checkout: primary action is now `Start diagnostic intake` to `/start-pilot?intent=diagnostic`, secondary action remains `/readiness`, and pricing is hidden until checkout and receipt flows are real.
+- Added diagnostic-intent copy to `/start-pilot` so visitors arriving from `/diagnostic` see `Diagnostic intake` and a scoped evidence-test hero instead of a generic pilot-start handoff.
+- Added an eighth V0.7 Figma frame, `Launch Cockpit / 08 Diagnostic Intake Path / 1440` (`145:2`), documenting the diagnostic route contract, buyer handoff, helpful inputs, and acceptance checks.
 - Added `docs/UI_V0_7_INITIAL_LAUNCH_COCKPIT.md` and registered V0.7 in `docs/UI_BASELINE_VERSIONING.md`.
 
 ---

@@ -29,7 +29,7 @@ import {
 export const metadata: Metadata = {
   title: "Readiness Diagnostic | Pinavia",
   description:
-    "A two-week fixed-scope diagnostic that tests AI readiness against your evidence, not your opinion. Board-ready findings pack and prioritised remediation roadmap.",
+    "A fixed-scope diagnostic that tests AI readiness against your evidence, not your opinion. Board-ready findings pack and prioritised remediation roadmap.",
   alternates: { canonical: "/diagnostic" },
 };
 
@@ -38,17 +38,20 @@ const PANEL = "rounded-lg border border-nexus-border bg-nexus-panel p-6";
 const LABEL = "text-xs font-semibold uppercase tracking-wider text-nexus-muted";
 
 export default function DiagnosticPage() {
+  const selfServeLabel = FEE ? `Scored (${FEE.amount})` : "Self-assessment";
+
   return (
     <main className="min-h-screen bg-nexus-bg text-nexus-text">
       {/* Rung one: self-serve. One primary action, brand lime reserved for it. */}
       <section className="mx-auto max-w-5xl px-4 pb-8 pt-16 sm:px-6 lg:px-8">
         <p className={LABEL}>Readiness Diagnostic</p>
         <h1 className="mt-4 max-w-3xl text-4xl font-semibold leading-tight">
-          Find out what your AI readiness actually is, before someone asks you to prove it.
+          Move from an AI readiness score to evidence you can defend.
         </h1>
         <p className="mt-6 max-w-2xl text-base leading-relaxed text-nexus-muted">
-          Seven dimensions, scored against your own answers, returned the same day. It tells you which
-          questions a board or a regulator would ask that you cannot currently answer.
+          The free assessment shows what your team believes. The diagnostic checks the same seven
+          dimensions against live evidence, recent decisions, named owners, and the obligations that
+          bind your organisation.
         </p>
 
         {/* Fee block renders only when set. Price stated before the CTA, never after. */}
@@ -64,10 +67,10 @@ export default function DiagnosticPage() {
 
         <div className="mt-8 flex flex-wrap items-center gap-4">
           <Link
-            href="/start-pilot"
+            href="/start-pilot?intent=diagnostic"
             className="inline-flex items-center rounded-lg bg-nexus-brand px-4 py-2 text-sm font-semibold text-[#0b1a00]"
           >
-            {FEE ? `Get the diagnostic for ${FEE.amount}` : "Get the diagnostic"}
+            Start diagnostic intake
           </Link>
           <Link
             href="/readiness"
@@ -84,6 +87,15 @@ export default function DiagnosticPage() {
               <p className="mt-2 text-sm leading-relaxed text-nexus-muted">{item.body}</p>
             </div>
           ))}
+        </div>
+
+        <div className="mt-6 rounded-lg border border-nexus-warn/30 bg-nexus-warn/10 p-4">
+          <p className="text-sm font-semibold text-nexus-warn">Authority boundary</p>
+          <p className="mt-2 text-sm leading-6 text-amber-50/75">
+            Pinavia can score, cite, compare, draft, and route findings. It does not certify
+            readiness, provide legal advice, file with a regulator, approve investment decisions, or
+            sign on behalf of your organisation.
+          </p>
         </div>
       </section>
 
@@ -103,7 +115,7 @@ export default function DiagnosticPage() {
                   Dimension
                 </th>
                 <th scope="col" className={`pb-3 pr-4 ${LABEL}`}>
-                  Scored (USD 49)
+                  {selfServeLabel}
                 </th>
                 <th scope="col" className={`pb-3 ${LABEL}`}>
                   Evidence-tested (review)
@@ -127,7 +139,7 @@ export default function DiagnosticPage() {
         </div>
       </section>
 
-      {/* Rung two. Visually separated so the USD 49 figure cannot anchor it. */}
+      {/* Rung two. Visually separated so any self-serve price cannot anchor it. */}
       <section className="border-y border-nexus-border bg-nexus-surface">
         <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:px-8">
           <p className={LABEL}>When scoring is not enough</p>
@@ -224,10 +236,10 @@ export default function DiagnosticPage() {
             </p>
           </div>
           <Link
-            href="/start-pilot"
+            href="/start-pilot?intent=diagnostic"
             className="inline-flex items-center rounded-lg bg-nexus-brand px-4 py-2 text-sm font-semibold text-[#0b1a00]"
           >
-            Scope the review
+            Start diagnostic intake
           </Link>
         </div>
       </section>

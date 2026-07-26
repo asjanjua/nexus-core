@@ -83,19 +83,29 @@ const PILOT_STEPS = [
   },
 ];
 
-export default function StartPilotPage() {
+export default async function StartPilotPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{ intent?: string }>;
+}) {
+  const params = searchParams ? await searchParams : {};
+  const isDiagnosticIntent = params.intent === "diagnostic";
+
   return (
     <main className="min-h-screen bg-nexus-bg text-nexus-text">
       <section className="mx-auto max-w-7xl px-4 pb-12 pt-16 sm:px-6 lg:px-8">
         <div className="grid gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-start">
           <div>
-            <p className="micro-label text-nexus-accent">Pilot start</p>
+            <p className="micro-label text-nexus-accent">
+              {isDiagnosticIntent ? "Diagnostic intake" : "Pilot start"}
+            </p>
             <h1 className="mt-4 max-w-3xl text-4xl font-semibold leading-tight text-white sm:text-5xl">
-              Start with one governed workflow.
+              {isDiagnosticIntent ? "Start by scoping the evidence test." : "Start with one governed workflow."}
             </h1>
             <p className="mt-5 max-w-2xl text-base leading-7 text-white/60">
-              Pinavia pilots are deliberately narrow at the start. Pick the first room, bring a small
-              evidence pack, and prove the loop from source to human approval before expanding.
+              {isDiagnosticIntent
+                ? "Pinavia diagnostics are deliberately narrow. Bring one sponsor, a small evidence pack, and the decisions you need tested before the pilot scope is agreed."
+                : "Pinavia pilots are deliberately narrow at the start. Pick the first room, bring a small evidence pack, and prove the loop from source to human approval before expanding."}
             </p>
 
             <div className="mt-8 flex flex-wrap gap-3">

@@ -1,8 +1,8 @@
 # UI V0.7 Initial Launch Cockpit
 
 Status: Screenshot-verified Figma coordination board for initial pilot review.
-Date: 2026-07-26.
-Git reference at registration: `f1bfa46` plus this docs follow-up.
+Date: 2026-07-27.
+Git reference at registration: `f1bfa46` plus follow-up commits through the diagnostic intake candidate.
 
 ## Figma Reference
 
@@ -23,6 +23,7 @@ Frames:
 | `Launch Cockpit / 05 Pilot Start Intake / 1440` | `135:2` | Code-backed `/start-pilot` route contract: user inputs, single primary CTA, product-room branches, and authority boundary. |
 | `Launch Cockpit / 06 Product Brief / 1440` | `141:2` | Code-backed `/product-brief` refresh: Pinavia product-family collateral, mobile room cards, route contract, and standing authority boundary. |
 | `Launch Cockpit / 07 Readiness Result Path / 1440` | `143:2` | Code-backed `/readiness` result-path refresh: Pinavia branding, live CTAs, inherited-result signup, and no contradictory advisor state. |
+| `Launch Cockpit / 08 Diagnostic Intake Path / 1440` | `145:2` | Code-backed `/diagnostic` honesty pass: no unwired checkout promise, diagnostic-intent handoff to `/start-pilot`, helpful user inputs, and authority boundary. |
 
 ## Why V0.7 Exists
 
@@ -42,11 +43,13 @@ The sixth frame was added after `/product-brief` was refreshed from stale NexusA
 
 The seventh frame was added after `/readiness` was refreshed from stale NexusAI-only result copy into a Pinavia conversion path. Result-band CTAs now route to `/diagnostic` or `/start-pilot`, the advisor fallback uses `hello@pinavia.io`, and the "not a clear fit" advisor panel is suppressed whenever the server returns a valid lane and inherited-result signup path.
 
+The eighth frame was added after `/diagnostic` was refreshed from a priced-offer page into an honest diagnostic-intake bridge. It documents the current route contract: `Start diagnostic intake` routes to `/start-pilot?intent=diagnostic`, `Free self-assessment` routes to `/readiness`, diagnostic pricing remains hidden until checkout and receipt flows are implemented, and the no-certification/no-filing/no-legal-opinion/no-approval boundary is visible before action.
+
 ## Launch Truth Captured
 
 | Surface | Current route/demo stance | Design source |
 |---|---|---|
-| Pinavia | Show now from `https://pinavia.io`; use `/readiness` for free self-assessment, `/diagnostic` for evidence-tested review, `/start-pilot` as the governed pilot intake page, and `/product-brief` as the shareable product-family brief. | `00 Executive Landing`, `21 Commercial Pilot Loop V0.4`, V0.7 frames `135:2`, `141:2`, `143:2` |
+| Pinavia | Show now from `https://pinavia.io`; use `/readiness` for free self-assessment, `/diagnostic` for evidence-tested review intake, `/start-pilot` as the governed pilot intake page, and `/product-brief` as the shareable product-family brief. | `00 Executive Landing`, `21 Commercial Pilot Loop V0.4`, V0.7 frames `135:2`, `141:2`, `143:2`, `145:2` |
 | NexusAI | Show as the core execution room; use Ask -> draft decision -> approval as the main demo beat. | `13 NexusAI Executive Room Final`, V0.2 full desktop prototype |
 | Quorum | Show the board lifecycle and governance roadmap through `/board`. | `14 Quorum Board Room Final`, `09 Quorum Governance Workflow V0.2` |
 | Meridian | Show the regulated filing-pack workflow through `/meridian`. | `15 Meridian Submission Room Final`, `21 Commercial Pilot Loop V0.4` |
@@ -71,7 +74,7 @@ Use these apex routes for immediate demos:
 
 ## Visual Verification
 
-Screenshots were generated and inspected for all seven frames after creation or update.
+Screenshots were generated and inspected for all eight frames after creation or update.
 
 The only defect found was a title/subtitle overlap in `Launch Cockpit / 03 Final Screen QA Matrix / 1440`; it was fixed by shortening the title to `Final UI makes action, trust, and human control obvious`, then re-rendered cleanly.
 
@@ -83,6 +86,8 @@ The sixth frame was rebuilt after an initial auto-layout sizing miss collapsed t
 
 The seventh frame renders cleanly and records the live `/readiness` result-flow smoke through `d1ac9b2`: high-score desktop/mobile flows produce the AI-Native result, carry the server claim code into signup, expose `/start-pilot`, remove stale personal-email/NexusAI-only copy, hide the contradictory advisor panel when a lane exists, and avoid horizontal overflow.
 
+The eighth frame initially showed overflow in the buyer-handoff route cards because long URLs were squeezed into four narrow columns. It was rebuilt as a two-by-two route grid and re-rendered cleanly. It now records the candidate `/diagnostic` change: no `USD 49` checkout claim while checkout is absent, a single primary diagnostic-intake CTA, `/readiness` as the secondary path, and helpful inputs for sponsor/evidence/reviewer handoff. Local TypeScript, production build, and desktop/mobile smoke passed for `/diagnostic` plus `/start-pilot?intent=diagnostic`.
+
 ## Next Actions
 
 1. Use V0.7 as the first page for colleague design review.
@@ -90,3 +95,4 @@ The seventh frame renders cleanly and records the live `/readiness` result-flow 
 3. Run signed-in NexusAI Ask -> draft decision -> approval smoke as the core demo proof.
 4. Run signed-in smoke for `/meridian`, `/vantage`, and `/nucleus`.
 5. Configure `PINAVIA_ADMIN_PRINCIPALS`, then run the staff invite -> accept -> redeem pilot smoke.
+6. Deploy and live-smoke the `/diagnostic` intake honesty pass, then mark task 41 complete.
