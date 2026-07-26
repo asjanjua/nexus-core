@@ -1,7 +1,7 @@
 {
-  "name": "NexusAI Mission Control",
-  "short_name": "NexusAI",
-  "description": "Executive intelligence command layer. Every answer grounded in your documents.",
+  "name": "Pinavia",
+  "short_name": "Pinavia",
+  "description": "Governed AI execution rooms for executive, board, regulatory, diligence, and advisory workflows.",
   "id": "/",
   "start_url": "/?source=pwa",
   "scope": "/",

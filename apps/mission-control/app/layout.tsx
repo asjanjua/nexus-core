@@ -24,7 +24,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "NexusAI"
+    title: "Pinavia"
   },
   icons: {
     icon: [

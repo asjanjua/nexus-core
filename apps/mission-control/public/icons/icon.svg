@@ -1,4 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="112" fill="#64d8c4"/>
-  <text x="256" y="360" font-family="Inter, system-ui, sans-serif" font-size="330" font-weight="700" text-anchor="middle" fill="#04100d">N</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-label="Pinavia">
+  <title>Pinavia</title>
+  <rect width="96" height="96" rx="21" fill="#080D18"/>
+  <circle cx="48" cy="48" r="33" fill="none" stroke="#64D8C4" stroke-width="7"/>
+  <rect x="36" y="30" width="9" height="37" rx="4.5" fill="#F7FAFF"/>
+  <circle cx="55" cy="42" r="7.5" fill="none" stroke="#F7FAFF" stroke-width="9"/>
 </svg>
