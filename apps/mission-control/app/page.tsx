@@ -8,10 +8,10 @@ import { DecisionPassport } from "@/components/marketing/decision-passport";
 const productFamily = [
   {
     name: "NexusAI",
-    href: "/workspace",
+    href: "/dashboard/ceo",
     label: "Executive room",
     body: "Ask, evidence, decisions, approvals, and audit-ready operating memory.",
-    status: "Live core",
+    status: "Live hub",
     accent: "border-nexus-accent/40 text-nexus-accent",
   },
   {
@@ -24,26 +24,26 @@ const productFamily = [
   },
   {
     name: "Meridian",
-    href: "/product-brief",
+    href: "/meridian",
     label: "Regulatory room",
     body: "Jurisdiction scope, requirement evidence, gap analysis, caveats, and filing-pack prep.",
-    status: "Design candidate",
+    status: "Live hub",
     accent: "border-[#3E7BFA]/40 text-[#7FA9FF]",
   },
   {
     name: "Vantage",
-    href: "/product-brief",
+    href: "/vantage",
     label: "Deal room",
     body: "Data-room coverage, red flags, diligence questions, and investment memo handoff.",
-    status: "Design candidate",
+    status: "Live hub",
     accent: "border-[#D9834A]/40 text-[#E5A171]",
   },
   {
     name: "Nucleus",
-    href: "/product-brief",
+    href: "/nucleus",
     label: "Engagement room",
     body: "Consulting methodology packs, deliverables, evidence coverage, and white-label controls.",
-    status: "Design candidate",
+    status: "Live hub",
     accent: "border-[#9AA6B8]/40 text-[#9AA6B8]",
   },
 ];
@@ -252,9 +252,9 @@ const footerLinks: Array<{ heading: string; items: Array<{ label: string; href: 
     items: [
       { label: "NexusAI", href: "/workspace" },
       { label: "Quorum", href: "/board" },
-      { label: "Meridian", href: "/product-brief" },
-      { label: "Vantage", href: "/product-brief" },
-      { label: "Nucleus", href: "/product-brief" },
+      { label: "Meridian", href: "/meridian" },
+      { label: "Vantage", href: "/vantage" },
+      { label: "Nucleus", href: "/nucleus" },
     ],
   },
   {
@@ -275,6 +275,7 @@ const footerLinks: Array<{ heading: string; items: Array<{ label: string; href: 
   {
     heading: "Get started",
     items: [
+      { label: "Start pilot", href: "/start-pilot" },
       { label: "Readiness check", href: "/readiness" },
       { label: "Product brief", href: "/product-brief" },
       { label: "Contact", href: "mailto:hello@pinavia.io" },
@@ -498,8 +499,8 @@ function SpendAnimationSection() {
             rework, and after-the-fact approval reconstruction unless the workflow is designed around
             evidence, owners, and proof.
           </p>
-          <Link href="/readiness" className="btn-primary mt-6 px-5 py-3" prefetch={false}>
-            Run the diagnostic
+          <Link href="/start-pilot" className="btn-primary mt-6 px-5 py-3" prefetch={false}>
+            Start pilot
           </Link>
         </div>
 
@@ -806,8 +807,8 @@ function CompetitiveDifferenceSection() {
             tokens or losing context, but whether a specific high-stakes workflow has enough evidence,
             owners, approvals, and refusal boundaries to be safely piloted.
           </p>
-          <Link href="/readiness" className="btn-primary px-5 py-3" prefetch={false}>
-            Run the diagnostic
+          <Link href="/start-pilot" className="btn-primary px-5 py-3" prefetch={false}>
+            Start pilot
           </Link>
         </div>
       </div>
@@ -928,14 +929,14 @@ export default function HomePage() {
             <DemoPathStrip />
 
             <div className="flex flex-wrap gap-3">
-              <Link href="/workspace" className="btn-primary px-5 py-3" prefetch={false}>
-                Enter NexusAI
+              <Link href="/start-pilot" className="btn-primary px-5 py-3" prefetch={false}>
+                Start pilot
               </Link>
               <Link href="/readiness" className="btn-subtle px-5 py-3" prefetch={false}>
                 Run the diagnostic
               </Link>
-              <Link href="/product-brief" className="btn-subtle px-5 py-3" prefetch={false}>
-                View product brief
+              <Link href="/workspace" className="btn-subtle px-5 py-3" prefetch={false}>
+                Enter NexusAI
               </Link>
             </div>
 

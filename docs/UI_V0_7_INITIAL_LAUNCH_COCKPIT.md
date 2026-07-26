@@ -34,6 +34,8 @@ V0.7 is the review cockpit: it gives colleagues a single starting point before a
 
 The fifth frame was added after the `/start-pilot` route became a real public page rather than a redirect-only handoff. It documents the conversion path before code deployment: `Create pilot workspace` routes to Clerk signup with `/onboarding` as the return path, `Run diagnostic first` routes to `/diagnostic`, and `Email pilot scope` opens a mailto link.
 
+Follow-up alignment promoted `/start-pilot` into the homepage and public shell: the hero primary CTA, header primary CTA, money-map CTA, competitive-difference CTA, footer get-started link, and final pilot CTA now converge on the governed pilot-start page. The Figma frame `135:2` was updated and re-rendered to show that homepage-to-intake handoff.
+
 ## Launch Truth Captured
 
 | Surface | Current route/demo stance | Design source |
@@ -68,6 +70,8 @@ Screenshots were generated and inspected for all five frames after creation or u
 The only defect found was a title/subtitle overlap in `Launch Cockpit / 03 Final Screen QA Matrix / 1440`; it was fixed by shortening the title to `Final UI makes action, trust, and human control obvious`, then re-rendered cleanly.
 
 The fifth frame initially had a wrapped title overlapping the preview panel and a narrow `Sign in` pill; both were fixed and re-rendered cleanly.
+
+After homepage CTA alignment, the fifth frame was re-rendered again to verify the updated `homepage -> /start-pilot` handoff copy did not clip or overlap.
 
 ## Next Actions
 

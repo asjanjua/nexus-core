@@ -125,7 +125,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <a href="/readiness" className="hidden rounded-lg px-3 py-2 text-sm text-white/60 transition hover:bg-white/[0.06] hover:text-white sm:inline-flex">
                   Readiness
                 </a>
-                <a href="/sign-in" className="btn-primary text-sm">Sign in</a>
+                <a href="/start-pilot" className="btn-primary text-sm">Start pilot</a>
+                <a href="/sign-in" className="hidden rounded-lg px-3 py-2 text-sm text-white/60 transition hover:bg-white/[0.06] hover:text-white sm:inline-flex">Sign in</a>
               </div>
             </div>
           </header>
