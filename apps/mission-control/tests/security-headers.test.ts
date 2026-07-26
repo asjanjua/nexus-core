@@ -95,6 +95,31 @@ describe("Security headers", () => {
     expect(cspDirectives("n")).toContain("style-src 'self' 'unsafe-inline'");
   });
 
+  it("allowlists Plausible only when cookieless analytics is enabled", () => {
+    const previous = process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN;
+
+    try {
+      process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN = "pinavia.io";
+      const enabled = cspDirectives("n");
+      const enabledScriptSrc = enabled.split("; ").find((d) => d.startsWith("script-src"))!;
+      const enabledConnectSrc = enabled.split("; ").find((d) => d.startsWith("connect-src"))!;
+
+      expect(enabledScriptSrc).toContain("https://plausible.io");
+      expect(enabledConnectSrc).toContain("https://plausible.io");
+
+      delete process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN;
+      const disabled = cspDirectives("n");
+
+      expect(disabled).not.toContain("https://plausible.io");
+    } finally {
+      if (previous === undefined) {
+        delete process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN;
+      } else {
+        process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN = previous;
+      }
+    }
+  });
+
   it("CSP allows Clerk's Cloudflare challenge resources for social auth", () => {
     expect(CSP_DIRECTIVES).toContain("script-src");
     expect(CSP_DIRECTIVES).toContain("https://challenges.cloudflare.com");

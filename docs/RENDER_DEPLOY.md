@@ -135,6 +135,10 @@ NEXUS_CRON_SECRET=
 NEXUS_RESEND_API_KEY=
 NEXUS_FROM_EMAIL="Nexus <noreply@pinavia.io>"
 
+# Public-site analytics
+# Cookieless marketing analytics only; keep separate from product audit data.
+NEXT_PUBLIC_PLAUSIBLE_DOMAIN=pinavia.io
+
 # Dispatcher (v0.22.0+, optional — default 5)
 NEXUS_DISPATCH_BATCH_SIZE=5
 
@@ -158,6 +162,8 @@ NEXUS_EXTRA_CORS_ORIGINS=
 `NEXUS_CRON_SECRET` protects `/api/cron/synthesis`, `/api/cron/billing`, `/api/cron/dispatch`, and `/api/cron/readiness-prune`. Set it in Render and pass it as `Authorization: Bearer <secret>` in your Render cron job HTTP requests.
 
 `NEXUS_RESEND_API_KEY` and `NEXUS_FROM_EMAIL` are for Nexus product email only, including scheduled synthesis briefs. Keep Clerk responsible for auth email verification and password reset. Authenticate the `pinavia.io` sender domain before production demos, then run one scheduled synthesis email delivery test.
+
+`NEXT_PUBLIC_PLAUSIBLE_DOMAIN` enables cookieless analytics on public marketing surfaces and adds the Plausible origin to the CSP. It is intentionally not used as product telemetry for authenticated workspaces; governed workspace events belong in Nexus audit data, not marketing analytics.
 
 **Optional paid cron jobs (`render.cron.yaml`):**
 

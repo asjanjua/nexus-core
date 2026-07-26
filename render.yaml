@@ -43,6 +43,11 @@ services:
         value: https://accounts.pinavia.co/sign-up
       - key: NEXT_PUBLIC_APP_NAME
         value: NexusAI Mission Control
+      # Cookieless marketing analytics for the public Pinavia surfaces.
+      # This is non-secret and intentionally blueprint-managed so the CSP and
+      # script injection stay aligned across deploys.
+      - key: NEXT_PUBLIC_PLAUSIBLE_DOMAIN
+        value: pinavia.io
       - key: DATABASE_URL
         sync: false
       - key: NEXT_PUBLIC_APP_URL
