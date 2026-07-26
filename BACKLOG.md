@@ -51,13 +51,13 @@ These are the highest-priority operational items because they determine whether 
 
 | Item | Status | Source | Notes |
 |---|---|---|---|
-| Commercial pilot loop design-to-deploy | production pending | `docs/UI_V0_4_COMMERCIAL_PILOT_LOOP_FIGMA_PLAN.md`, Figma page `121:2` | Six code-backed desktop frames now map the buyer path from `/` -> `/diagnostic` -> trial invite -> `/meridian` -> human sign-off. Remaining: push local `main`, confirm Render deploy/migration 0038, configure `PINAVIA_ADMIN_PRINCIPALS`, and smoke public plus authenticated routes. |
+| Commercial pilot loop design-to-deploy | deployed, authenticated smoke pending | `docs/UI_V0_4_COMMERCIAL_PILOT_LOOP_FIGMA_PLAN.md`, Figma page `121:2` | Six code-backed desktop frames now map the buyer path from `/` -> `/diagnostic` -> trial invite -> `/meridian` -> human sign-off. Public smoke passed on `pinavia.io`; remaining gate is Render `PINAVIA_ADMIN_PRINCIPALS` plus authenticated staff invite and redemption smoke. |
 
 ### Pinavia Trial-Invite Production Enablement
 
 | Item | Status | Source | Notes |
 |---|---|---|---|
-| Pinavia trial-invite production enablement | production pending | `bb2af6c`, `docs/TRIAL_INVITE_RUNBOOK.md` | Local code is complete but not pushed or deployed. Require green CI, migration 0038, a Render-managed `PINAVIA_ADMIN_PRINCIPALS` staff allowlist, and a real invite -> Clerk sign-up -> provision workspace -> redeem -> server-side demo-pack seed smoke. In-memory fallback is not valid for real invites. |
+| Pinavia trial-invite production enablement | deployed, authenticated smoke pending | `bb2af6c`, `docs/TRIAL_INVITE_RUNBOOK.md` | Code is pushed and public routes are live. Remaining production proof requires a Render-managed `PINAVIA_ADMIN_PRINCIPALS` staff allowlist, then a real invite -> Clerk sign-up -> provision workspace -> redeem -> server-side demo-pack seed smoke. In-memory fallback is not valid for real invites. |
 
 | Item | Status | Source | Notes |
 |---|---|---|---|

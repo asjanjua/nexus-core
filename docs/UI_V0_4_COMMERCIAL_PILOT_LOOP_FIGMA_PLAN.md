@@ -1,6 +1,6 @@
 # UI V0.4 Commercial Pilot Loop Figma Plan
 
-Status: Figma candidate, code-backed by the current local commit stack.
+Status: Figma candidate, code-backed and public-route deployed.
 Date: 2026-07-26.
 
 ## Source Tree
@@ -13,7 +13,7 @@ This design pass reflects the local `main` tree after the Pinavia commercial and
 - `bb2af6c` Pinavia trial invite portal and migration 0038.
 - `b9b3592` trial invite production runbook.
 
-The Figma frames are not a separate imagined product direction. They are a visual operating map for the routes now present in the app.
+The Figma frames are not a separate imagined product direction. They are a visual operating map for the routes now present in the app. Public smoke passed on `pinavia.io` after commit `ba3e440`; authenticated staff smoke remains pending for the invite portal.
 
 ## Figma Reference
 
@@ -83,10 +83,15 @@ Figma validation on 2026-07-26:
 
 ## Deployment Gate
 
-Before this candidate is called live:
+Deployment evidence captured 2026-07-26:
 
-1. Run TypeScript, focused tests, production build, and `git diff --check`.
-2. Push `main` so Render receives the five local product commits plus this version record.
-3. Confirm the Render deploy reaches the pushed commit.
-4. Smoke public `/`, `/diagnostic`, `/invite/accept?code=missing`, and `/api/health`.
-5. Smoke authenticated `/meridian` and `/admin/invites` after `PINAVIA_ADMIN_PRINCIPALS` is configured in Render.
+1. TypeScript, focused tests, full root test suite, production build, and `git diff --check` passed locally.
+2. `main` pushed to GitHub through `ba3e440`.
+3. Render served the new `/diagnostic` route after the deploy poll changed from `404` to `200`.
+4. Public smoke passed for `/`, `/diagnostic`, `/invite/accept?code=missing`, and `/api/health`.
+5. Anonymous API smoke confirmed `/api/admin/trial-invites` and `/api/trial-invites/redeem` return `401 unauthorized`.
+6. `/meridian` redirects signed-out visitors to `/sign-in?redirect_url=%2Fmeridian`.
+
+Remaining operational gate:
+
+- Configure `PINAVIA_ADMIN_PRINCIPALS` in Render and run a signed-in staff invite -> separate Clerk identity -> redeem -> server-side sector-pack seed smoke.
