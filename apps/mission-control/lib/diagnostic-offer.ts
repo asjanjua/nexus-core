@@ -14,13 +14,58 @@
  */
 
 /**
- * Engagement fee. Null means "not stated on the page" — the offer then reads
- * on scope and timeline alone and pricing stays in conversation.
+ * Rung one: the self-serve diagnostic. Priced to qualify, not to earn. At this
+ * figure the revenue is immaterial; the function is a genuine intent signal and
+ * a legitimately captured payment method.
  *
- * To publish a fee, set the object. `note` carries the qualifier a regulated
- * buyer expects (what the figure excludes, what varies).
+ * Deliberately CHARGED rather than waived-with-card-capture. A waived fee that
+ * later converts on a condition the customer triggered is a negative-option
+ * enrollment: it carries FTC/ROSCA and card-network disclosure obligations, and
+ * for a buyer whose interest in this product IS governance it reads as evidence
+ * we do not practise what we sell. Charging removes the entire problem.
  */
-export const FEE: { amount: string; basis: string; note: string } | null = null;
+export const FEE: { amount: string; basis: string; note: string } | null = {
+  amount: "USD 49",
+  basis: "One-off, per organisation",
+  note:
+    "Charged at sign-up. Covers the automated readiness assessment and findings output. Not a subscription and not a trial: nothing converts, renews, or bills again without you choosing it.",
+};
+
+/**
+ * Rung two: the partner-delivered engagement. Kept distinct from FEE on
+ * purpose. The self-serve output cannot trace decisions or map obligations at
+ * clause level, and if both rungs share one label the lower figure anchors the
+ * higher one out of existence.
+ *
+ * `fee` is null until the commercial figure is confirmed; the rung renders on
+ * scope and timeline alone until then.
+ */
+export const ENGAGEMENT: {
+  name: string;
+  summary: string;
+  fee: { amount: string; basis: string } | null;
+} = {
+  name: "Evidence-Tested Readiness Review",
+  summary:
+    "Where the self-serve assessment reports what your team believes, this engagement tests it. Two weeks, partner-delivered: three decisions traced end to end, retrieval timed against your real data, and your AI use mapped to the instruments that bind you at clause level.",
+  fee: null,
+};
+
+/** What the USD 49 self-serve diagnostic returns. Automated, same day. */
+export const SELF_SERVE_OUTPUT = [
+  {
+    title: "Scored readiness assessment",
+    body: "Your organisation scored across the seven dimensions below, with the weakest two identified as the constraint to address first.",
+  },
+  {
+    title: "Named gaps, not a grade",
+    body: "Each low score returns the specific question a board or a regulator would ask about it, so you know what you cannot currently answer.",
+  },
+  {
+    title: "A workspace you can invite colleagues into",
+    body: "Each person gets their own login, because a shared login breaks the audit trail that makes any of this defensible. Three seats included before anything changes.",
+  },
+] as const;
 
 /** Engagement duration. Stated publicly in all configurations. */
 export const TIMELINE = {

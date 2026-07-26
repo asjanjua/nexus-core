@@ -6,8 +6,10 @@ import {
   CLIENT_RESPONSIBILITIES,
   DELIVERABLES,
   DIMENSIONS,
+  ENGAGEMENT,
   EXCLUSIONS,
   FEE,
+  SELF_SERVE_OUTPUT,
   TIMELINE,
 } from "@/lib/diagnostic-offer";
 
@@ -38,67 +40,59 @@ const LABEL = "text-xs font-semibold uppercase tracking-wider text-nexus-muted";
 export default function DiagnosticPage() {
   return (
     <main className="min-h-screen bg-nexus-bg text-nexus-text">
-      {/* Hero. One primary action, brand lime reserved for it. */}
+      {/* Rung one: self-serve. One primary action, brand lime reserved for it. */}
       <section className="mx-auto max-w-5xl px-4 pb-8 pt-16 sm:px-6 lg:px-8">
         <p className={LABEL}>Readiness Diagnostic</p>
         <h1 className="mt-4 max-w-3xl text-4xl font-semibold leading-tight">
-          Find out what your AI readiness actually is, in two weeks, against your own evidence.
+          Find out what your AI readiness actually is, before someone asks you to prove it.
         </h1>
         <p className="mt-6 max-w-2xl text-base leading-relaxed text-nexus-muted">
-          A self-assessment tells you what your leadership believes. This engagement tests the same
-          seven dimensions against your decisions, your data, and the regulations that bind you, then
-          hands you a findings pack you can put in front of a board.
+          Seven dimensions, scored against your own answers, returned the same day. It tells you which
+          questions a board or a regulator would ask that you cannot currently answer.
         </p>
+
+        {/* Fee block renders only when set. Price stated before the CTA, never after. */}
+        {FEE ? (
+          <div className={`mt-8 ${PANEL} max-w-xl`}>
+            <div className="flex items-baseline gap-3">
+              <p className="text-4xl font-bold">{FEE.amount}</p>
+              <p className="text-sm text-nexus-muted">{FEE.basis}</p>
+            </div>
+            <p className="mt-3 text-sm leading-relaxed text-nexus-muted">{FEE.note}</p>
+          </div>
+        ) : null}
 
         <div className="mt-8 flex flex-wrap items-center gap-4">
           <Link
             href="/start-pilot"
             className="inline-flex items-center rounded-lg bg-nexus-brand px-4 py-2 text-sm font-semibold text-[#0b1a00]"
           >
-            Request the diagnostic
+            {FEE ? `Get the diagnostic for ${FEE.amount}` : "Get the diagnostic"}
           </Link>
           <Link
             href="/readiness"
             className="inline-flex items-center rounded-lg border border-white/20 bg-white/[0.03] px-4 py-2 text-sm font-semibold text-white/80 hover:bg-white/[0.08]"
           >
-            Start with the free self-assessment
+            Try the free self-assessment first
           </Link>
         </div>
 
-        {/* Timeline is stated publicly in every configuration. */}
-        <div className="mt-10 grid gap-4 sm:grid-cols-2">
-          <div className={PANEL}>
-            <p className={LABEL}>Duration</p>
-            <p className="mt-2 text-2xl font-semibold">{TIMELINE.duration}</p>
-            <p className="mt-3 text-sm leading-relaxed text-nexus-muted">{TIMELINE.detail}</p>
-          </div>
-          <div className={PANEL}>
-            <p className={LABEL}>Scope</p>
-            <p className="mt-2 text-2xl font-semibold">Fixed</p>
-            <p className="mt-3 text-sm leading-relaxed text-nexus-muted">
-              Seven dimensions, three traced decisions, one consolidated evidence request. Scope is
-              agreed in the first two days and does not move after that.
-            </p>
-          </div>
+        <div className="mt-10 grid gap-4 sm:grid-cols-3">
+          {SELF_SERVE_OUTPUT.map((item) => (
+            <div key={item.title} className={PANEL}>
+              <p className="text-base font-semibold">{item.title}</p>
+              <p className="mt-2 text-sm leading-relaxed text-nexus-muted">{item.body}</p>
+            </div>
+          ))}
         </div>
-
-        {/* Commercial block appears only when a fee is set in the registry. */}
-        {FEE ? (
-          <div className={`mt-4 ${PANEL}`}>
-            <p className={LABEL}>Fee</p>
-            <p className="mt-2 text-2xl font-semibold">{FEE.amount}</p>
-            <p className="mt-1 text-sm text-nexus-muted">{FEE.basis}</p>
-            <p className="mt-3 text-xs leading-relaxed text-nexus-muted">{FEE.note}</p>
-          </div>
-        ) : null}
       </section>
 
       {/* The commercial argument: what a self-assessment cannot establish. */}
       <section className={SECTION}>
-        <h2 className="text-2xl font-semibold">What the diagnostic establishes</h2>
+        <h2 className="text-2xl font-semibold">The seven dimensions, at two depths</h2>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-nexus-muted">
-          The same seven dimensions the free assessment scores, tested against evidence rather than
-          recollection.
+          Scoring establishes what your team believes. Evidence testing establishes what is true. Both
+          examine the same seven dimensions, which is why the second follows cleanly from the first.
         </p>
 
         <div className="mt-8 overflow-x-auto">
@@ -109,10 +103,10 @@ export default function DiagnosticPage() {
                   Dimension
                 </th>
                 <th scope="col" className={`pb-3 pr-4 ${LABEL}`}>
-                  Self-assessed
+                  Scored (USD 49)
                 </th>
                 <th scope="col" className={`pb-3 ${LABEL}`}>
-                  Tested in the diagnostic
+                  Evidence-tested (review)
                 </th>
               </tr>
             </thead>
@@ -130,6 +124,36 @@ export default function DiagnosticPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      </section>
+
+      {/* Rung two. Visually separated so the USD 49 figure cannot anchor it. */}
+      <section className="border-y border-nexus-border bg-nexus-surface">
+        <div className="mx-auto max-w-5xl px-4 py-16 sm:px-6 lg:px-8">
+          <p className={LABEL}>When scoring is not enough</p>
+          <h2 className="mt-4 max-w-3xl text-3xl font-semibold leading-tight">{ENGAGEMENT.name}</h2>
+          <p className="mt-5 max-w-2xl text-base leading-relaxed text-nexus-muted">
+            {ENGAGEMENT.summary}
+          </p>
+
+          <div className="mt-8 grid gap-4 sm:grid-cols-2">
+            <div className={PANEL}>
+              <p className={LABEL}>Duration</p>
+              <p className="mt-2 text-2xl font-semibold">{TIMELINE.duration}</p>
+              <p className="mt-3 text-sm leading-relaxed text-nexus-muted">{TIMELINE.detail}</p>
+            </div>
+            <div className={PANEL}>
+              <p className={LABEL}>{ENGAGEMENT.fee ? "Fee" : "Scope"}</p>
+              <p className="mt-2 text-2xl font-semibold">
+                {ENGAGEMENT.fee ? ENGAGEMENT.fee.amount : "Fixed"}
+              </p>
+              <p className="mt-3 text-sm leading-relaxed text-nexus-muted">
+                {ENGAGEMENT.fee
+                  ? ENGAGEMENT.fee.basis
+                  : "Seven dimensions, three traced decisions, one consolidated evidence request. Scope is agreed in the first two days and does not move after that."}
+              </p>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -193,16 +217,17 @@ export default function DiagnosticPage() {
       <section className="mx-auto max-w-5xl px-4 pb-24 sm:px-6 lg:px-8">
         <div className={`${PANEL} flex flex-wrap items-center justify-between gap-6`}>
           <div>
-            <p className="text-lg font-semibold">Ready to scope it?</p>
+            <p className="text-lg font-semibold">Start with the score, or go straight to evidence</p>
             <p className="mt-1 text-sm text-nexus-muted">
-              Two weeks, fixed scope, findings you can circulate.
+              Most organisations score first. If you already know where the gaps are, scope the review
+              directly.
             </p>
           </div>
           <Link
             href="/start-pilot"
             className="inline-flex items-center rounded-lg bg-nexus-brand px-4 py-2 text-sm font-semibold text-[#0b1a00]"
           >
-            Request the diagnostic
+            Scope the review
           </Link>
         </div>
       </section>
