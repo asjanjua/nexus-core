@@ -24,6 +24,7 @@ import {
   type Recommendation,
   type RecommendationStatus,
   type ReviewerSeat,
+  type TrialInvite,
   type Role,
   type Sensitivity,
   type StrategyProfile,
@@ -170,6 +171,16 @@ const reviewerSeatStore = new Map<string, StoredReviewerSeat>();
 
 function publicReviewerSeat(seat: StoredReviewerSeat): ReviewerSeat {
   const { inviteCodeHash: _hash, ...rest } = seat;
+  return rest;
+}
+
+// Trial invite fallback for no-DB/demo mode, keyed by invite id. Same rule as
+// reviewer seats: the code hash is internal and never returned to callers.
+type StoredTrialInvite = TrialInvite & { inviteCodeHash: string };
+const trialInviteStore = new Map<string, StoredTrialInvite>();
+
+function publicTrialInvite(invite: StoredTrialInvite): TrialInvite {
+  const { inviteCodeHash: _hash, ...rest } = invite;
   return rest;
 }
 // Pilot outcome fallback for no-DB/demo mode, keyed by `${workspaceId}::${workflowName}`.
@@ -1156,5 +1167,59 @@ export const store = {
       .filter((s) => !sinceTime        || new Date(s.createdAt).getTime() >= sinceTime)
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, limit);
+  },
+
+  // --- Trial invites (no-DB fallback) -------------------------------------
+
+  createTrialInvite(invite: TrialInvite, inviteCodeHash: string): TrialInvite {
+    trialInviteStore.set(invite.id, { ...invite, inviteCodeHash });
+    return invite;
+  },
+
+  listTrialInvites(): TrialInvite[] {
+    return [...trialInviteStore.values()]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .map(publicTrialInvite);
+  },
+
+  /** Single-use redeem: invited, unexpired, code matches. */
+  redeemTrialInvite(
+    inviteCodeHash: string,
+    redeemedBy: string,
+    redeemedWorkspaceId: string,
+    now = new Date()
+  ): TrialInvite | null {
+    for (const invite of trialInviteStore.values()) {
+      if (
+        invite.inviteCodeHash === inviteCodeHash &&
+        invite.status === "invited" &&
+        new Date(invite.expiresAt) > now
+      ) {
+        const redeemed: StoredTrialInvite = {
+          ...invite,
+          status: "redeemed",
+          redeemedBy,
+          redeemedWorkspaceId,
+          redeemedAt: now.toISOString(),
+          updatedAt: now.toISOString(),
+        };
+        trialInviteStore.set(invite.id, redeemed);
+        return publicTrialInvite(redeemed);
+      }
+    }
+    return null;
+  },
+
+  revokeTrialInvite(inviteId: string, now = new Date()): TrialInvite | null {
+    const invite = trialInviteStore.get(inviteId);
+    if (!invite || invite.status === "revoked") return null;
+    const revoked: StoredTrialInvite = {
+      ...invite,
+      status: "revoked",
+      revokedAt: now.toISOString(),
+      updatedAt: now.toISOString(),
+    };
+    trialInviteStore.set(inviteId, revoked);
+    return publicTrialInvite(revoked);
   }
 };

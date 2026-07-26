@@ -221,6 +221,58 @@ export interface ReviewerInviteEmailContext {
   expiresAt: string;
 }
 
+export interface TrialInviteEmailContext {
+  /** Display name of the invited person, if captured at invite time. */
+  inviteeName?: string | null;
+  /** Name/email of the Pinavia operator who sent the invite. */
+  invitedBy: string;
+  /** Absolute URL that redeems the single-use invite code. */
+  acceptUrl: string;
+  /** ISO timestamp the invite link expires (not the trial length). */
+  expiresAt: string;
+  /** Trial length in days, stated so the recipient knows what they are getting. */
+  trialDays: number;
+}
+
+/**
+ * Pinavia-issued trial invite. Deliberately states the trial length, that no
+ * payment is involved, and what happens at the end, because the recipient is
+ * usually a compliance or risk officer who reads terms before clicking.
+ */
+export function buildTrialInviteEmailHtml(ctx: TrialInviteEmailContext): string {
+  const greeting = ctx.inviteeName ? `Hi ${escapeHtml(ctx.inviteeName)},` : "Hi,";
+  return `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#0f172a;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="max-width:600px;margin:0 auto;background:#0f172a;">
+    <tr>
+      <td style="padding:32px 24px;">
+        <h1 style="color:#e2e8f0;font-size:20px;margin:0 0 8px 0;">You have been invited to try Pinavia</h1>
+        <p style="color:#94a3b8;font-size:14px;line-height:1.6;margin:0 0 20px 0;">
+          ${greeting} <strong style="color:#e2e8f0;">${escapeHtml(ctx.invitedBy)}</strong> has invited you to a
+          ${ctx.trialDays}-day trial workspace on Pinavia, set up with sample material so there is something
+          to look at from the first screen.
+        </p>
+        <p style="color:#94a3b8;font-size:14px;line-height:1.6;margin:0 0 24px 0;">
+          You will be asked to create an account first. No payment details are requested and nothing bills.
+        </p>
+        <a href="${escapeHtml(ctx.acceptUrl)}" style="display:inline-block;padding:11px 24px;background:#3b82f6;color:#fff;text-decoration:none;border-radius:6px;font-size:14px;font-weight:600;">
+          Start the trial
+        </a>
+        <p style="color:#64748b;font-size:12px;line-height:1.6;margin:24px 0 0 0;">
+          This link is single-use and expires ${escapeHtml(new Date(ctx.expiresAt).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" }))}.
+          After ${ctx.trialDays} days the workspace is suspended rather than deleted, so nothing you put in is
+          lost if you want more time. If you were not expecting this, you can ignore this email.
+        </p>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>`;
+}
+
 export function buildReviewerInviteEmailHtml(ctx: ReviewerInviteEmailContext): string {
   const greeting = ctx.reviewerName ? `Hi ${escapeHtml(ctx.reviewerName)},` : "Hi,";
   return `

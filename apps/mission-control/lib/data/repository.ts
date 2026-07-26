@@ -4,7 +4,7 @@ import { Pool } from "pg";
 import { verifyPassword } from "@/lib/auth";
 import { store } from "@/lib/data/store";
 import { evidenceSourceTypeSchema } from "@/lib/contracts";
-import type { Action, ActionInput, ActionStatus, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, DispatchJob, DispatchJobInput, DispatchJobStatus, Entity, EntityInput, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, KnowledgeLink, KnowledgeNote, KnowledgeNoteInput, KnowledgeSearchResult, KnowledgeSyncEvent, LearningSignal, LearningSignalInput, LearningSignalSummary, PromptRegistryEntry, ReadinessSubmission, PilotOutcome, ProWaitlistEntry, Recommendation, ReviewerSeat, RecommendationStatus, Role, StrategyProfile, StrategyProfileInput, SynthesisSchedule, SynthesisScheduleInput, SynthesisScheduleStatus, WorkflowTwin, WorkflowTwinInput, WorkflowTwinRun, WorkflowTwinRunInput, WorkflowTwinRunStatus, WorkflowTwinStatus, WorkflowTwinType, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
+import type { Action, ActionInput, ActionStatus, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, DispatchJob, DispatchJobInput, DispatchJobStatus, Entity, EntityInput, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, KnowledgeLink, KnowledgeNote, KnowledgeNoteInput, KnowledgeSearchResult, KnowledgeSyncEvent, LearningSignal, LearningSignalInput, LearningSignalSummary, PromptRegistryEntry, ReadinessSubmission, PilotOutcome, ProWaitlistEntry, Recommendation, ReviewerSeat, TrialInvite, RecommendationStatus, Role, StrategyProfile, StrategyProfileInput, SynthesisSchedule, SynthesisScheduleInput, SynthesisScheduleStatus, WorkflowTwin, WorkflowTwinInput, WorkflowTwinRun, WorkflowTwinRunInput, WorkflowTwinRunStatus, WorkflowTwinStatus, WorkflowTwinType, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
 import { assertDbConfigured, isDbRequired } from "@/lib/data/db-policy";
 
 // In-memory idempotency cache for Stripe events (fallback when DB is unavailable).
@@ -50,6 +50,7 @@ import {
   stripeProcessedEvents,
   readinessSubmissions,
   reviewerSeats,
+  trialInvites,
   pilotOutcomes,
   proWaitlist,
   strategyProfiles,
@@ -409,6 +410,27 @@ type DispatchJobRow = typeof dispatchJobs.$inferSelect;
 function isoOrNull(value: Date | string | null | undefined): string | null {
   if (!value) return null;
   return value instanceof Date ? value.toISOString() : String(value);
+}
+
+function mapTrialInviteRow(row: typeof trialInvites.$inferSelect): TrialInvite {
+  return {
+    id: row.id,
+    email: row.email,
+    name: row.name ?? null,
+    company: row.company ?? null,
+    note: row.note ?? null,
+    demoPack: row.demoPack ?? null,
+    status: row.status as TrialInvite["status"],
+    redeemedBy: row.redeemedBy ?? null,
+    redeemedWorkspaceId: row.redeemedWorkspaceId ?? null,
+    invitedBy: row.invitedBy,
+    trialDays: row.trialDays,
+    redeemedAt: isoOrNull(row.redeemedAt),
+    revokedAt: isoOrNull(row.revokedAt),
+    expiresAt: isoOrNull(row.expiresAt) ?? new Date(0).toISOString(),
+    createdAt: isoOrNull(row.createdAt) ?? new Date(0).toISOString(),
+    updatedAt: isoOrNull(row.updatedAt) ?? new Date(0).toISOString(),
+  };
 }
 
 function mapReviewerSeatRow(row: typeof reviewerSeats.$inferSelect): ReviewerSeat {
@@ -3983,6 +4005,122 @@ export const repository = {
   // Reviewer seats (migration 0035) — identity-bound reviewer role. Invite
   // codes are single-use and stored hashed; acceptance binds a Clerk user id.
   // -------------------------------------------------------------------------
+
+  // --- Trial invites (migration 0038) --------------------------------------
+
+  async createTrialInvite(input: {
+    id: string;
+    email: string;
+    name?: string | null;
+    company?: string | null;
+    note?: string | null;
+    demoPack?: string | null;
+    inviteCodeHash: string;
+    invitedBy: string;
+    trialDays: number;
+    expiresAt: Date;
+  }): Promise<TrialInvite> {
+    const nowIso = new Date().toISOString();
+    const invite: TrialInvite = {
+      id: input.id,
+      email: input.email,
+      name: input.name ?? null,
+      company: input.company ?? null,
+      note: input.note ?? null,
+      demoPack: input.demoPack ?? null,
+      status: "invited",
+      redeemedBy: null,
+      redeemedWorkspaceId: null,
+      invitedBy: input.invitedBy,
+      trialDays: input.trialDays,
+      redeemedAt: null,
+      revokedAt: null,
+      expiresAt: input.expiresAt.toISOString(),
+      createdAt: nowIso,
+      updatedAt: nowIso,
+    };
+    const wrote = await runDb(async (db) => {
+      await db.insert(trialInvites).values({
+        id: invite.id,
+        email: invite.email,
+        name: invite.name ?? null,
+        company: invite.company ?? null,
+        note: invite.note ?? null,
+        demoPack: invite.demoPack ?? null,
+        inviteCodeHash: input.inviteCodeHash,
+        status: "invited",
+        invitedBy: invite.invitedBy,
+        trialDays: invite.trialDays,
+        expiresAt: input.expiresAt,
+      });
+      return true;
+    });
+    if (!wrote) store.createTrialInvite(invite, input.inviteCodeHash);
+    return invite;
+  },
+
+  async listTrialInvites(): Promise<TrialInvite[]> {
+    const rows = await runDb((db) =>
+      db.select().from(trialInvites).orderBy(desc(trialInvites.createdAt)).limit(500)
+    );
+    if (rows === null) return store.listTrialInvites();
+    return rows.map(mapTrialInviteRow);
+  },
+
+  /**
+   * Atomically redeem a trial invite by code hash. Single UPDATE ... RETURNING
+   * so two simultaneous redemptions cannot both succeed. Returns null when the
+   * code is unknown, already redeemed, revoked, or expired — the caller must
+   * not distinguish these to an unauthenticated visitor.
+   *
+   * Unlike reviewer seats this does NOT match on email. A Pinavia invite is
+   * often forwarded internally by the recipient to the colleague who will
+   * actually run the trial, and refusing that is friction with no security
+   * benefit: possession of the single-use code is the credential either way.
+   */
+  async redeemTrialInvite(
+    inviteCodeHash: string,
+    redeemedBy: string,
+    redeemedWorkspaceId: string
+  ): Promise<TrialInvite | null> {
+    const now = new Date();
+    const rows = await runDb((db) =>
+      db
+        .update(trialInvites)
+        .set({
+          status: "redeemed",
+          redeemedBy,
+          redeemedWorkspaceId,
+          redeemedAt: now,
+          updatedAt: now,
+        })
+        .where(
+          and(
+            eq(trialInvites.inviteCodeHash, inviteCodeHash),
+            eq(trialInvites.status, "invited"),
+            gt(trialInvites.expiresAt, now)
+          )
+        )
+        .returning()
+    );
+    if (rows === null) return store.redeemTrialInvite(inviteCodeHash, redeemedBy, redeemedWorkspaceId, now);
+    if (rows.length === 0) return null;
+    return mapTrialInviteRow(rows[0]);
+  },
+
+  async revokeTrialInvite(inviteId: string): Promise<TrialInvite | null> {
+    const now = new Date();
+    const rows = await runDb((db) =>
+      db
+        .update(trialInvites)
+        .set({ status: "revoked", revokedAt: now, updatedAt: now })
+        .where(and(eq(trialInvites.id, inviteId), ne(trialInvites.status, "revoked")))
+        .returning()
+    );
+    if (rows === null) return store.revokeTrialInvite(inviteId, now);
+    if (rows.length === 0) return null;
+    return mapTrialInviteRow(rows[0]);
+  },
 
   async createReviewerSeat(input: {
     id: string;

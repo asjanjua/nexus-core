@@ -37,6 +37,10 @@ const DISALLOW = [
   "/pilot-kit",
   "/funnel",
   "/reviewer-seat",
+  // Staff-only portal and single-use trial redeem links. Neither is public and
+  // an indexed redeem URL would leak invite codes into search results.
+  "/admin",
+  "/invite",
   "/onboarding",
   "/sign-in",
   "/sign-up",

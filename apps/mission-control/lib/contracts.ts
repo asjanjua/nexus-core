@@ -1044,6 +1044,31 @@ export const pilotGateSchema = z.object({
 });
 export type PilotGate = z.infer<typeof pilotGateSchema>;
 
+// Trial invite (migration 0038): Pinavia-issued product trial, not workspace-
+// scoped at creation because the invitee has no workspace yet.
+export const trialInviteStatusSchema = z.enum(["invited", "redeemed", "revoked"]);
+export type TrialInviteStatus = z.infer<typeof trialInviteStatusSchema>;
+
+export const trialInviteSchema = z.object({
+  id: z.string(),
+  email: z.string().email(),
+  name: z.string().nullable().optional(),
+  company: z.string().nullable().optional(),
+  note: z.string().nullable().optional(),
+  demoPack: z.string().nullable().optional(),
+  status: trialInviteStatusSchema.default("invited"),
+  redeemedBy: z.string().nullable().optional(),
+  redeemedWorkspaceId: z.string().nullable().optional(),
+  invitedBy: z.string(),
+  trialDays: z.number().int().positive(),
+  redeemedAt: z.string().nullable().optional(),
+  revokedAt: z.string().nullable().optional(),
+  expiresAt: z.string(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type TrialInvite = z.infer<typeof trialInviteSchema>;
+
 // Reviewer seat (migration 0035): identity-bound reviewer role per workspace.
 export const reviewerSeatStatusSchema = z.enum(["invited", "accepted", "revoked"]);
 export type ReviewerSeatStatus = z.infer<typeof reviewerSeatStatusSchema>;

@@ -672,3 +672,31 @@ export const readinessSubmissions = pgTable("readiness_submissions", {
   expiresAt:             timestamp("expires_at", { withTimezone: true }).notNull(),
   createdAt:             timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+/**
+ * Pinavia-issued trial invites (migration 0038).
+ *
+ * Deliberately NOT workspace-scoped, unlike reviewerSeats: the invitee has no
+ * workspace when the invite is created. `redeemedWorkspaceId` is filled at
+ * redemption, once Clerk has given them an org (provisionWorkspace uses the
+ * Clerk org id as the workspace id).
+ */
+export const trialInvites = pgTable("trial_invites", {
+  id:                  text("id").primaryKey(),
+  email:               varchar("email", { length: 320 }).notNull(),
+  name:                varchar("name", { length: 160 }),
+  company:             varchar("company", { length: 200 }),
+  note:                text("note"),
+  demoPack:            varchar("demo_pack", { length: 64 }),
+  inviteCodeHash:      varchar("invite_code_hash", { length: 64 }).notNull(),
+  status:              varchar("status", { length: 16 }).notNull().default("invited"),
+  redeemedBy:          text("redeemed_by"),
+  redeemedWorkspaceId: text("redeemed_workspace_id"),
+  invitedBy:           text("invited_by").notNull(),
+  trialDays:           integer("trial_days").notNull().default(30),
+  redeemedAt:          timestamp("redeemed_at", { withTimezone: true }),
+  revokedAt:           timestamp("revoked_at", { withTimezone: true }),
+  expiresAt:           timestamp("expires_at", { withTimezone: true }).notNull(),
+  createdAt:           timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:           timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
