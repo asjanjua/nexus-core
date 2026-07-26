@@ -6,6 +6,8 @@
 
 - Added Figma page `24 Initial Launch Cockpit V0.7` with four screenshot-verified 1440x900 desktop-browser frames: executive launch status, demo route map, final screen QA matrix, and action board.
 - Consolidated the colleague-review starting point across V0.4, V0.5, and V0.6 so final design sources, live routes, external blockers, and safe demo claims appear in one board.
+- Polished the live Meridian Submission Room so each planned deep-route screen now exposes user inputs, action points, and the planned-route boundary, matching the Vantage/Nucleus launch-hub standard.
+- Added global jurisdiction-pack requirements to the Meridian hub so Pakistan examples are clearly framed as a pattern, not a universal regulatory library.
 - Added `docs/UI_V0_7_INITIAL_LAUNCH_COCKPIT.md` and registered V0.7 in `docs/UI_BASELINE_VERSIONING.md`.
 
 ---

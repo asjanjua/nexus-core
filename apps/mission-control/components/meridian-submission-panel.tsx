@@ -27,6 +27,8 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import {
+  guidanceForMeridianScreen,
+  meridianJurisdictionPackRequirements,
   meridianRegulatoryArcLabels,
   meridianRegulatoryBoundaries,
   meridianRegulatoryScreens,
@@ -164,30 +166,52 @@ export function MeridianSubmissionPanel() {
         </p>
 
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          {arcScreens.map((screen) => (
-            <div key={screen.id} className="rounded-lg border border-white/10 bg-black/20 p-4">
-              <div className="flex items-start justify-between gap-3">
-                <p className="text-sm font-semibold text-white">{screen.title}</p>
-                <span className="shrink-0 rounded-md border border-white/10 px-2 py-0.5 text-[10px] text-white/40">
-                  planned
-                </span>
-              </div>
-              <p className="mt-2 text-xs leading-5 text-white/50">{screen.purpose}</p>
-              <div className="mt-3 flex flex-wrap gap-1.5">
-                {screen.regulatoryObjects.map((obj) => (
-                  <span
-                    key={obj}
-                    className="rounded bg-nexus-sky/10 px-1.5 py-0.5 text-[10px] text-nexus-sky/90"
-                  >
-                    {obj}
+          {arcScreens.map((screen) => {
+            const guidance = guidanceForMeridianScreen(screen.id);
+
+            return (
+              <div key={screen.id} className="rounded-lg border border-white/10 bg-black/20 p-4">
+                <div className="flex items-start justify-between gap-3">
+                  <p className="text-sm font-semibold text-white">{screen.title}</p>
+                  <span className="shrink-0 rounded-md border border-nexus-sky/25 px-2 py-0.5 text-[10px] text-nexus-sky">
+                    planned deep route
                   </span>
-                ))}
+                </div>
+                <p className="mt-2 text-xs leading-5 text-white/50">{screen.purpose}</p>
+                <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wide text-white/30">User input</p>
+                    <ul className="mt-1 space-y-1 text-[11px] leading-4 text-white/45">
+                      {guidance.userInputs.map((input) => (
+                        <li key={input}>{input}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="text-[10px] uppercase tracking-wide text-white/30">Action point</p>
+                    <ul className="mt-1 space-y-1 text-[11px] leading-4 text-white/45">
+                      {guidance.actionPoints.map((action) => (
+                        <li key={action}>{action}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-1.5">
+                  {screen.regulatoryObjects.map((obj) => (
+                    <span
+                      key={obj}
+                      className="rounded bg-nexus-sky/10 px-1.5 py-0.5 text-[10px] text-nexus-sky/90"
+                    >
+                      {obj}
+                    </span>
+                  ))}
+                </div>
+                <p className="mt-3 text-[11px] text-white/30">
+                  {screen.primaryUser} · {screen.routeCandidate}
+                </p>
               </div>
-              <p className="mt-3 text-[11px] text-white/30">
-                {screen.primaryUser} · {screen.routeCandidate}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -257,15 +281,33 @@ export function MeridianSubmissionPanel() {
       </section>
 
       {/* The boundaries, verbatim from the registry. */}
-      <section className="panel">
-        <p className="panel-title">What Meridian will not do</p>
-        <div className="mt-3 space-y-2">
-          {meridianRegulatoryBoundaries.map((b) => (
-            <div key={b.id} className="rounded-lg border border-white/10 bg-black/20 p-3">
-              <p className="text-xs font-semibold text-white">{b.title}</p>
-              <p className="mt-1 text-xs leading-5 text-white/50">{b.rule}</p>
-            </div>
-          ))}
+      <section className="grid gap-4 lg:grid-cols-[1fr_0.85fr]">
+        <div className="panel">
+          <p className="panel-title">Global jurisdiction pack requirements</p>
+          <p className="mt-1 text-xs leading-5 text-white/45">
+            A Meridian pack must be localized before it becomes customer-facing. Pakistan examples
+            prove the pattern; they do not become a universal regulatory library.
+          </p>
+          <div className="mt-3 space-y-2">
+            {meridianJurisdictionPackRequirements.map((requirement) => (
+              <div key={requirement.id} className="rounded-lg border border-white/10 bg-black/20 p-3">
+                <p className="text-xs font-semibold text-white">{requirement.title}</p>
+                <p className="mt-1 text-xs leading-5 text-white/50">{requirement.whyItMatters}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="panel">
+          <p className="panel-title">What Meridian will not do</p>
+          <div className="mt-3 space-y-2">
+            {meridianRegulatoryBoundaries.map((b) => (
+              <div key={b.id} className="rounded-lg border border-white/10 bg-black/20 p-3">
+                <p className="text-xs font-semibold text-white">{b.title}</p>
+                <p className="mt-1 text-xs leading-5 text-white/50">{b.rule}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
