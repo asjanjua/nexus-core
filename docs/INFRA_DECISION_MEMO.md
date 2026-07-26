@@ -130,7 +130,7 @@ Product subdomain policy:
 
 - `app.pinavia.io` and `nexus.pinavia.io` are NexusAI entrypoints.
 - `quorum.pinavia.io` is the board-governance entrypoint and can route signed-in users to `/board`.
-- `meridian.pinavia.io`, `vantage.pinavia.io`, and `nucleus.pinavia.io` are reserved product entrypoints that may show product-aware branding, but should route to the core dashboard until their dedicated runtime routes ship.
+- `meridian.pinavia.io`, `vantage.pinavia.io`, and `nucleus.pinavia.io` route signed-in users to protected product hubs once V0.6 is deployed. Treat those hubs as product-entry proof, not full deep-workflow readiness.
 - The subdomain layer is a positioning and navigation layer. It does not replace feature-readiness gates for each product.
 
 Historical Vercel-origin UI baseline:

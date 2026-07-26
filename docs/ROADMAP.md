@@ -61,7 +61,7 @@ The product is demo-ready and pilot-design-ready on a Node 24 production baselin
 - **Exports:** Weekly brief, risk radar CSV, reco register CSV, one-pager. Export hub.
 - **Demo/Sales:** 3 CEO-grade demo sector packs, demo mode with reset, pilot kit, product brief page, readiness assessment (public), SOW templates, demo scripts, ROI calculator.
 - **Auth:** Clerk SSO, scope-based API keys, workspace status (trial/pilot/active/suspended), LLM cost tracking.
-- **Product subdomains:** shared Render runtime with hostname-based product shell detection for `app`, `nexus`, `quorum`, `meridian`, `vantage`, and `nucleus.pinavia.io`. `quorum.pinavia.io` can route to `/board`; Meridian, Vantage, and Nucleus keep a core-dashboard fallback until product-specific routes ship. DNS, Render custom domains, Clerk redirects, and product-domain smoke remain production cutover work.
+- **Product subdomains:** shared Render runtime with hostname-based product shell detection for `app`, `nexus`, `quorum`, `meridian`, `vantage`, and `nucleus.pinavia.io`. `quorum.pinavia.io` routes to `/board`; Meridian, Vantage, and Nucleus route to protected product hubs once V0.6 is deployed. DNS, Render custom domains, Clerk redirects, and product-domain smoke remain production cutover work.
 
 **What is confirmed missing (2026-06-17 audit):**
 
@@ -94,7 +94,7 @@ The product strategy is now documented as readiness-first buyer routing, not gen
 Clerk owns authentication email: signup/signin verification, password reset, account lifecycle, and future organization invitations. Nexus owns product email only: scheduled synthesis briefs, cron-driven notifications, pilot communications, and support/security notifications through a managed delivery provider. Do not build a custom auth confirmation flow or self-host a mail server for V1 demos.
 
 **Product Subdomain Layer** (house-of-brands alignment)
-Pinavia product domains are now a hostname-routed entry layer over the shared Render app. This lets demos show NexusAI, Quorum, Meridian, Vantage, and Nucleus as distinct product surfaces without prematurely splitting infrastructure. Treat the subdomain as brand/navigation readiness only; each product still needs its own route, data model, test gate, and smoke gate before being sold as live.
+Pinavia product domains are now a hostname-routed entry layer over the shared Render app. This lets demos show NexusAI, Quorum, Meridian, Vantage, and Nucleus as distinct product surfaces without prematurely splitting infrastructure. Treat a product hub as route-entry readiness only; each deep workflow still needs its own route tree, data model, test gate, and smoke gate before being sold as live.
 
 **Voice and Local Whisper Boundary** (strategy alignment)
 Voice remains a future channel, not a first-demo dependency. Keep browser microphone capture disabled for V1 demos. Future-proof the seam as local OS dictation or local Whisper on the user's PC producing a transcript that Nexus treats as a normal Ask query, note, or evidence transcript. Nexus-owned audio processing comes later with explicit consent, audit logging, sensitivity gating, and transcript retention rules.

@@ -71,7 +71,7 @@ Go/no-go: rehearse Mode A end to end at least one day before. If the switch misb
 
 ## 4. Known Landmines (do not step on these)
 
-4.1. **Subdomain fallbacks.** `meridian.pinavia.io`, `vantage.pinavia.io`, and `nucleus.pinavia.io` fall back to `/dashboard/ceo`. Do not open them live. If asked, position them as the product family roadmap, demoed from the Nexus shell.
+4.1. **Product hub routes.** `meridian.pinavia.io`, `vantage.pinavia.io`, and `nucleus.pinavia.io` land on protected product hubs after sign-in once V0.6 is deployed. Open them only to show route-entry posture, user inputs, action points, and boundaries; use Figma for deep screens until `/meridian/*`, `/vantage/*`, and `/nucleus/*` workflows are fully implemented and smoked.
 
 4.2. **72h claim TTL.** If the funnel workspace is prepared more than 72 hours before the demo, the claim code expires. Create the readiness submission the same day, or live on stage.
 

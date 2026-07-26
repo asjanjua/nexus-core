@@ -69,12 +69,12 @@ describe("productRoutePrefix", () => {
 });
 
 describe("productSignInRedirect", () => {
-  it("only redirects to routes that exist today", () => {
+  it("redirects only to protected product routes that exist today", () => {
     expect(productSignInRedirect("nexusai")).toBe("/dashboard/ceo");
     expect(productSignInRedirect("quorum")).toBe("/board");
-    expect(productSignInRedirect("meridian")).toBe("/dashboard/ceo");
-    expect(productSignInRedirect("vantage")).toBe("/dashboard/ceo");
-    expect(productSignInRedirect("nucleus")).toBe("/dashboard/ceo");
+    expect(productSignInRedirect("meridian")).toBe("/meridian");
+    expect(productSignInRedirect("vantage")).toBe("/vantage");
+    expect(productSignInRedirect("nucleus")).toBe("/nucleus");
   });
 });
 

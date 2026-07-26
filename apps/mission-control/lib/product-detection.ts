@@ -153,18 +153,17 @@ export function productRoutePrefix(product: ProductKey): string {
 /**
  * Safe post-auth landing path for the current product surface.
  *
- * Product route prefixes can point to planned surfaces, but Clerk redirects
- * must only target routes that exist today. Quorum is live at /board; the
- * remaining pivot surfaces fall back to the main executive room until their
- * dedicated routes ship.
+ * Clerk redirects must only target routes that exist today. Product route
+ * entries are deliberately shallow launch hubs until their deeper route trees
+ * ship, but they are real protected routes and are safe post-auth landings.
  */
 export function productSignInRedirect(product: ProductKey): string {
   const redirects: Record<ProductKey, string> = {
     nexusai: "/dashboard/ceo",
     quorum: "/board",
-    meridian: "/dashboard/ceo",
-    vantage: "/dashboard/ceo",
-    nucleus: "/dashboard/ceo",
+    meridian: "/meridian",
+    vantage: "/vantage",
+    nucleus: "/nucleus",
   };
   return redirects[product];
 }

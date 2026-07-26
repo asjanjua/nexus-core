@@ -32,9 +32,9 @@ Pinavia now uses a house-of-brands entry layer over the same governed NexusAI op
 | `app.pinavia.io` | Pinavia/NexusAI command layer | NexusAI shell and `/dashboard/ceo` |
 | `nexus.pinavia.io` | NexusAI governed intelligence layer | NexusAI shell and `/dashboard/ceo` |
 | `quorum.pinavia.io` | Board governance and director intelligence | Quorum shell and `/board` |
-| `meridian.pinavia.io` | Regulatory workflow intelligence | Meridian shell; fallback to `/dashboard/ceo` until Meridian routes ship |
-| `vantage.pinavia.io` | Due diligence and deal intelligence | Vantage shell; fallback to `/dashboard/ceo` until Vantage routes ship |
-| `nucleus.pinavia.io` | Methodology-pack and advisory operating layer | Nucleus shell; fallback to `/dashboard/ceo` until Nucleus routes ship |
+| `meridian.pinavia.io` | Regulatory workflow intelligence | Meridian shell; signs in to `/meridian` |
+| `vantage.pinavia.io` | Due diligence and deal intelligence | Vantage shell; signs in to `/vantage` once the V0.6 route-entry commit is deployed |
+| `nucleus.pinavia.io` | Methodology-pack and advisory operating layer | Nucleus shell; signs in to `/nucleus` once the V0.6 route-entry commit is deployed |
 
 Strategic rule: product subdomains are an entry and framing layer; product-specific workflows still need their own route, data model, tests, and smoke gate before being sold as live.
 

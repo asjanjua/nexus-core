@@ -2,11 +2,20 @@
 
 ---
 
+## Unreleased — Launch Route Update V0.6 (2026-07-26)
+
+- Added protected Vantage and Nucleus launch hub routes at `/vantage` and `/nucleus`, with route-level honesty that deeper workflow routes remain planned until implemented and smoked.
+- Added a dedicated Nucleus engagement workflow registry and tests so Nucleus now owns its profile -> package -> delivery -> assurance lifecycle instead of relying on a generic white-label helper.
+- Updated product-domain sign-in redirects and Specialist Rooms navigation so Meridian, Vantage, and Nucleus land on real product hubs instead of the executive-room fallback.
+- Added Figma page `23 Launch Route Update V0.6` with three 1440x900 desktop-browser frames: readiness delta, Vantage/Nucleus route hubs, and updated demo script.
+
+---
+
 ## Unreleased — Initial Launch Final Pack V0.5 (2026-07-26)
 
 - Added Figma page `22 Initial Launch UI Final Pack V0.5` with six 1440x900 desktop-browser coordination frames that lock the launch truth across Pinavia, NexusAI, Quorum, Meridian, Vantage, and Nucleus.
 - Added `docs/UI_V0_5_INITIAL_LAUNCH_FINAL_PACK.md` and registered V0.5 in `docs/UI_BASELINE_VERSIONING.md`.
-- Made the immediate pilot boundary explicit: Pinavia, diagnostic, NexusAI, Quorum, and Meridian have live/code-backed surfaces; Vantage and Nucleus are design-only until app routes are built.
+- Made the immediate pilot boundary explicit: Pinavia, diagnostic, NexusAI, Quorum, and Meridian have live/code-backed surfaces; Vantage and Nucleus were design-only at V0.5 creation time and are superseded by the V0.6 route-entry update.
 
 ---
 
@@ -353,7 +362,7 @@ Added the code layer for Pinavia's endorsed house-of-brands routing across Nexus
 
 **Middleware.** `middleware.ts` now attaches `x-nexus-product` to every request and includes the HTTPS product subdomains in the CORS allow-list. This keeps the current shared Render/Next.js app as the runtime while allowing product-aware branding and routing.
 
-**Public shell.** The public/auth shell in `app/layout.tsx` now renders the product name/Pinavia lockup from hostname metadata. Clerk sign-in fallbacks are route-safe: Quorum redirects to the live `/board` route; Meridian, Vantage, and Nucleus fall back to `/dashboard/ceo` until their dedicated product routes ship.
+**Public shell.** The public/auth shell in `app/layout.tsx` now renders the product name/Pinavia lockup from hostname metadata. Clerk sign-in fallbacks are route-safe: Quorum redirects to the live `/board` route. Superseded 2026-07-26: Meridian, Vantage, and Nucleus now redirect to protected product hubs once the V0.6 route-entry commit is deployed.
 
 **Tests.** Added `tests/product-detection.test.ts` covering hostname mapping, product origins, route prefixes, route-safe sign-in redirects, and Pinavia metadata coverage.
 

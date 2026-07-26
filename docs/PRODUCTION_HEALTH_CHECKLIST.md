@@ -200,11 +200,11 @@ Use this before any house-of-brands demo.
 - [ ] `https://app.pinavia.io` renders NexusAI public-shell branding and signs in to `/dashboard/ceo`.
 - [ ] `https://nexus.pinavia.io` renders NexusAI public-shell branding and signs in to `/dashboard/ceo`.
 - [ ] `https://quorum.pinavia.io` renders Quorum public-shell branding and signs in to `/board`.
-- [ ] `https://meridian.pinavia.io` renders Meridian public-shell branding and signs in to `/dashboard/ceo` until Meridian routes ship.
-- [ ] `https://vantage.pinavia.io` renders Vantage public-shell branding and signs in to `/dashboard/ceo` until Vantage routes ship.
-- [ ] `https://nucleus.pinavia.io` renders Nucleus public-shell branding and signs in to `/dashboard/ceo` until Nucleus routes ship.
+- [ ] `https://meridian.pinavia.io` renders Meridian public-shell branding and signs in to `/meridian`.
+- [ ] `https://vantage.pinavia.io` renders Vantage public-shell branding and signs in to `/vantage`.
+- [ ] `https://nucleus.pinavia.io` renders Nucleus public-shell branding and signs in to `/nucleus`.
 - [ ] Clerk sign-in and sign-up complete successfully from every product domain used in the demo.
-- [ ] Product-specific claims in demo copy match shipped routes; do not imply Meridian/Vantage/Nucleus workflows are live solely because their subdomains resolve.
+- [ ] Product-specific claims in demo copy match shipped routes; do not imply deep Meridian/Vantage/Nucleus workflows are live solely because protected hub routes resolve.
 
 ---
 

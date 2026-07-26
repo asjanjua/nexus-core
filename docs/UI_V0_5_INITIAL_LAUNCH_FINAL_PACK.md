@@ -1,6 +1,6 @@
 # UI V0.5 Initial Launch Final Pack
 
-Status: Figma launch-lock board, design coordination source for immediate pilot demos.
+Status: Superseded by V0.6 for Vantage/Nucleus route status; still useful as the broader launch-lock board.
 Date: 2026-07-26.
 
 ## Figma Reference
@@ -32,8 +32,8 @@ Frames:
 | NexusAI | Live core | Primary app demo: Ask -> evidence -> draft decision -> approval. |
 | Quorum | Live route plus deep design | Show `/board` as live and the 17-screen governance workflow as planned depth. |
 | Meridian | Live vertical route | Best immediate regulated-entity vertical: submission room, coverage, gaps, human filing boundary. |
-| Vantage | Design-only pilot | Show as a Figma storyboard only until `/vantage/dealroom` or equivalent route exists. |
-| Nucleus | Design-only partner pilot | Show as a Figma partner/white-label concept only until a Nucleus app route exists. |
+| Vantage | Code-backed launch hub | Open `/vantage` to show the deal-room arc and boundaries; use Figma for deeper `/vantage/*` routes until implemented. |
+| Nucleus | Code-backed launch hub | Open `/nucleus` to show the engagement arc and white-label trust contract; use Figma for deeper `/nucleus/*` routes until implemented. |
 
 ## Screen Source Map
 
@@ -45,8 +45,8 @@ Frames:
 | NexusAI core | `13 NexusAI Executive Room Final`, `20 NexusAI Ask + Connectors` | `/workspace`, `/ask`, `/ingestion`, `/decisions`, `/settings/connectors` surfaces |
 | Quorum | `14 Quorum Board Room Final`, `09 Quorum Governance Workflow V0.2` | `apps/mission-control/app/board/page.tsx`, `apps/mission-control/lib/board-governance-workflow.ts` |
 | Meridian | `15 Meridian Submission Room Final`, `21 Commercial Pilot Loop V0.4` | `apps/mission-control/app/meridian/page.tsx`, `apps/mission-control/components/meridian-submission-panel.tsx` |
-| Vantage | `16 Vantage Deal Room Final`, `11 Vertical Input Action Screens V0.2` | `apps/mission-control/lib/vantage-dd-workflow.ts`; route implementation pending |
-| Nucleus | `17 Nucleus Engagement Room`, `19 Nucleus Rebuilt` | `apps/mission-control/lib/branding/white-label.ts`; route implementation pending |
+| Vantage | `16 Vantage Deal Room Final`, `11 Vertical Input Action Screens V0.2`, `23 Launch Route Update V0.6` | `apps/mission-control/app/vantage/page.tsx`, `apps/mission-control/components/vantage-deal-room-panel.tsx`, `apps/mission-control/lib/vantage-dd-workflow.ts` |
+| Nucleus | `17 Nucleus Engagement Room`, `19 Nucleus Rebuilt`, `23 Launch Route Update V0.6` | `apps/mission-control/app/nucleus/page.tsx`, `apps/mission-control/components/nucleus-engagement-panel.tsx`, `apps/mission-control/lib/nucleus-engagement-workflow.ts`, `apps/mission-control/lib/branding/white-label.ts` |
 
 ## Demo Boundary
 
@@ -62,5 +62,5 @@ The V0.5 board exists to prevent demo overclaiming:
 1. Configure `PINAVIA_ADMIN_PRINCIPALS` and run the staff invite smoke.
 2. Signed-in smoke of Meridian on Render, then polish the Meridian route from the V0.5/V0.4 screen contracts.
 3. Deepen Quorum beyond `/board` only after the first buyer confirms that board governance is the pilot target.
-4. Build Vantage route entry if deal diligence becomes the next named pilot.
-5. Build Nucleus route entry only for a live consulting partner conversation; until then Figma is sufficient.
+4. Smoke `/vantage` and `/nucleus` after deploy; keep deeper routes marked planned until implemented.
+5. Build deeper Vantage and Nucleus routes only when a named buyer conversation requires them.

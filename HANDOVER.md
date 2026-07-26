@@ -13,6 +13,17 @@
 
 ---
 
+## 2026-07-26 — Launch Route Update V0.6
+
+- Added Figma page `23 Launch Route Update V0.6` (`https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=126-2`) with three 1440x900 frames: readiness delta, Vantage/Nucleus route hubs, and updated demo script. Visual validation caught and fixed a header overlap before recording the page.
+- Current working tree adds protected route entries `/vantage` and `/nucleus`, plus Specialist Rooms nav links and product-domain sign-in redirects to those hubs.
+- Vantage uses the existing `lib/vantage-dd-workflow.ts` registry and exposes user inputs, action points, global market-pack requirements, and the no-investment-decision boundary.
+- Nucleus now has `lib/nucleus-engagement-workflow.ts`, with profile -> package -> delivery -> assurance arcs, eight screen candidates, user guidance, white-label launch requirements, and fixed-trust-layer boundaries.
+- Local verification passed before commit: focused Vitest suite (3 files / 27 tests), `npx tsc --noEmit --pretty false`, `npm run build`, and local production smoke confirming signed-out `/vantage` -> `/sign-in?redirect_url=%2Fvantage`, signed-out `/nucleus` -> `/sign-in?redirect_url=%2Fnucleus`, and `/api/health` -> 200.
+- Next action: commit, push, wait for Render, then live-smoke `/vantage` and `/nucleus`. Do not claim deep `/vantage/*` or `/nucleus/*` workflow routes until they are implemented and smoked.
+
+---
+
 ## 2026-07-26 — Commercial Pilot Loop V0.4 Figma Candidate and Deploy Gate
 
 - Added Figma page `21 Commercial Pilot Loop V0.4` in `Nexus System` (`https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=121-2`) with six 1440x900 desktop-browser frames for the current code-backed buyer path: landing CTA delta, two-rung diagnostic, Meridian Submission Room, staff invite portal, invite accept/redeem, and deployment storyboard.
@@ -26,7 +37,7 @@
 ## 2026-07-26 — Initial Launch UI Final Pack V0.5
 
 - Added Figma page `22 Initial Launch UI Final Pack V0.5` (`https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=125-2`) with six 1440x900 launch coordination frames: readiness matrix, core buyer path, pilot surface lock, screen handoff index, gaps before pilot demo, and ten-minute final demo script.
-- The board explicitly separates launch truth from design ambition: Pinavia, diagnostic, NexusAI, Quorum, and Meridian can be shown against live/code-backed surfaces; Vantage and Nucleus are design-only until route entries are built.
+- The board explicitly separates launch truth from design ambition: Pinavia, diagnostic, NexusAI, Quorum, and Meridian can be shown against live/code-backed surfaces. Superseded by V0.6: Vantage and Nucleus now have protected route entries, while deep route trees remain planned.
 - Figma validation confirmed six 1440x900 frames. Screenshots were generated for `125:3` and `125:118`.
 - Next action: use V0.5 to drive implementation order, starting with the staff invite smoke and Meridian polish before building new Vantage or Nucleus routes.
 

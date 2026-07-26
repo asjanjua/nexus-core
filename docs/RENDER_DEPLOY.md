@@ -85,11 +85,11 @@ The app will use hostname detection to adjust the public shell:
 | `app.pinavia.io` | NexusAI | `/dashboard/ceo` |
 | `nexus.pinavia.io` | NexusAI | `/dashboard/ceo` |
 | `quorum.pinavia.io` | Quorum | `/board` |
-| `meridian.pinavia.io` | Meridian | `/dashboard/ceo` until Meridian routes ship |
-| `vantage.pinavia.io` | Vantage | `/dashboard/ceo` until Vantage routes ship |
-| `nucleus.pinavia.io` | Nucleus | `/dashboard/ceo` until Nucleus routes ship |
+| `meridian.pinavia.io` | Meridian | `/meridian` |
+| `vantage.pinavia.io` | Vantage | `/vantage` |
+| `nucleus.pinavia.io` | Nucleus | `/nucleus` |
 
-This is a product entry and branding layer, not a claim that every product route is complete.
+These are protected product route entries, not a claim that every deep product route is complete.
 
 ## 4. Required Render Environment Variables
 
@@ -272,7 +272,7 @@ Product-domain smoke:
 
 1. Open `https://app.pinavia.io` and confirm the public shell says NexusAI.
 2. Open `https://quorum.pinavia.io` and confirm the public shell says Quorum and signed-in users can reach `/board`.
-3. Open `https://meridian.pinavia.io`, `https://vantage.pinavia.io`, and `https://nucleus.pinavia.io`; confirm product branding appears and signed-in fallback goes to `/dashboard/ceo` until product-specific routes ship.
+3. Open `https://meridian.pinavia.io`, `https://vantage.pinavia.io`, and `https://nucleus.pinavia.io`; confirm product branding appears and signed-in fallback goes to `/meridian`, `/vantage`, and `/nucleus` respectively.
 4. Confirm Clerk sign-in/sign-up works from each domain used in the demo.
 
 ## 8. Knowledge Workspace Notes

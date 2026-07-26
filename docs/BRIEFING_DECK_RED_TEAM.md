@@ -25,8 +25,8 @@ The decks are well-structured and tell a coherent story. However, they contain *
 | **NexusAI** | "The flagship — Executive intelligence for the C-suite" | ✓ Shipped. Evidence pipeline, synthesis, approvals, audit, billing, workflow scorer, knowledge workspace, dashboards. |
 | **Quorum** | "Board and committee cycles: packs, minutes, resolutions, follow-through" | ○ One endpoint: `POST /api/board/delta` returns baseline/delta state from decisions/actions. No board pack generation. No minutes. No circular resolutions. No committee registers. No calendar. No signature workflow. 17-screen Figma + code registry exist, but runtime is a single stub. |
 | **Meridian** | "Regulated submissions and applications, evidence-complete by construction" | ✗ Spec and Figma only. No routes. No runtime. No SECP/SAMA/SBP requirement library loaded. No regulatory submission format. `meridian-compliance-review` native skill exists (pure function, no integration). |
-| **Vantage** | "Deal rooms: diligence evidence, risk flags and decision memos" | ✗ Spec and Figma only. No routes. No deal room. `vantage-diligence-analysis` native skill exists (pure function, no integration). |
-| **Nucleus** | White-label platform | ✗ Name only in `product-detection.ts` and pivot catalog. Zero routes. Zero screens. Zero spec doc. |
+| **Vantage** | "Deal rooms: diligence evidence, risk flags and decision memos" | Updated 2026-07-26: protected launch hub and registry exist; deep route tree and live deal workspace APIs remain pending. |
+| **Nucleus** | White-label platform | Updated 2026-07-26: protected launch hub and dedicated engagement registry exist; method-pack authoring, client portal, and full white-label deployment controls remain pending. |
 
 **Risk level: HIGH.** A client who asks "show me the board room" will see a placeholder. An investor conducting technical diligence will find 80% of the "five products" as code stubs or Figma frames. The language "each room is a different conversation on the same engine" implies existence. Recommend: move Quorum/Meridian/Vantage/Nucleus to "In development" or "Roadmap" section, and only claim what's demonstrable today.
 
