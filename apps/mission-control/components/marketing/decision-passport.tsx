@@ -43,7 +43,7 @@ const STAGES: Stage[] = [
     key: "evidence",
     label: "Evidence",
     field: "Sources",
-    value: "6 documents - board pack, SBP EMI Regs 2019 Reg 5, onboarding SOP v4",
+    value: "6 documents · board pack, SBP EMI Regs 2019 Reg 5, onboarding SOP v4",
     tone: "text-nexus-sky",
     dot: "bg-nexus-sky",
     note: "Retrieved from the workspace. Nothing external, nothing invented.",
@@ -62,7 +62,7 @@ const STAGES: Stage[] = [
     key: "caveat",
     label: "Caveat",
     field: "Confidence",
-    value: "82% - agent-network channel unevidenced; flagged, not guessed",
+    value: "82% · agent-network channel unevidenced; flagged, not guessed",
     tone: "text-nexus-warn",
     dot: "bg-nexus-warn",
     note: "Where evidence is thin, Nexus says so rather than filling the gap.",
@@ -71,7 +71,7 @@ const STAGES: Stage[] = [
     key: "owner",
     label: "Human owner",
     field: "Owner",
-    value: "O. Haddad - Head of Risk - identity-bound reviewer seat",
+    value: "O. Haddad · Head of Risk · identity-bound reviewer seat",
     tone: "text-nexus-text",
     dot: "bg-white/70",
     note: "A named person takes the decision. The seat is bound to an identity.",
@@ -80,7 +80,7 @@ const STAGES: Stage[] = [
     key: "gate",
     label: "Approval gate",
     field: "Approval",
-    value: "Granted - consequence previewed before commit",
+    value: "Granted · consequence previewed before commit",
     tone: "text-nexus-accent",
     dot: "bg-nexus-accent",
     note: "The gate opens only with owner, evidence, and rationale all present.",
@@ -89,7 +89,7 @@ const STAGES: Stage[] = [
     key: "audit",
     label: "Audit trail",
     field: "Audit",
-    value: "Immutable entry - who, what, when, on which evidence",
+    value: "Immutable entry · who, what, when, on which evidence",
     tone: "text-nexus-accent",
     dot: "bg-nexus-accent",
     note: "Written once. Not editable, by anyone, on any plan.",
@@ -98,7 +98,7 @@ const STAGES: Stage[] = [
     key: "export",
     label: "Export",
     field: "Passport",
-    value: "PSP-2026-0714 - portable proof, regulator-ready",
+    value: "PSP-2026-0714 · portable proof, regulator-ready",
     tone: "text-nexus-accent",
     dot: "bg-nexus-accent",
     note: "The decision leaves the system carrying its whole history.",
@@ -195,7 +195,7 @@ export function DecisionPassport() {
               </button>
               {i < STAGES.length - 1 && (
                 <span aria-hidden className="text-white/15">
-                  -&gt;
+                  →
                 </span>
               )}
             </li>
