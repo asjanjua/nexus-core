@@ -22,6 +22,7 @@ Frames:
 | `Launch Cockpit / 04 Action Board / 1440` | `131:126` | Practical queue for design review, code polish, external setup, and pilot script sequencing. |
 | `Launch Cockpit / 05 Pilot Start Intake / 1440` | `135:2` | Code-backed `/start-pilot` route contract: user inputs, single primary CTA, product-room branches, and authority boundary. |
 | `Launch Cockpit / 06 Product Brief / 1440` | `141:2` | Code-backed `/product-brief` refresh: Pinavia product-family collateral, mobile room cards, route contract, and standing authority boundary. |
+| `Launch Cockpit / 07 Readiness Result Path / 1440` | `143:2` | Code-backed `/readiness` result-path refresh: Pinavia branding, live CTAs, inherited-result signup, and no contradictory advisor state. |
 
 ## Why V0.7 Exists
 
@@ -39,11 +40,13 @@ Follow-up alignment promoted `/start-pilot` into the homepage and public shell: 
 
 The sixth frame was added after `/product-brief` was refreshed from stale NexusAI-only collateral into a Pinavia product-family pilot brief. It records the exact route contract: public header and brief follow-ups point to `/start-pilot` as the primary action, `/diagnostic` as the secondary action, and the five product rooms through `/workspace`, `/board`, `/meridian`, `/vantage`, and `/nucleus`. The code page keeps a desktop table for print/PDF and switches to readable room cards on mobile.
 
+The seventh frame was added after `/readiness` was refreshed from stale NexusAI-only result copy into a Pinavia conversion path. Result-band CTAs now route to `/diagnostic` or `/start-pilot`, the advisor fallback uses `hello@pinavia.io`, and the "not a clear fit" advisor panel is suppressed whenever the server returns a valid lane and inherited-result signup path.
+
 ## Launch Truth Captured
 
 | Surface | Current route/demo stance | Design source |
 |---|---|---|
-| Pinavia | Show now from `https://pinavia.io`; use `/start-pilot` as the governed pilot intake page and `/product-brief` as the shareable product-family brief. | `00 Executive Landing`, `21 Commercial Pilot Loop V0.4`, V0.7 frames `135:2`, `141:2` |
+| Pinavia | Show now from `https://pinavia.io`; use `/readiness` for free self-assessment, `/diagnostic` for evidence-tested review, `/start-pilot` as the governed pilot intake page, and `/product-brief` as the shareable product-family brief. | `00 Executive Landing`, `21 Commercial Pilot Loop V0.4`, V0.7 frames `135:2`, `141:2`, `143:2` |
 | NexusAI | Show as the core execution room; use Ask -> draft decision -> approval as the main demo beat. | `13 NexusAI Executive Room Final`, V0.2 full desktop prototype |
 | Quorum | Show the board lifecycle and governance roadmap through `/board`. | `14 Quorum Board Room Final`, `09 Quorum Governance Workflow V0.2` |
 | Meridian | Show the regulated filing-pack workflow through `/meridian`. | `15 Meridian Submission Room Final`, `21 Commercial Pilot Loop V0.4` |
@@ -68,7 +71,7 @@ Use these apex routes for immediate demos:
 
 ## Visual Verification
 
-Screenshots were generated and inspected for all six frames after creation or update.
+Screenshots were generated and inspected for all seven frames after creation or update.
 
 The only defect found was a title/subtitle overlap in `Launch Cockpit / 03 Final Screen QA Matrix / 1440`; it was fixed by shortening the title to `Final UI makes action, trust, and human control obvious`, then re-rendered cleanly.
 
@@ -77,6 +80,8 @@ The fifth frame initially had a wrapped title overlapping the preview panel and 
 After homepage CTA alignment, the fifth frame was re-rendered again to verify the updated `homepage -> /start-pilot` handoff copy did not clip or overlap.
 
 The sixth frame was rebuilt after an initial auto-layout sizing miss collapsed the content wrapper. The final static handoff frame renders cleanly and shows the product brief status, mobile card fix, route contract, and authority boundary. Live production smoke for `/product-brief` passes on desktop and mobile through `4e8b71f`: Pinavia shell present, stale NexusAI-only strings absent, three `/start-pilot` links, all five product-room links present, no body overflow, desktop table retained, mobile table hidden, and five mobile room cards rendered.
+
+The seventh frame renders cleanly and records the local `/readiness` result-flow smoke: high-score desktop/mobile flows produce the AI-Native result, carry the server claim code into signup, expose `/start-pilot`, remove stale personal-email/NexusAI-only copy, hide the contradictory advisor panel when a lane exists, and avoid horizontal overflow. Production deploy and live smoke are pending for this frame.
 
 ## Next Actions
 

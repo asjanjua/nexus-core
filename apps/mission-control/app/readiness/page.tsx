@@ -129,6 +129,8 @@ type Band = {
   ctaSecondaryHref?: string;
 };
 
+const ADVISOR_MAILTO = "mailto:hello@pinavia.io?subject=Pinavia%20readiness%20advisory%20conversation";
+
 const BANDS: Band[] = [
   {
     label: "Emerging",
@@ -138,9 +140,9 @@ const BANDS: Band[] = [
     border: "border-amber-200",
     headline: "Strengthen the foundations before deploying AI intelligence.",
     description:
-      "Your organisation has significant drag and data gaps that would limit the value of an AI intelligence layer. Deploying NexusAI now would surface good insights into a system that cannot act on them. The right first step is to reduce approval loops, improve data accessibility, and document at least two or three core workflows. We can help you map that work as a short advisory engagement before a pilot.",
-    cta: "Book a foundations conversation",
-    ctaHref: "mailto:ali.janjua@live.com?subject=NexusAI%20Foundations%20Conversation",
+      "Your organisation has significant drag and data gaps that would limit the value of a governed AI workflow. Deploying Pinavia now would surface useful intelligence into a system that cannot yet act on it. The right first step is to reduce approval loops, improve data accessibility, and document two or three core workflows.",
+    cta: "Run evidence-tested diagnostic",
+    ctaHref: "/diagnostic",
     ctaSecondary: "Read: reducing organisational drag",
     ctaSecondaryHref: "/product-brief",
   },
@@ -152,9 +154,9 @@ const BANDS: Band[] = [
     border: "border-blue-200",
     headline: "Ready for a focused pilot on one workflow.",
     description:
-      "Your organisation has the baseline capability to run a successful NexusAI pilot — but the scope needs to be disciplined. Start with a single workflow where the data is clean, the owner is motivated, and the outcome is measurable. A 90-day pilot scoped correctly will produce clear evidence of value and set the foundations for a broader deployment. We can help you choose that workflow.",
-    cta: "Book a 30-minute scoping call",
-    ctaHref: "mailto:ali.janjua@live.com?subject=NexusAI%20Pilot%20Scoping",
+      "Your organisation has the baseline capability to run a successful Pinavia pilot, but the scope needs to be disciplined. Start with a single workflow where the data is clean, the owner is motivated, and the outcome is measurable. A 90-day pilot scoped correctly should produce clear evidence of value and set the foundations for broader deployment.",
+    cta: "Start a focused pilot",
+    ctaHref: "/start-pilot",
   },
   {
     label: "Advanced",
@@ -162,23 +164,23 @@ const BANDS: Band[] = [
     colour: "text-green-700",
     bg: "bg-green-50",
     border: "border-green-200",
-    headline: "Ready for a full NexusAI deployment.",
+    headline: "Ready for a governed Pinavia pilot.",
     description:
-      "Your organisation has the data governance, workflow maturity, and decision velocity to absorb AI-native executive intelligence and act on it. A pilot can run across multiple functions simultaneously. The focus should be on which roles get the most immediate value and which connectors to prioritise first. We recommend starting the pilot within 30 days.",
-    cta: "Request a pilot proposal",
-    ctaHref: "mailto:ali.janjua@live.com?subject=NexusAI%20Pilot%20Proposal%20Request",
+      "Your organisation has the data governance, workflow maturity, and decision velocity to absorb governed AI execution and act on it. A pilot can start with one product room while keeping a path open to more than one function. The focus should be which workflow gets immediate value and which evidence sources to prioritize first.",
+    cta: "Start pilot intake",
+    ctaHref: "/start-pilot",
   },
   {
     label: "AI-Native",
     range: "43–49",
-    colour: "text-purple-700",
-    bg: "bg-purple-50",
-    border: "border-purple-200",
+    colour: "text-teal-700",
+    bg: "bg-teal-50",
+    border: "border-teal-200",
     headline: "You are already operating at the frontier.",
     description:
-      "Your organisation has the governance maturity, data infrastructure, and decision velocity to get the maximum value from NexusAI. The opportunity is not a pilot — it is a full deployment with a roadmap toward the intelligence compounding layer (learning loop, agent orchestration, shadow-mode ROI measurement). We can discuss an accelerated deployment path.",
-    cta: "Discuss accelerated deployment",
-    ctaHref: "mailto:ali.janjua@live.com?subject=NexusAI%20Accelerated%20Deployment",
+      "Your organisation has the governance maturity, data infrastructure, and decision velocity to get maximum value from Pinavia. The opportunity is not a generic tool trial; it is a governed deployment path with learning loops, agent orchestration, shadow-mode ROI measurement, and named human authority.",
+    cta: "Start governed deployment path",
+    ctaHref: "/start-pilot",
   },
 ];
 
@@ -255,7 +257,7 @@ const CLAIM_STORAGE_KEY = "nexus_readiness_claim";
 function ScoreBar({ score, max = 7 }: { score: number; max?: number }) {
   const pct = Math.round((score / max) * 100);
   const colour =
-    score <= 2 ? "bg-amber-400" : score <= 4 ? "bg-blue-400" : score <= 6 ? "bg-green-500" : "bg-purple-500";
+    score <= 2 ? "bg-amber-400" : score <= 4 ? "bg-blue-400" : score <= 6 ? "bg-green-500" : "bg-teal-500";
   return (
     <div className="flex items-center gap-3">
       <div className="h-2 flex-1 overflow-hidden rounded-full bg-gray-100">
@@ -335,7 +337,7 @@ export default function ReadinessPage() {
       <div className="border-b border-gray-100 bg-gray-50 px-6 py-5">
         <div className="mx-auto max-w-2xl">
           <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">
-            Leap Associates FZCO · NexusAI
+            Pinavia readiness
           </p>
           <h1 className="mt-1 text-2xl font-bold text-gray-900">AI-Native Readiness Assessment</h1>
           <p className="mt-1.5 text-sm text-gray-500">
@@ -519,17 +521,17 @@ export default function ReadinessPage() {
               </div>
             )}
 
-            {advisorRecommended && (
+            {advisorRecommended && !lane && (
               <div className="space-y-2 rounded-lg border border-amber-300 bg-amber-50 p-4">
                 <p className="text-xs font-semibold uppercase tracking-wider text-amber-700">
                   Not a clear fit yet
                 </p>
                 <p className="text-sm text-gray-700">
-                  Your answers did not point clearly to one path. Rather than guess, a NexusAI advisor
+                  Your answers did not point clearly to one path. Rather than guess, a Pinavia advisor
                   can scope the right starting point for your situation.
                 </p>
                 <a
-                  href={band.ctaHref}
+                  href={ADVISOR_MAILTO}
                   className="inline-block rounded-lg bg-amber-600 px-5 py-3 text-sm font-semibold text-white hover:bg-amber-700 transition-colors"
                 >
                   Talk to an advisor →
@@ -604,7 +606,7 @@ export default function ReadinessPage() {
 
       {/* Footer */}
       <div className="border-t border-gray-100 px-6 py-6 text-center text-xs text-gray-400">
-        NexusAI Mission Control · Leap Associates FZCO · ali.janjua@live.com ·{" "}
+        Pinavia · Governed AI execution rooms · hello@pinavia.io ·{" "}
         <a href="/privacy" className="underline hover:text-gray-600">Privacy</a>
       </div>
     </div>
