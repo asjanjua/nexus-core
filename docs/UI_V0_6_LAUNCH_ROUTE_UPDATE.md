@@ -2,6 +2,7 @@
 
 Status: Code-backed route-entry update for the immediate pilot demo set.
 Date: 2026-07-26.
+Commit: `20f2848`.
 
 ## Figma Reference
 
@@ -46,6 +47,13 @@ Local verification before commit:
 - `npx tsc --noEmit --pretty false` passed after clearing stale generated `.next/types/* 2.ts` files from a prior failed build.
 - `npm run build` passed and listed both `/vantage` and `/nucleus` in the App Router route table.
 - Local production smoke on `localhost:3010` confirmed signed-out `/vantage` redirects to `/sign-in?redirect_url=%2Fvantage`, signed-out `/nucleus` redirects to `/sign-in?redirect_url=%2Fnucleus`, and `/api/health` returns 200.
+
+Live verification after push:
+
+- `https://pinavia.io/vantage` returns 307 to `/sign-in?redirect_url=%2Fvantage`.
+- `https://pinavia.io/nucleus` returns 307 to `/sign-in?redirect_url=%2Fnucleus`.
+- `https://nexus-mission-control.onrender.com/vantage` and `/nucleus` return the same protected-route redirects.
+- `https://pinavia.io/api/health` returns `ok=true`, database enabled, vector search enabled, originals storage enabled, and DeepSeek configured.
 
 ## Demo Boundary
 

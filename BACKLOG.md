@@ -58,7 +58,7 @@ These are the highest-priority operational items because they determine whether 
 | Item | Status | Source | Notes |
 |---|---|---|---|
 | Launch-lock board across all pilots | done (Figma) | `docs/UI_V0_5_INITIAL_LAUNCH_FINAL_PACK.md`, Figma page `125:2` | V0.5 makes the launch posture explicit for Pinavia, NexusAI, Quorum, Meridian, Vantage, and Nucleus. Superseded by V0.6 for Vantage/Nucleus route status. |
-| Vantage and Nucleus launch route entries | in progress | `docs/UI_V0_6_LAUNCH_ROUTE_UPDATE.md`, Figma page `126:2`, `/vantage`, `/nucleus` | Protected route hubs and registries are implemented locally. Remaining gates are typecheck/build, push, Render deploy, and anonymous redirect smoke. Deep workflow routes remain planned. |
+| Vantage and Nucleus launch route entries | deployed, signed-out smoke passed | `20f2848`, `docs/UI_V0_6_LAUNCH_ROUTE_UPDATE.md`, Figma page `126:2`, `/vantage`, `/nucleus` | Protected route hubs and registries are live. Signed-out apex and Render URL smoke returns sign-in redirects with return paths. Deep workflow routes remain planned. |
 
 ### Pinavia Trial-Invite Production Enablement
 

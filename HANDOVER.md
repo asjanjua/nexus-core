@@ -20,7 +20,8 @@
 - Vantage uses the existing `lib/vantage-dd-workflow.ts` registry and exposes user inputs, action points, global market-pack requirements, and the no-investment-decision boundary.
 - Nucleus now has `lib/nucleus-engagement-workflow.ts`, with profile -> package -> delivery -> assurance arcs, eight screen candidates, user guidance, white-label launch requirements, and fixed-trust-layer boundaries.
 - Local verification passed before commit: focused Vitest suite (3 files / 27 tests), `npx tsc --noEmit --pretty false`, `npm run build`, and local production smoke confirming signed-out `/vantage` -> `/sign-in?redirect_url=%2Fvantage`, signed-out `/nucleus` -> `/sign-in?redirect_url=%2Fnucleus`, and `/api/health` -> 200.
-- Next action: commit, push, wait for Render, then live-smoke `/vantage` and `/nucleus`. Do not claim deep `/vantage/*` or `/nucleus/*` workflow routes until they are implemented and smoked.
+- Deployed through `20f2848`: live signed-out smoke passed on `https://pinavia.io/vantage`, `https://pinavia.io/nucleus`, `https://nexus-mission-control.onrender.com/vantage`, and `https://nexus-mission-control.onrender.com/nucleus`; each returns 307 to sign-in with the correct return path. `https://pinavia.io/api/health` returned `ok=true`.
+- Next action: authenticated browser smoke for the new product hubs when a signed-in session is available, then staff invite smoke. Do not claim deep `/vantage/*` or `/nucleus/*` workflow routes until they are implemented and smoked.
 
 ---
 
