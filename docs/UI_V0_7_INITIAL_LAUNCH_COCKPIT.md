@@ -76,7 +76,7 @@ The fifth frame initially had a wrapped title overlapping the preview panel and 
 
 After homepage CTA alignment, the fifth frame was re-rendered again to verify the updated `homepage -> /start-pilot` handoff copy did not clip or overlap.
 
-The sixth frame was rebuilt after an initial auto-layout sizing miss collapsed the content wrapper. The final static handoff frame renders cleanly and shows the product brief status, mobile card fix, route contract, and authority boundary. Local production smoke for `/product-brief` passes on desktop and mobile: Pinavia shell present, stale NexusAI-only strings absent, three `/start-pilot` links, all five product-room links present, no body overflow, desktop table retained, and five mobile room cards rendered.
+The sixth frame was rebuilt after an initial auto-layout sizing miss collapsed the content wrapper. The final static handoff frame renders cleanly and shows the product brief status, mobile card fix, route contract, and authority boundary. Live production smoke for `/product-brief` passes on desktop and mobile through `4e8b71f`: Pinavia shell present, stale NexusAI-only strings absent, three `/start-pilot` links, all five product-room links present, no body overflow, desktop table retained, mobile table hidden, and five mobile room cards rendered.
 
 ## Next Actions
 

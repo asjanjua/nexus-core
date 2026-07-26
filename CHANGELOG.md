@@ -14,6 +14,7 @@
 - Updated homepage product-family cards so Meridian, Vantage, and Nucleus point to their live protected launch hubs instead of the product brief and no longer appear as design-only candidates.
 - Reworked `/product-brief` from the stale NexusAI-only collateral page into a Pinavia product-family pilot brief with current routes, room-specific workflows, proof artifacts, authority boundaries, pilot inputs/outputs, and `Start pilot` as the main follow-up action.
 - Added a sixth V0.7 Figma frame, `Launch Cockpit / 06 Product Brief / 1440` (`141:2`), documenting the refreshed product brief, mobile room-card fix, route contract, and standing authority boundary.
+- Deployed the product brief through `4e8b71f`; live desktop/mobile smoke passes with the Pinavia shell, product-room links, no stale NexusAI-only contact strings, no mobile overflow, desktop table retained, and five mobile room cards.
 - Added `docs/UI_V0_7_INITIAL_LAUNCH_COCKPIT.md` and registered V0.7 in `docs/UI_BASELINE_VERSIONING.md`.
 
 ---
