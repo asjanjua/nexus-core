@@ -87,6 +87,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     pathname.startsWith("/sign-up") ||
     pathname === "/start-pilot" ||
     pathname === "/workspace" ||
+    pathname === "/diagnostic" ||
     pathname.startsWith("/readiness") ||
     pathname.startsWith("/terms") ||
     pathname.startsWith("/privacy") ||
@@ -100,7 +101,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   if (isPublicShell) {
     const isHome = pathname === "/";
-    const isFamilyEntry = isHome || pathname === "/start-pilot";
+    const isFamilyEntry =
+      isHome ||
+      pathname === "/start-pilot" ||
+      pathname === "/product-brief" ||
+      pathname === "/diagnostic" ||
+      pathname.startsWith("/readiness");
     const shellName = isFamilyEntry ? "Pinavia" : product.name;
     const shellSubtitle = isFamilyEntry ? "AI governance and execution" : product.subtitle;
     return (
