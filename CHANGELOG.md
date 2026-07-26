@@ -8,6 +8,7 @@
 - Added a dedicated Nucleus engagement workflow registry and tests so Nucleus now owns its profile -> package -> delivery -> assurance lifecycle instead of relying on a generic white-label helper.
 - Updated product-domain sign-in redirects and Specialist Rooms navigation so Meridian, Vantage, and Nucleus land on real product hubs instead of the executive-room fallback.
 - Added Figma page `23 Launch Route Update V0.6` with three 1440x900 desktop-browser frames: readiness delta, Vantage/Nucleus route hubs, and updated demo script.
+- Recorded the remaining product-domain DNS cutover blocker in `docs/PRODUCT_DOMAIN_DNS_CUTOVER_2026-07-26.md`: the apex route smoke passes, but `app.pinavia.io` still redirects to `app.pinavia.co` and the product subdomains do not resolve yet.
 
 ---
 

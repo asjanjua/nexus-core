@@ -1,0 +1,103 @@
+# Product Domain DNS Cutover -- 2026-07-26
+
+Status: External DNS and hosting setup required before demoing product subdomains.
+
+This note records the live state after the V0.6 route-entry deploy. The app code is ready for the product-domain layer, but Cloudflare/Render/Clerk must all agree before these hostnames can be used in buyer demos.
+
+## Current Evidence
+
+Checked from the local shell on 2026-07-26:
+
+```bash
+curl -sS -I https://pinavia.io
+curl -sS -I https://pinavia.io/vantage
+curl -sS -I https://pinavia.io/nucleus
+curl -sS -I https://app.pinavia.io
+curl -sS -I https://app.pinavia.co
+```
+
+Results:
+
+| Host | Observed result | Interpretation |
+|---|---|---|
+| `pinavia.io` | 200 from Cloudflare/Render | Public landing host is live. |
+| `pinavia.io/vantage` | 307 to `/sign-in?redirect_url=%2Fvantage` | Vantage protected hub is deployed on the apex host. |
+| `pinavia.io/nucleus` | 307 to `/sign-in?redirect_url=%2Fnucleus` | Nucleus protected hub is deployed on the apex host. |
+| `app.pinavia.io` | 301 to `https://app.pinavia.co/` from Cloudflare | There is a Cloudflare-side redirect or forwarding rule to remove before `.io` app cutover. |
+| `app.pinavia.co` | 200 from Cloudflare/Render | Prior authenticated app host is still reachable. |
+| `nexus.pinavia.io` | DNS resolution failed | Missing DNS record. |
+| `quorum.pinavia.io` | DNS resolution failed | Missing DNS record. |
+| `meridian.pinavia.io` | DNS resolution failed | Missing DNS record. |
+| `vantage.pinavia.io` | DNS resolution failed | Missing DNS record. |
+| `nucleus.pinavia.io` | DNS resolution failed | Missing DNS record. |
+
+Read-only Cloudflare dashboard inspection showed three records on `pinavia.io`:
+
+| Name | Type | Target | Proxy |
+|---|---|---|---|
+| `app` | CNAME | `nexus-mission-control.onrender.com` | Proxied |
+| `pinavia.io` | CNAME | `nexus-mission-control.onrender.com` | DNS only |
+| `www` | CNAME | `nexus-mission-control.onrender.com` | DNS only |
+
+Missing Cloudflare records:
+
+- `nexus.pinavia.io`
+- `quorum.pinavia.io`
+- `meridian.pinavia.io`
+- `vantage.pinavia.io`
+- `nucleus.pinavia.io`
+
+## Intended DNS Records
+
+Use the single shared Render service until a product needs isolated infrastructure.
+
+| Name | Type | Target | Proxy mode | Product route after sign-in |
+|---|---|---|---|---|
+| `app` | CNAME | `nexus-mission-control.onrender.com` | Proxied | `/dashboard/ceo` |
+| `nexus` | CNAME | `nexus-mission-control.onrender.com` | Proxied | `/dashboard/ceo` |
+| `quorum` | CNAME | `nexus-mission-control.onrender.com` | Proxied | `/board` |
+| `meridian` | CNAME | `nexus-mission-control.onrender.com` | Proxied | `/meridian` |
+| `vantage` | CNAME | `nexus-mission-control.onrender.com` | Proxied | `/vantage` |
+| `nucleus` | CNAME | `nexus-mission-control.onrender.com` | Proxied | `/nucleus` |
+
+Keep `pinavia.io` and `www.pinavia.io` pointed at the public landing app unless/until the marketing site splits into a separate Cloudflare Pages project.
+
+## Required Cutover Sequence
+
+1. In Cloudflare, remove or disable the rule that redirects `app.pinavia.io` to `app.pinavia.co`.
+2. In Render, attach these custom domains to `nexus-mission-control`:
+   - `app.pinavia.io`
+   - `nexus.pinavia.io`
+   - `quorum.pinavia.io`
+   - `meridian.pinavia.io`
+   - `vantage.pinavia.io`
+   - `nucleus.pinavia.io`
+3. In Cloudflare DNS, create the missing CNAME records above. If Render displays a different validation target, use Render's target for that host.
+4. In Clerk, add every product domain used in demos to allowed origins and redirect URLs.
+5. In Render, keep `NEXT_PUBLIC_SITE_URL=https://pinavia.io`. Set `NEXT_PUBLIC_APP_URL=https://app.pinavia.io` only after the `.io` app host stops redirecting to `.co` and the auth smoke passes.
+6. Redeploy the Render service after environment or custom-domain changes.
+
+## Smoke Gate
+
+Run this before showing any product subdomain:
+
+```bash
+for host in app nexus quorum meridian vantage nucleus; do
+  echo "== $host.pinavia.io =="
+  curl -sS -I "https://$host.pinavia.io" | sed -n '1,8p'
+done
+```
+
+Expected:
+
+- `app.pinavia.io` returns 200 or a same-host sign-in flow, not a redirect to `app.pinavia.co`.
+- `nexus.pinavia.io` resolves and uses NexusAI branding.
+- `quorum.pinavia.io` resolves and signs into `/board`.
+- `meridian.pinavia.io` resolves and signs into `/meridian`.
+- `vantage.pinavia.io` resolves and signs into `/vantage`.
+- `nucleus.pinavia.io` resolves and signs into `/nucleus`.
+
+Do not demo product subdomain URLs until this gate passes. The code-backed route entries can be demoed from the apex host today:
+
+- `https://pinavia.io/vantage`
+- `https://pinavia.io/nucleus`

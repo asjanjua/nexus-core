@@ -59,6 +59,7 @@ These are the highest-priority operational items because they determine whether 
 |---|---|---|---|
 | Launch-lock board across all pilots | done (Figma) | `docs/UI_V0_5_INITIAL_LAUNCH_FINAL_PACK.md`, Figma page `125:2` | V0.5 makes the launch posture explicit for Pinavia, NexusAI, Quorum, Meridian, Vantage, and Nucleus. Superseded by V0.6 for Vantage/Nucleus route status. |
 | Vantage and Nucleus launch route entries | deployed, signed-out smoke passed | `20f2848`, `docs/UI_V0_6_LAUNCH_ROUTE_UPDATE.md`, Figma page `126:2`, `/vantage`, `/nucleus` | Protected route hubs and registries are live. Signed-out apex and Render URL smoke returns sign-in redirects with return paths. Deep workflow routes remain planned. |
+| Product subdomain DNS cutover | production pending | `docs/PRODUCT_DOMAIN_DNS_CUTOVER_2026-07-26.md`, Cloudflare DNS, Render custom domains, Clerk allowed origins | Current evidence: `app.pinavia.io` 301s to `app.pinavia.co`, and `nexus`, `quorum`, `meridian`, `vantage`, and `nucleus.pinavia.io` do not resolve. Do not demo product subdomain URLs until DNS, Render custom domains, Clerk redirects, and per-domain smoke pass. |
 
 ### Pinavia Trial-Invite Production Enablement
 

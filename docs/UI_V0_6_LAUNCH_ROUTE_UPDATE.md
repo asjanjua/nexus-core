@@ -55,6 +55,12 @@ Live verification after push:
 - `https://nexus-mission-control.onrender.com/vantage` and `/nucleus` return the same protected-route redirects.
 - `https://pinavia.io/api/health` returns `ok=true`, database enabled, vector search enabled, originals storage enabled, and DeepSeek configured.
 
+External product-domain gate recorded after deploy:
+
+- `app.pinavia.io` currently returns a Cloudflare 301 to `https://app.pinavia.co/`.
+- `nexus.pinavia.io`, `quorum.pinavia.io`, `meridian.pinavia.io`, `vantage.pinavia.io`, and `nucleus.pinavia.io` do not resolve yet.
+- See `docs/PRODUCT_DOMAIN_DNS_CUTOVER_2026-07-26.md` before demoing product subdomain URLs. Use apex routes (`https://pinavia.io/vantage`, `https://pinavia.io/nucleus`) until DNS, Render custom domains, Clerk redirects, and per-domain smoke pass.
+
 ## Demo Boundary
 
 Use `/vantage` and `/nucleus` to show product shape, buyer vocabulary, workflow arcs, and governance boundaries. Do not claim live deal-room APIs, client-portal publishing, full white-label deployment, or end-to-end Vantage/Nucleus workspace data until the deeper routes and APIs are implemented, deployed, and smoked.

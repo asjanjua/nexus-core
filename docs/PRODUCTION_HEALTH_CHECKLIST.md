@@ -196,6 +196,8 @@ Use this when comparing the original Vercel-origin UI with the newer Render/new-
 
 Use this before any house-of-brands demo.
 
+- [ ] Review `docs/PRODUCT_DOMAIN_DNS_CUTOVER_2026-07-26.md` and confirm the live DNS state has changed since the recorded 2026-07-26 blocker.
+- [ ] `app.pinavia.io` no longer redirects to `app.pinavia.co`.
 - [ ] `origin/main` commit deployed by Render includes `lib/product-detection.ts`.
 - [ ] `https://app.pinavia.io` renders NexusAI public-shell branding and signs in to `/dashboard/ceo`.
 - [ ] `https://nexus.pinavia.io` renders NexusAI public-shell branding and signs in to `/dashboard/ceo`.

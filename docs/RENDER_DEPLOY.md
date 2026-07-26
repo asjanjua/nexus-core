@@ -60,6 +60,8 @@ The primary `render.yaml` declares only the web service. Optional cost-bearing c
 
 Use one Render web service for the current house-of-brands layer. Add separate Render services only if a product later needs isolated infrastructure, region, database, or security controls.
 
+Current cutover note: see `docs/PRODUCT_DOMAIN_DNS_CUTOVER_2026-07-26.md`. As of 2026-07-26, `pinavia.io`, `/vantage`, and `/nucleus` are live through the apex host, but the product subdomain DNS layer is not ready for demos. `app.pinavia.io` redirects to `app.pinavia.co`, and `nexus`, `quorum`, `meridian`, `vantage`, and `nucleus.pinavia.io` do not resolve yet.
+
 Product domains to reserve and attach:
 
 ```text
@@ -73,10 +75,11 @@ nucleus.pinavia.io
 
 Setup sequence:
 
-1. In Render, open the `nexus-mission-control` web service and add each hostname under **Settings -> Custom Domains**.
-2. In Cloudflare DNS, create the CNAME records Render asks for, or follow Render's displayed DNS target for each custom domain.
-3. Keep `NEXT_PUBLIC_APP_URL` pointed at the canonical app URL. Recommended after cutover: `https://app.pinavia.io`.
-4. Redeploy after DNS and environment changes.
+1. In Cloudflare, remove any forwarding or redirect rule that sends `app.pinavia.io` to `app.pinavia.co`.
+2. In Render, open the `nexus-mission-control` web service and add each hostname under **Settings -> Custom Domains**.
+3. In Cloudflare DNS, create the CNAME records Render asks for, or follow Render's displayed DNS target for each custom domain.
+4. Keep `NEXT_PUBLIC_APP_URL` pointed at the current canonical app URL until `.io` auth smoke passes. Recommended after cutover: `https://app.pinavia.io`.
+5. Redeploy after DNS and environment changes.
 
 The app will use hostname detection to adjust the public shell:
 
