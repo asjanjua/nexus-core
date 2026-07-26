@@ -32,7 +32,7 @@ export async function POST(request: Request) {
   if (!isDemoPackSector(sector)) {
     return fail("invalid_sector: must be financial_services, professional_services, or technology_saas", 400);
   }
-  const seeded = await seedSectorPack({ workspaceId: ctx.workspaceId, actor: ctx.userId, sector });
+  const seeded = await seedSectorPack({ workspaceId: ctx.workspaceId, actor: ctx.userId, sector, replace: true });
 
   return ok({
     reset: true,

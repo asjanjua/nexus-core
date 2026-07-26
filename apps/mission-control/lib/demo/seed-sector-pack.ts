@@ -27,6 +27,13 @@ export type SeedSectorPackResult = {
   evidenceSeeded: number;
 };
 
+export class DemoPackSeedRefusedError extends Error {
+  constructor(message: "workspace_not_empty") {
+    super(message);
+    this.name = "DemoPackSeedRefusedError";
+  }
+}
+
 /**
  * Replaces workspace evidence with a named sector pack. It intentionally does
  * not alter demoMode: trial recipients should be able to upload their own
@@ -36,14 +43,21 @@ export async function seedSectorPack(input: {
   workspaceId: string;
   actor: string;
   sector: DemoPackSector;
+  /** Only the admin-only demo-reset endpoint may replace existing work. */
+  replace?: boolean;
 }): Promise<SeedSectorPackResult> {
   const pack = DEMO_PACKS[input.sector];
   const now = new Date().toISOString();
 
   const existingEvidence = await repository.getEvidenceForWorkspace(input.workspaceId);
+  const existingRecommendations = await repository.getRecommendations(input.workspaceId);
+  const existingProfile = await repository.getWorkspaceProfile(input.workspaceId);
+  if (!input.replace && (existingEvidence.length > 0 || existingRecommendations.length > 0 || existingProfile)) {
+    throw new DemoPackSeedRefusedError("workspace_not_empty");
+  }
+
   await Promise.allSettled(existingEvidence.map((e) => repository.deleteEvidenceRecord(e.id, input.actor)));
 
-  const existingRecommendations = await repository.getRecommendations(input.workspaceId);
   await Promise.allSettled(
     existingRecommendations.map((r) => repository.updateRecommendationStatus(r.id, "rejected", input.actor))
   );

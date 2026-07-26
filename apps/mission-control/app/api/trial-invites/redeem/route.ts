@@ -15,7 +15,7 @@ import { z } from "zod";
 import { ok, fail } from "@/lib/api";
 import { resolveAuth } from "@/lib/api-auth";
 import { repository } from "@/lib/data/repository";
-import { isDemoPackSector, seedSectorPack } from "@/lib/demo/seed-sector-pack";
+import { DemoPackSeedRefusedError, isDemoPackSector, seedSectorPack } from "@/lib/demo/seed-sector-pack";
 
 const redeemSchema = z.object({ code: z.string().min(10).max(200) });
 
@@ -60,14 +60,20 @@ export async function POST(request: Request) {
     try {
       await seedSectorPack({ workspaceId: auth.workspaceId, actor: auth.userId, sector: invite.demoPack });
       demoSeeded = true;
-    } catch {
+    } catch (error) {
       // The entitlement is already valid. Leave the workspace usable and give
       // the operator an auditable signal for a manual seed retry.
       void repository.pushAudit({
         workspaceId: auth.workspaceId,
-        type: "trial_invite.demo_seed_failed",
+        type: error instanceof DemoPackSeedRefusedError
+          ? "trial_invite.demo_seed_skipped"
+          : "trial_invite.demo_seed_failed",
         actor: auth.userId,
-        payload: { inviteId: invite.id, demoPack: invite.demoPack },
+        payload: {
+          inviteId: invite.id,
+          demoPack: invite.demoPack,
+          reason: error instanceof Error ? error.message : "unknown",
+        },
       }).catch(() => {});
     }
   }

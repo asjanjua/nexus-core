@@ -41,7 +41,9 @@ single-use link at `/invite/accept` after Clerk sign-up or sign-in.
 4. In a separate Clerk identity, open the link, sign up or sign in, and redeem.
 5. Confirm the workspace has a Pro trial and an expiry date, then confirm the
    optional sector pack seeded through the redeem API if selected. The invitee
-   page must not call the admin-only demo-reset endpoint.
+   page must not call the admin-only demo-reset endpoint. A sector pack only
+   seeds an otherwise empty workspace; it is skipped rather than replacing an
+   existing workspace's evidence.
 6. Confirm the invite list records the redemption and the audit trail contains
    `trial_invite.issued` and `trial_invite.redeemed`.
 7. Confirm a non-staff signed-in identity receives 403 from the admin portal.

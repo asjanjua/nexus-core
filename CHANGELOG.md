@@ -7,6 +7,7 @@
 - Added Figma page `21 Commercial Pilot Loop V0.4` in `Nexus System`, with six 1440x900 desktop-browser frames mapping the current code-backed buyer path: landing CTA delta, priced diagnostic, Meridian Submission Room, trial invite admin portal, invite accept/redeem, and deploy storyboard.
 - Recorded the V0.4 candidate in `docs/UI_BASELINE_VERSIONING.md` and added `docs/UI_V0_4_COMMERCIAL_PILOT_LOOP_FIGMA_PLAN.md` so Figma, code routes, and Render verification stay aligned.
 - Hardened trial invite redemption so the one-time invite claim and Pro trial entitlement are provisioned together, with optional sector-pack sample material seeded server-side after redemption rather than via the admin-only demo-reset endpoint.
+- Trial sample packs now refuse non-empty workspaces, preventing a forwarded invite from replacing a customer's existing evidence or recommendations.
 
 ---
 

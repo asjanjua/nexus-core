@@ -20,6 +20,7 @@ vi.mock("@/lib/data/repository", () => ({
 vi.mock("@/lib/demo/seed-sector-pack", () => ({
   isDemoPackSector: mocks.isDemoPackSector,
   seedSectorPack: mocks.seedSectorPack,
+  DemoPackSeedRefusedError: class DemoPackSeedRefusedError extends Error {},
 }));
 
 const { POST } = await import("@/app/api/trial-invites/redeem/route");
