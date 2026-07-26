@@ -1,12 +1,18 @@
 import { headers } from "next/headers";
-import { applicationOrigin, hostedClerkUrl } from "@/lib/auth/hosted-clerk-url";
+import { applicationOrigin, hostedClerkUrl, safeAppRedirectPath } from "@/lib/auth/hosted-clerk-url";
 import { PRODUCT_META, productFromHost, productSignInRedirect } from "@/lib/product-detection";
 
-export default async function SignInPage() {
+export default async function SignInPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ redirect_url?: string | string[] }>;
+}) {
   const hdrs = await headers();
   const productKey = productFromHost(hdrs.get("x-nexus-product") ?? hdrs.get("host") ?? "");
   const product = PRODUCT_META[productKey];
   const fallbackRedirectUrl = productSignInRedirect(productKey);
+  const params = await searchParams;
+  const redirectPath = safeAppRedirectPath(params.redirect_url, fallbackRedirectUrl);
   const appOrigin = applicationOrigin({
     host: hdrs.get("x-forwarded-host") ?? hdrs.get("host"),
     forwardedProto: hdrs.get("x-forwarded-proto"),
@@ -14,7 +20,7 @@ export default async function SignInPage() {
   });
   const hostedSignIn = hostedClerkUrl({
     configuredUrl: process.env.NEXT_PUBLIC_CLERK_HOSTED_SIGN_IN_URL,
-    redirectPath: fallbackRedirectUrl,
+    redirectPath,
     appOrigin
   });
 
@@ -43,7 +49,7 @@ export default async function SignInPage() {
           </div>
         )}
         <div className="flex flex-wrap justify-center gap-2 text-sm">
-          <a href={fallbackRedirectUrl} className="btn-subtle">
+          <a href={redirectPath} className="btn-subtle">
             View workspace
           </a>
           <a href="/sign-up" className="btn-subtle">

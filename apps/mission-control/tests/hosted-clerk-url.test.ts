@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { applicationOrigin, hostedClerkUrl } from "@/lib/auth/hosted-clerk-url";
+import { applicationOrigin, hostedClerkUrl, safeAppRedirectPath } from "@/lib/auth/hosted-clerk-url";
 
 const rootLayoutSource = readFileSync(
   fileURLToPath(new URL("../app/layout.tsx", import.meta.url)),
@@ -42,6 +42,17 @@ describe("hosted Clerk URL handoff", () => {
       redirectPath: "https://evil.example/steal",
       appOrigin: "https://app.pinavia.co"
     })).toBeNull();
+  });
+
+  it("preserves a first-party invite return path through hosted Clerk", () => {
+    expect(safeAppRedirectPath("/invite/accept?code=single-use-code", "/dashboard/ceo")).toBe(
+      "/invite/accept?code=single-use-code"
+    );
+  });
+
+  it("rejects protocol-relative and external return paths", () => {
+    expect(safeAppRedirectPath("//evil.example/steal", "/dashboard/ceo")).toBe("/dashboard/ceo");
+    expect(safeAppRedirectPath("https://evil.example/steal", "/dashboard/ceo")).toBe("/dashboard/ceo");
   });
 
   it("keeps the Clerk session provider without restoring build-heavy client widgets", () => {

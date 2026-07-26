@@ -2937,6 +2937,11 @@ export const repository = {
           stripeCustomerId,
           stripeSubscriptionId,
           status: "active",
+          // A paid conversion supersedes every time-boxed trial/deal deadline.
+          // Leaving expiresAt behind would keep a newly paid workspace blocked.
+          expiresAt: null,
+          trialEndsAt: null,
+          suspendedAt: null,
           planChangedAt: new Date(),
         })
         .where(eq(workspaces.id, workspaceId))
@@ -4106,6 +4111,72 @@ export const repository = {
     if (rows === null) return store.redeemTrialInvite(inviteCodeHash, redeemedBy, redeemedWorkspaceId, now);
     if (rows.length === 0) return null;
     return mapTrialInviteRow(rows[0]);
+  },
+
+  /**
+   * Claims a single-use invite and grants its entitlement in one transaction.
+   * The workspace update is deliberately inside the transaction: an invite must
+   * never be consumed if the recipient workspace has disappeared or cannot be
+   * provisioned. The caller still needs to authenticate before reaching here.
+   */
+  async redeemAndProvisionTrialInvite(
+    inviteCodeHash: string,
+    redeemedBy: string,
+    redeemedWorkspaceId: string
+  ): Promise<{ invite: TrialInvite; expiresAt: string } | null> {
+    const now = new Date();
+    const result = await runDb((db) =>
+      db.transaction(async (tx) => {
+        const rows = await tx
+          .update(trialInvites)
+          .set({
+            status: "redeemed",
+            redeemedBy,
+            redeemedWorkspaceId,
+            redeemedAt: now,
+            updatedAt: now,
+          })
+          .where(
+            and(
+              eq(trialInvites.inviteCodeHash, inviteCodeHash),
+              eq(trialInvites.status, "invited"),
+              gt(trialInvites.expiresAt, now)
+            )
+          )
+          .returning();
+
+        if (rows.length === 0) return { kind: "not_redeemable" as const };
+
+        const invite = mapTrialInviteRow(rows[0]);
+        const expiresAt = new Date(now.getTime() + invite.trialDays * 24 * 60 * 60 * 1000);
+        const provisioned = await tx
+          .update(workspaces)
+          .set({
+            plan: "pro",
+            monthlyTokenLimit: 5_000_000,
+            monthlyTokenUsed: 0,
+            status: "active",
+            trialEndsAt: null,
+            suspendedAt: null,
+            expiresAt,
+            planChangedAt: now,
+          })
+          .where(eq(workspaces.id, redeemedWorkspaceId))
+          .returning({ id: workspaces.id });
+
+        // Throwing rolls the invite update back too. The route translates this
+        // into a setup instruction rather than burning the one-time code.
+        if (provisioned.length === 0) throw new Error("workspace_not_provisioned");
+
+        return { kind: "redeemed" as const, invite, expiresAt: expiresAt.toISOString() };
+      })
+    );
+
+    // A trial entitlement changes more than one durable record. In no-DB mode
+    // we deliberately refuse it rather than consuming a code and pretending a
+    // plan/expiry was written. Production already requires a database.
+    if (result === null) return null;
+    return result.kind === "redeemed" ? { invite: result.invite, expiresAt: result.expiresAt } : null;
   },
 
   async revokeTrialInvite(inviteId: string): Promise<TrialInvite | null> {

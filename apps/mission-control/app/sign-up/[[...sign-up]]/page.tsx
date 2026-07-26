@@ -1,8 +1,14 @@
 import { headers } from "next/headers";
-import { applicationOrigin, hostedClerkUrl } from "@/lib/auth/hosted-clerk-url";
+import { applicationOrigin, hostedClerkUrl, safeAppRedirectPath } from "@/lib/auth/hosted-clerk-url";
 
-export default async function SignUpPage() {
+export default async function SignUpPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ redirect_url?: string | string[] }>;
+}) {
   const hdrs = await headers();
+  const params = await searchParams;
+  const redirectPath = safeAppRedirectPath(params.redirect_url, "/onboarding");
   const appOrigin = applicationOrigin({
     host: hdrs.get("x-forwarded-host") ?? hdrs.get("host"),
     forwardedProto: hdrs.get("x-forwarded-proto"),
@@ -10,7 +16,7 @@ export default async function SignUpPage() {
   });
   const hostedSignUp = hostedClerkUrl({
     configuredUrl: process.env.NEXT_PUBLIC_CLERK_HOSTED_SIGN_UP_URL,
-    redirectPath: "/onboarding",
+    redirectPath,
     appOrigin
   });
 

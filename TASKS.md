@@ -5,7 +5,7 @@
 > For the visual finish-line map, see `docs/DEVELOPMENT_FINISH_LINE_VISUAL.md`.
 > For the markdown estate review, see `docs/MARKDOWN_ESTATE_REVIEW_2026-06-25.md`.
 > For typed runtime/state/effect safety rules, see `docs/ENGINEERING_GUARDRAILS.md`.
-> Last reviewed and tightened: 2026-07-10.
+> Last reviewed and tightened: 2026-07-26.
 
 ---
 
@@ -56,6 +56,8 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 
 **The product is demo-ready and pilot-design-ready for GCC fintech, professional services, and SaaS buyers. First paid pilot production readiness still requires the open operations, monitoring, backup, support, and authenticated-smoke items below.**
 
+**Commercial Pilot Loop V0.4 (2026-07-26):** Figma candidate created in `Nexus System` at `https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=121-2`. It maps the current local commercial tree across `/`, `/diagnostic`, `/meridian`, `/admin/invites`, and `/invite/accept`. Deployment gate: push the five local product commits plus the V0.4 record, let Render run migration 0038, configure `PINAVIA_ADMIN_PRINCIPALS`, then smoke public and authenticated routes.
+
 **Priority order (updated 2026-07-10):**
 0. [x] Harden the build/commit pipeline after the July build hang and Git index incident — boundary scanner, staged-tree safety gate, timed release verifier, Node 20 lock, repository hook, CI timeouts, and API service-boundary decision added 2026-07-10. Recovery commit: `37af988`.
 1. [x] Finish and verify v0.23.1 hardening -- local auth/CTA behavior, TypeScript, tests, and build pass. Commit/deploy next.
@@ -88,6 +90,8 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 28. [x] Add product subdomain detection for the Pinavia house-of-brands — `lib/product-detection.ts`, middleware `x-nexus-product`, product CORS origins, public/auth shell product lockup, and route-safe sign-in redirects. `quorum.pinavia.io` can land on `/board`; `meridian`, `vantage`, and `nucleus` fall back to `/dashboard/ceo` until their routes ship. Pushed as `c55417e`.
 29. [ ] Configure product subdomains operationally — Cloudflare DNS records for `app`, `nexus`, `quorum`, `meridian`, `vantage`, `nucleus`; Render custom domains on the current service; Clerk allowed origins and redirect URLs for each product; authenticated smoke per domain after deploy.
 30. [x] Add the shared Nexus delivery skill suite — eight repo-scoped skills under `.agents/skills/` now coordinate milestone selection, a dedicated front-end lane, implementation/review loops, append-only papertrail, release gates, live smoke, safe publication, and recovery. `AGENTS.md` and `CLAUDE.md` route both agent families to the canonical workflows; validation and ledger-generator dry run passed 2026-07-14.
+31. [x] Create Commercial Pilot Loop V0.4 Figma screens — page `21 Commercial Pilot Loop V0.4` (`121:2`) covers the landing CTA delta, two-rung diagnostic, Meridian Submission Room, trial invite admin portal, invite accept/redeem, and deployment storyboard against the current local code tree.
+32. [ ] Deploy Commercial Pilot Loop V0.4 — push local `main`, confirm Render applies migration 0038, set `PINAVIA_ADMIN_PRINCIPALS`, then smoke `/`, `/diagnostic`, `/invite/accept?code=missing`, `/api/health`, and authenticated `/meridian` + `/admin/invites`.
 31. [x] Repair `relay.py` as an append-only papertrail adapter — locked exact-prefix handover appends, unique dated ledgers, fingerprint duplicate protection, no-write preview modes, explicit-file commit safety, concurrent-writer serialization, and six root test regressions completed 2026-07-15.
 32. [x] Eliminate the local npm/Vitest collection stall — proved iCloud had evicted 68,605 dependency files into dataless stubs, moved dependencies and Vitest cache outside File Provider, added Node 20/hydration/nested-layout preflight plus a stale-lock-safe repair command, and verified 70 test files / 478 app assertions, TypeScript, boundaries, and production build on 2026-07-15.
 33. [x] Move the Nexus runtime off EOL Node 20 — Node 24 is the production/default target, Node 22.12+ is the explicit compatibility rung, CI verifies both, Render web/cron definitions pin Node 24, and schema-v2 File Provider caches preserve locked workspace dependencies without cross-major reuse. Node 22 and Node 24 tests/typecheck/163-page builds passed locally; GitHub CI/CodeQL, Render deployment, public 8/8 smoke, and protected-route browser smoke passed on 2026-07-15.

@@ -5,13 +5,11 @@
  *   /invite/accept?code=<inviteCode>
  *
  * Flow:
- *   1. Require a signed-in user. `provisionWorkspace` uses the Clerk org id AS
- *      the workspace id, so there is no workspace to attach a trial to until the
- *      invitee has signed up. Sign-up genuinely has to come first.
+ *   1. Require a signed-in user and provision their private workspace.
  *   2. POST the code to /api/trial-invites/redeem, which grants the plan and
  *      sets the trial deadline.
- *   3. If the invite carried a demo pack, seed it through the existing
- *      /api/workspace/demo-reset endpoint so there is material on screen.
+ *   3. The server seeds an optional sector pack under the authority of the
+ *      redeemed, single-use invite.
  *
  * Fetch-only client page with a plain /sign-in link, per the production build
  * constraints in CLAUDE.md (no Clerk client components in bundles).
@@ -33,6 +31,8 @@ const ERROR_COPY: Record<string, string> = {
     "This invite is invalid, already used, or has expired. Ask your Pinavia contact for a new link.",
   invalid_request: "This link is missing a valid invite code.",
   unauthorized: "Create your account or sign in first, then return to this link.",
+  workspace_setup_required:
+    "Your workspace is still being created. Please try again in a moment, then return to this invite link.",
 };
 
 function RedeemPanel() {
@@ -46,13 +46,27 @@ function RedeemPanel() {
     }
     setState({ kind: "submitting" });
     try {
+      // This idempotent call prevents a new Clerk account from consuming its
+      // single-use code before Nexus has a workspace to grant the trial to.
+      const provision = await fetch("/api/workspace/provision", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      if (!provision.ok) {
+        const provisionBody = (await provision.json().catch(() => null)) as { error?: string } | null;
+        const key = provisionBody?.error ?? "workspace_setup_required";
+        setState({ kind: "error", message: ERROR_COPY[key] ?? "Could not prepare your workspace." });
+        return;
+      }
+
       const res = await fetch("/api/trial-invites/redeem", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code }),
       });
       const body = (await res.json().catch(() => null)) as
-        | { error?: string; trialExpiresAt?: string; demoPack?: string | null }
+        | { error?: string; trialExpiresAt?: string; demoSeeded?: boolean }
         | null;
 
       if (!res.ok) {
@@ -61,26 +75,14 @@ function RedeemPanel() {
         return;
       }
 
-      // Seeding is best-effort: the trial is already live at this point, so a
-      // seeding failure must not present as a failed redemption.
-      let seeded = false;
-      if (body?.demoPack) {
-        seeded = await fetch("/api/workspace/demo-reset", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ sector: body.demoPack }),
-        })
-          .then((r) => r.ok)
-          .catch(() => false);
-      }
-
-      setState({ kind: "done", trialExpiresAt: body?.trialExpiresAt ?? "", seeded });
+      setState({ kind: "done", trialExpiresAt: body?.trialExpiresAt ?? "", seeded: body?.demoSeeded ?? false });
     } catch {
       setState({ kind: "error", message: "Network error. Please try again." });
     }
   }
 
   const card = "rounded-lg border border-white/10 bg-white/[0.035] px-4 py-5 sm:px-5";
+  const returnTo = `/invite/accept?code=${encodeURIComponent(code)}`;
 
   if (!code) {
     return (
@@ -140,8 +142,11 @@ function RedeemPanel() {
         >
           {state.kind === "submitting" ? "Starting…" : "Start my trial"}
         </button>
-        <a href="/sign-in" className="btn-subtle text-sm">
+        <a href={`/sign-in?redirect_url=${encodeURIComponent(returnTo)}`} className="btn-subtle text-sm">
           Sign in
+        </a>
+        <a href={`/sign-up?redirect_url=${encodeURIComponent(returnTo)}`} className="btn-subtle text-sm">
+          Create account
         </a>
       </div>
     </div>

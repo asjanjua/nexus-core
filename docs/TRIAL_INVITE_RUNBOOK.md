@@ -39,8 +39,9 @@ single-use link at `/invite/accept` after Clerk sign-up or sign-in.
 3. Copy the returned link. Treat it as a bearer credential: it is shown once
    and only its SHA-256 hash is stored.
 4. In a separate Clerk identity, open the link, sign up or sign in, and redeem.
-5. Confirm the workspace has a Pro trial and an expiry date, then allow demo
-   seeding to finish if selected.
+5. Confirm the workspace has a Pro trial and an expiry date, then confirm the
+   optional sector pack seeded through the redeem API if selected. The invitee
+   page must not call the admin-only demo-reset endpoint.
 6. Confirm the invite list records the redemption and the audit trail contains
    `trial_invite.issued` and `trial_invite.redeemed`.
 7. Confirm a non-staff signed-in identity receives 403 from the admin portal.

@@ -2,6 +2,14 @@
 
 ---
 
+## Unreleased — Commercial Pilot Loop V0.4 (2026-07-26)
+
+- Added Figma page `21 Commercial Pilot Loop V0.4` in `Nexus System`, with six 1440x900 desktop-browser frames mapping the current code-backed buyer path: landing CTA delta, priced diagnostic, Meridian Submission Room, trial invite admin portal, invite accept/redeem, and deploy storyboard.
+- Recorded the V0.4 candidate in `docs/UI_BASELINE_VERSIONING.md` and added `docs/UI_V0_4_COMMERCIAL_PILOT_LOOP_FIGMA_PLAN.md` so Figma, code routes, and Render verification stay aligned.
+- Hardened trial invite redemption so the one-time invite claim and Pro trial entitlement are provisioned together, with optional sector-pack sample material seeded server-side after redemption rather than via the admin-only demo-reset endpoint.
+
+---
+
 ## Unreleased — Pinavia Public Landing Page (2026-07-25)
 
 - Replaced the public root Nexus Core marketing page with a Pinavia parent-brand landing page that introduces the governed product family: NexusAI, Quorum, Meridian, Vantage, and Nucleus.

@@ -13,6 +13,15 @@
 
 ---
 
+## 2026-07-26 — Commercial Pilot Loop V0.4 Figma Candidate and Deploy Gate
+
+- Added Figma page `21 Commercial Pilot Loop V0.4` in `Nexus System` (`https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=121-2`) with six 1440x900 desktop-browser frames for the current code-backed buyer path: landing CTA delta, two-rung diagnostic, Meridian Submission Room, staff invite portal, invite accept/redeem, and deployment storyboard.
+- The V0.4 frames are based on local `main` after the commercial product stack (`448863d` through `b9b3592`) plus invite-redemption hardening in the working tree. They should be treated as a candidate tied to this deploy, not a separate speculative Figma board.
+- Trial invite redemption is now aligned around server-side authority: the accept page provisions the workspace before redeeming, the API redeems the one-time code and grants Pro trial entitlement in one transaction, and optional sector-pack sample material is seeded server-side as best effort.
+- Next release action: run verification, commit this V0.4 record and invite hardening, push `main`, wait for Render, then smoke public `/`, `/diagnostic`, `/invite/accept?code=missing`, `/api/health`, and authenticated `/meridian` + `/admin/invites` after `PINAVIA_ADMIN_PRINCIPALS` is configured.
+
+---
+
 ## 2026-07-25 — Pinavia Public Landing Page (Local, Pending Deploy)
 
 - Replaced the public `/` page with a Pinavia parent-company landing page. It now presents the Pinavia mark, the governed AI execution-room positioning, the NexusAI command-map hero, and the five-product family: NexusAI, Quorum, Meridian, Vantage, and Nucleus.

@@ -41,3 +41,14 @@ export function hostedClerkUrl(input: {
     return null;
   }
 }
+
+/**
+ * Accept a return path from a first-party link without allowing an open
+ * redirect through the hosted Clerk handoff. Query strings are retained so a
+ * single-use invite can survive sign-in/sign-up.
+ */
+export function safeAppRedirectPath(value: string | string[] | undefined, fallback: string): string {
+  const candidate = Array.isArray(value) ? value[0] : value;
+  if (!candidate || !candidate.startsWith("/") || candidate.startsWith("//")) return fallback;
+  return candidate;
+}

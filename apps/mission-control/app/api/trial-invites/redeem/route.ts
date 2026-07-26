@@ -3,22 +3,11 @@
  *
  * POST /api/trial-invites/redeem  { code }
  *
- * NOT platform-admin gated: the caller is the invitee. It does require a signed-
- * in session, because redemption binds the trial to a workspace and
- * `provisionWorkspace` uses the Clerk org id AS the workspace id — so no
- * workspace can exist before sign-up. The flow is therefore sign up, then
- * redeem, which is why the accept page sends people to hosted sign-in first.
- *
- * Side effects on success, in order:
- *   1. atomic single-use redeem (invited, unexpired)
- *   2. grant the Pro plan for the trial
- *   3. set workspaces.expires_at to now + trialDays
- *
- * Demo seeding is deliberately NOT done here. The existing
- * POST /api/workspace/demo-reset already seeds a sector pack correctly, and
- * duplicating ~100 lines of that logic to save the client one call would leave
- * two implementations to keep in step. The response returns `demoPack` so the
- * accept page can make that call.
+ * The caller must have a provisioned workspace. The one-time claim and trial
+ * entitlement are committed together, so an invite cannot be consumed without
+ * a usable workspace. A sector pack, when included, is seeded after the
+ * entitlement succeeds and never switches the workspace into persistent demo
+ * mode.
  */
 
 import { createHash } from "crypto";
@@ -26,12 +15,9 @@ import { z } from "zod";
 import { ok, fail } from "@/lib/api";
 import { resolveAuth } from "@/lib/api-auth";
 import { repository } from "@/lib/data/repository";
+import { isDemoPackSector, seedSectorPack } from "@/lib/demo/seed-sector-pack";
 
 const redeemSchema = z.object({ code: z.string().min(10).max(200) });
-
-/** Pro plan allowance granted for the duration of a trial. */
-const TRIAL_PLAN = "pro";
-const TRIAL_MONTHLY_TOKENS = 5_000_000;
 
 export async function POST(request: Request) {
   const auth = await resolveAuth(request);
@@ -41,17 +27,50 @@ export async function POST(request: Request) {
   const parsed = redeemSchema.safeParse(body);
   if (!parsed.success) return fail("invalid_request", 400);
 
+  // Reject before touching the one-time code. The accept page provisions the
+  // workspace first; this also makes direct API callers recoverable.
+  if (!(await repository.isWorkspaceProvisioned(auth.workspaceId))) {
+    return fail("workspace_setup_required", 409);
+  }
+
   const inviteCodeHash = createHash("sha256").update(parsed.data.code).digest("hex");
-  const invite = await repository.redeemTrialInvite(inviteCodeHash, auth.userId, auth.workspaceId);
+  let redeemed: Awaited<ReturnType<typeof repository.redeemAndProvisionTrialInvite>>;
+  try {
+    redeemed = await repository.redeemAndProvisionTrialInvite(
+      inviteCodeHash,
+      auth.userId,
+      auth.workspaceId
+    );
+  } catch (error) {
+    // A workspace may be deleted between the preflight and transaction. The
+    // transaction rolls back the invite update before surfacing this response.
+    if (error instanceof Error && error.message === "workspace_not_provisioned") {
+      return fail("workspace_setup_required", 409);
+    }
+    throw error;
+  }
 
-  // One error for unknown, expired, already-redeemed, and revoked. Telling an
-  // unauthenticated-ish caller which of those it was turns this endpoint into a
-  // code oracle.
-  if (!invite) return fail("invite_not_redeemable", 400);
+  // One error for unknown, expired, already-redeemed, and revoked. Distinguishing
+  // those conditions would turn this endpoint into a code-status oracle.
+  if (!redeemed) return fail("invite_not_redeemable", 400);
 
-  const expiresAt = new Date(Date.now() + invite.trialDays * 24 * 60 * 60 * 1000);
-  await repository.updateWorkspacePlan(auth.workspaceId, TRIAL_PLAN, TRIAL_MONTHLY_TOKENS);
-  await repository.setWorkspaceExpiry(auth.workspaceId, expiresAt.toISOString());
+  const { invite, expiresAt } = redeemed;
+  let demoSeeded = false;
+  if (invite.demoPack && isDemoPackSector(invite.demoPack)) {
+    try {
+      await seedSectorPack({ workspaceId: auth.workspaceId, actor: auth.userId, sector: invite.demoPack });
+      demoSeeded = true;
+    } catch {
+      // The entitlement is already valid. Leave the workspace usable and give
+      // the operator an auditable signal for a manual seed retry.
+      void repository.pushAudit({
+        workspaceId: auth.workspaceId,
+        type: "trial_invite.demo_seed_failed",
+        actor: auth.userId,
+        payload: { inviteId: invite.id, demoPack: invite.demoPack },
+      }).catch(() => {});
+    }
+  }
 
   void repository.pushAudit({
     workspaceId: auth.workspaceId,
@@ -61,14 +80,16 @@ export async function POST(request: Request) {
       inviteId: invite.id,
       invitedBy: invite.invitedBy,
       trialDays: invite.trialDays,
-      expiresAt: expiresAt.toISOString(),
+      expiresAt,
+      demoSeeded,
     },
   }).catch(() => {});
 
   return ok({
     invite,
-    plan: TRIAL_PLAN,
-    trialExpiresAt: expiresAt.toISOString(),
+    plan: "pro",
+    trialExpiresAt: expiresAt,
     demoPack: invite.demoPack,
+    demoSeeded,
   });
 }

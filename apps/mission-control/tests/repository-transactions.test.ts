@@ -29,6 +29,8 @@ vi.hoisted(() => {
 let transactionCallCount = 0;
 let writesInLastTransaction: string[] = [];
 let failOnSecondWrite = false;
+let updatePayloads: unknown[] = [];
+let returningUpdateCount = 0;
 
 function makeFakeTx(label: string) {
   const record = (op: string) => {
@@ -44,12 +46,28 @@ function makeFakeTx(label: string) {
     },
   };
   const updateChain = {
-    set: (..._args: unknown[]) => ({
-      where: async (..._w: unknown[]) => {
+    set: (...args: unknown[]) => {
+      updatePayloads.push(args[0]);
+      return {
+        where: (..._w: unknown[]) => {
         record("update");
-        return undefined;
-      },
-    }),
+          return {
+            returning: async () => {
+              returningUpdateCount += 1;
+              if (returningUpdateCount % 2 === 1) {
+                return [{
+                  id: "ti-transaction", email: "prospect@example.com", name: null, company: null, note: null,
+                  demoPack: null, status: "redeemed", redeemedBy: "user-1", redeemedWorkspaceId: "ws-1",
+                  invitedBy: "staff-1", trialDays: 30, redeemedAt: new Date(), revokedAt: null,
+                  expiresAt: new Date(Date.now() + 86_400_000), createdAt: new Date(), updatedAt: new Date(),
+                }];
+              }
+              return [{ id: "ws-1" }];
+            },
+          };
+        },
+      };
+    },
   };
   const selectChain = {
     from: () => selectChain,
@@ -74,6 +92,7 @@ const fakeDb = {
     const tx = makeFakeTx(`tx${transactionCallCount}`);
     return callback(tx);
   }),
+  update: (...args: unknown[]) => makeFakeTx("db").update(...args),
   insert: (..._args: unknown[]) => ({ values: async () => [{}] }),
 };
 
@@ -121,6 +140,12 @@ vi.mock("@/db/schema", () => {
     planDefinitions: table("planDefinitions"),
     dispatchJobs: table("dispatchJobs"),
     stripeProcessedEvents: table("stripeProcessedEvents"),
+    readinessSubmissions: table("readinessSubmissions"),
+    reviewerSeats: table("reviewerSeats"),
+    trialInvites: table("trialInvites"),
+    pilotOutcomes: table("pilotOutcomes"),
+    proWaitlist: table("proWaitlist"),
+    strategyProfiles: table("strategyProfiles"),
   };
 });
 
@@ -148,6 +173,8 @@ beforeEach(() => {
   transactionCallCount = 0;
   writesInLastTransaction = [];
   failOnSecondWrite = false;
+  updatePayloads = [];
+  returningUpdateCount = 0;
   fakeDb.transaction.mockClear();
 });
 
@@ -202,5 +229,23 @@ describe("repository transaction safety (#35)", () => {
     expect(transactionCallCount).toBe(1);
     // select (version lookup) + update (supersede) + insert (new row) + insert (audit)
     expect(writesInLastTransaction.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it("redeemAndProvisionTrialInvite keeps claim and entitlement in one transaction", async () => {
+    const redeemed = await repository.redeemAndProvisionTrialInvite("hash", "user-1", "ws-1");
+
+    expect(transactionCallCount).toBe(1);
+    expect(writesInLastTransaction).toEqual(["tx1:update", "tx1:update"]);
+    expect(redeemed?.invite.id).toBe("ti-transaction");
+  });
+
+  it("activatePlan clears expiry state so a paid conversion is not blocked", async () => {
+    await repository.activatePlan("ws-1", "pro", 5_000_000, "cus_1", "sub_1");
+
+    expect(updatePayloads).toContainEqual(expect.objectContaining({
+      expiresAt: null,
+      trialEndsAt: null,
+      suspendedAt: null,
+    }));
   });
 });
