@@ -175,7 +175,7 @@ export default function ProductBriefPage() {
 
         <section className="border-b border-slate-200 py-8">
           <SectionTitle eyebrow="Product family" title="Five rooms on one governed core" />
-          <div className="grid gap-3 md:hidden">
+          <div className="product-brief-mobile-rooms grid gap-3">
             {productRooms.map((room) => (
               <article key={room.name} className="rounded-xl border border-slate-200 p-4">
                 <div className="flex items-center justify-between gap-3">
@@ -204,7 +204,7 @@ export default function ProductBriefPage() {
               </article>
             ))}
           </div>
-          <div className="hidden overflow-hidden rounded-xl border border-slate-200 md:block">
+          <div className="product-brief-desktop-table overflow-hidden rounded-xl border border-slate-200">
             <table className="w-full border-collapse text-left text-sm">
               <thead className="bg-slate-50 text-xs uppercase tracking-[0.14em] text-slate-500">
                 <tr>
@@ -350,8 +350,21 @@ export default function ProductBriefPage() {
       </main>
 
       <style>{`
+        .product-brief-desktop-table {
+          display: none;
+        }
+        @media (min-width: 768px) {
+          .product-brief-mobile-rooms {
+            display: none;
+          }
+          .product-brief-desktop-table {
+            display: block;
+          }
+        }
         @media print {
           .no-print { display: none !important; }
+          .product-brief-mobile-rooms { display: none !important; }
+          .product-brief-desktop-table { display: block !important; }
           body { background: white; }
           a { color: inherit; text-decoration: none; }
         }
