@@ -23,6 +23,15 @@
 
 ---
 
+## 2026-07-26 — Initial Launch UI Final Pack V0.5
+
+- Added Figma page `22 Initial Launch UI Final Pack V0.5` (`https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=125-2`) with six 1440x900 launch coordination frames: readiness matrix, core buyer path, pilot surface lock, screen handoff index, gaps before pilot demo, and ten-minute final demo script.
+- The board explicitly separates launch truth from design ambition: Pinavia, diagnostic, NexusAI, Quorum, and Meridian can be shown against live/code-backed surfaces; Vantage and Nucleus are design-only until route entries are built.
+- Figma validation confirmed six 1440x900 frames. Screenshots were generated for `125:3` and `125:118`.
+- Next action: use V0.5 to drive implementation order, starting with the staff invite smoke and Meridian polish before building new Vantage or Nucleus routes.
+
+---
+
 ## 2026-07-25 — Pinavia Public Landing Page (Local, Pending Deploy)
 
 - Replaced the public `/` page with a Pinavia parent-company landing page. It now presents the Pinavia mark, the governed AI execution-room positioning, the NexusAI command-map hero, and the five-product family: NexusAI, Quorum, Meridian, Vantage, and Nucleus.

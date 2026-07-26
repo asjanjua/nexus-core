@@ -53,6 +53,12 @@ These are the highest-priority operational items because they determine whether 
 |---|---|---|---|
 | Commercial pilot loop design-to-deploy | deployed, authenticated smoke pending | `docs/UI_V0_4_COMMERCIAL_PILOT_LOOP_FIGMA_PLAN.md`, Figma page `121:2` | Six code-backed desktop frames now map the buyer path from `/` -> `/diagnostic` -> trial invite -> `/meridian` -> human sign-off. Public smoke passed on `pinavia.io`; remaining gate is Render `PINAVIA_ADMIN_PRINCIPALS` plus authenticated staff invite and redemption smoke. |
 
+### Initial Launch UI Final Pack V0.5
+
+| Item | Status | Source | Notes |
+|---|---|---|---|
+| Launch-lock board across all pilots | done (Figma) | `docs/UI_V0_5_INITIAL_LAUNCH_FINAL_PACK.md`, Figma page `125:2` | V0.5 makes the launch posture explicit for Pinavia, NexusAI, Quorum, Meridian, Vantage, and Nucleus. NexusAI/Quorum/Meridian can be shown against live or code-backed surfaces; Vantage and Nucleus remain Figma-only until route entries exist. |
+
 ### Pinavia Trial-Invite Production Enablement
 
 | Item | Status | Source | Notes |

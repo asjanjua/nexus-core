@@ -2,6 +2,14 @@
 
 ---
 
+## Unreleased — Initial Launch Final Pack V0.5 (2026-07-26)
+
+- Added Figma page `22 Initial Launch UI Final Pack V0.5` with six 1440x900 desktop-browser coordination frames that lock the launch truth across Pinavia, NexusAI, Quorum, Meridian, Vantage, and Nucleus.
+- Added `docs/UI_V0_5_INITIAL_LAUNCH_FINAL_PACK.md` and registered V0.5 in `docs/UI_BASELINE_VERSIONING.md`.
+- Made the immediate pilot boundary explicit: Pinavia, diagnostic, NexusAI, Quorum, and Meridian have live/code-backed surfaces; Vantage and Nucleus are design-only until app routes are built.
+
+---
+
 ## Unreleased — Commercial Pilot Loop V0.4 (2026-07-26)
 
 - Added Figma page `21 Commercial Pilot Loop V0.4` in `Nexus System`, with six 1440x900 desktop-browser frames mapping the current code-backed buyer path: landing CTA delta, priced diagnostic, Meridian Submission Room, trial invite admin portal, invite accept/redeem, and deploy storyboard.
