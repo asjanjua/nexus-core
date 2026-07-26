@@ -106,12 +106,13 @@ const STAGES: Stage[] = [
 ];
 
 const STEP_MS = 1600;
+const FINAL_DWELL_MS = 2600;
 
 export function DecisionPassport() {
   const [active, setActive] = useState(0);
   const [playing, setPlaying] = useState(true);
   const [reduced, setReduced] = useState(false);
-  const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -129,18 +130,38 @@ export function DecisionPassport() {
 
   useEffect(() => {
     if (!playing || reduced) return;
-    timer.current = setInterval(() => {
-      setActive((i) => (i + 1) % STAGES.length);
-    }, STEP_MS);
+    timer.current = setTimeout(
+      () => {
+        setActive((i) => {
+          if (i >= STAGES.length - 1) {
+            setPlaying(false);
+            return i;
+          }
+          return i + 1;
+        });
+      },
+      active >= STAGES.length - 1 ? FINAL_DWELL_MS : STEP_MS,
+    );
     return () => {
-      if (timer.current) clearInterval(timer.current);
+      if (timer.current) clearTimeout(timer.current);
     };
-  }, [playing, reduced]);
+  }, [active, playing, reduced]);
 
   const select = useCallback((i: number) => {
     setPlaying(false);
     setActive(i);
   }, []);
+
+  const togglePlayback = useCallback(() => {
+    if (playing) {
+      setPlaying(false);
+      return;
+    }
+    if (active >= STAGES.length - 1) {
+      setActive(0);
+    }
+    setPlaying(true);
+  }, [active, playing]);
 
   const stage = STAGES[active];
 
@@ -156,10 +177,10 @@ export function DecisionPassport() {
         {!reduced && (
           <button
             type="button"
-            onClick={() => setPlaying((p) => !p)}
+            onClick={togglePlayback}
             className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-white/60 transition hover:border-white/30 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nexus-accent"
           >
-            {playing ? "Pause" : "Play"}
+            {playing ? "Pause" : active >= STAGES.length - 1 ? "Replay" : "Play"}
           </button>
         )}
       </div>
