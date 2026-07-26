@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { PwaRegister } from "@/components/pwa-register";
+import { Analytics } from "@/components/analytics";
 import { SideNav } from "@/components/side-nav";
 import { TrialBanner } from "@/components/trial-banner";
 import { FeedbackButton } from "@/components/feedback-button";
@@ -16,11 +17,45 @@ import { isDbRequired } from "@/lib/data/db-policy";
 import { PRODUCT_META, productFromHost, type ProductKey } from "@/lib/product-detection";
 import { ClerkProvider } from "@clerk/nextjs";
 
+// Canonical public origin. metadataBase is REQUIRED for Next to emit absolute
+// og:image / twitter:image URLs — without it, share cards silently render
+// blank on LinkedIn and WhatsApp. Override per environment with
+// NEXT_PUBLIC_SITE_URL (e.g. the Render hostname for a staging check).
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://pinavia.io";
+
+const SITE_TITLE = "Pinavia | Governed AI execution rooms";
+const SITE_DESCRIPTION =
+  "Governed AI for executive, board, regulatory, diligence, and advisory workflows. Every answer carries its sources; every consequential action is approved by a named human.";
+
 export const metadata: Metadata = {
-  title: "Pinavia | Governed AI execution rooms",
-  description: "Governed AI products for executive, board, regulatory, diligence, and advisory workflows.",
+  metadataBase: new URL(SITE_URL),
+  title: SITE_TITLE,
+  description: SITE_DESCRIPTION,
   applicationName: "Pinavia",
   manifest: "/manifest.webmanifest",
+  alternates: { canonical: "/" },
+  openGraph: {
+    type: "website",
+    siteName: "Pinavia",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    url: SITE_URL,
+    locale: "en_US",
+    images: [
+      {
+        url: "/opengraph-image.png",
+        width: 1200,
+        height: 630,
+        alt: "Pinavia — every AI decision, evidence-backed and human-approved.",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE_TITLE,
+    description: SITE_DESCRIPTION,
+    images: ["/twitter-image.png"],
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -72,6 +107,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <body>
           <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up">
           <PwaRegister />
+          <Analytics />
           <header className="sticky top-0 z-20 border-b border-white/10 bg-[#090f1b]/88 backdrop-blur">
             <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
               <a href="/" className="flex items-center gap-3 text-white">
@@ -106,6 +142,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <body>
           <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up">
           <PwaRegister />
+          <Analytics />
           <main className="mx-auto min-h-screen max-w-3xl px-6 py-12 text-white">
             <h1 className="mb-3 text-2xl font-semibold">
               Mission Control is waiting for database connectivity
@@ -132,6 +169,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <body>
           <ClerkProvider signInUrl="/sign-in" signUpUrl="/sign-up">
           <PwaRegister />
+          <Analytics />
           <header className="flex items-center justify-end gap-3 border-b border-white/10 px-6 py-3">
             <a href="/sign-in" className="btn-primary text-sm">Sign in</a>
           </header>

@@ -60,9 +60,26 @@ export function clerkCspHosts(config: ClerkCspConfig = {}): string[] {
  * style-src keeps 'unsafe-inline'. Tailwind and React inline styles depend on
  * it, and removing it is a separate piece of work with no XSS-execution
  * benefit comparable to locking down script-src.
+ *
+ * Analytics origin, allowlisted ONLY when analytics is actually switched on.
+ * Keeping this env-gated means the default policy stays as tight as it is
+ * today and we do not advertise a third-party script origin we are not using.
+ * Mirrors components/analytics.tsx — if that component's src changes, this
+ * must change with it or the tag is blocked silently.
  */
+function analyticsScriptOrigin(): string | null {
+  if (!process.env.NEXT_PUBLIC_PLAUSIBLE_DOMAIN) return null;
+  const src = process.env.NEXT_PUBLIC_PLAUSIBLE_SRC ?? "https://plausible.io/js/script.js";
+  try {
+    return new URL(src).origin;
+  } catch {
+    return null;
+  }
+}
+
 export function cspDirectives(nonce?: string, clerkConfig?: ClerkCspConfig): string {
   const clerkSources = clerkCspHosts(clerkConfig).map((host) => `https://${host}`);
+  const analyticsOrigin = analyticsScriptOrigin();
   const scriptSources = [
     "'self'",
     nonce ? `'nonce-${nonce}'` : "'unsafe-inline'",
@@ -71,6 +88,7 @@ export function cspDirectives(nonce?: string, clerkConfig?: ClerkCspConfig): str
     ...clerkSources,
     "https://*.clerk.accounts.dev",
     "https://challenges.cloudflare.com",
+    analyticsOrigin,
   ].filter(Boolean);
 
   return [
@@ -79,7 +97,7 @@ export function cspDirectives(nonce?: string, clerkConfig?: ClerkCspConfig): str
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  `connect-src 'self' https://api.anthropic.com https://api.deepseek.com https://*.clerk.accounts.dev ${clerkSources.join(" ")} https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io wss:`,
+  `connect-src 'self' https://api.anthropic.com https://api.deepseek.com https://*.clerk.accounts.dev ${clerkSources.join(" ")} https://*.ingest.sentry.io https://*.ingest.us.sentry.io https://*.ingest.de.sentry.io${analyticsOrigin ? ` ${analyticsOrigin}` : ""} wss:`,
   "frame-src https://challenges.cloudflare.com",
   "worker-src 'self' blob:",
   "frame-ancestors 'none'",
