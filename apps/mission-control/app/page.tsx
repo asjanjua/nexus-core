@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { PinaviaLockup } from "@/components/ui/pinavia-mark";
+import { DecisionPassport } from "@/components/marketing/decision-passport";
 
 // Marketing accents (nexus-design-system level 2). These exist ONLY on
 // marketing surfaces - never in app chrome, never as operating status.
@@ -543,12 +544,41 @@ function SpendAnimationSection() {
   );
 }
 
+/**
+ * Signature section. The spend story above is table stakes: competitors tell
+ * it too. This is the story only Pinavia can tell: a decision that carries its
+ * own proof. Keep it immediately after the money map so the page moves from
+ * "cheaper" to "defensible".
+ */
+function DecisionPassportSection() {
+  return (
+    <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8" id="passport">
+      <p className="micro-label text-white/35">03 / How a decision earns its proof</p>
+      <h2
+        className="display-hero mt-5 max-w-3xl text-white"
+        style={{ fontSize: "clamp(2rem,4vw,3rem)" }}
+      >
+        Most AI gives you an answer. Pinavia gives you a{" "}
+        <span className="display-accent text-nexus-accent">passport</span>.
+      </h2>
+      <p className="mt-6 max-w-2xl text-base leading-7 text-white/60">
+        A regulated decision is not the sentence the model produced. It is that sentence plus its
+        sources, its caveats, the person who owned it, the gate it passed, and the trail that proves
+        it. Watch one question earn all seven.
+      </p>
+      <div className="mt-12">
+        <DecisionPassport />
+      </div>
+    </section>
+  );
+}
+
 function MechanismBand() {
   return (
     <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8" id="platform">
       <div className="grid gap-10 lg:grid-cols-[0.7fr_1.3fr] lg:items-start">
         <div>
-          <p className="micro-label text-white/35">03 / The operating layer</p>
+          <p className="micro-label text-white/35">04 / The operating layer</p>
           <h2 className="display-hero mt-5 text-white" style={{ fontSize: "clamp(2rem,4vw,3rem)" }}>
             Add evidence once. Use it everywhere decisions happen.
           </h2>
@@ -606,7 +636,7 @@ function MechanismBand() {
 function ProofBand() {
   return (
     <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8" id="trust">
-      <p className="micro-label text-white/35">04 / Why it holds up</p>
+      <p className="micro-label text-white/35">05 / Why it holds up</p>
       <h2 className="display-hero mt-5 max-w-3xl text-white" style={{ fontSize: "clamp(2rem,4vw,3rem)" }}>
         An answer you can <span className="display-accent text-nexus-accent">prove</span> you were
         right to approve.
@@ -629,7 +659,7 @@ function USPSection() {
     <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8" id="usp">
       <div className="grid gap-10 lg:grid-cols-[0.72fr_1.28fr] lg:items-start">
         <div className="lg:sticky lg:top-24">
-          <p className="micro-label text-white/35">05 / What is uniquely Pinavia</p>
+          <p className="micro-label text-white/35">06 / What is uniquely Pinavia</p>
           <h2 className="display-hero mt-5 text-white" style={{ fontSize: "clamp(2rem,4vw,3rem)" }}>
             Built for the moment after an AI answer sounds convincing.
           </h2>
@@ -665,7 +695,7 @@ function RegulatedCaseStudiesSection() {
       <div className="border-t border-white/10 pt-14">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="micro-label text-white/35">07 / Regulated entity case studies</p>
+            <p className="micro-label text-white/35">08 / Regulated entity case studies</p>
             <h2 className="display-hero mt-5 max-w-4xl text-white" style={{ fontSize: "clamp(2rem,4vw,3rem)" }}>
               The pitch gets stronger when the boundary is visible.
             </h2>
@@ -722,7 +752,7 @@ function CompetitiveDifferenceSection() {
       <div className="overflow-hidden rounded-lg border border-white/10 bg-white/[0.035]">
         <div className="grid gap-8 border-b border-white/10 p-5 sm:p-6 lg:grid-cols-[0.78fr_1.22fr]">
           <div>
-            <p className="micro-label text-white/35">06 / Why Pinavia is different</p>
+            <p className="micro-label text-white/35">07 / Why Pinavia is different</p>
             <h2 className="display-hero mt-5 text-white" style={{ fontSize: "clamp(2rem,4vw,3rem)" }}>
               Context memory is necessary. Governed action is the product.
             </h2>
@@ -791,7 +821,7 @@ function ProductFamilySection() {
       <div className="border-t border-white/10 pt-14">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="micro-label text-white/35">08 / Product family</p>
+            <p className="micro-label text-white/35">09 / Product family</p>
             <h2 className="display-hero mt-5 text-white" style={{ fontSize: "clamp(2rem,4vw,3rem)" }}>
               One governed core, <span className="display-accent text-nexus-accent">five rooms</span>.
             </h2>
@@ -924,6 +954,7 @@ export default function HomePage() {
       </section>
 
       <SpendAnimationSection />
+      <DecisionPassportSection />
       <MechanismBand />
       <ProofBand />
       <USPSection />

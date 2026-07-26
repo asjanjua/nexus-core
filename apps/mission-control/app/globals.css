@@ -90,6 +90,18 @@ a {
   text-transform: uppercase;
 }
 
+/* Stage-copy fade for the Decision Passport. Motion-safe only. */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 /* Large proof numerals with a warm-to-cool gradient fill. */
 .stat-numeral {
   font-size: clamp(2.5rem, 5vw, 3.75rem);
