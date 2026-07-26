@@ -22,6 +22,7 @@ const PUBLIC_ROUTES: Entry[] = [
   { path: "/", priority: 1.0, changeFrequency: "weekly" },
   // Commercial entry points — these are the conversion surfaces.
   { path: "/readiness", priority: 0.9, changeFrequency: "monthly" },
+  { path: "/diagnostic", priority: 0.9, changeFrequency: "monthly" },
   { path: "/start-pilot", priority: 0.9, changeFrequency: "monthly" },
   { path: "/product-brief", priority: 0.8, changeFrequency: "monthly" },
   { path: "/pro-waitlist", priority: 0.6, changeFrequency: "monthly" },
