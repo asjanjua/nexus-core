@@ -8,6 +8,8 @@
 - Consolidated the colleague-review starting point across V0.4, V0.5, and V0.6 so final design sources, live routes, external blockers, and safe demo claims appear in one board.
 - Polished the live Meridian Submission Room so each planned deep-route screen now exposes user inputs, action points, and the planned-route boundary, matching the Vantage/Nucleus launch-hub standard.
 - Added global jurisdiction-pack requirements to the Meridian hub so Pakistan examples are clearly framed as a pattern, not a universal regulatory library.
+- Replaced the redirect-only `/start-pilot` route with a public Pinavia pilot-start intake page that captures the required kickoff inputs, real CTAs, product-room branches, and the human-authority launch boundary.
+- Added a fifth V0.7 Figma frame, `Launch Cockpit / 05 Pilot Start Intake / 1440` (`135:2`), so the new public pilot entry route is visible in the colleague-review cockpit.
 - Added `docs/UI_V0_7_INITIAL_LAUNCH_COCKPIT.md` and registered V0.7 in `docs/UI_BASELINE_VERSIONING.md`.
 
 ---

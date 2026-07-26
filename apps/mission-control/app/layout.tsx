@@ -100,8 +100,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   if (isPublicShell) {
     const isHome = pathname === "/";
-    const shellName = isHome ? "Pinavia" : product.name;
-    const shellSubtitle = isHome ? "AI governance and execution" : product.subtitle;
+    const isFamilyEntry = isHome || pathname === "/start-pilot";
+    const shellName = isFamilyEntry ? "Pinavia" : product.name;
+    const shellSubtitle = isFamilyEntry ? "AI governance and execution" : product.subtitle;
     return (
       <html lang="en">
         <body>
@@ -111,7 +112,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <header className="sticky top-0 z-20 border-b border-white/10 bg-[#090f1b]/88 backdrop-blur">
             <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
               <a href="/" className="flex items-center gap-3 text-white">
-                <PinaviaMark className="h-8 w-8" tone={isHome ? "brand" : "mono"} title={shellName} />
+                <PinaviaMark className="h-8 w-8" tone={isFamilyEntry ? "brand" : "mono"} title={shellName} />
                 <div className="flex flex-col">
                   <span className="font-semibold leading-tight">{shellName}</span>
                   <span className="text-[10px] leading-tight text-white/35">{shellSubtitle}</span>

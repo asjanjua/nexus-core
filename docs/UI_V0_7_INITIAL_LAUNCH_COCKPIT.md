@@ -20,6 +20,7 @@ Frames:
 | `Launch Cockpit / 02 Demo Route Map / 1440` | `131:2` | Ten-minute pilot walkthrough using apex routes and explicitly blocking product subdomain demos until DNS cutover passes. |
 | `Launch Cockpit / 03 Final Screen QA Matrix / 1440` | `131:70` | Launch acceptance checks for action clarity, user inputs, trust evidence, authority boundaries, state coverage, accessibility, and claim control. |
 | `Launch Cockpit / 04 Action Board / 1440` | `131:126` | Practical queue for design review, code polish, external setup, and pilot script sequencing. |
+| `Launch Cockpit / 05 Pilot Start Intake / 1440` | `135:2` | Code-backed `/start-pilot` route contract: user inputs, single primary CTA, product-room branches, and authority boundary. |
 
 ## Why V0.7 Exists
 
@@ -31,11 +32,13 @@ V0.4, V0.5, and V0.6 are all still useful, but they answer different questions:
 
 V0.7 is the review cockpit: it gives colleagues a single starting point before a pilot conversation. It does not replace the detailed product boards; it routes the viewer to the correct source board and keeps live-route claims honest.
 
+The fifth frame was added after the `/start-pilot` route became a real public page rather than a redirect-only handoff. It documents the conversion path before code deployment: `Create pilot workspace` routes to Clerk signup with `/onboarding` as the return path, `Run diagnostic first` routes to `/diagnostic`, and `Email pilot scope` opens a mailto link.
+
 ## Launch Truth Captured
 
 | Surface | Current route/demo stance | Design source |
 |---|---|---|
-| Pinavia | Show now from `https://pinavia.io`. | `00 Executive Landing`, `21 Commercial Pilot Loop V0.4` |
+| Pinavia | Show now from `https://pinavia.io`; after deploy, use `/start-pilot` as the governed pilot intake page. | `00 Executive Landing`, `21 Commercial Pilot Loop V0.4`, V0.7 frame `135:2` |
 | NexusAI | Show as the core execution room; use Ask -> draft decision -> approval as the main demo beat. | `13 NexusAI Executive Room Final`, V0.2 full desktop prototype |
 | Quorum | Show the board lifecycle and governance roadmap through `/board`. | `14 Quorum Board Room Final`, `09 Quorum Governance Workflow V0.2` |
 | Meridian | Show the regulated filing-pack workflow through `/meridian`. | `15 Meridian Submission Room Final`, `21 Commercial Pilot Loop V0.4` |
@@ -60,14 +63,17 @@ Use these apex routes for immediate demos:
 
 ## Visual Verification
 
-Screenshots were generated and inspected for all four frames after creation.
+Screenshots were generated and inspected for all five frames after creation or update.
 
 The only defect found was a title/subtitle overlap in `Launch Cockpit / 03 Final Screen QA Matrix / 1440`; it was fixed by shortening the title to `Final UI makes action, trust, and human control obvious`, then re-rendered cleanly.
+
+The fifth frame initially had a wrapped title overlapping the preview panel and a narrow `Sign in` pill; both were fixed and re-rendered cleanly.
 
 ## Next Actions
 
 1. Use V0.7 as the first page for colleague design review.
-2. Complete the external DNS cutover gate before showing product subdomain URLs.
-3. Run signed-in NexusAI Ask -> draft decision -> approval smoke as the core demo proof.
-4. Run signed-in smoke for `/meridian`, `/vantage`, and `/nucleus`.
-5. Configure `PINAVIA_ADMIN_PRINCIPALS`, then run the staff invite -> accept -> redeem pilot smoke.
+2. Deploy and smoke `/start-pilot` on the apex domain.
+3. Complete the external DNS cutover gate before showing product subdomain URLs.
+4. Run signed-in NexusAI Ask -> draft decision -> approval smoke as the core demo proof.
+5. Run signed-in smoke for `/meridian`, `/vantage`, and `/nucleus`.
+6. Configure `PINAVIA_ADMIN_PRINCIPALS`, then run the staff invite -> accept -> redeem pilot smoke.
