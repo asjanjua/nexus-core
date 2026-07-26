@@ -21,6 +21,7 @@
 - Refreshed `/diagnostic` so it no longer implies an unwired paid checkout: primary action is now `Start diagnostic intake` to `/start-pilot?intent=diagnostic`, secondary action remains `/readiness`, and pricing is hidden until checkout and receipt flows are real.
 - Added diagnostic-intent copy to `/start-pilot` so visitors arriving from `/diagnostic` see `Diagnostic intake` and a scoped evidence-test hero instead of a generic pilot-start handoff.
 - Added an eighth V0.7 Figma frame, `Launch Cockpit / 08 Diagnostic Intake Path / 1440` (`145:2`), documenting the diagnostic route contract, buyer handoff, helpful inputs, and acceptance checks.
+- Deployed the diagnostic intake refresh through `9428db9`; live desktop/mobile smoke passes with no `USD 49` or charged-at-signup copy, correct primary/secondary CTAs, diagnostic-intent start page copy, no overflow, and healthy `/api/health`.
 - Added `docs/UI_V0_7_INITIAL_LAUNCH_COCKPIT.md` and registered V0.7 in `docs/UI_BASELINE_VERSIONING.md`.
 
 ---

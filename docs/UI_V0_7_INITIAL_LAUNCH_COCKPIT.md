@@ -2,7 +2,7 @@
 
 Status: Screenshot-verified Figma coordination board for initial pilot review.
 Date: 2026-07-27.
-Git reference at registration: `f1bfa46` plus follow-up commits through the diagnostic intake candidate.
+Git reference at registration: `f1bfa46` plus follow-up commits through `9428db9`.
 
 ## Figma Reference
 
@@ -86,7 +86,7 @@ The sixth frame was rebuilt after an initial auto-layout sizing miss collapsed t
 
 The seventh frame renders cleanly and records the live `/readiness` result-flow smoke through `d1ac9b2`: high-score desktop/mobile flows produce the AI-Native result, carry the server claim code into signup, expose `/start-pilot`, remove stale personal-email/NexusAI-only copy, hide the contradictory advisor panel when a lane exists, and avoid horizontal overflow.
 
-The eighth frame initially showed overflow in the buyer-handoff route cards because long URLs were squeezed into four narrow columns. It was rebuilt as a two-by-two route grid and re-rendered cleanly. It now records the candidate `/diagnostic` change: no `USD 49` checkout claim while checkout is absent, a single primary diagnostic-intake CTA, `/readiness` as the secondary path, and helpful inputs for sponsor/evidence/reviewer handoff. Local TypeScript, production build, and desktop/mobile smoke passed for `/diagnostic` plus `/start-pilot?intent=diagnostic`.
+The eighth frame initially showed overflow in the buyer-handoff route cards because long URLs were squeezed into four narrow columns. It was rebuilt as a two-by-two route grid and re-rendered cleanly. It records the live `/diagnostic` change through `9428db9`: no `USD 49` checkout claim while checkout is absent, a single primary diagnostic-intake CTA, `/readiness` as the secondary path, and helpful inputs for sponsor/evidence/reviewer handoff. Local TypeScript, production build, local route smoke, and live apex desktop/mobile smoke passed for `/diagnostic` plus `/start-pilot?intent=diagnostic`; `/api/health` returned `ok=true`.
 
 ## Next Actions
 
@@ -95,4 +95,3 @@ The eighth frame initially showed overflow in the buyer-handoff route cards beca
 3. Run signed-in NexusAI Ask -> draft decision -> approval smoke as the core demo proof.
 4. Run signed-in smoke for `/meridian`, `/vantage`, and `/nucleus`.
 5. Configure `PINAVIA_ADMIN_PRINCIPALS`, then run the staff invite -> accept -> redeem pilot smoke.
-6. Deploy and live-smoke the `/diagnostic` intake honesty pass, then mark task 41 complete.
