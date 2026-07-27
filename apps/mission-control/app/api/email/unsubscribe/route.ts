@@ -4,7 +4,7 @@
  * Decodes the unsubscribe token, audits the event, and shows a confirmation page.
  * This is a public route — no auth required.
  */
-import { decodeUnsubscribeToken } from "@/lib/email/resend";
+import { decodeUnsubscribeToken, escapeHtml } from "@/lib/email/resend";
 import { repository } from "@/lib/data/repository";
 
 export async function GET(request: Request) {
@@ -42,7 +42,7 @@ export async function GET(request: Request) {
   <div style="text-align:center;max-width:400px;padding:32px;">
     <h1 style="font-size:24px;margin:0 0 12px 0;">Unsubscribed</h1>
     <p style="color:#94a3b8;font-size:14px;line-height:1.6;margin:0;">
-      ${email} has been unsubscribed from synthesis brief emails for this workspace.
+      ${escapeHtml(email)} has been unsubscribed from synthesis brief emails for this workspace.
       You will no longer receive scheduled briefs by email.
     </p>
   </div>

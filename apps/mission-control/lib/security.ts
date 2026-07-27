@@ -11,7 +11,7 @@ const DEV_SECRET = "nexus-dev-secret";
  * bearer tokens and derive the connector-credential key from a value published
  * in this repo. Fail closed there instead.
  */
-function isExplicitDevRuntime(): boolean {
+export function isExplicitDevRuntime(): boolean {
   const env = process.env.NODE_ENV;
   return env === "development" || env === "test";
 }

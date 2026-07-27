@@ -1,6 +1,6 @@
 # SECURITY_REVIEW.md — Pre-Pilot Security Checklist
 
-> Last updated: 2026-07-06
+> Last updated: 2026-07-27
 > Complete all items marked REQUIRED before signing the first paid pilot contract.
 > Items marked RECOMMENDED should be done before scaling to a second pilot.
 
@@ -110,6 +110,26 @@ Residual: no cross-tenant write path remains. In no-database (demo) mode some by
 
 - [x] `/security` page exists with contact information.
 - [ ] **REQUIRED** Ensure `security@nexusai.io` (or equivalent) is actively monitored before the first pilot. All inbound security reports should be acknowledged within 24 hours.
+
+---
+
+## 8.1 Automated scan sweep (2026-07-27)
+
+Swept the repository for hardcoded secrets, SQL injection, unvalidated input, insecure dependencies, permissive CORS, exposed debug endpoints, and missing auth checks.
+
+Clean: no committed credentials (only `.env.example` placeholders and test fixtures); no dynamic SQL — every query is Drizzle builder or a parameterised `sql` template, with no `sql.raw`; no debug/diagnostic route without a gate; every mutating route is behind `requireScope`, a signed webhook, or the cron secret, and by-id handlers check workspace ownership; vault paths are traversal- and symlink-checked; evidence uploads are extension-allowlisted and size-capped.
+
+Fixed here:
+
+| Finding | Severity | Fix |
+| --- | --- | --- |
+| Unsubscribe tokens were unsigned `base64(workspaceId:email)`, and the decoded address was interpolated unescaped into the public confirmation page | High | HMAC-sign the token and reject unsigned ones; escape the address (`tests/unsubscribe-token.test.ts`) |
+| Clerk and Slack webhook verification fell open whenever `NODE_ENV` was anything but `production`, including unset | High | Fail open only under an explicitly declared `development`/`test` runtime, matching `requireAuthSecret` |
+| CORS echoed any `Origin` on the same `NODE_ENV !== "production"` condition | Medium | Same explicit dev-runtime gate; allowlist applies when `NODE_ENV` is unset |
+| `db:seed` provisioned an `admin` user with password `admin` when `MISSION_CONTROL_PASSWORD` was unset, and `lib/auth.ts` shipped a matching `admin`/`admin` check | Medium | Seed now fails without an explicit password; the default-credential check is deleted |
+| Knowledge vault import accepted an unbounded zip | Medium | Cap archive size, per-note size, and note count |
+
+Open: `npm audit` reports a high advisory against the `postcss` copy nested inside `next` (GHSA-qx2v-qp2m-jg93 and two sourceMappingURL disclosures). It is build-time only and the root `overrides` entry does not reach it; it clears when Next ships a bumped dependency. Rate limiting remains in-process, so limits are per-instance if the web service scales past one.
 
 ---
 

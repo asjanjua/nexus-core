@@ -1,6 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { productOrigins } from "@/lib/product-detection";
 
+/**
+ * Mirrors lib/security.ts. Duplicated rather than imported because this module
+ * runs in the edge middleware, and lib/security pulls in node:crypto.
+ */
+function isExplicitDevRuntime(): boolean {
+  const env = process.env.NODE_ENV;
+  return env === "development" || env === "test";
+}
+
 export function parseAllowedOrigins(input: string | undefined): string[] {
   return (input ?? "")
     .split(",")
@@ -143,7 +152,10 @@ export function withSecurityHeaders(
 
   const origin = request.headers.get("origin") ?? "";
   if (request.nextUrl.pathname.startsWith("/api/")) {
-    if (process.env.NODE_ENV !== "production" || ALLOWED_ORIGINS.has(origin)) {
+    // Echoing whatever Origin arrives is a local-development convenience, so
+    // it is gated on an explicitly declared dev/test runtime. With NODE_ENV
+    // unset — a container entrypoint, a worker — the allowlist applies.
+    if (isExplicitDevRuntime() || ALLOWED_ORIGINS.has(origin)) {
       response.headers.set("access-control-allow-origin", origin || "*");
       response.headers.set("access-control-allow-methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS");
       response.headers.set("access-control-allow-headers", "authorization, content-type, x-workspace-id");

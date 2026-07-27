@@ -19,11 +19,21 @@ export async function exportKnowledgeVault(workspaceId: string): Promise<Buffer>
   return zip.generateAsync({ type: "nodebuffer" });
 }
 
+/**
+ * Import caps. A zip is attacker-supplied input that expands server-side, so
+ * the archive, each note, and the note count are all bounded rather than
+ * trusting the uploaded file to be a real vault export.
+ */
+export const MAX_IMPORT_ARCHIVE_BYTES = 25 * 1024 * 1024;
+const MAX_IMPORT_NOTE_BYTES = 1024 * 1024;
+const MAX_IMPORT_NOTES = 1000;
+
 export async function importKnowledgeVault(
   workspaceId: string,
   actor: string,
   bytes: Buffer
 ): Promise<{ imported: number; skipped: number; notes: string[] }> {
+  if (bytes.byteLength > MAX_IMPORT_ARCHIVE_BYTES) throw new Error("import_archive_too_large");
   const zip = await JSZip.loadAsync(bytes);
   let imported = 0;
   let skipped = 0;
@@ -34,7 +44,15 @@ export async function importKnowledgeVault(
       skipped++;
       continue;
     }
+    if (imported >= MAX_IMPORT_NOTES) {
+      skipped++;
+      continue;
+    }
     const markdown = await entry.async("string");
+    if (Buffer.byteLength(markdown, "utf8") > MAX_IMPORT_NOTE_BYTES) {
+      skipped++;
+      continue;
+    }
     const parsed = parseFrontmatter(markdown);
     const extracted = extractKnowledge(parsed.body, parsed.frontmatter);
     const input: KnowledgeNoteInput = {

@@ -2,6 +2,16 @@
 
 ---
 
+## Unreleased — Security scan sweep (2026-07-27)
+
+- Signed unsubscribe tokens with HMAC and escaped the address rendered by `/api/email/unsubscribe`, so the public route can no longer be driven with a self-assembled token or used to inject markup.
+- Clerk webhook, Slack event, and CORS origin handling now fall open only under an explicitly declared `development`/`test` runtime instead of any non-`production` `NODE_ENV`, including unset.
+- Removed the `admin`/`admin` default credential: `db:seed` requires `MISSION_CONTROL_PASSWORD`, and the matching login check is deleted.
+- Bounded knowledge vault import by archive size, per-note size, and note count.
+- Recorded the full sweep, including what was already clean and what stays open, in `docs/SECURITY_REVIEW.md` §8.1.
+
+---
+
 ## Unreleased — Initial Launch Cockpit V0.7 (2026-07-26)
 
 - Added Figma page `24 Initial Launch Cockpit V0.7` with four screenshot-verified 1440x900 desktop-browser frames: executive launch status, demo route map, final screen QA matrix, and action board.

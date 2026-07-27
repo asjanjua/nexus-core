@@ -1,6 +1,6 @@
 import { fail, ok } from "@/lib/api";
 import { requireScope } from "@/lib/api-auth";
-import { importKnowledgeVault } from "@/lib/services/knowledge";
+import { importKnowledgeVault, MAX_IMPORT_ARCHIVE_BYTES } from "@/lib/services/knowledge";
 
 export async function POST(request: Request) {
   const { ctx, error } = await requireScope(request, "write:knowledge");
@@ -10,6 +10,7 @@ export async function POST(request: Request) {
   const file = form?.get("file");
   if (!(file instanceof File)) return fail("file_required", 400);
   if (!file.name.toLowerCase().endsWith(".zip")) return fail("zip_required", 400);
+  if (file.size > MAX_IMPORT_ARCHIVE_BYTES) return fail("file_too_large", 413);
 
   const result = await importKnowledgeVault(ctx.workspaceId, ctx.userId, Buffer.from(await file.arrayBuffer()));
   return ok(result, 201);

@@ -15,7 +15,7 @@
 import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { repository } from "@/lib/data/repository";
-import { timingSafeEqualString } from "@/lib/security";
+import { isExplicitDevRuntime, timingSafeEqualString } from "@/lib/security";
 
 export const runtime = "nodejs";
 
@@ -25,8 +25,10 @@ function verifyWebhookSignature(
 ): boolean {
   const secret = process.env.CLERK_WEBHOOK_SECRET;
   if (!secret) {
-    // Dev: allow without verification
-    return process.env.NODE_ENV !== "production";
+    // Unverified events provision workspaces, so an unconfigured secret is only
+    // tolerated under an explicitly declared dev/test runtime. An unset
+    // NODE_ENV — a container entrypoint, a worker — fails closed.
+    return isExplicitDevRuntime();
   }
 
   // Svix signature format: svix-id, svix-timestamp, svix-signature

@@ -14,14 +14,6 @@ function secret(): string {
   return requireAuthSecret();
 }
 
-function defaultUser(): string {
-  return process.env.MISSION_CONTROL_DEFAULT_USER || "admin";
-}
-
-function passwordSecret(): string {
-  return process.env.MISSION_CONTROL_PASSWORD || process.env.MISSION_CONTROL_PIN || "admin";
-}
-
 export function hashPassword(password: string, salt?: string): { salt: string; hash: string } {
   const actualSalt = salt ?? crypto.randomBytes(16).toString("hex");
   const hash = crypto.scryptSync(password, actualSalt, 64).toString("hex");
@@ -71,10 +63,6 @@ export function createSessionToken(userId: string, workspaceId: string): string 
 export function readSession(token?: string): SessionPayload | null {
   if (!token) return null;
   return decode(token);
-}
-
-export function verifyLoginCredentials(userId: string, password: string): boolean {
-  return userId === defaultUser() && password === passwordSecret();
 }
 
 export { SESSION_COOKIE_NAME };

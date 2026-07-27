@@ -159,4 +159,21 @@ describe("Security headers", () => {
       expect(res.headers.get("access-control-allow-methods")).toContain("POST");
     });
   });
+
+  describe("with NODE_ENV unset", () => {
+    beforeAll(() => {
+      vi.stubEnv("NODE_ENV", undefined as unknown as string);
+    });
+    afterAll(() => {
+      vi.unstubAllEnvs();
+    });
+
+    it("applies the origin allowlist rather than echoing an unknown origin", () => {
+      const res = withSecurityHeaders(
+        NextResponse.next(),
+        fakeRequest("/api/ask", { origin: "https://attacker.example" })
+      );
+      expect(res.headers.get("access-control-allow-origin")).toBeNull();
+    });
+  });
 });
