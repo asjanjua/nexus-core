@@ -13,42 +13,14 @@
  *   AUTH_SECRET
  */
 
-import crypto from "crypto";
-import { NextResponse } from "next/server";
 import { repository } from "@/lib/data/repository";
-import { requireAuthSecret, timingSafeEqualString } from "@/lib/security";
+import {
+  connectorAppUrl,
+  redirectWithConnectorError,
+  redirectWithConnectorInstalled,
+} from "@/lib/connectors/shared/oauth-callback";
+import { verifyConnectorState } from "@/lib/connectors/shared/oauth-state";
 import { exchangeCode, listAdministeredOrgs } from "@/lib/connectors/linkedin";
-
-type StatePayload = { workspaceId: string; ts: number };
-
-function verifyState(state: string): StatePayload | null {
-  const parts = state.split(".");
-  if (parts.length !== 2) return null;
-  const [encoded, sig] = parts;
-
-  const expected = crypto
-    .createHmac("sha256", requireAuthSecret())
-    .update(encoded)
-    .digest("hex");
-
-  if (!timingSafeEqualString(expected, sig, "hex")) return null;
-
-  try {
-    const payload = JSON.parse(
-      Buffer.from(encoded, "base64url").toString()
-    ) as StatePayload;
-    if (Date.now() - payload.ts > 10 * 60 * 1000) return null;
-    return payload;
-  } catch {
-    return null;
-  }
-}
-
-function redirectWithError(appUrl: string, error: string): NextResponse {
-  const url = new URL("/settings/connectors", appUrl);
-  url.searchParams.set("error", error);
-  return NextResponse.redirect(url.toString());
-}
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -56,10 +28,10 @@ export async function GET(request: Request) {
   const state = url.searchParams.get("state");
   const linkedinError = url.searchParams.get("error");
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const appUrl = connectorAppUrl();
 
   if (linkedinError) {
-    return redirectWithError(
+    return redirectWithConnectorError(
       appUrl,
       linkedinError === "user_cancelled_login" || linkedinError === "user_cancelled_authorize"
         ? "access_denied"
@@ -68,16 +40,16 @@ export async function GET(request: Request) {
   }
 
   if (!code || !state) {
-    return redirectWithError(appUrl, "missing_params");
+    return redirectWithConnectorError(appUrl, "missing_params");
   }
 
-  const statePayload = verifyState(state);
+  const statePayload = verifyConnectorState(state);
   if (!statePayload) {
-    return redirectWithError(appUrl, "invalid_state");
+    return redirectWithConnectorError(appUrl, "invalid_state");
   }
 
   if (!process.env.LINKEDIN_CLIENT_ID || !process.env.LINKEDIN_CLIENT_SECRET) {
-    return redirectWithError(appUrl, "linkedin_not_configured");
+    return redirectWithConnectorError(appUrl, "linkedin_not_configured");
   }
 
   let tokens;
@@ -85,11 +57,11 @@ export async function GET(request: Request) {
     tokens = await exchangeCode(code);
   } catch (err) {
     const message = err instanceof Error ? err.message : "token_exchange_failed";
-    return redirectWithError(appUrl, encodeURIComponent(message));
+    return redirectWithConnectorError(appUrl, encodeURIComponent(message));
   }
 
   if (!tokens.access_token) {
-    return redirectWithError(appUrl, "token_exchange_failed");
+    return redirectWithConnectorError(appUrl, "token_exchange_failed");
   }
 
   // Best-effort: resolve the first administered org. Not fatal if it
@@ -121,10 +93,8 @@ export async function GET(request: Request) {
       },
     });
   } catch {
-    return redirectWithError(appUrl, "connector_store_failed");
+    return redirectWithConnectorError(appUrl, "connector_store_failed");
   }
 
-  const successUrl = new URL("/settings/connectors", appUrl);
-  successUrl.searchParams.set("installed", "LinkedIn");
-  return NextResponse.redirect(successUrl.toString());
+  return redirectWithConnectorInstalled(appUrl, "LinkedIn");
 }

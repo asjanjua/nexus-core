@@ -9,69 +9,27 @@
  *   { invoiceId: string, sensitivity?: string, department?: string }
  */
 
-import crypto from "crypto";
 import { ok, fail } from "@/lib/api";
 import { requireScope } from "@/lib/api-auth";
-import { repository } from "@/lib/data/repository";
+import {
+  getActiveConnector,
+  getValidConnectorAuth,
+} from "@/lib/connectors/shared/access-token";
 import { ingestEvidence } from "@/lib/services/ingestion";
+import {
+  departmentField,
+  evidenceHash,
+  sensitivityField,
+  tenantIdForWorkspace,
+} from "@/lib/connectors/shared/ingest";
 import { getInvoice, refreshAccessToken } from "@/lib/connectors/quickbooks";
 import { z } from "zod";
 
 const ingestBodySchema = z.object({
   invoiceId: z.string().min(1),
-  sensitivity: z
-    .enum(["public", "internal", "confidential", "restricted"])
-    .optional()
-    .default("confidential"),
-  department: z.string().max(200).optional(),
+  sensitivity: sensitivityField("confidential"),
+  department: departmentField,
 });
-
-async function getValidAccessToken(
-  workspaceId: string,
-  type: string
-): Promise<{ accessToken: string; realmId: string } | null> {
-  const creds = await repository.getConnectorCredentials(workspaceId, type);
-  if (!creds) return null;
-
-  const accessToken = creds.accessToken as string | undefined;
-  const refreshToken = creds.refreshToken as string | undefined;
-  const obtainedAt = creds.obtainedAt as string | undefined;
-  const expiresIn = creds.expiresIn as number | undefined;
-  const realmId = creds.realmId as string | undefined;
-
-  if (!accessToken || !realmId) return null;
-
-  if (obtainedAt && expiresIn) {
-    const obtained = new Date(obtainedAt).getTime();
-    const expiresAt = obtained + (expiresIn - 60) * 1000;
-    if (Date.now() < expiresAt) {
-      return { accessToken, realmId };
-    }
-  }
-
-  if (refreshToken) {
-    try {
-      const newTokens = await refreshAccessToken(refreshToken);
-      await repository.upsertConnector({
-        workspaceId,
-        type,
-        installedBy: "token-refresh",
-        credentials: {
-          accessToken: newTokens.access_token,
-          refreshToken: newTokens.refresh_token ?? refreshToken,
-          expiresIn: newTokens.expires_in,
-          obtainedAt: new Date().toISOString(),
-          realmId,
-        },
-      });
-      return { accessToken: newTokens.access_token, realmId };
-    } catch {
-      return null;
-    }
-  }
-
-  return { accessToken, realmId };
-}
 
 export async function POST(request: Request) {
   const { ctx, error } = await requireScope(request, "admin");
@@ -86,13 +44,17 @@ export async function POST(request: Request) {
 
   const { invoiceId, sensitivity, department } = parsed.data;
 
-  const connectors = await repository.listConnectors(ctx.workspaceId);
-  const connector = connectors.find((c) => c.type === "quickbooks");
-  if (!connector || connector.status !== "active") {
+  const connector = await getActiveConnector(ctx.workspaceId, "quickbooks");
+  if (!connector) {
     return fail("connector_not_active", 404);
   }
 
-  const auth = await getValidAccessToken(ctx.workspaceId, "quickbooks");
+  const auth = await getValidConnectorAuth({
+    workspaceId: ctx.workspaceId,
+    type: "quickbooks",
+    refreshAccessToken,
+    requiredCredentials: ["realmId"] as const,
+  });
   if (!auth) {
     return fail("quickbooks_auth_expired", 401);
   }
@@ -119,9 +81,9 @@ export async function POST(request: Request) {
     lines || "  (none)",
   ].join("\n");
 
-  const hash = crypto.createHash("sha256").update(text).digest("base64url");
+  const hash = evidenceHash(text);
   const connectorInstanceId = connector.id;
-  const tenantId = ctx.workspaceId.replace("workspace-", "tenant-");
+  const tenantId = tenantIdForWorkspace(ctx.workspaceId);
 
   let evidence;
   try {

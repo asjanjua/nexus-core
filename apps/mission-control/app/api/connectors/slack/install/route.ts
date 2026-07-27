@@ -16,10 +16,10 @@
  *   AUTH_SECRET               — used to sign the state param (shared with lib/tokens.ts)
  */
 
-import crypto from "crypto";
 import { fail } from "@/lib/api";
 import { requireScope } from "@/lib/api-auth";
-import { requireAuthSecret } from "@/lib/security";
+import { connectorAppUrl } from "@/lib/connectors/shared/oauth-callback";
+import { signConnectorState } from "@/lib/connectors/shared/oauth-state";
 import { NextResponse } from "next/server";
 
 // Bot token scopes needed for evidence ingestion
@@ -32,16 +32,6 @@ const SLACK_SCOPES = [
   "files:read",
 ].join(",");
 
-function signState(workspaceId: string): string {
-  const payload = JSON.stringify({ workspaceId, ts: Date.now() });
-  const encoded = Buffer.from(payload).toString("base64url");
-  const sig = crypto
-    .createHmac("sha256", requireAuthSecret())
-    .update(encoded)
-    .digest("hex");
-  return `${encoded}.${sig}`;
-}
-
 export async function GET(request: Request) {
   const { ctx, error } = await requireScope(request, "admin");
   if (error) return error;
@@ -49,9 +39,9 @@ export async function GET(request: Request) {
   const clientId = process.env.SLACK_CLIENT_ID;
   if (!clientId) return fail("slack_client_id_not_configured", 503);
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const appUrl = connectorAppUrl();
   const redirectUri = `${appUrl}/api/connectors/slack/callback`;
-  const state = signState(ctx.workspaceId);
+  const state = signConnectorState(ctx.workspaceId);
 
   const slackAuthUrl = new URL("https://slack.com/oauth/v2/authorize");
   slackAuthUrl.searchParams.set("client_id", clientId);

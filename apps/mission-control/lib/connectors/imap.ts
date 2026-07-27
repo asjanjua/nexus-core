@@ -81,6 +81,22 @@ function buildClient(config: ImapConnectionConfig): ImapFlow {
 }
 
 /**
+ * Maps stored connector credentials to a connection config, returning null
+ * when any required field is missing.
+ */
+export function credentialsToImapConfig(
+  creds: Record<string, unknown>
+): ImapConnectionConfig | null {
+  const host = creds.host as string | undefined;
+  const port = creds.port as number | undefined;
+  const secure = creds.secure as boolean | undefined;
+  const username = creds.username as string | undefined;
+  const password = creds.password as string | undefined;
+  if (!host || !port || !username || !password) return null;
+  return { host, port, secure: secure ?? true, username, password };
+}
+
+/**
  * Opens a connection, logs in, and immediately logs out. Used to validate
  * server settings and credentials at "connect" time before storing them.
  * Throws with a readable message on any failure (DNS, TLS, auth, etc).

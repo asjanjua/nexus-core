@@ -9,67 +9,27 @@
  *   { dealId: string, sensitivity?: string, department?: string }
  */
 
-import crypto from "crypto";
 import { ok, fail } from "@/lib/api";
 import { requireScope } from "@/lib/api-auth";
-import { repository } from "@/lib/data/repository";
+import {
+  getActiveConnector,
+  getValidConnectorAuth,
+} from "@/lib/connectors/shared/access-token";
 import { ingestEvidence } from "@/lib/services/ingestion";
+import {
+  departmentField,
+  evidenceHash,
+  sensitivityField,
+  tenantIdForWorkspace,
+} from "@/lib/connectors/shared/ingest";
 import { getDeal, refreshAccessToken } from "@/lib/connectors/hubspot";
 import { z } from "zod";
 
 const ingestBodySchema = z.object({
   dealId: z.string().min(1),
-  sensitivity: z
-    .enum(["public", "internal", "confidential", "restricted"])
-    .optional()
-    .default("internal"),
-  department: z.string().max(200).optional(),
+  sensitivity: sensitivityField("internal"),
+  department: departmentField,
 });
-
-async function getValidAccessToken(
-  workspaceId: string,
-  type: string
-): Promise<string | null> {
-  const creds = await repository.getConnectorCredentials(workspaceId, type);
-  if (!creds) return null;
-
-  const accessToken = creds.accessToken as string | undefined;
-  const refreshToken = creds.refreshToken as string | undefined;
-  const obtainedAt = creds.obtainedAt as string | undefined;
-  const expiresIn = creds.expiresIn as number | undefined;
-
-  if (!accessToken) return null;
-
-  if (obtainedAt && expiresIn) {
-    const obtained = new Date(obtainedAt).getTime();
-    const expiresAt = obtained + (expiresIn - 60) * 1000;
-    if (Date.now() < expiresAt) {
-      return accessToken;
-    }
-  }
-
-  if (refreshToken) {
-    try {
-      const newTokens = await refreshAccessToken(refreshToken);
-      await repository.upsertConnector({
-        workspaceId,
-        type,
-        installedBy: "token-refresh",
-        credentials: {
-          accessToken: newTokens.access_token,
-          refreshToken: newTokens.refresh_token ?? refreshToken,
-          expiresIn: newTokens.expires_in,
-          obtainedAt: new Date().toISOString(),
-        },
-      });
-      return newTokens.access_token;
-    } catch {
-      return null;
-    }
-  }
-
-  return accessToken;
-}
 
 export async function POST(request: Request) {
   const { ctx, error } = await requireScope(request, "admin");
@@ -84,13 +44,17 @@ export async function POST(request: Request) {
 
   const { dealId, sensitivity, department } = parsed.data;
 
-  const connectors = await repository.listConnectors(ctx.workspaceId);
-  const connector = connectors.find((c) => c.type === "hubspot");
-  if (!connector || connector.status !== "active") {
+  const connector = await getActiveConnector(ctx.workspaceId, "hubspot");
+  if (!connector) {
     return fail("connector_not_active", 404);
   }
 
-  const accessToken = await getValidAccessToken(ctx.workspaceId, "hubspot");
+  const auth = await getValidConnectorAuth({
+    workspaceId: ctx.workspaceId,
+    type: "hubspot",
+    refreshAccessToken,
+  });
+  const accessToken = auth?.accessToken;
   if (!accessToken) {
     return fail("hubspot_auth_expired", 401);
   }
@@ -114,9 +78,9 @@ export async function POST(request: Request) {
     `Last modified: ${p.hs_lastmodifieddate ?? "unknown"}`,
   ].join("\n");
 
-  const hash = crypto.createHash("sha256").update(text).digest("base64url");
+  const hash = evidenceHash(text);
   const connectorInstanceId = connector.id;
-  const tenantId = ctx.workspaceId.replace("workspace-", "tenant-");
+  const tenantId = tenantIdForWorkspace(ctx.workspaceId);
 
   let evidence;
   try {

@@ -11,61 +11,14 @@
 
 import { ok, fail } from "@/lib/api";
 import { requireScope } from "@/lib/api-auth";
-import { repository } from "@/lib/data/repository";
+import {
+  getActiveConnector,
+  getValidConnectorAuth,
+} from "@/lib/connectors/shared/access-token";
 import {
   listFiles as listSharePointFiles,
   refreshAccessToken,
 } from "@/lib/connectors/sharepoint";
-
-async function getValidAccessToken(
-  workspaceId: string,
-  type: string
-): Promise<string | null> {
-  const creds = await repository.getConnectorCredentials(workspaceId, type);
-  if (!creds) return null;
-
-  const accessToken = creds.accessToken as string | undefined;
-  const refreshToken = creds.refreshToken as string | undefined;
-  const obtainedAt = creds.obtainedAt as string | undefined;
-  const expiresIn = creds.expiresIn as number | undefined;
-
-  if (!accessToken) return null;
-
-  // Check if token is expired (with 60s buffer)
-  if (obtainedAt && expiresIn) {
-    const obtained = new Date(obtainedAt).getTime();
-    const expiresAt = obtained + (expiresIn - 60) * 1000;
-    if (Date.now() < expiresAt) {
-      return accessToken;
-    }
-  }
-
-  // Token expired — refresh if we have a refresh token
-  if (refreshToken) {
-    try {
-      const newTokens = await refreshAccessToken(refreshToken);
-      // Store updated tokens
-      await repository.upsertConnector({
-        workspaceId,
-        type,
-        installedBy: "token-refresh",
-        credentials: {
-          accessToken: newTokens.access_token,
-          refreshToken: newTokens.refresh_token ?? refreshToken,
-          scope: newTokens.scope,
-          expiresIn: newTokens.expires_in,
-          obtainedAt: new Date().toISOString(),
-        },
-      });
-      return newTokens.access_token;
-    } catch {
-      return null;
-    }
-  }
-
-  // No refresh token available — still try the current token
-  return accessToken;
-}
 
 export async function GET(request: Request) {
   const { ctx, error } = await requireScope(request, "read:connectors");
@@ -75,14 +28,17 @@ export async function GET(request: Request) {
   const pageToken = url.searchParams.get("pageToken") ?? undefined;
 
   // Get the connector record to check status
-  const connectors = await repository.listConnectors(ctx.workspaceId);
-  const connector = connectors.find((c) => c.type === "sharepoint");
-
-  if (!connector || connector.status !== "active") {
+  const connector = await getActiveConnector(ctx.workspaceId, "sharepoint");
+  if (!connector) {
     return fail("connector_not_active", 404);
   }
 
-  const accessToken = await getValidAccessToken(ctx.workspaceId, "sharepoint");
+  const auth = await getValidConnectorAuth({
+    workspaceId: ctx.workspaceId,
+    type: "sharepoint",
+    refreshAccessToken,
+  });
+  const accessToken = auth?.accessToken;
   if (!accessToken) {
     return fail("sharepoint_auth_expired", 401);
   }

@@ -13,17 +13,8 @@
 import { ok, fail } from "@/lib/api";
 import { requireScope } from "@/lib/api-auth";
 import { repository } from "@/lib/data/repository";
-import { listMessages, type ImapConnectionConfig } from "@/lib/connectors/imap";
-
-function credsToConfig(creds: Record<string, unknown>): ImapConnectionConfig | null {
-  const host = creds.host as string | undefined;
-  const port = creds.port as number | undefined;
-  const secure = creds.secure as boolean | undefined;
-  const username = creds.username as string | undefined;
-  const password = creds.password as string | undefined;
-  if (!host || !port || !username || !password) return null;
-  return { host, port, secure: secure ?? true, username, password };
-}
+import { getActiveConnector } from "@/lib/connectors/shared/access-token";
+import { credentialsToImapConfig, listMessages } from "@/lib/connectors/imap";
 
 export async function GET(request: Request) {
   const { ctx, error } = await requireScope(request, "read:connectors");
@@ -33,14 +24,13 @@ export async function GET(request: Request) {
   const mailbox = url.searchParams.get("mailbox") ?? "INBOX";
   const limit = Number(url.searchParams.get("limit") ?? "50") || 50;
 
-  const connectors = await repository.listConnectors(ctx.workspaceId);
-  const connector = connectors.find((c) => c.type === "imap");
-  if (!connector || connector.status !== "active") {
+  const connector = await getActiveConnector(ctx.workspaceId, "imap");
+  if (!connector) {
     return fail("connector_not_active", 404);
   }
 
   const creds = await repository.getConnectorCredentials(ctx.workspaceId, "imap");
-  const config = creds ? credsToConfig(creds) : null;
+  const config = creds ? credentialsToImapConfig(creds) : null;
   if (!config) {
     return fail("imap_credentials_missing", 401);
   }
