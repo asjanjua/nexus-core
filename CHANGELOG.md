@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-07-28 — Public Solutions and Research
+
+- Added standalone Pinavia `/solutions` and `/research` pages, with metadata, canonical URLs, sitemap entries, and public navigation/footer links.
+- Solutions makes the governed core and five product rooms concrete; Research states the evidence/authority/workflow agenda and keeps regulated examples explicitly labelled as pilot patterns rather than client outcomes.
+- Added and screenshot-reviewed V0.7 Figma frames `176:2` (Solutions) and `176:63` (Research). Corrected a reference-screen title collision and duplicate navigation label before registration.
+
 ## 2026-07-28 — Governed Connector Intake
 
 - Refined Settings -> Connectors into a usable pilot evidence intake: the page now leads with one controlled, read-only source; provider setup; owner-led installation; and source policy before any ingest. The provider catalogue and official external links remain available in a progressively disclosed reference section rather than burying the first action under implementation detail.

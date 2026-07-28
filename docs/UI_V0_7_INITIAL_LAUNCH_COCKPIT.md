@@ -32,6 +32,8 @@ Frames:
 | `Launch Cockpit / 12 NexusAI Governed Ask / 1440` | `167:2` | Code-backed NexusAI core loop: workspace-scoped Ask, evidence strip, AI-drafted answer, confidence/freshness, and the explicit human decision-draft handoff. |
 | `Launch Cockpit / 13 Quorum Board Action Loop / 1440` | `167:57` | Code-backed Quorum board loop: stable board identifier, governed baseline, between-meetings delta, cited board status, and a director-owned decision boundary. |
 | `Launch Cockpit / 14 Connector Evidence Intake / 1440` | `173:2` | Code-backed Settings -> Connectors entry: a controlled-source pilot sequence, real provider/setup links, an explicit pre-ingest source-policy step, and no-source-writeback boundary. |
+| `Launch Cockpit / 15 Solutions Page / 1440` | `176:2` | Public Pinavia solutions route: governed core, four-stage operating path, five product rooms, and explicit authority boundary. |
+| `Launch Cockpit / 16 Research Page / 1440` | `176:63` | Public Pinavia research route: evidence, authority, and workflow agenda; regulated pilot patterns labelled as patterns rather than client claims; evaluation method and diagnostic handoff. |
 
 ## Why V0.7 Exists
 
@@ -61,11 +63,13 @@ The eleventh frame records the first executable Nucleus deep route. `/nucleus/pr
 
 The twelfth frame makes the core NexusAI pilot story executable and inspectable: Ask is restricted to approved workspace evidence, evidence appears before the answer, the AI-drafted answer remains visibly distinct, and the only consequential next action is a human-owned decision draft. The thirteenth frame does the same for Quorum: board-pack evidence becomes a stable baseline, later packs produce a reviewable delta, and directors retain authority over every board action.
 
+The fifteenth and sixteenth frames close the standalone public-navigation gap. `/solutions` gives buyers a concise orientation to Pinavia's shared governed core and the five product rooms. `/research` explains how Pinavia evaluates real operating questions without presenting pilot patterns as completed client case studies. Both frames were screenshot-reviewed; a title/subtitle collision and one duplicated Research navigation label were corrected before registration.
+
 ## Launch Truth Captured
 
 | Surface | Current route/demo stance | Design source |
 |---|---|---|
-| Pinavia | Show now from `https://pinavia.io`; use `/readiness` for free self-assessment, `/diagnostic` for evidence-tested review intake, `/start-pilot` as the governed pilot intake page, and `/product-brief` as the shareable product-family brief. | `00 Executive Landing`, `21 Commercial Pilot Loop V0.4`, V0.7 frames `135:2`, `141:2`, `143:2`, `145:2` |
+| Pinavia | Show now from `https://pinavia.io`; use `/solutions` for the product-family view, `/research` for the evidence-led pilot stance, `/readiness` for free self-assessment, `/diagnostic` for evidence-tested review intake, `/start-pilot` as the governed pilot intake page, and `/product-brief` as the shareable product-family brief. | `00 Executive Landing`, `21 Commercial Pilot Loop V0.4`, V0.7 frames `135:2`, `141:2`, `143:2`, `145:2`, `176:2`, `176:63` |
 | NexusAI | Show the core execution room; use Ask -> evidence strip -> AI answer -> decision draft -> approval as the main demo beat. | `13 NexusAI Executive Room Final`, V0.2 full desktop prototype, V0.7 frame `167:2` |
 | Quorum | Show `/board` as the code-backed between-meetings loop: establish a stable baseline, then review material changes and route them to human-owned decisions. | `14 Quorum Board Room Final`, `09 Quorum Governance Workflow V0.2`, V0.7 frame `167:57` |
 | Meridian | Show `/meridian` as the submission hub. In a signed-in pilot, begin the real scope arc at `/meridian/scope`, then `/meridian/license-profile`. | `15 Meridian Submission Room Final`, `21 Commercial Pilot Loop V0.4`, V0.7 frame `160:2` |
@@ -90,7 +94,7 @@ Use these apex routes for immediate demos:
 
 ## Visual Verification
 
-Screenshots were generated and inspected for all fourteen frames after creation or update.
+Screenshots were generated and inspected for all sixteen frames after creation or update.
 
 The only defect found was a title/subtitle overlap in `Launch Cockpit / 03 Final Screen QA Matrix / 1440`; it was fixed by shortening the title to `Final UI makes action, trust, and human control obvious`, then re-rendered cleanly.
 

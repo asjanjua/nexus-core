@@ -250,6 +250,8 @@ const footerLinks: Array<{ heading: string; items: Array<{ label: string; href: 
   {
     heading: "Product",
     items: [
+      { label: "Solutions", href: "/solutions" },
+      { label: "Research", href: "/research" },
       { label: "NexusAI", href: "/workspace" },
       { label: "Quorum", href: "/board" },
       { label: "Meridian", href: "/meridian" },

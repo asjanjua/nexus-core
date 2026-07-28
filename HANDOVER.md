@@ -4,6 +4,15 @@
 
 ---
 
+## 2026-07-28 — Public Solutions and Research Launch Pass
+
+- Added standalone public `/solutions` and `/research` routes so the Pinavia marketing path is no longer dependent on visitors discovering the relevant homepage sections. The public header, homepage footer, sitemap, and route metadata now expose both pages.
+- `/solutions` presents the shared governed core, the Connect -> Understand -> Route -> Prove path, and the five product rooms without flattening their distinct workflows. `/research` frames the evidence, authority, and workflow agenda; every regulated example is labelled as a pilot pattern, not a client outcome.
+- Added screenshot-reviewed Figma V0.7 frames `Launch Cockpit / 15 Solutions Page / 1440` (`176:2`) and `Launch Cockpit / 16 Research Page / 1440` (`176:63`). Visual review corrected a heading collision and duplicated navigation label before release registration.
+- Local build and deployed public-route smoke are required before these routes can be called live-proven. Authenticated product-flow proof remains a separate pilot gate.
+
+---
+
 ## 2026-07-28 — Governed Connector Intake Launch Pass
 
 - Settings -> Connectors now starts with a four-step pilot evidence intake instead of dropping an administrator into the full provider catalogue: choose a narrow source, prepare exact provider setup, install with the source owner, and set source policy before ingest. It keeps the no-writeback/no-autonomous-approval boundary visible.

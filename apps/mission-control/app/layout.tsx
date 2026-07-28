@@ -88,6 +88,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     pathname === "/start-pilot" ||
     pathname === "/workspace" ||
     pathname === "/diagnostic" ||
+    pathname === "/solutions" ||
+    pathname === "/research" ||
     pathname.startsWith("/readiness") ||
     pathname.startsWith("/terms") ||
     pathname.startsWith("/privacy") ||
@@ -106,6 +108,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       pathname === "/start-pilot" ||
       pathname === "/product-brief" ||
       pathname === "/diagnostic" ||
+      pathname === "/solutions" ||
+      pathname === "/research" ||
       pathname.startsWith("/readiness");
     const shellName = isFamilyEntry ? "Pinavia" : product.name;
     const shellSubtitle = isFamilyEntry ? "AI governance and execution" : product.subtitle;
@@ -125,8 +129,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 </div>
               </a>
               <div className="flex items-center gap-2">
-                <a href="/product-brief" className="hidden rounded-lg px-3 py-2 text-sm text-white/60 transition hover:bg-white/[0.06] hover:text-white sm:inline-flex">
-                  Product brief
+                <a href="/solutions" className="hidden rounded-lg px-3 py-2 text-sm text-white/60 transition hover:bg-white/[0.06] hover:text-white sm:inline-flex">
+                  Solutions
+                </a>
+                <a href="/research" className="hidden rounded-lg px-3 py-2 text-sm text-white/60 transition hover:bg-white/[0.06] hover:text-white sm:inline-flex">
+                  Research
                 </a>
                 <a href="/readiness" className="hidden rounded-lg px-3 py-2 text-sm text-white/60 transition hover:bg-white/[0.06] hover:text-white sm:inline-flex">
                   Readiness

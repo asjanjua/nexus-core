@@ -20,6 +20,7 @@ The pilot can use apex routes today. Product subdomains remain an infrastructure
 | Surface | Launch screen and Figma evidence | Code route | Desktop design status | Live proof | Remaining proof |
 |---|---|---|---|---|---|
 | Pinavia landing and conversion | Executive Landing; V0.7 Pilot Start `135:2`, Product Brief `141:2`, Readiness `143:2`, Diagnostic `145:2` | `/`, `/start-pilot`, `/product-brief`, `/readiness`, `/diagnostic` | Final | Public desktop/mobile smoke recorded in the V0.7 cockpit | None for design; continue normal conversion review. |
+| Pinavia solutions and research | [V0.7 Solutions `176:2`](https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=176-2); [Research `176:63`](https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=176-63) | `/solutions`, `/research` | Final | Deployment and public-route smoke pending | Validate the deployed routes and continue publishing only measured pilot findings, not client-outcome claims. |
 | Governed evidence intake | [V0.7 Connector Evidence Intake `173:2`](https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=173-2) | `/settings/connectors` | Final | `9747003` live signed-out return-path smoke and health check | Signed-in controlled-source install, source-policy save, and evidence-ingest smoke. |
 | NexusAI core loop | [V0.7 Governed Ask `167:2`](https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=167-2) | `/ask` -> `/decisions` -> `/approvals` | Final | Signed-out return path is live | Signed-in Ask -> evidence -> draft -> approval walkthrough. |
 | Quorum board loop | [V0.7 Board Action Loop `167:57`](https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=167-57) | `/board` -> `/decisions` | Final | Board route is code-backed; design frame is screenshot-reviewed | Signed-in baseline/delta run against a pilot board pack. |
@@ -41,7 +42,7 @@ Every launch screen was checked against the same desktop pilot contract:
 
 ## V0.7 Cockpit Inventory
 
-The V0.7 cockpit contains fourteen screenshot-reviewed frames:
+The V0.7 cockpit contains sixteen screenshot-reviewed frames:
 
 1. Executive Status (`130:2`)
 2. Demo Route Map (`131:2`)
@@ -57,10 +58,12 @@ The V0.7 cockpit contains fourteen screenshot-reviewed frames:
 12. NexusAI Governed Ask (`167:2`)
 13. Quorum Board Action Loop (`167:57`)
 14. Connector Evidence Intake (`173:2`)
+15. Solutions Page (`176:2`)
+16. Research Page (`176:63`)
 
 ## Pilot Demonstration Order
 
-1. Open `https://pinavia.io` and use `Start pilot` or the diagnostic/readiness path.
+1. Open `https://pinavia.io`, then use `/solutions` for product-family orientation or `/research` for the measured pilot stance before entering `Start pilot`, diagnostic, or readiness.
 2. In a controlled workspace, use `/settings/connectors` to choose one narrow, read-only source and set its policy before ingest.
 3. Use the buyer's vertical to select the room: NexusAI, Quorum, Meridian, Vantage, or Nucleus.
 4. Lead with the code-backed slice for that room.
