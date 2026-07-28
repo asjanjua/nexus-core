@@ -9,7 +9,7 @@
 - Added standalone public `/solutions` and `/research` routes so the Pinavia marketing path is no longer dependent on visitors discovering the relevant homepage sections. The public header, homepage footer, sitemap, and route metadata now expose both pages.
 - `/solutions` presents the shared governed core, the Connect -> Understand -> Route -> Prove path, and the five product rooms without flattening their distinct workflows. `/research` frames the evidence, authority, and workflow agenda; every regulated example is labelled as a pilot pattern, not a client outcome.
 - Added screenshot-reviewed Figma V0.7 frames `Launch Cockpit / 15 Solutions Page / 1440` (`176:2`) and `Launch Cockpit / 16 Research Page / 1440` (`176:63`). Visual review corrected a heading collision and duplicated navigation label before release registration.
-- Local build and deployed public-route smoke are required before these routes can be called live-proven. Authenticated product-flow proof remains a separate pilot gate.
+- `f9de6b2` is live: `https://pinavia.io/solutions` and `https://pinavia.io/research` both return `200` with expected launch copy; `/api/health` remains `ok`. Authenticated product-flow proof remains a separate pilot gate.
 
 ---
 

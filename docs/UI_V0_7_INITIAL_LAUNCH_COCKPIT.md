@@ -63,7 +63,7 @@ The eleventh frame records the first executable Nucleus deep route. `/nucleus/pr
 
 The twelfth frame makes the core NexusAI pilot story executable and inspectable: Ask is restricted to approved workspace evidence, evidence appears before the answer, the AI-drafted answer remains visibly distinct, and the only consequential next action is a human-owned decision draft. The thirteenth frame does the same for Quorum: board-pack evidence becomes a stable baseline, later packs produce a reviewable delta, and directors retain authority over every board action.
 
-The fifteenth and sixteenth frames close the standalone public-navigation gap. `/solutions` gives buyers a concise orientation to Pinavia's shared governed core and the five product rooms. `/research` explains how Pinavia evaluates real operating questions without presenting pilot patterns as completed client case studies. Both frames were screenshot-reviewed; a title/subtitle collision and one duplicated Research navigation label were corrected before registration.
+The fifteenth and sixteenth frames close the standalone public-navigation gap. `/solutions` gives buyers a concise orientation to Pinavia's shared governed core and the five product rooms. `/research` explains how Pinavia evaluates real operating questions without presenting pilot patterns as completed client case studies. Both frames were screenshot-reviewed; a title/subtitle collision and one duplicated Research navigation label were corrected before registration. `f9de6b2` is live: both apex routes return `200` with their expected launch copy and `/api/health` remains `ok`.
 
 ## Launch Truth Captured
 

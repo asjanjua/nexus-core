@@ -5,6 +5,7 @@
 - Added standalone Pinavia `/solutions` and `/research` pages, with metadata, canonical URLs, sitemap entries, and public navigation/footer links.
 - Solutions makes the governed core and five product rooms concrete; Research states the evidence/authority/workflow agenda and keeps regulated examples explicitly labelled as pilot patterns rather than client outcomes.
 - Added and screenshot-reviewed V0.7 Figma frames `176:2` (Solutions) and `176:63` (Research). Corrected a reference-screen title collision and duplicate navigation label before registration.
+- Deployed through `f9de6b2`; live apex smoke confirms both routes return `200` with expected launch copy and `/api/health` remains `ok`.
 
 ## 2026-07-28 — Governed Connector Intake
 
