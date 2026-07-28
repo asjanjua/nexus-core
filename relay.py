@@ -26,8 +26,37 @@ from datetime import datetime
 from pathlib import Path
 
 
-HANDOVER_FILE = Path("HANDOVER.md")
-LEDGER_ROOT = Path("docs/agent-runs")
+def _repo_root() -> Path:
+    """Repository root, so paths do not depend on the caller's directory.
+
+    Both paths below were relative. Run from anywhere but the repo root, the
+    script cheerfully CREATED a second HANDOVER.md and ledger tree in that
+    directory: a silently split papertrail, which is the exact failure this
+    script exists to prevent. Outside a repository it falls back to the working
+    directory, never to the script's own location: resolving there would make a
+    run from an unrelated tree write into THIS repository instead.
+    """
+    try:
+        out = subprocess.run(
+            ["git", "rev-parse", "--show-toplevel"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+        if out.returncode == 0 and out.stdout.strip():
+            return Path(out.stdout.strip())
+    except (OSError, subprocess.SubprocessError):
+        pass
+    # Not inside a repository: fall back to the working directory rather than
+    # the script's own location. Resolving to the script's directory would make
+    # a run from an unrelated tree write into THIS repository, which is a worse
+    # failure than the one being fixed.
+    return Path.cwd()
+
+
+REPO_ROOT = _repo_root()
+HANDOVER_FILE = REPO_ROOT / "HANDOVER.md"
+LEDGER_ROOT = REPO_ROOT / "docs/agent-runs"
 RELAY_MAP = {"claude": "codex", "codex": "claude"}
 INSTRUCTIONS = {"claude": "CLAUDE.md", "codex": "AGENTS.md"}
 CLI = {"claude": "claude", "codex": "codex"}
@@ -292,6 +321,7 @@ def append_record(
     with HANDOVER_FILE.open("a+", encoding="utf-8") as handover:
         fcntl.flock(handover.fileno(), fcntl.LOCK_EX)
         ledger_created = False
+        resume_offset = None
         record: RelayRecord | None = None
         try:
             handover.seek(0)
@@ -313,6 +343,12 @@ def append_record(
             ledger_created = True
 
             handover.seek(0, os.SEEK_END)
+            # Remember where the file ended so a failed write can be undone.
+            # The docstring promises existing HANDOVER bytes are never
+            # rewritten, but a write interrupted midway (disk full, signal) left
+            # a partial section behind, which breaks that promise in the one
+            # situation it matters.
+            resume_offset = handover.tell()
             if existing and not existing.endswith("\n"):
                 handover.write("\n")
             handover.write("\n---\n\n")
@@ -323,6 +359,13 @@ def append_record(
         except Exception:
             if ledger_created and record is not None:
                 record.ledger_path.unlink(missing_ok=True)
+            if resume_offset is not None:
+                try:
+                    handover.truncate(resume_offset)
+                    handover.flush()
+                    os.fsync(handover.fileno())
+                except OSError:
+                    pass
             raise
         finally:
             fcntl.flock(handover.fileno(), fcntl.LOCK_UN)
