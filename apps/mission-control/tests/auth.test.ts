@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createSessionToken, hashPassword, readSession, verifyLoginCredentials, verifyPassword } from "@/lib/auth";
+import { createSessionToken, hashPassword, readSession, verifyPassword } from "@/lib/auth";
 
 describe("auth", () => {
   it("creates and validates a session token", () => {
@@ -11,11 +11,6 @@ describe("auth", () => {
 
   it("rejects malformed token", () => {
     expect(readSession("bad-token")).toBeNull();
-  });
-
-  it("validates default admin credentials", () => {
-    expect(verifyLoginCredentials("admin", "admin")).toBe(true);
-    expect(verifyLoginCredentials("admin", "wrong")).toBe(false);
   });
 
   it("hashes and verifies passwords", () => {

@@ -26,6 +26,16 @@
 
 ---
 
+## Unreleased — Security scan sweep (2026-07-27)
+
+- Signed unsubscribe tokens with HMAC and escaped the address rendered by `/api/email/unsubscribe`, so the public route can no longer be driven with a self-assembled token or used to inject markup. Breaking for recipients: unsubscribe links in already-sent briefs carry unsigned tokens and now return 400, so those links stop resolving.
+- Clerk webhook, Slack event, and CORS origin handling now fall open only under an explicitly declared `development`/`test` runtime instead of any non-`production` `NODE_ENV`, including unset.
+- Removed the `admin`/`admin` default credential: `db:seed` requires `MISSION_CONTROL_PASSWORD`, and the matching login check is deleted.
+- Bounded knowledge vault import by archive size, per-note size, and note count, rejecting an entry on its declared uncompressed size before inflating it so a highly compressed archive cannot expand past the caps.
+- Recorded the full sweep, including what was already clean and what stays open, in `docs/SECURITY_REVIEW.md` §8.1.
+
+---
+
 ## Unreleased — Initial Launch Cockpit V0.7 (2026-07-26)
 
 - Added two V0.7 cockpit screens that make the remaining live pilot stories directly reviewable: `Launch Cockpit / 12 NexusAI Governed Ask / 1440` (`167:2`) maps evidence-first Ask to the human decision draft, while `Launch Cockpit / 13 Quorum Board Action Loop / 1440` (`167:57`) maps board pack to governed baseline, delta brief, director review, and human-owned decision. Both were screenshot-verified after overlap corrections.

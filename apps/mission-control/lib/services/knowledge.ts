@@ -19,22 +19,61 @@ export async function exportKnowledgeVault(workspaceId: string): Promise<Buffer>
   return zip.generateAsync({ type: "nodebuffer" });
 }
 
+/**
+ * Import caps. A zip is attacker-supplied input that expands server-side, so
+ * the archive, each note, and the note count are all bounded rather than
+ * trusting the uploaded file to be a real vault export.
+ */
+export const MAX_IMPORT_ARCHIVE_BYTES = 25 * 1024 * 1024;
+const MAX_IMPORT_NOTE_BYTES = 1024 * 1024;
+const MAX_IMPORT_NOTES = 1000;
+
+/**
+ * Size an entry claims it will expand to, read from the zip central directory
+ * before any decompression. Compression ratios of 1000:1 are trivial to
+ * produce, so an archive within MAX_IMPORT_ARCHIVE_BYTES says nothing about
+ * what a single entry costs to inflate; the declared size does, and rejecting
+ * on it keeps oversized entries from ever becoming resident.
+ */
+function declaredUncompressedSize(entry: JSZip.JSZipObject): number | null {
+  const data = (entry as JSZip.JSZipObject & { _data?: { uncompressedSize?: unknown } })._data;
+  return typeof data?.uncompressedSize === "number" ? data.uncompressedSize : null;
+}
+
 export async function importKnowledgeVault(
   workspaceId: string,
   actor: string,
   bytes: Buffer
 ): Promise<{ imported: number; skipped: number; notes: string[] }> {
+  if (bytes.byteLength > MAX_IMPORT_ARCHIVE_BYTES) throw new Error("import_archive_too_large");
   const zip = await JSZip.loadAsync(bytes);
   let imported = 0;
   let skipped = 0;
   const notes: string[] = [];
+  let considered = 0;
 
   for (const [path, entry] of Object.entries(zip.files)) {
     if (entry.dir || !path.toLowerCase().endsWith(".md") || path.startsWith("__MACOSX/")) {
       skipped++;
       continue;
     }
+    // Counted per candidate entry, not per successful import, so an archive of
+    // entries that all fail validation cannot drive unbounded work.
+    if (considered >= MAX_IMPORT_NOTES) {
+      skipped++;
+      continue;
+    }
+    considered++;
+    const declared = declaredUncompressedSize(entry);
+    if (declared !== null && declared > MAX_IMPORT_NOTE_BYTES) {
+      skipped++;
+      continue;
+    }
     const markdown = await entry.async("string");
+    if (Buffer.byteLength(markdown, "utf8") > MAX_IMPORT_NOTE_BYTES) {
+      skipped++;
+      continue;
+    }
     const parsed = parseFrontmatter(markdown);
     const extracted = extractKnowledge(parsed.body, parsed.frontmatter);
     const input: KnowledgeNoteInput = {

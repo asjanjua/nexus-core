@@ -19,7 +19,12 @@ async function main() {
   const client = await pool.connect();
   try {
     await client.query("BEGIN");
-    const adminPassword = process.env.MISSION_CONTROL_PASSWORD || process.env.MISSION_CONTROL_PIN || "admin";
+    const adminPassword = process.env.MISSION_CONTROL_PASSWORD || process.env.MISSION_CONTROL_PIN;
+    if (!adminPassword) {
+      throw new Error(
+        "MISSION_CONTROL_PASSWORD is required for db:seed. Seeding a known default credential into a reachable database is not supported."
+      );
+    }
     const adminSecret = hashPassword(adminPassword);
 
     await client.query(

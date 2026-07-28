@@ -2,6 +2,7 @@ import crypto from "crypto";
 import { z } from "zod";
 import { fail, ok } from "@/lib/api";
 import { handleSlackConnectorEvent } from "@/lib/slack/adapter";
+import { isExplicitDevRuntime } from "@/lib/security";
 
 export const runtime = "nodejs";
 
@@ -29,8 +30,10 @@ const eventSchema = z.object({
 async function verifySlackSignature(request: Request, rawBody: string): Promise<boolean> {
   const signingSecret = process.env.SLACK_SIGNING_SECRET;
   if (!signingSecret) {
-    // No secret configured — allow in dev, block in production
-    return process.env.NODE_ENV !== "production";
+    // No secret configured — allowed only under an explicitly declared
+    // dev/test runtime. An unset NODE_ENV fails closed rather than accepting
+    // unsigned events that get ingested as workspace evidence.
+    return isExplicitDevRuntime();
   }
 
   const timestamp = request.headers.get("x-slack-request-timestamp");

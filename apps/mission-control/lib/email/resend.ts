@@ -18,6 +18,8 @@
  *                             or @domains), otherwise the send is refused.
  */
 
+import { signHmacHex, timingSafeEqualString } from "@/lib/security";
+
 // ---------------------------------------------------------------------------
 // Config
 // ---------------------------------------------------------------------------
@@ -449,15 +451,32 @@ export function buildSynthesisBriefHtml(ctx: SynthesisEmailContext): string {
 </html>`.trim();
 }
 
-/** Build an unsubscribe token: base64(workspaceId:email). Not cryptographic — just an opaque id. */
+/**
+ * Build an unsubscribe token: `base64url(workspaceId:email).hmac`.
+ *
+ * The signature is what makes the token unforgeable. Without it the payload is
+ * just base64 of two values an outsider can guess, so anyone could name an
+ * arbitrary workspace and address and have the unsubscribe route act on them.
+ */
 export function buildUnsubscribeToken(workspaceId: string, email: string): string {
-  return Buffer.from(`${workspaceId}:${email}`).toString("base64url");
+  const body = Buffer.from(`${workspaceId}:${email}`).toString("base64url");
+  return `${body}.${signHmacHex(body)}`;
 }
 
-/** Decode an unsubscribe token back to [workspaceId, email]. */
+/**
+ * Decode a signed unsubscribe token back to [workspaceId, email].
+ *
+ * `signHmacHex` throws when no signing secret is configured. This runs on a
+ * public unauthenticated route, so treat that as an unusable token rather than
+ * letting it surface as a 500.
+ */
 export function decodeUnsubscribeToken(token: string): [string, string] | null {
   try {
-    const decoded = Buffer.from(token, "base64url").toString("utf-8");
+    const [body, signature, ...rest] = token.split(".");
+    if (!body || !signature || rest.length) return null;
+    if (!timingSafeEqualString(signHmacHex(body), signature, "hex")) return null;
+
+    const decoded = Buffer.from(body, "base64url").toString("utf-8");
     const idx = decoded.indexOf(":");
     if (idx <= 0) return null;
     return [decoded.slice(0, idx), decoded.slice(idx + 1)];
@@ -470,7 +489,7 @@ export function decodeUnsubscribeToken(token: string): [string, string] | null {
 // Helpers
 // ---------------------------------------------------------------------------
 
-function escapeHtml(s: string): string {
+export function escapeHtml(s: string): string {
   return s
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
