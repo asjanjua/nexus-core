@@ -19,13 +19,17 @@
  * through a named channel — the strongest consequence state in the family —
  * so the boundary is stated on the hub itself, not buried in a policy page.
  *
- * Data is illustrative on this build: the registry defines the workflow, but
- * no Meridian API exists yet. Every number below is labelled as a worked
- * example so a demo never implies live regulatory data.
+ * Scope is REAL: jurisdiction, regulator, licence and deadline are read from
+ * GET /api/meridian/scope. Coverage figures downstream (outstanding
+ * requirements, memo sections, caveats) have no engine yet and remain
+ * labelled as a worked example, so a demo never implies live supervisory data
+ * that does not exist.
  */
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import type { MeridianScope } from "@/lib/contracts";
+import { GuidedActionCard, SkeletonLines } from "@/components/ui/nexus-primitives";
 import {
   guidanceForMeridianScreen,
   meridianJurisdictionPackRequirements,
@@ -67,6 +71,34 @@ function pct(n: number) {
 
 export function MeridianSubmissionPanel() {
   const [activeArc, setActiveArc] = useState<MeridianRegulatoryArc>("scope");
+  const [scope, setScope] = useState<MeridianScope | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/meridian/scope")
+      .then((r) => r.json())
+      .then((payload) => {
+        if (cancelled || !payload.ok) return;
+        setScope(payload.data.scope ?? null);
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /** Whole days until the regulator deadline, or null when none is set. */
+  const daysToDeadline = useMemo(() => {
+    if (!scope?.deadline) return null;
+    const due = new Date(scope.deadline);
+    if (Number.isNaN(due.getTime())) return null;
+    const ms = due.getTime() - Date.now();
+    return Math.max(0, Math.ceil(ms / 86_400_000));
+  }, [scope?.deadline]);
 
   const arcScreens = useMemo(() => meridianScreensForArc(activeArc), [activeArc]);
   const activeStage = useMemo(
@@ -74,13 +106,47 @@ export function MeridianSubmissionPanel() {
     [activeArc]
   );
 
+  if (loading) {
+    return (
+      <section className="panel">
+        <SkeletonLines lines={5} />
+      </section>
+    );
+  }
+
+  // Cold start: no scope set. Show what unlocks the room rather than a wall of
+  // zeros, which is exactly what a new pilot workspace looks like on day one.
+  if (!scope) {
+    return (
+      <div className="space-y-4">
+        <GuidedActionCard
+          title="Set the regulatory scope first"
+          reason="Meridian needs a jurisdiction, regulator, and licence status before it can select a requirement set. Nothing downstream in the submission arc can be assessed until that is chosen."
+          href="/meridian/scope"
+          cta="Set regulatory scope"
+        />
+        <section className="panel">
+          <p className="panel-title">What Meridian will not do</p>
+          <div className="mt-3 space-y-2">
+            {meridianRegulatoryBoundaries.map((b) => (
+              <div key={b.id} className="rounded-lg border border-white/10 bg-black/20 p-3">
+                <p className="text-xs font-semibold text-white">{b.title}</p>
+                <p className="mt-1 text-xs leading-5 text-white/50">{b.rule}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
-      {/* Demo-data honesty. A regulated buyer must never mistake a worked
-          example for live supervisory data. */}
+      {/* Coverage figures have no engine yet. Scope is real; say which is which
+          so a regulated buyer is never misled about what is live. */}
       <p className="rounded-lg border border-nexus-sky/25 bg-nexus-sky/5 px-3 py-2 text-xs leading-5 text-nexus-sky">
-        Worked example. The workflow, requirement arcs, and boundaries below are real and
-        code-backed; the application figures are illustrative until a workspace is connected.
+        Scope below is live for this workspace. Coverage, outstanding requirements, and memo
+        progress are a worked example until evidence is connected.
       </p>
 
       {/* KPI strip — max four, each with a semantic colour and a label. */}
@@ -88,7 +154,7 @@ export function MeridianSubmissionPanel() {
         <div className="panel">
           <p className="text-xs uppercase tracking-wide text-white/40">Completeness</p>
           <p className="mt-2 text-3xl font-bold text-nexus-accent">{pct(EXAMPLE.completeness)}</p>
-          <p className="mt-1 text-xs text-white/40">{EXAMPLE.application}</p>
+          <p className="mt-1 text-xs text-white/40">{scope.licenseType} · {scope.jurisdiction}</p>
         </div>
         <div className="panel">
           <p className="text-xs uppercase tracking-wide text-white/40">Outstanding requirements</p>
@@ -97,8 +163,8 @@ export function MeridianSubmissionPanel() {
         </div>
         <div className="panel">
           <p className="text-xs uppercase tracking-wide text-white/40">Regulator deadline</p>
-          <p className="mt-2 text-3xl font-bold text-white">{EXAMPLE.daysToDeadline}d</p>
-          <p className="mt-1 text-xs text-white/40">{EXAMPLE.regulator}</p>
+          <p className="mt-2 text-3xl font-bold text-white">{daysToDeadline ?? "—"}{daysToDeadline !== null ? "d" : ""}</p>
+          <p className="mt-1 text-xs text-white/40">{scope.regulator}</p>
         </div>
         <div className="panel">
           <p className="text-xs uppercase tracking-wide text-white/40">Memo sections drafted</p>
@@ -264,7 +330,7 @@ export function MeridianSubmissionPanel() {
               <li>The pack is marked reviewer-approved and becomes exportable.</li>
               <li>The reviewer is recorded by name against the filing.</li>
               <li>
-                A human still submits it to <span className="text-white">{EXAMPLE.regulator}</span>{" "}
+                A human still submits it to <span className="text-white">{scope.regulator}</span>{" "}
                 through the regulator&rsquo;s own channel.
               </li>
             </ul>

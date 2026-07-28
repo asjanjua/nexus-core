@@ -21,8 +21,6 @@ import {
   type LearningSignal,
   type PilotOutcome,
   type ProWaitlistEntry,
-  type MeridianScope,
-  type MeridianScopeInput,
   type Recommendation,
   type RecommendationStatus,
   type ReviewerSeat,
@@ -197,7 +195,6 @@ function pilotOutcomeKey(workspaceId: string, workflowName: string): string {
 }
 // Pro waitlist fallback for no-DB/demo mode, keyed by workspaceId (one intent per workspace).
 const proWaitlistStore = new Map<string, ProWaitlistEntry>();
-const meridianScopeStore = new Map<string, MeridianScope>();
 const knowledgeNoteStore: KnowledgeNote[] = [];
 const knowledgeLinkStore: KnowledgeLink[] = [];
 const knowledgeSyncEventStore: KnowledgeSyncEvent[] = [];
@@ -1081,42 +1078,6 @@ export const store = {
     };
     proWaitlistStore.set(input.workspaceId, entry);
     return entry;
-  },
-
-  // -------------------------------------------------------------------------
-  // Meridian regulatory scope (in-memory fallback)
-  // -------------------------------------------------------------------------
-
-  getMeridianScope(workspaceId: string): MeridianScope | null {
-    return meridianScopeStore.get(workspaceId) ?? null;
-  },
-
-  /** Upsert on workspaceId: one scope per workspace, re-saving updates it. */
-  upsertMeridianScope(input: {
-    id: string;
-    workspaceId: string;
-    createdBy: string;
-    data: MeridianScopeInput;
-    now?: Date;
-  }): MeridianScope {
-    const now = (input.now ?? new Date()).toISOString();
-    const existing = meridianScopeStore.get(input.workspaceId);
-    const scope: MeridianScope = {
-      ...input.data,
-      deadline: input.data.deadline ?? null,
-      reviewerName: input.data.reviewerName ?? null,
-      applicantName: input.data.applicantName ?? null,
-      ownershipPosture: input.data.ownershipPosture ?? null,
-      directorsNote: input.data.directorsNote ?? null,
-      regulatedActivities: input.data.regulatedActivities ?? null,
-      id: existing?.id ?? input.id,
-      workspaceId: input.workspaceId,
-      createdBy: existing?.createdBy ?? input.createdBy,
-      createdAt: existing?.createdAt ?? now,
-      updatedAt: now,
-    };
-    meridianScopeStore.set(input.workspaceId, scope);
-    return scope;
   },
 
   // -------------------------------------------------------------------------

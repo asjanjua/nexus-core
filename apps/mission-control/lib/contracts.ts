@@ -1120,56 +1120,6 @@ export const proWaitlistEntrySchema = z.object({
 });
 export type ProWaitlistEntry = z.infer<typeof proWaitlistEntrySchema>;
 
-// ---------------------------------------------------------------------------
-// Meridian regulatory scope (migration 0040)
-//
-// The first persisted object in the Submission Room. Records the user's
-// declared scope; it never records a regulatory conclusion, which is the
-// boundary the product sells. `licenseStatus` is an enum because the
-// requirement pack that applies downstream is selected from it — a free
-// string here would silently produce an empty requirement set.
-// ---------------------------------------------------------------------------
-
-export const meridianLicenseStatusSchema = z.enum([
-  "not_licensed",
-  "applicant",
-  "licensed",
-  "variation",
-  "renewal",
-]);
-export type MeridianLicenseStatus = z.infer<typeof meridianLicenseStatusSchema>;
-
-export const meridianScopeSchema = z.object({
-  id: z.string(),
-  workspaceId: z.string(),
-  jurisdiction: z.string().min(1).max(80),
-  regulator: z.string().min(1).max(120),
-  licenseType: z.string().min(1).max(120),
-  licenseStatus: meridianLicenseStatusSchema,
-  filingObjective: z.string().min(1),
-  /** ISO date (YYYY-MM-DD) or null. Regulator deadline drives the hub KPI. */
-  deadline: z.string().nullable().optional(),
-  reviewerName: z.string().max(160).nullable().optional(),
-  applicantName: z.string().max(200).nullable().optional(),
-  ownershipPosture: z.string().nullable().optional(),
-  directorsNote: z.string().nullable().optional(),
-  regulatedActivities: z.string().nullable().optional(),
-  createdBy: z.string(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-});
-export type MeridianScope = z.infer<typeof meridianScopeSchema>;
-
-/** Write payload. Server owns id, workspaceId, createdBy, and timestamps. */
-export const meridianScopeInputSchema = meridianScopeSchema.omit({
-  id: true,
-  workspaceId: true,
-  createdBy: true,
-  createdAt: true,
-  updatedAt: true,
-});
-export type MeridianScopeInput = z.infer<typeof meridianScopeInputSchema>;
-
 export const laneChangedBySchema = z.enum([
   "system_suggestion",
   "user_confirmation",
