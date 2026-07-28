@@ -10,7 +10,7 @@
 - Extended the guarded settings PATCH schema to validate the existing `whiteLabelBrand` contract. Repository persistence, database schema/migration, and unit coverage already existed; this closes the API-to-user-interface gap without widening workspace ownership or trust semantics.
 - Updated the Nucleus hub CTA and registry route candidate to `/nucleus/profile`. The form has loading, error, save, and confirmation states, explicit `InfoHint` context, and a separate contract panel for controls a partner cannot re-skin.
 - Added Figma V0.7 frame `Launch Cockpit / 11 Nucleus Firm Profile / 1440` (`164:2`) in `Nexus System`. It was screenshot-reviewed after spacing corrections.
-- Local verification passed: workspace settings/white-label focused Vitest (21 assertions), TypeScript, `git diff --check`, and the 178-route production build. The next external proof is Render deployment, then a signed-in save/reload using a safe test brand. Do not claim that save/reload proof until it is completed.
+- Local verification passed: workspace settings/white-label focused Vitest (21 assertions), TypeScript, `git diff --check`, and the 178-route production build. `5e8e7d1` is live: `https://pinavia.io/nucleus/profile` returns `307` to `/sign-in?redirect_url=%2Fnucleus%2Fprofile`, and `/api/health` returned `ok=true`. The remaining proof is a signed-in save/reload using a safe test brand. Do not claim that proof until it is completed.
 
 ---
 

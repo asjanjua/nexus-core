@@ -5,6 +5,7 @@
 ## Unreleased — Initial Launch Cockpit V0.7 (2026-07-26)
 
 - Added the eleventh V0.7 Figma frame, `Launch Cockpit / 11 Nucleus Firm Profile / 1440` (`164:2`), and the protected `/nucleus/profile` workflow. Managing partners can persist firm name, logo URL, accent, and typeface through the guarded workspace settings API; provenance, status meaning, approval boundaries, audit labels, and consequence previews remain fixed by contract.
+- Deployed the Nucleus Firm Profile slice through `5e8e7d1`; live signed-out smoke confirms the exact Clerk return path for `/nucleus/profile`, and `https://pinavia.io/api/health` remains healthy. A signed-in save/reload smoke is the remaining pilot proof.
 
 - Added the tenth V0.7 Figma frame, `Launch Cockpit / 10 Vantage Coverage Review / 1440` (`162:2`), documenting the first executable Vantage deep route: checklist choice, governed-evidence runner, coverage/gap result anatomy, evidence requests, and human investment authority.
 - Added protected `/vantage/coverage` and moved the Deal Room primary CTA there from generic Settings. The screen invokes the existing first-party diligence engine, renders evidence coverage and priority gaps, and deliberately does not present the engine's internal recommendation label as an investment decision.

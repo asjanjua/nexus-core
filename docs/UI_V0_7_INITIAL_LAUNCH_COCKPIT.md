@@ -105,6 +105,8 @@ The eleventh frame was re-rendered after heading and saved-state spacing correct
 
 The Vantage Coverage slice was deployed through `f357ace`. Live signed-out smoke confirms `/vantage/coverage` preserves `/vantage/coverage` as the Clerk return path, and the live health endpoint returned `ok=true`. The still-required evidence/run/result smoke needs a signed-in pilot workspace.
 
+The Nucleus Firm Profile slice was deployed through `5e8e7d1`. Live signed-out smoke confirms `/nucleus/profile` preserves `/nucleus/profile` as the Clerk return path, and the live health endpoint returned `ok=true`. The still-required save/reload proof needs a signed-in pilot workspace and a safe test brand.
+
 ## Next Actions
 
 1. Use V0.7 as the first page for colleague design review.
