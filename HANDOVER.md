@@ -16,7 +16,7 @@
 
 - Implemented the remaining design-final handoff screens as protected routes: `/meridian/evidence-coverage`, `/meridian/filing-pack`, `/vantage/red-flags`, `/nucleus/reviewer-console`, and `/board/minutes/draft`. NexusAI's matching handoff remains the existing `/approvals` surface.
 - All five reuse `components/pilot-handoff-workbench.tsx`: a domain-specific review table, named owner/deadline/reviewer-note input, and a single consequential CTA into the existing `/decisions` prefill flow. No conclusion, approval, filing, publication, or execution is persisted by the workbench itself.
-- The Meridian, Vantage, Nucleus, and Quorum hubs now link to the newly code-backed review screens. Local TypeScript and the 185-route production build pass; deployed signed-out/signed-in route smoke remains required.
+- The Meridian, Vantage, Nucleus, and Quorum hubs now link to the newly code-backed review screens. `cf2c2a4` is live: all five routes return `307` to exact Clerk return paths when signed out, and `/api/health` is `ok`. Signed-in handoff smoke remains required.
 
 ---
 
