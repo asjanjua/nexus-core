@@ -127,7 +127,9 @@ Fixed here:
 | Clerk and Slack webhook verification fell open whenever `NODE_ENV` was anything but `production`, including unset | High | Fail open only under an explicitly declared `development`/`test` runtime, matching `requireAuthSecret` |
 | CORS echoed any `Origin` on the same `NODE_ENV !== "production"` condition | Medium | Same explicit dev-runtime gate; allowlist applies when `NODE_ENV` is unset |
 | `db:seed` provisioned an `admin` user with password `admin` when `MISSION_CONTROL_PASSWORD` was unset, and `lib/auth.ts` shipped a matching `admin`/`admin` check | Medium | Seed now fails without an explicit password; the default-credential check is deleted |
-| Knowledge vault import accepted an unbounded zip | Medium | Cap archive size, per-note size, and note count |
+| Knowledge vault import accepted an unbounded zip | Medium | Cap archive size, per-note size, and candidate-entry count, rejecting an entry on its declared uncompressed size before inflating it — a 40 MB entry deflates to ~50 kB, so the archive cap alone bounds nothing about expansion |
+
+Open: `/api/email/unsubscribe` does not unsubscribe anyone. It writes a `synthesis_email_unsubscribed` audit event that nothing reads, and the send loop in `lib/services/synthesis-schedule.ts` iterates `schedule.emailTargets` with no suppression check, while the confirmation page tells the recipient they will no longer receive scheduled briefs. Pre-existing, and feature-sized (suppression list plus a send-loop check), so tracked as its own issue rather than patched in the scan sweep.
 
 Open: `npm audit` reports a high advisory against the `postcss` copy nested inside `next` (GHSA-qx2v-qp2m-jg93 and two sourceMappingURL disclosures). It is build-time only and the root `overrides` entry does not reach it; it clears when Next ships a bumped dependency. Rate limiting remains in-process, so limits are per-instance if the web service scales past one.
 

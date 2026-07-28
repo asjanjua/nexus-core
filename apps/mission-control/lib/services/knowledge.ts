@@ -28,6 +28,18 @@ export const MAX_IMPORT_ARCHIVE_BYTES = 25 * 1024 * 1024;
 const MAX_IMPORT_NOTE_BYTES = 1024 * 1024;
 const MAX_IMPORT_NOTES = 1000;
 
+/**
+ * Size an entry claims it will expand to, read from the zip central directory
+ * before any decompression. Compression ratios of 1000:1 are trivial to
+ * produce, so an archive within MAX_IMPORT_ARCHIVE_BYTES says nothing about
+ * what a single entry costs to inflate; the declared size does, and rejecting
+ * on it keeps oversized entries from ever becoming resident.
+ */
+function declaredUncompressedSize(entry: JSZip.JSZipObject): number | null {
+  const data = (entry as JSZip.JSZipObject & { _data?: { uncompressedSize?: unknown } })._data;
+  return typeof data?.uncompressedSize === "number" ? data.uncompressedSize : null;
+}
+
 export async function importKnowledgeVault(
   workspaceId: string,
   actor: string,
@@ -38,13 +50,22 @@ export async function importKnowledgeVault(
   let imported = 0;
   let skipped = 0;
   const notes: string[] = [];
+  let considered = 0;
 
   for (const [path, entry] of Object.entries(zip.files)) {
     if (entry.dir || !path.toLowerCase().endsWith(".md") || path.startsWith("__MACOSX/")) {
       skipped++;
       continue;
     }
-    if (imported >= MAX_IMPORT_NOTES) {
+    // Counted per candidate entry, not per successful import, so an archive of
+    // entries that all fail validation cannot drive unbounded work.
+    if (considered >= MAX_IMPORT_NOTES) {
+      skipped++;
+      continue;
+    }
+    considered++;
+    const declared = declaredUncompressedSize(entry);
+    if (declared !== null && declared > MAX_IMPORT_NOTE_BYTES) {
       skipped++;
       continue;
     }

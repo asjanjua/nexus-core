@@ -1,3 +1,4 @@
+import JSZip from "jszip";
 import { describe, expect, it } from "vitest";
 import { repository } from "@/lib/data/repository";
 import {
@@ -8,6 +9,7 @@ import {
   searchKnowledgeNotes,
   serializeFrontmatter
 } from "@/lib/knowledge/markdown";
+import { importKnowledgeVault } from "@/lib/services/knowledge";
 import { safeVaultRelativePath } from "@/lib/services/vault-sync";
 
 describe("knowledge workspace primitives", () => {
@@ -57,6 +59,28 @@ describe("knowledge workspace primitives", () => {
     expect(buildKnowledgeLinks(note).map((link) => link.targetType)).toEqual(expect.arrayContaining(["note", "evidence"]));
     expect(graph.nodes.some((node) => node.type === "evidence")).toBe(true);
     expect(searchKnowledgeNotes([note], "pilot", 1)[0]?.matchedFields).toContain("title");
+  });
+
+  it("skips a highly compressed import entry without inflating it", async () => {
+    const zip = new JSZip();
+    // 40 MB of one repeated byte deflates to a few kB, so the archive clears
+    // the 25 MB cap while the entry alone would exceed it many times over.
+    zip.file("bomb.md", "A".repeat(40 * 1024 * 1024));
+    zip.file("_Inbox/real.md", "# Real Note\n\nSmall body.");
+    const bytes = await zip.generateAsync({ type: "nodebuffer", compression: "DEFLATE" });
+    expect(bytes.byteLength).toBeLessThan(1024 * 1024);
+
+    const result = await importKnowledgeVault(`workspace-import-${Date.now()}`, "tester", bytes);
+
+    expect(result.imported).toBe(1);
+    expect(result.notes).toHaveLength(1);
+    expect(result.skipped).toBeGreaterThanOrEqual(1);
+  });
+
+  it("rejects an archive over the size cap", async () => {
+    await expect(
+      importKnowledgeVault("workspace-import-cap", "tester", Buffer.alloc(26 * 1024 * 1024))
+    ).rejects.toThrow("import_archive_too_large");
   });
 
   it("rejects unsafe local vault paths", async () => {

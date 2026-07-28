@@ -463,13 +463,19 @@ export function buildUnsubscribeToken(workspaceId: string, email: string): strin
   return `${body}.${signHmacHex(body)}`;
 }
 
-/** Decode a signed unsubscribe token back to [workspaceId, email]. */
+/**
+ * Decode a signed unsubscribe token back to [workspaceId, email].
+ *
+ * `signHmacHex` throws when no signing secret is configured. This runs on a
+ * public unauthenticated route, so treat that as an unusable token rather than
+ * letting it surface as a 500.
+ */
 export function decodeUnsubscribeToken(token: string): [string, string] | null {
-  const [body, signature, ...rest] = token.split(".");
-  if (!body || !signature || rest.length) return null;
-  if (!timingSafeEqualString(signHmacHex(body), signature, "hex")) return null;
-
   try {
+    const [body, signature, ...rest] = token.split(".");
+    if (!body || !signature || rest.length) return null;
+    if (!timingSafeEqualString(signHmacHex(body), signature, "hex")) return null;
+
     const decoded = Buffer.from(body, "base64url").toString("utf-8");
     const idx = decoded.indexOf(":");
     if (idx <= 0) return null;
