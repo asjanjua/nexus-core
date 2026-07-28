@@ -54,6 +54,7 @@ import {
   trialInvites,
   pilotOutcomes,
   proWaitlist,
+  meridianScope,
   strategyProfiles,
   type recommendationStatusEnum,
   type ingestionStatusEnum
@@ -472,6 +473,30 @@ function mapProWaitlistRow(row: typeof proWaitlist.$inferSelect): ProWaitlistEnt
     email: row.email,
     name: row.name ?? null,
     note: row.note ?? null,
+    createdBy: row.createdBy,
+    createdAt: isoOrNull(row.createdAt) ?? new Date(0).toISOString(),
+    updatedAt: isoOrNull(row.updatedAt) ?? new Date(0).toISOString(),
+  };
+}
+
+function mapMeridianScopeRow(row: typeof meridianScope.$inferSelect): MeridianScope {
+  return {
+    id: row.id,
+    workspaceId: row.workspaceId,
+    jurisdiction: row.jurisdiction,
+    regulator: row.regulator,
+    licenseType: row.licenseType,
+    // Widened at the DB boundary: the column is varchar, the contract is an
+    // enum. Parsing happens in the API layer, which is where a bad value must
+    // be rejected rather than silently coerced.
+    licenseStatus: row.licenseStatus as MeridianScope["licenseStatus"],
+    filingObjective: row.filingObjective,
+    deadline: row.deadline ?? null,
+    reviewerName: row.reviewerName ?? null,
+    applicantName: row.applicantName ?? null,
+    ownershipPosture: row.ownershipPosture ?? null,
+    directorsNote: row.directorsNote ?? null,
+    regulatedActivities: row.regulatedActivities ?? null,
     createdBy: row.createdBy,
     createdAt: isoOrNull(row.createdAt) ?? new Date(0).toISOString(),
     updatedAt: isoOrNull(row.updatedAt) ?? new Date(0).toISOString(),
@@ -4492,6 +4517,58 @@ export const repository = {
     );
     if (rows === null) return store.addProWaitlistEntry({ ...input, now });
     return mapProWaitlistRow(rows[0]);
+  },
+
+  // -------------------------------------------------------------------------
+  // Meridian regulatory scope (migration 0040)
+  // -------------------------------------------------------------------------
+
+  async getMeridianScope(workspaceId: string): Promise<MeridianScope | null> {
+    const rows = await runDb((db) =>
+      db.select().from(meridianScope).where(eq(meridianScope.workspaceId, workspaceId)).limit(1)
+    );
+    if (rows === null) return store.getMeridianScope(workspaceId);
+    return rows.length ? mapMeridianScopeRow(rows[0]) : null;
+  },
+
+  /** Upsert on workspace_id: one scope per workspace. */
+  async upsertMeridianScope(input: {
+    id: string;
+    workspaceId: string;
+    createdBy: string;
+    data: MeridianScopeInput;
+  }): Promise<MeridianScope> {
+    const now = new Date();
+    const values = {
+      jurisdiction: input.data.jurisdiction,
+      regulator: input.data.regulator,
+      licenseType: input.data.licenseType,
+      licenseStatus: input.data.licenseStatus,
+      filingObjective: input.data.filingObjective,
+      deadline: input.data.deadline ?? null,
+      reviewerName: input.data.reviewerName ?? null,
+      applicantName: input.data.applicantName ?? null,
+      ownershipPosture: input.data.ownershipPosture ?? null,
+      directorsNote: input.data.directorsNote ?? null,
+      regulatedActivities: input.data.regulatedActivities ?? null,
+    };
+    const rows = await runDb((db) =>
+      db
+        .insert(meridianScope)
+        .values({
+          id: input.id,
+          workspaceId: input.workspaceId,
+          createdBy: input.createdBy,
+          ...values,
+        })
+        .onConflictDoUpdate({
+          target: meridianScope.workspaceId,
+          set: { ...values, updatedAt: now },
+        })
+        .returning()
+    );
+    if (rows === null) return store.upsertMeridianScope({ ...input, now });
+    return mapMeridianScopeRow(rows[0]);
   },
 
   async storeKnowledgeEmbedding(noteId: string, embedding: number[]): Promise<void> {

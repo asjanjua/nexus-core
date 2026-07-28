@@ -651,6 +651,31 @@ export const proWaitlist = pgTable("pro_waitlist", {
 });
 
 /**
+ * Meridian regulatory scope (migration 0040) — the first persisted object in
+ * the Submission Room, covering both Scope-arc screens. One row per workspace;
+ * everything downstream in the submission arc reads its requirement set from
+ * here. Records what the user selected, never a regulatory conclusion.
+ */
+export const meridianScope = pgTable("meridian_scope", {
+  id:                  text("id").primaryKey(),
+  workspaceId:         text("workspace_id").notNull(),
+  jurisdiction:        varchar("jurisdiction", { length: 80 }).notNull(),
+  regulator:           varchar("regulator", { length: 120 }).notNull(),
+  licenseType:         varchar("license_type", { length: 120 }).notNull(),
+  licenseStatus:       varchar("license_status", { length: 40 }).notNull(),
+  filingObjective:     text("filing_objective").notNull(),
+  deadline:            date("deadline"),
+  reviewerName:        varchar("reviewer_name", { length: 160 }),
+  applicantName:       varchar("applicant_name", { length: 200 }),
+  ownershipPosture:    text("ownership_posture"),
+  directorsNote:       text("directors_note"),
+  regulatedActivities: text("regulated_activities"),
+  createdBy:           text("created_by").notNull(),
+  createdAt:           timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:           timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+/**
  * Readiness submissions — pending anonymous assessment records from the public
  * /readiness page. Claimed post-auth via a single-use claim code, which writes
  * the strategy profile. Migration 0033. See docs/LANE_ASSIGNMENT_SPEC.md.

@@ -655,72 +655,35 @@ function ProofBand() {
   );
 }
 
-function WhyPinaviaSection() {
+function USPSection() {
   return (
-    <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8" id="why">
+    <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8" id="usp">
       <div className="grid gap-10 lg:grid-cols-[0.72fr_1.28fr] lg:items-start">
         <div className="lg:sticky lg:top-24">
-          <p className="micro-label text-white/35">06 / Why Pinavia</p>
+          <p className="micro-label text-white/35">06 / What is uniquely Pinavia</p>
           <h2 className="display-hero mt-5 text-white" style={{ fontSize: "clamp(2rem,4vw,3rem)" }}>
-            Context memory is necessary. Governed action is the product.
+            Built for the moment after an AI answer sounds convincing.
           </h2>
           <p className="mt-5 max-w-xl text-sm leading-6 text-white/55">
-            A context-memory company helps AI remember, retrieve, and route knowledge more
-            efficiently. Pinavia starts from the next operational question: what happens when that
-            sourced answer has to become a regulated decision with a named human accountable for the
-            outcome?
+            Pinavia is not trying to be the loudest model interface. Its job is to make high-stakes
+            AI work legible, sourced, bounded, and safe enough for regulated teams to use in front of
+            boards, committees, clients, and regulators.
           </p>
-          <div className="mt-6 grid gap-2">
-            {overlapPoints.map((point) => (
-              <div key={point} className="rounded-lg border border-white/10 bg-black/20 p-3">
-                <p className="text-xs leading-5 text-white/55">{point}</p>
-              </div>
-            ))}
-          </div>
         </div>
 
-        <div className="space-y-8">
-          <div className="grid gap-3 md:grid-cols-2">
-            {specialUsps.map((item) => (
-              <article key={item.title} className="rounded-lg border border-white/10 bg-white/[0.035] p-4">
-                <div className="flex items-start justify-between gap-4">
-                  <h3 className="text-base font-semibold leading-6 text-white">{item.title}</h3>
-                  <span className="shrink-0 rounded-md border border-nexus-accent/30 bg-nexus-accent/5 px-2 py-1 text-[10px] text-nexus-accent">
-                    {item.signal}
-                  </span>
-                </div>
-                <p className="mt-4 text-sm leading-6 text-white/70">{item.proof}</p>
-                <p className="mt-3 text-xs leading-5 text-white/45">{item.detail}</p>
-              </article>
-            ))}
-          </div>
-
-          <div className="overflow-hidden rounded-lg border border-white/10 bg-white/[0.035]">
-            <div className="grid border-b border-white/10 bg-black/15 px-5 py-3 text-xs font-semibold uppercase text-white/35 sm:grid-cols-[0.55fr_1fr_1fr] sm:px-6">
-              <span>Dimension</span>
-              <span className="hidden sm:block">Context-memory infrastructure</span>
-              <span className="hidden sm:block">Pinavia governed workflow</span>
-            </div>
-            <div className="divide-y divide-white/10">
-              {competitorDifferences.map((row) => (
-                <article key={row.topic} className="grid gap-4 px-5 py-5 sm:grid-cols-[0.55fr_1fr_1fr] sm:px-6">
-                  <h3 className="text-sm font-semibold text-white">{row.topic}</h3>
-                  <div>
-                    <p className="mb-1 text-[10px] font-semibold uppercase text-white/30 sm:hidden">
-                      Context-memory infrastructure
-                    </p>
-                    <p className="text-sm leading-6 text-white/50">{row.category}</p>
-                  </div>
-                  <div>
-                    <p className="mb-1 text-[10px] font-semibold uppercase text-nexus-accent sm:hidden">
-                      Pinavia governed workflow
-                    </p>
-                    <p className="text-sm leading-6 text-white/75">{row.pinavia}</p>
-                  </div>
-                </article>
-              ))}
-            </div>
-          </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          {specialUsps.map((item) => (
+            <article key={item.title} className="rounded-lg border border-white/10 bg-white/[0.035] p-4">
+              <div className="flex items-start justify-between gap-4">
+                <h3 className="text-base font-semibold leading-6 text-white">{item.title}</h3>
+                <span className="shrink-0 rounded-md border border-nexus-accent/30 bg-nexus-accent/5 px-2 py-1 text-[10px] text-nexus-accent">
+                  {item.signal}
+                </span>
+              </div>
+              <p className="mt-4 text-sm leading-6 text-white/70">{item.proof}</p>
+              <p className="mt-3 text-xs leading-5 text-white/45">{item.detail}</p>
+            </article>
+          ))}
         </div>
       </div>
     </section>
@@ -733,7 +696,7 @@ function RegulatedCaseStudiesSection() {
       <div className="border-t border-white/10 pt-14">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="micro-label text-white/35">07 / Regulated entity case studies</p>
+            <p className="micro-label text-white/35">08 / Regulated entity case studies</p>
             <h2 className="display-hero mt-5 max-w-4xl text-white" style={{ fontSize: "clamp(2rem,4vw,3rem)" }}>
               The pitch gets stronger when the boundary is visible.
             </h2>
@@ -784,6 +747,74 @@ function RegulatedCaseStudiesSection() {
   );
 }
 
+function CompetitiveDifferenceSection() {
+  return (
+    <section className="mx-auto max-w-7xl px-4 py-20 sm:px-6 lg:px-8" id="difference">
+      <div className="overflow-hidden rounded-lg border border-white/10 bg-white/[0.035]">
+        <div className="grid gap-8 border-b border-white/10 p-5 sm:p-6 lg:grid-cols-[0.78fr_1.22fr]">
+          <div>
+            <p className="micro-label text-white/35">07 / Why Pinavia is different</p>
+            <h2 className="display-hero mt-5 text-white" style={{ fontSize: "clamp(2rem,4vw,3rem)" }}>
+              Context memory is necessary. Governed action is the product.
+            </h2>
+          </div>
+          <div className="space-y-5">
+            <p className="text-sm leading-6 text-white/60">
+              A context-memory company helps AI remember, retrieve, verify, and route knowledge more
+              efficiently. Pinavia starts from the next operational question: what happens when that
+              sourced answer needs to become a regulated decision with a named human accountable for
+              the outcome?
+            </p>
+            <div className="grid gap-2 sm:grid-cols-3">
+              {overlapPoints.map((point) => (
+                <div key={point} className="rounded-lg border border-white/10 bg-black/20 p-3">
+                  <p className="text-xs leading-5 text-white/55">{point}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="grid border-b border-white/10 bg-black/15 px-5 py-3 text-xs font-semibold uppercase text-white/35 sm:grid-cols-[0.55fr_1fr_1fr] sm:px-6">
+          <span>Dimension</span>
+          <span className="hidden sm:block">Context-memory infrastructure</span>
+          <span className="hidden sm:block">Pinavia governed workflow infrastructure</span>
+        </div>
+
+        <div className="divide-y divide-white/10">
+          {competitorDifferences.map((row) => (
+            <article key={row.topic} className="grid gap-4 px-5 py-5 sm:grid-cols-[0.55fr_1fr_1fr] sm:px-6">
+              <h3 className="text-sm font-semibold text-white">{row.topic}</h3>
+              <div>
+                <p className="mb-1 text-[10px] font-semibold uppercase text-white/30 sm:hidden">
+                  Context-memory infrastructure
+                </p>
+                <p className="text-sm leading-6 text-white/50">{row.category}</p>
+              </div>
+              <div>
+                <p className="mb-1 text-[10px] font-semibold uppercase text-nexus-accent sm:hidden">
+                  Pinavia governed workflow infrastructure
+                </p>
+                <p className="text-sm leading-6 text-white/75">{row.pinavia}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+
+        <div className="grid gap-4 bg-nexus-accent/5 p-5 sm:p-6 lg:grid-cols-[1fr_auto] lg:items-center">
+          <p className="max-w-3xl text-sm leading-6 text-white/60">
+            The diagnostic should therefore measure a different thing: not only whether AI is wasting
+            tokens or losing context, but whether a specific high-stakes workflow has enough evidence,
+            owners, approvals, and refusal boundaries to be safely piloted.
+          </p>
+          <Link href="/start-pilot" className="btn-primary px-5 py-3" prefetch={false}>
+            Start pilot
+          </Link>
+        </div>
+      </div>
+    </section>
+  );
+}
 
 function ProductFamilySection() {
   return (
@@ -791,7 +822,7 @@ function ProductFamilySection() {
       <div className="border-t border-white/10 pt-14">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="micro-label text-white/35">08 / Product family</p>
+            <p className="micro-label text-white/35">09 / Product family</p>
             <h2 className="display-hero mt-5 text-white" style={{ fontSize: "clamp(2rem,4vw,3rem)" }}>
               One governed core, <span className="display-accent text-nexus-accent">five rooms</span>.
             </h2>
@@ -901,12 +932,8 @@ export default function HomePage() {
               <Link href="/start-pilot" className="btn-primary px-5 py-3" prefetch={false}>
                 Start pilot
               </Link>
-              {/* Rung one of the ladder: the free self-assessment. Named for
-                  what it is — "Run the diagnostic" previously pointed here,
-                  which collided with the paid /diagnostic offer and made the
-                  two rungs indistinguishable. */}
               <Link href="/readiness" className="btn-subtle px-5 py-3" prefetch={false}>
-                Check your readiness
+                Run the diagnostic
               </Link>
               <Link href="/workspace" className="btn-subtle px-5 py-3" prefetch={false}>
                 Enter NexusAI
@@ -931,7 +958,8 @@ export default function HomePage() {
       <DecisionPassportSection />
       <MechanismBand />
       <ProofBand />
-      <WhyPinaviaSection />
+      <USPSection />
+      <CompetitiveDifferenceSection />
       <RegulatedCaseStudiesSection />
       <ProductFamilySection />
 
@@ -947,27 +975,10 @@ export default function HomePage() {
                 We map your evidence, configure the room, and prove the loop from Ask to approval
                 before expanding across the product family.
               </p>
-              {/* The ladder, stated once so a visitor knows which rung to take.
-                  /diagnostic had no inbound link from this page at all, which
-                  left the paid offer reachable only by typing the URL. */}
-              <ol className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-2 text-xs text-white/45">
-                <li className="rounded-md border border-white/15 px-2.5 py-1">
-                  1. Check your readiness — free, 5 minutes
-                </li>
-                <li aria-hidden className="text-white/25">→</li>
-                <li className="rounded-md border border-nexus-accent/30 bg-nexus-accent/5 px-2.5 py-1 text-nexus-accent">
-                  2. Evidence-tested diagnostic — fixed scope
-                </li>
-                <li aria-hidden className="text-white/25">→</li>
-                <li className="rounded-md border border-white/15 px-2.5 py-1">3. Pilot one workflow</li>
-              </ol>
             </div>
             <div className="flex flex-wrap gap-3">
               <Link href="/start-pilot" className="btn-primary px-5 py-3" prefetch={false}>
                 Start pilot
-              </Link>
-              <Link href="/diagnostic" className="btn-subtle px-5 py-3" prefetch={false}>
-                See the diagnostic
               </Link>
               <a href="mailto:hello@pinavia.io" className="btn-subtle px-5 py-3">
                 Contact
