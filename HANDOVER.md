@@ -10,6 +10,7 @@
 - These complete the pilot UX stories from intake through the meaningful human-review moment. Each screen exposes real user inputs, status, source or evidence context, a single next human action, and an explicit authority boundary.
 - Do not call these routes live: they are design-final references for planned deep routes. The code-backed pilot slices and signed-in smoke requirements remain unchanged.
 - Visual review corrected title wrapping in Quorum and NexusAI and a Vantage status-chip wrap before registration.
+- Re-rendered the V0.7 Executive Status and Action Board after the addition: the visible pack count is now 22, and the colleague script starts with the live Pinavia, Solutions, and Research surfaces before the governed product loop.
 
 ---
 

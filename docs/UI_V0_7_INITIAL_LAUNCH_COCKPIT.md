@@ -104,6 +104,8 @@ Use these apex routes for immediate demos:
 
 Screenshots were generated and inspected for all twenty-two frames after creation or update.
 
+The Executive Status and Action Board frames were reconciled after the final handoff screens were added. The visible status chip now reads `22 screens reviewed`; the colleague-review and pilot-script cards point first to Pinavia, Solutions/Research, then the governed Ask-to-approval loop, with deeper handoffs retained as roadmap evidence.
+
 The only defect found was a title/subtitle overlap in `Launch Cockpit / 03 Final Screen QA Matrix / 1440`; it was fixed by shortening the title to `Final UI makes action, trust, and human control obvious`, then re-rendered cleanly.
 
 The fifth frame initially had a wrapped title overlapping the preview panel and a narrow `Sign in` pill; both were fixed and re-rendered cleanly.
