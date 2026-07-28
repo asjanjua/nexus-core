@@ -4,6 +4,15 @@
 
 ---
 
+## 2026-07-28 — Vantage Coverage Review Launch Slice
+
+- Added protected `/vantage/coverage` with `components/vantage-coverage-review.tsx`. It is the first executable Vantage deep route: deal manager selects `fintech_ma` or `generic_ma`, optionally enters a review reference, then runs the existing `vantage_diligence_analysis` endpoint against processed governed workspace evidence.
+- The resulting UI shows checklist coverage, evidence gaps, critical gaps, passport exclusions, cited sample requirements, and priority evidence requests. It intentionally does not render the engine's internal recommendation as a transaction conclusion. The visible boundary states that an advisor and IC owner judge materiality and decide what follows.
+- Updated the Deal Room CTA from generic `/settings` to `/vantage/coverage`; the Figma V0.7 reference is `Launch Cockpit / 10 Vantage Coverage Review / 1440` (`162:2`). Screenshot validation found and fixed a status-card text overlap.
+- Verification/deploy still required: focused Vantage tests, TypeScript, production build, signed-out protection smoke, then signed-in evidence/run/result smoke on a real pilot workspace.
+
+---
+
 ## 2026-07-28 — Meridian Scope Arc Launch Reference and Cold-Start Fix
 
 - Added V0.7 frame `Launch Cockpit / 09 Meridian Scope Arc / 1440` (`160:2`) in Figma file `Nexus System`. It is a 1440x900 desktop reference for the real protected Meridian entry flow: compliance lead saves Scope at `/meridian/scope`; founder/CFO enriches the same record at `/meridian/license-profile`.

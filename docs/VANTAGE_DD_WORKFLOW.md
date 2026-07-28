@@ -71,15 +71,20 @@ When a new Vantage screen is added, add its guidance and test coverage in the sa
 | IC Memo Builder | Memo | `/vantage/ic-memo` | Draft IC sections from coverage, red flags, citations, advisor notes, and caveats. |
 | Decision Handoff | Memo | `/vantage/decision-handoff` | Package memo, unresolved items, approval questions, source index, and next steps. |
 
+## Current Executable Slice
+
+`/vantage/coverage` is now a protected, executable Coverage screen. A diligence manager selects a supported deal checklist and optional review reference, then runs the existing `vantage_diligence_analysis` skill against processed, governed workspace evidence. The screen renders coverage, evidence gaps, critical gaps, passport exclusions, cited sample requirements, and priority evidence requests.
+
+The screen deliberately does not surface the engine's internal recommendation label as an investment conclusion. It keeps the decision boundary visible: coverage is an evidence fact; materiality and any investment decision belong to named humans.
+
 ## Next Implementation Slice
 
-Build Vantage dealroom and coverage first:
+Build the preceding deal-room setup, then the remaining downstream routes:
 
-1. Create the `/vantage/dealroom` route and screen state.
-2. Let the user select deal type and workstream owners.
-3. Call the existing DD checklist library for the deal type.
-4. Show checklist coverage against current evidence tags.
-5. Add red-flag and IC memo flows after the coverage screen is real.
+1. Create `/vantage/dealroom` with persisted deal type, target, thesis, owners, deadline, and data-room scope.
+2. Feed that saved deal context into `/vantage/coverage` instead of requiring a per-run checklist choice.
+3. Add `/vantage/red-flags` for human materiality, owner follow-up, and advisor judgment.
+4. Add `/vantage/ic-memo` and `/vantage/decision-handoff` after those human-review objects exist.
 
 ## Runtime Safety
 

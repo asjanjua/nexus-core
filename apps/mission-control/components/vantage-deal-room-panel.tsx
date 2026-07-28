@@ -207,8 +207,8 @@ export function VantageDealRoomPanel() {
       </section>
 
       <section className="flex flex-wrap items-center gap-3">
-        <Link href="/settings" className="btn-primary px-5 py-3" prefetch={false}>
-          Run diligence analysis
+        <Link href="/vantage/coverage" className="btn-primary px-5 py-3" prefetch={false}>
+          Run coverage review
         </Link>
         <span className="text-xs text-white/40">
           {vantageDDScreens.length} screens defined across {vantageDDStages.length} stages in the Vantage registry.

@@ -25,6 +25,7 @@ Frames:
 | `Launch Cockpit / 07 Readiness Result Path / 1440` | `143:2` | Code-backed `/readiness` result-path refresh: Pinavia branding, live CTAs, inherited-result signup, and no contradictory advisor state. |
 | `Launch Cockpit / 08 Diagnostic Intake Path / 1440` | `145:2` | Code-backed `/diagnostic` honesty pass: no unwired checkout promise, diagnostic-intent handoff to `/start-pilot`, helpful user inputs, and authority boundary. |
 | `Launch Cockpit / 09 Meridian Scope Arc / 1440` | `160:2` | Code-backed Meridian entry arc: a regulatory-scope screen followed by a licence-profile screen, one shared persisted record, explicit cold-start gate, consequence preview, and human filing boundary. |
+| `Launch Cockpit / 10 Vantage Coverage Review / 1440` | `162:2` | Code-backed Vantage Coverage screen: supported checklist selection, governed-evidence runner, coverage/gap output, named evidence requests, and the investment-decision boundary. |
 
 ## Why V0.7 Exists
 
@@ -48,6 +49,8 @@ The eighth frame was added after `/diagnostic` was refreshed from a priced-offer
 
 The ninth frame records the first real Meridian arc beyond its hub. `/meridian/scope` is the compliance-lead entry point and captures jurisdiction, regulator, licence type/status, and filing objective. `/meridian/license-profile` adds applicant, ownership, director, and activity facts to that same saved scope. The second route now gates cleanly to Scope before any scope exists, rather than exposing an incomplete form with hidden required fields.
 
+The tenth frame records the first executable Vantage deep route. `/vantage/coverage` moves the existing diligence analysis out of generic Settings and into the product workflow: the user selects a supported checklist, runs it against processed governed evidence, and sees coverage plus priority evidence requests. The screen does not turn evidence coverage into an investment recommendation; a named advisor and investment committee remain responsible for materiality and any decision.
+
 ## Launch Truth Captured
 
 | Surface | Current route/demo stance | Design source |
@@ -56,7 +59,7 @@ The ninth frame records the first real Meridian arc beyond its hub. `/meridian/s
 | NexusAI | Show as the core execution room; use Ask -> draft decision -> approval as the main demo beat. | `13 NexusAI Executive Room Final`, V0.2 full desktop prototype |
 | Quorum | Show the board lifecycle and governance roadmap through `/board`. | `14 Quorum Board Room Final`, `09 Quorum Governance Workflow V0.2` |
 | Meridian | Show `/meridian` as the submission hub. In a signed-in pilot, begin the real scope arc at `/meridian/scope`, then `/meridian/license-profile`. | `15 Meridian Submission Room Final`, `21 Commercial Pilot Loop V0.4`, V0.7 frame `160:2` |
-| Vantage | Show the protected deal-room hub through `/vantage`; label deep routes as planned. | `16 Vantage Deal Room Final`, `23 Launch Route Update V0.6` |
+| Vantage | Show `/vantage` as the deal-room hub. In a signed-in pilot, run the real governed-evidence slice at `/vantage/coverage`; label the dealroom, red-flag, and memo routes as planned. | `16 Vantage Deal Room Final`, `23 Launch Route Update V0.6`, V0.7 frame `162:2` |
 | Nucleus | Show the protected engagement-room hub through `/nucleus`; label tenant deployment and client portal publishing as planned. | `17 Nucleus Engagement Room`, `19 Nucleus Rebuilt`, `23 Launch Route Update V0.6` |
 
 ## Current External Gate
@@ -77,7 +80,7 @@ Use these apex routes for immediate demos:
 
 ## Visual Verification
 
-Screenshots were generated and inspected for all nine frames after creation or update.
+Screenshots were generated and inspected for all ten frames after creation or update.
 
 The only defect found was a title/subtitle overlap in `Launch Cockpit / 03 Final Screen QA Matrix / 1440`; it was fixed by shortening the title to `Final UI makes action, trust, and human control obvious`, then re-rendered cleanly.
 
@@ -93,10 +96,12 @@ The eighth frame initially showed overflow in the buyer-handoff route cards beca
 
 The ninth frame renders both Meridian Scope screens as equal, full-width browser surfaces. It makes the cold-start prerequisite, shared-record behaviour, field-level helper copy, visible consequence preview, specific CTA labels, and no-compliance-conclusion/no-filing boundary legible before implementation review.
 
+The tenth frame initially had a long status-card headline overlapping its proof line; it was shortened and re-rendered cleanly. It now shows the executable review controls, real-result anatomy, evidence-request distinction, and the human investment-authority boundary without clipping or overlap.
+
 ## Next Actions
 
 1. Use V0.7 as the first page for colleague design review.
 2. Complete the external DNS cutover gate before showing product subdomain URLs.
 3. Run signed-in NexusAI Ask -> draft decision -> approval smoke as the core demo proof.
-4. Run signed-in smoke for `/meridian`, `/meridian/scope`, `/meridian/license-profile`, `/vantage`, and `/nucleus`.
+4. Run signed-in smoke for `/meridian`, `/meridian/scope`, `/meridian/license-profile`, `/vantage`, `/vantage/coverage`, and `/nucleus`.
 5. Configure `PINAVIA_ADMIN_PRINCIPALS`, then run the staff invite -> accept -> redeem pilot smoke.
