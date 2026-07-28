@@ -10,6 +10,7 @@
 - The provider-specific guide is still complete, with official provider setup/docs links, redirect URI, environment, scope, and implementation limits. It is now progressively disclosed below the live/future catalogue so first-run action is clearer without hiding technical preparation.
 - Added screenshot-reviewed Figma V0.7 frame `Launch Cockpit / 14 Connector Evidence Intake / 1440` (`173:2`). Visual review caught and fixed the only header-wrap collision. Remaining live proof requires a signed-in pilot workspace and a controlled source; do not claim an install, policy save, or evidence ingestion outcome until it has been exercised.
 - Deployed through `96fcd8f`: GitHub CI completed successfully, `https://pinavia.io/settings/connectors` serves the new `Pilot evidence intake`, `Connect one controlled source`, and `Connector setup reference` copy, and `/api/health` remains `ok`.
+- Follow-up hardening moved the client catalogue to `components/connectors-page.tsx` and made `app/settings/connectors/page.tsx` a server wrapper with `requireWorkspaceId("/settings/connectors")`. This closes the mismatch where a signed-out visitor could see the catalogue shell before its API calls failed. Focused connector/authz tests, TypeScript, and the 178-route build passed locally; deploy and signed-out return-path smoke are next.
 
 ---
 
