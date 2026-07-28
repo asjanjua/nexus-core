@@ -98,6 +98,8 @@ The ninth frame renders both Meridian Scope screens as equal, full-width browser
 
 The tenth frame initially had a long status-card headline overlapping its proof line; it was shortened and re-rendered cleanly. It now shows the executable review controls, real-result anatomy, evidence-request distinction, and the human investment-authority boundary without clipping or overlap.
 
+The Vantage Coverage slice was deployed through `f357ace`. Live signed-out smoke confirms `/vantage/coverage` preserves `/vantage/coverage` as the Clerk return path, and the live health endpoint returned `ok=true`. The still-required evidence/run/result smoke needs a signed-in pilot workspace.
+
 ## Next Actions
 
 1. Use V0.7 as the first page for colleague design review.
