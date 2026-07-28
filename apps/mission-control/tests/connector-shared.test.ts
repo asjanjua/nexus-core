@@ -289,6 +289,24 @@ describe("connector ingest helpers", () => {
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
       )
     ).toBe(0.85);
+    expect(
+      estimateExtractionConfidence("application/vnd.ms-excel", "google-drive")
+    ).toBe(0.6);
+    expect(
+      estimateExtractionConfidence(
+        "application/vnd.ms-powerpoint",
+        "google-drive"
+      )
+    ).toBe(0.6);
+    expect(
+      estimateExtractionConfidence("application/vnd.ms-excel", "sharepoint")
+    ).toBe(0.85);
+    expect(
+      estimateExtractionConfidence(
+        "application/vnd.ms-powerpoint",
+        "sharepoint"
+      )
+    ).toBe(0.85);
     expect(estimateExtractionConfidence("image/png")).toBe(0.6);
   });
 });

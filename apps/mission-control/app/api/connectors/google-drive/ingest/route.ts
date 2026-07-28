@@ -89,7 +89,8 @@ export async function POST(request: Request) {
   const text = decodeDownloadedText(buffer);
 
   const extractionConfidence = estimateExtractionConfidence(
-    download.contentType
+    download.contentType,
+    "google-drive"
   );
 
   const connectorInstanceId = connector.id;

@@ -63,7 +63,12 @@ export function decodeDownloadedText(buffer: Buffer): string {
   }
 }
 
-export function estimateExtractionConfidence(contentType: string): number {
+export type ExtractionConfidenceProvider = "google-drive" | "sharepoint";
+
+export function estimateExtractionConfidence(
+  contentType: string,
+  provider?: ExtractionConfidenceProvider
+): number {
   if (
     contentType.includes("text/plain") ||
     contentType.includes("text/markdown")
@@ -74,9 +79,16 @@ export function estimateExtractionConfidence(contentType: string): number {
   if (
     contentType.includes("application/pdf") ||
     contentType.includes("application/vnd.openxmlformats") ||
-    contentType.includes("application/msword") ||
-    contentType.includes("application/vnd.ms-excel") ||
-    contentType.includes("application/vnd.ms-powerpoint")
+    contentType.includes("application/msword")
+  ) {
+    return 0.85;
+  }
+  // Preserve provider-specific approval behavior. SharePoint historically
+  // auto-cleared legacy Office types; Drive kept them in human review.
+  if (
+    provider === "sharepoint" &&
+    (contentType.includes("application/vnd.ms-excel") ||
+      contentType.includes("application/vnd.ms-powerpoint"))
   ) {
     return 0.85;
   }
