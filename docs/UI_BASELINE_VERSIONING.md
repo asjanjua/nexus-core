@@ -61,7 +61,7 @@ Status values:
 
 ### V0.7 Change Note — 2026-07-28
 
-The V0.7 cockpit now contains eleven 1440x900 desktop-browser frames. `Launch Cockpit / 11 Nucleus Firm Profile / 1440` (`164:2`) maps the code-backed `/nucleus/profile` route: a constrained firm brand layer (name, logo URL, accent, typeface) and an adjacent contract panel that keeps provenance, status semantics, approval boundaries, audit labels, and consequence previews fixed. `5e8e7d1` is live: focused tests, TypeScript, production build, signed-out Clerk return-path smoke, and `/api/health` pass. A signed-in safe brand save/reload remains pending.
+The V0.7 cockpit now contains thirteen 1440x900 desktop-browser frames. `Launch Cockpit / 11 Nucleus Firm Profile / 1440` (`164:2`) maps the code-backed `/nucleus/profile` route: a constrained firm brand layer (name, logo URL, accent, typeface) and an adjacent contract panel that keeps provenance, status semantics, approval boundaries, audit labels, and consequence previews fixed. `5e8e7d1` is live: focused tests, TypeScript, production build, signed-out Clerk return-path smoke, and `/api/health` pass. A signed-in safe brand save/reload remains pending. Frames `167:2` and `167:57` now put the code-backed NexusAI and Quorum core pilot loops on the same editable launch board, closing the surface-coverage gap for colleague review.
 
 ## How To Preserve V0.1
 

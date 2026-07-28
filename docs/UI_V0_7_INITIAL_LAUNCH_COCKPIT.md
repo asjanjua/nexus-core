@@ -27,6 +27,8 @@ Frames:
 | `Launch Cockpit / 09 Meridian Scope Arc / 1440` | `160:2` | Code-backed Meridian entry arc: a regulatory-scope screen followed by a licence-profile screen, one shared persisted record, explicit cold-start gate, consequence preview, and human filing boundary. |
 | `Launch Cockpit / 10 Vantage Coverage Review / 1440` | `162:2` | Code-backed Vantage Coverage screen: supported checklist selection, governed-evidence runner, coverage/gap output, named evidence requests, and the investment-decision boundary. |
 | `Launch Cockpit / 11 Nucleus Firm Profile / 1440` | `164:2` | Code-backed Nucleus profile: firm name, logo URL, accent, and typeface persist through the guarded workspace settings route; protected trust controls sit outside the editable brand layer. |
+| `Launch Cockpit / 12 NexusAI Governed Ask / 1440` | `167:2` | Code-backed NexusAI core loop: workspace-scoped Ask, evidence strip, AI-drafted answer, confidence/freshness, and the explicit human decision-draft handoff. |
+| `Launch Cockpit / 13 Quorum Board Action Loop / 1440` | `167:57` | Code-backed Quorum board loop: stable board identifier, governed baseline, between-meetings delta, cited board status, and a director-owned decision boundary. |
 
 ## Why V0.7 Exists
 
@@ -54,13 +56,15 @@ The tenth frame records the first executable Vantage deep route. `/vantage/cover
 
 The eleventh frame records the first executable Nucleus deep route. `/nucleus/profile` writes the existing constrained white-label record through the guarded workspace settings API. Editable inputs stay narrow: firm name, logo URL, accent, and typeface. Status meaning, AI provenance, evidence citations, named human approval boundaries, audit labels, and consequence previews remain fixed in the adjacent contract panel.
 
+The twelfth frame makes the core NexusAI pilot story executable and inspectable: Ask is restricted to approved workspace evidence, evidence appears before the answer, the AI-drafted answer remains visibly distinct, and the only consequential next action is a human-owned decision draft. The thirteenth frame does the same for Quorum: board-pack evidence becomes a stable baseline, later packs produce a reviewable delta, and directors retain authority over every board action.
+
 ## Launch Truth Captured
 
 | Surface | Current route/demo stance | Design source |
 |---|---|---|
 | Pinavia | Show now from `https://pinavia.io`; use `/readiness` for free self-assessment, `/diagnostic` for evidence-tested review intake, `/start-pilot` as the governed pilot intake page, and `/product-brief` as the shareable product-family brief. | `00 Executive Landing`, `21 Commercial Pilot Loop V0.4`, V0.7 frames `135:2`, `141:2`, `143:2`, `145:2` |
-| NexusAI | Show as the core execution room; use Ask -> draft decision -> approval as the main demo beat. | `13 NexusAI Executive Room Final`, V0.2 full desktop prototype |
-| Quorum | Show the board lifecycle and governance roadmap through `/board`. | `14 Quorum Board Room Final`, `09 Quorum Governance Workflow V0.2` |
+| NexusAI | Show the core execution room; use Ask -> evidence strip -> AI answer -> decision draft -> approval as the main demo beat. | `13 NexusAI Executive Room Final`, V0.2 full desktop prototype, V0.7 frame `167:2` |
+| Quorum | Show `/board` as the code-backed between-meetings loop: establish a stable baseline, then review material changes and route them to human-owned decisions. | `14 Quorum Board Room Final`, `09 Quorum Governance Workflow V0.2`, V0.7 frame `167:57` |
 | Meridian | Show `/meridian` as the submission hub. In a signed-in pilot, begin the real scope arc at `/meridian/scope`, then `/meridian/license-profile`. | `15 Meridian Submission Room Final`, `21 Commercial Pilot Loop V0.4`, V0.7 frame `160:2` |
 | Vantage | Show `/vantage` as the deal-room hub. In a signed-in pilot, run the real governed-evidence slice at `/vantage/coverage`; label the dealroom, red-flag, and memo routes as planned. | `16 Vantage Deal Room Final`, `23 Launch Route Update V0.6`, V0.7 frame `162:2` |
 | Nucleus | Show `/nucleus` as the engagement-room hub. In a signed-in pilot, set the real constrained firm brand at `/nucleus/profile`; label methodology packaging, client portal publishing, and tenant rollout as planned. | `17 Nucleus Engagement Room`, `19 Nucleus Rebuilt`, `23 Launch Route Update V0.6`, V0.7 frame `164:2` |
@@ -83,7 +87,7 @@ Use these apex routes for immediate demos:
 
 ## Visual Verification
 
-Screenshots were generated and inspected for all eleven frames after creation or update.
+Screenshots were generated and inspected for all thirteen frames after creation or update.
 
 The only defect found was a title/subtitle overlap in `Launch Cockpit / 03 Final Screen QA Matrix / 1440`; it was fixed by shortening the title to `Final UI makes action, trust, and human control obvious`, then re-rendered cleanly.
 
@@ -102,6 +106,8 @@ The ninth frame renders both Meridian Scope screens as equal, full-width browser
 The tenth frame initially had a long status-card headline overlapping its proof line; it was shortened and re-rendered cleanly. It now shows the executable review controls, real-result anatomy, evidence-request distinction, and the human investment-authority boundary without clipping or overlap.
 
 The eleventh frame was re-rendered after heading and saved-state spacing corrections. It shows both the real brand inputs and a separate contractually-fixed trust panel without overlap.
+
+The twelfth and thirteenth frames initially exposed header/subtitle overlap. Both were re-rendered after a shared header rhythm correction; the Quorum status card was also shortened so its authority boundary remains readable at desktop review size.
 
 The Vantage Coverage slice was deployed through `f357ace`. Live signed-out smoke confirms `/vantage/coverage` preserves `/vantage/coverage` as the Clerk return path, and the live health endpoint returned `ok=true`. The still-required evidence/run/result smoke needs a signed-in pilot workspace.
 

@@ -78,6 +78,8 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 
 **Nucleus Firm Profile (2026-07-28):** `/nucleus/profile` is the first executable Nucleus deep route. It persists firm name, logo URL, accent colour, and typeface through the existing white-label workspace record and guarded settings API, while separately naming fixed trust controls. Figma V0.7 frame `Launch Cockpit / 11 Nucleus Firm Profile / 1440` (`164:2`) is screenshot-verified. `5e8e7d1` is live: signed-out apex smoke returns `307` to `/sign-in?redirect_url=%2Fnucleus%2Fprofile` and `/api/health` is healthy. A safe signed-in save/reload proof remains required.
 
+**Core Pilot Walkthrough Screens (2026-07-28):** V0.7 now includes `Launch Cockpit / 12 NexusAI Governed Ask / 1440` (`167:2`) and `Launch Cockpit / 13 Quorum Board Action Loop / 1440` (`167:57`). These screenshot-verified desktop screens close the launch-cockpit coverage gap for the core Ask -> decision -> approval path and Quorum's stable-board-baseline -> delta -> director-review path. Both preserve visible human authority boundaries.
+
 **Product Domain DNS Cutover (2026-07-26):** `docs/PRODUCT_DOMAIN_DNS_CUTOVER_2026-07-26.md` records the current external blocker: `app.pinavia.io` redirects to `app.pinavia.co`, and `nexus`, `quorum`, `meridian`, `vantage`, and `nucleus.pinavia.io` do not resolve yet. Use apex routes for Vantage/Nucleus demos until Cloudflare DNS, Render custom domains, Clerk redirect/origin settings, and per-domain smoke pass.
 
 **Priority order (updated 2026-07-10):**

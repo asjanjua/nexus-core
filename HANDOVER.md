@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-07-28 — Core Pilot Walkthrough Screens
+
+- Expanded `24 Initial Launch Cockpit V0.7` in Figma with two screenshot-verified desktop frames: `167:2` for the code-backed NexusAI Ask -> evidence -> AI answer -> draft-decision -> named-approval loop, and `167:57` for the code-backed Quorum stable-baseline -> board-delta -> director-review loop.
+- Both frames use the same visible authority discipline as Meridian, Vantage, and Nucleus. NexusAI does not convert an answer into a decision; Quorum does not approve, send, sign, or file board action.
+- Visual review caught title/subtitle overlap on both frames and an overlong Quorum status-card headline. All were corrected and re-rendered cleanly. No runtime code changed in this Figma/documentation pass.
+
+---
+
 ## 2026-07-28 — Nucleus Firm Profile Launch Slice
 
 - Added protected `/nucleus/profile` with `components/nucleus-firm-profile.tsx`, the first executable Nucleus deep route. It reads and writes the existing `whiteLabelBrand` workspace record through `GET/PATCH /api/settings/workspace` and captures only firm name, secure logo URL, accent colour, and typeface.

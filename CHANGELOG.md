@@ -4,6 +4,8 @@
 
 ## Unreleased — Initial Launch Cockpit V0.7 (2026-07-26)
 
+- Added two V0.7 cockpit screens that make the remaining live pilot stories directly reviewable: `Launch Cockpit / 12 NexusAI Governed Ask / 1440` (`167:2`) maps evidence-first Ask to the human decision draft, while `Launch Cockpit / 13 Quorum Board Action Loop / 1440` (`167:57`) maps board pack to governed baseline, delta brief, director review, and human-owned decision. Both were screenshot-verified after overlap corrections.
+
 - Added the eleventh V0.7 Figma frame, `Launch Cockpit / 11 Nucleus Firm Profile / 1440` (`164:2`), and the protected `/nucleus/profile` workflow. Managing partners can persist firm name, logo URL, accent, and typeface through the guarded workspace settings API; provenance, status meaning, approval boundaries, audit labels, and consequence previews remain fixed by contract.
 - Deployed the Nucleus Firm Profile slice through `5e8e7d1`; live signed-out smoke confirms the exact Clerk return path for `/nucleus/profile`, and `https://pinavia.io/api/health` remains healthy. A signed-in save/reload smoke is the remaining pilot proof.
 
