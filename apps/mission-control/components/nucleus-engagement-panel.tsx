@@ -229,8 +229,8 @@ export function NucleusEngagementPanel() {
       </section>
 
       <section className="flex flex-wrap items-center gap-3">
-        <Link href="/start-pilot" className="btn-primary px-5 py-3" prefetch={false}>
-          Scope white-label pilot
+        <Link href="/nucleus/profile" className="btn-primary px-5 py-3" prefetch={false}>
+          Set firm brand
         </Link>
         <span className="text-xs text-white/40">
           {nucleusEngagementScreens.length} screens defined across {nucleusEngagementStages.length} stages in the Nucleus registry.

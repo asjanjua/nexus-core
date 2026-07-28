@@ -102,4 +102,31 @@ describe("settings workspace authz", () => {
     const patchArg = vi.mocked(repository.updateWorkspaceSettings).mock.calls[0][1] as Record<string, unknown>;
     expect(patchArg.workspaceId).toBeUndefined();
   });
+
+  it("PATCH accepts a validated Nucleus brand-layer override", async () => {
+    const { PATCH } = await import("@/app/api/settings/workspace/route");
+    await PATCH(
+      new Request("http://localhost/api/settings/workspace", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          whiteLabelBrand: {
+            logoUrl: "https://firm.example/logo.svg",
+            accentColor: "#9AA6B8",
+            fontFamily: "Georgia",
+          },
+        }),
+      })
+    );
+    expect(repository.updateWorkspaceSettings).toHaveBeenCalledWith(
+      "workspace-alice",
+      expect.objectContaining({
+        whiteLabelBrand: {
+          logoUrl: "https://firm.example/logo.svg",
+          accentColor: "#9AA6B8",
+          fontFamily: "Georgia",
+        },
+      })
+    );
+  });
 });

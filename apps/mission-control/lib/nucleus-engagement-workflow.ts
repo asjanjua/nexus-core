@@ -58,7 +58,7 @@ export const nucleusEngagementScreens: NucleusEngagementScreen[] = [
     purpose:
       "Capture the partner firm's identity, logo, accent, typography, practice model, and non-negotiable trust constraints.",
     primaryUser: "Managing partner",
-    routeCandidate: "/nucleus/setup",
+    routeCandidate: "/nucleus/profile",
     engagementObjects: ["Firm profile", "Brand layer", "Practice model", "Trust contract"],
   },
   {

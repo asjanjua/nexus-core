@@ -5,7 +5,7 @@
  */
 import { z } from "zod";
 import { fail, ok } from "@/lib/api";
-import { sensitivitySchema } from "@/lib/contracts";
+import { sensitivitySchema, whiteLabelBrandSchema } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
 import { requireScope } from "@/lib/api-auth";
 
@@ -22,7 +22,8 @@ const patchSchema = z.object({
   localOnlyMode: z.boolean().optional(),
   sensitivityCeiling: sensitivitySchema.optional(),
   approvalRequiredThreshold: z.number().min(0).max(1).optional(),
-  demoMode: z.boolean().optional()
+  demoMode: z.boolean().optional(),
+  whiteLabelBrand: whiteLabelBrandSchema.nullable().optional()
 });
 
 export async function GET(request: Request) {

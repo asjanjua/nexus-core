@@ -4,6 +4,16 @@
 
 ---
 
+## 2026-07-28 — Nucleus Firm Profile Launch Slice
+
+- Added protected `/nucleus/profile` with `components/nucleus-firm-profile.tsx`, the first executable Nucleus deep route. It reads and writes the existing `whiteLabelBrand` workspace record through `GET/PATCH /api/settings/workspace` and captures only firm name, secure logo URL, accent colour, and typeface.
+- Extended the guarded settings PATCH schema to validate the existing `whiteLabelBrand` contract. Repository persistence, database schema/migration, and unit coverage already existed; this closes the API-to-user-interface gap without widening workspace ownership or trust semantics.
+- Updated the Nucleus hub CTA and registry route candidate to `/nucleus/profile`. The form has loading, error, save, and confirmation states, explicit `InfoHint` context, and a separate contract panel for controls a partner cannot re-skin.
+- Added Figma V0.7 frame `Launch Cockpit / 11 Nucleus Firm Profile / 1440` (`164:2`) in `Nexus System`. It was screenshot-reviewed after spacing corrections.
+- Local verification passed: workspace settings/white-label focused Vitest (21 assertions), TypeScript, `git diff --check`, and the 178-route production build. The next external proof is Render deployment, then a signed-in save/reload using a safe test brand. Do not claim that save/reload proof until it is completed.
+
+---
+
 ## 2026-07-28 — Vantage Coverage Review Launch Slice
 
 - Added protected `/vantage/coverage` with `components/vantage-coverage-review.tsx`. It is the first executable Vantage deep route: deal manager selects `fintech_ma` or `generic_ma`, optionally enters a review reference, then runs the existing `vantage_diligence_analysis` endpoint against processed governed workspace evidence.

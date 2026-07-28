@@ -59,6 +59,10 @@ Status values:
 - `superseded`
 - `archived`
 
+### V0.7 Change Note — 2026-07-28
+
+The V0.7 cockpit now contains eleven 1440x900 desktop-browser frames. `Launch Cockpit / 11 Nucleus Firm Profile / 1440` (`164:2`) maps the code-backed `/nucleus/profile` route: a constrained firm brand layer (name, logo URL, accent, typeface) and an adjacent contract panel that keeps provenance, status semantics, approval boundaries, audit labels, and consequence previews fixed. The local candidate has passed focused settings/white-label tests, TypeScript, and the production build; Render deployment and a signed-in save/reload smoke are still pending.
+
 ## How To Preserve V0.1
 
 1. Identify the git commit that best represents the V0.1 room-based UI on the current architecture.
