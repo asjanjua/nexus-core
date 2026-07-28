@@ -939,12 +939,14 @@ export const store = {
     inviteCodeHash: string,
     clerkUserId: string,
     verifiedEmails: readonly string[],
-    now = new Date()
+    now = new Date(),
+    workspaceId?: string
   ): ReviewerSeat | null {
     const normalizedEmails = new Set(verifiedEmails.map((email) => email.trim().toLowerCase()));
     for (const seat of reviewerSeatStore.values()) {
       if (
         seat.inviteCodeHash === inviteCodeHash &&
+        (workspaceId === undefined || seat.workspaceId === workspaceId) &&
         seat.status === "invited" &&
         new Date(seat.expiresAt) > now &&
         normalizedEmails.has(seat.email.trim().toLowerCase())

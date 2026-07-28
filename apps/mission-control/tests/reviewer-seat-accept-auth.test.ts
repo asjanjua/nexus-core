@@ -65,10 +65,13 @@ describe("reviewer invite acceptance", () => {
     const response = await POST(request());
 
     expect(response.status).toBe(200);
+    // The fourth argument is the caller's own workspace: the seat lookup is
+    // bound to it so a leaked code cannot redeem a seat in another tenant.
     expect(mocks.acceptReviewerSeat).toHaveBeenCalledWith(
       inviteHash,
       "user_reviewer",
       ["reviewer@pinavia.io"],
+      "org_demo",
     );
   });
 

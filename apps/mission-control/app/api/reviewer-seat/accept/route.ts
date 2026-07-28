@@ -49,7 +49,12 @@ export async function POST(request: Request) {
   if (verifiedEmails.length === 0) return fail("reviewer_email_unverified", 403);
 
   const inviteCodeHash = createHash("sha256").update(parsed.data.inviteCode).digest("hex");
-  const seat = await repository.acceptReviewerSeat(inviteCodeHash, auth.userId, verifiedEmails);
+  const seat = await repository.acceptReviewerSeat(
+    inviteCodeHash,
+    auth.userId,
+    verifiedEmails,
+    auth.workspaceId
+  );
   if (!seat) return fail("invite_invalid_expired_or_email_mismatch", 404);
 
   // Reflect the identity-bound reviewer on the seat's workspace profile.

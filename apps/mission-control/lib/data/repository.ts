@@ -4287,7 +4287,8 @@ export const repository = {
   async acceptReviewerSeat(
     inviteCodeHash: string,
     clerkUserId: string,
-    verifiedEmails: readonly string[]
+    verifiedEmails: readonly string[],
+    workspaceId: string
   ): Promise<ReviewerSeat | null> {
     const normalizedEmails = [...new Set(verifiedEmails.map((email) => email.trim().toLowerCase()).filter(Boolean))];
     if (normalizedEmails.length === 0) return null;
@@ -4299,6 +4300,12 @@ export const repository = {
         .where(
           and(
             eq(reviewerSeats.inviteCodeHash, inviteCodeHash),
+            // The seat must belong to the caller's own workspace. Without this
+            // the lookup was code + email only, so a leaked invite plus a
+            // matching verified address let a member of an unrelated Clerk org
+            // redeem a seat in someone else's tenant — and the caller then
+            // writes that tenant's strategy profile.
+            eq(reviewerSeats.workspaceId, workspaceId),
             eq(reviewerSeats.status, "invited"),
             gt(reviewerSeats.expiresAt, now),
             inArray(reviewerSeats.email, normalizedEmails)
@@ -4306,7 +4313,7 @@ export const repository = {
         )
         .returning()
     );
-    if (rows === null) return store.acceptReviewerSeat(inviteCodeHash, clerkUserId, normalizedEmails, now);
+    if (rows === null) return store.acceptReviewerSeat(inviteCodeHash, clerkUserId, normalizedEmails, now, workspaceId);
     if (rows.length === 0) return null;
     return mapReviewerSeatRow(rows[0]);
   },
