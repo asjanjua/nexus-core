@@ -16,6 +16,7 @@ import crypto from "crypto";
 import { repository } from "@/lib/data/repository";
 import { ask } from "@/lib/services/llm";
 import { buildCompanyContext } from "@/lib/domain/sector-library";
+import { captureHandledError } from "@/lib/observability/sentry";
 
 // ---------------------------------------------------------------------------
 // Prompt
@@ -96,8 +97,13 @@ export async function generateRecommendations(workspaceId: string): Promise<void
         route: "recommendations_draft",
         surfaceId: "recommendation_draft"
       });
-    } catch {
-      return; // LLM unavailable — fail silently
+    } catch (error) {
+      captureHandledError(error, {
+        route: "lib/services/recommendations",
+        errorType: "recommendation_llm_failed",
+        workspaceId,
+      });
+      return;
     }
 
     if (!raw || !raw.trim()) return;
@@ -119,8 +125,13 @@ export async function generateRecommendations(workspaceId: string): Promise<void
     try {
       parsed = JSON.parse(cleaned);
       if (!Array.isArray(parsed)) return;
-    } catch {
-      return; // Malformed JSON — fail silently
+    } catch (error) {
+      captureHandledError(error, {
+        route: "lib/services/recommendations",
+        errorType: "recommendation_response_unparseable",
+        workspaceId,
+      });
+      return;
     }
 
     const existingTitles = new Set(existing.map((r) => r.title.toLowerCase()));
@@ -152,7 +163,12 @@ export async function generateRecommendations(workspaceId: string): Promise<void
 
       existingTitles.add(item.title.toLowerCase()); // prevent intra-batch duplicates
     }
-  } catch {
-    // Never propagate — caller uses fire-and-forget
+  } catch (error) {
+    // Never propagate — every caller is fire-and-forget — but leave a trace.
+    captureHandledError(error, {
+      route: "lib/services/recommendations",
+      errorType: "recommendation_generation_failed",
+      workspaceId,
+    });
   }
 }

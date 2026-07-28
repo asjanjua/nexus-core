@@ -170,6 +170,7 @@ describe("getValidConnectorAuth", () => {
   });
 
   it("returns null when the refresh call fails", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     getConnectorCredentials.mockResolvedValue({
       accessToken: "stale-token",
       refreshToken: "refresh-token",
@@ -185,6 +186,10 @@ describe("getValidConnectorAuth", () => {
         refreshAccessToken,
       })
     ).resolves.toBeNull();
+    expect(errorSpy).toHaveBeenCalledWith(
+      expect.stringContaining("connector_token_refresh_failed")
+    );
+    errorSpy.mockRestore();
   });
 
   it("returns null when a required credential field is missing", async () => {

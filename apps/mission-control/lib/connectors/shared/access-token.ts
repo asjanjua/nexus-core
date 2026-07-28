@@ -10,6 +10,7 @@
  */
 
 import { repository, type ConnectorRecord } from "@/lib/data/repository";
+import { captureHandledError } from "@/lib/observability/sentry";
 
 export type RefreshedTokens = {
   access_token: string;
@@ -113,7 +114,16 @@ export async function getValidConnectorAuth<
         },
       });
       return auth(newTokens.access_token);
-    } catch {
+    } catch (error) {
+      // Callers intentionally receive null so they can return a safe
+      // connector-not-active response; preserve that fallback while making
+      // refresh failures observable.
+      captureHandledError(error, {
+        route: "connectors.shared.getValidConnectorAuth",
+        errorType: "connector_token_refresh_failed",
+        workspaceId,
+        extra: { connectorType: type },
+      });
       return null;
     }
   }
