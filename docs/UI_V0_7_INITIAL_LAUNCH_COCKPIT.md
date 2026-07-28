@@ -12,6 +12,8 @@ Page: `24 Initial Launch Cockpit V0.7`
 
 Page link: `https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=129-6`
 
+Release audit: `docs/INITIAL_LAUNCH_UI_RELEASE_AUDIT.md`.
+
 Frames:
 
 | Frame | Node | Purpose |
