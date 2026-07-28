@@ -157,6 +157,8 @@ const BANDS: Band[] = [
       "Your organisation has the baseline capability to run a successful Pinavia pilot, but the scope needs to be disciplined. Start with a single workflow where the data is clean, the owner is motivated, and the outcome is measurable. A 90-day pilot scoped correctly should produce clear evidence of value and set the foundations for broader deployment.",
     cta: "Start a focused pilot",
     ctaHref: "/start-pilot",
+    ctaSecondary: "Or test it against your evidence first",
+    ctaSecondaryHref: "/diagnostic",
   },
   {
     label: "Advanced",
@@ -169,6 +171,8 @@ const BANDS: Band[] = [
       "Your organisation has the data governance, workflow maturity, and decision velocity to absorb governed AI execution and act on it. A pilot can start with one product room while keeping a path open to more than one function. The focus should be which workflow gets immediate value and which evidence sources to prioritize first.",
     cta: "Start pilot intake",
     ctaHref: "/start-pilot",
+    ctaSecondary: "Or test it against your evidence first",
+    ctaSecondaryHref: "/diagnostic",
   },
   {
     label: "AI-Native",
@@ -181,6 +185,8 @@ const BANDS: Band[] = [
       "Your organisation has the governance maturity, data infrastructure, and decision velocity to get maximum value from Pinavia. The opportunity is not a generic tool trial; it is a governed deployment path with learning loops, agent orchestration, shadow-mode ROI measurement, and named human authority.",
     cta: "Start governed deployment path",
     ctaHref: "/start-pilot",
+    ctaSecondary: "Or test it against your evidence first",
+    ctaSecondaryHref: "/diagnostic",
   },
 ];
 

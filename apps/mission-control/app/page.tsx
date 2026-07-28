@@ -901,8 +901,12 @@ export default function HomePage() {
               <Link href="/start-pilot" className="btn-primary px-5 py-3" prefetch={false}>
                 Start pilot
               </Link>
+              {/* Rung one of the ladder: the free self-assessment. Named for
+                  what it is — "Run the diagnostic" previously pointed here,
+                  which collided with the paid /diagnostic offer and made the
+                  two rungs indistinguishable. */}
               <Link href="/readiness" className="btn-subtle px-5 py-3" prefetch={false}>
-                Run the diagnostic
+                Check your readiness
               </Link>
               <Link href="/workspace" className="btn-subtle px-5 py-3" prefetch={false}>
                 Enter NexusAI
@@ -943,10 +947,27 @@ export default function HomePage() {
                 We map your evidence, configure the room, and prove the loop from Ask to approval
                 before expanding across the product family.
               </p>
+              {/* The ladder, stated once so a visitor knows which rung to take.
+                  /diagnostic had no inbound link from this page at all, which
+                  left the paid offer reachable only by typing the URL. */}
+              <ol className="mt-5 flex flex-wrap items-center gap-x-2 gap-y-2 text-xs text-white/45">
+                <li className="rounded-md border border-white/15 px-2.5 py-1">
+                  1. Check your readiness — free, 5 minutes
+                </li>
+                <li aria-hidden className="text-white/25">→</li>
+                <li className="rounded-md border border-nexus-accent/30 bg-nexus-accent/5 px-2.5 py-1 text-nexus-accent">
+                  2. Evidence-tested diagnostic — fixed scope
+                </li>
+                <li aria-hidden className="text-white/25">→</li>
+                <li className="rounded-md border border-white/15 px-2.5 py-1">3. Pilot one workflow</li>
+              </ol>
             </div>
             <div className="flex flex-wrap gap-3">
               <Link href="/start-pilot" className="btn-primary px-5 py-3" prefetch={false}>
                 Start pilot
+              </Link>
+              <Link href="/diagnostic" className="btn-subtle px-5 py-3" prefetch={false}>
+                See the diagnostic
               </Link>
               <a href="mailto:hello@pinavia.io" className="btn-subtle px-5 py-3">
                 Contact
