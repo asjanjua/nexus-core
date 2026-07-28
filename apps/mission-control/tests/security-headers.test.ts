@@ -8,7 +8,7 @@
  * `withSecurityHeaders` helper used by the app header config.
  */
 
-import { describe, expect, it, beforeAll, afterAll, vi } from "vitest";
+import { describe, expect, it, afterEach, beforeAll, afterAll, vi } from "vitest";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import {
@@ -158,5 +158,53 @@ describe("Security headers", () => {
       expect(res.headers.get("access-control-allow-origin")).toBe("https://app.pinavia.co");
       expect(res.headers.get("access-control-allow-methods")).toContain("POST");
     });
+  });
+});
+
+/**
+ * The env-var path is the only path production uses: `cspDirectives(nonce)` is
+ * called with no config from `securityHeaderEntries` and `middleware.ts`. The
+ * existing cases all pass an explicit config, so the branch that actually
+ * shipped had no coverage and the regression could recur silently.
+ */
+describe("clerkCspHosts from environment", () => {
+  const original = { ...process.env };
+
+  afterEach(() => {
+    process.env = { ...original };
+  });
+
+  it("falls back to the default when NEXT_PUBLIC_CLERK_DOMAIN is an empty string", () => {
+    process.env.NEXT_PUBLIC_CLERK_DOMAIN = "";
+    delete process.env.NEXT_PUBLIC_CLERK_HOSTED_SIGN_IN_URL;
+    delete process.env.NEXT_PUBLIC_CLERK_HOSTED_SIGN_UP_URL;
+
+    // A blank Render field must never empty the allowlist.
+    expect(clerkCspHosts()).toContain("clerk.accounts.dev");
+  });
+
+  it("falls back on a single-slash typo instead of allowlisting garbage", () => {
+    // Does not throw: no "://", so it gets the prefix and parses to hostname
+    // "https", which would silently enter the policy as a dead entry.
+    process.env.NEXT_PUBLIC_CLERK_DOMAIN = "https:/clerk.pinavia.io";
+    const hosts = clerkCspHosts();
+    expect(hosts).toContain("clerk.accounts.dev");
+    expect(hosts).not.toContain("https");
+  });
+
+  it("reads both custom hosts from the environment", () => {
+    process.env.NEXT_PUBLIC_CLERK_DOMAIN = "clerk.pinavia.io";
+    process.env.NEXT_PUBLIC_CLERK_HOSTED_SIGN_IN_URL = "https://accounts.pinavia.io/sign-in";
+    delete process.env.NEXT_PUBLIC_CLERK_HOSTED_SIGN_UP_URL;
+
+    const hosts = clerkCspHosts();
+    expect(hosts).toContain("clerk.pinavia.io");
+    expect(hosts).toContain("accounts.pinavia.io");
+  });
+
+  it("preserves a non-default port so the entry can actually match", () => {
+    expect(clerkCspHosts({ hostedSignInUrl: "https://accounts.pinavia.io:8443/sign-in" })).toContain(
+      "accounts.pinavia.io:8443"
+    );
   });
 });

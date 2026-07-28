@@ -40,12 +40,35 @@ export type RateLimitResult = {
 export function rateLimit(key: string, limit: number, windowMs: number): RateLimitResult {
   const now = Date.now();
 
-  if (buckets.size > MAX_TRACKED_KEYS) sweepExpired(now);
+  if (buckets.size > MAX_TRACKED_KEYS) {
+    sweepExpired(now);
+    // The sweep only reclaims CLOSED windows. If a burst creates more live keys
+    // than the cap inside one window there is nothing to reclaim, so the sweep
+    // frees nothing and every subsequent request pays a full O(n) scan. Evict
+    // oldest-first to restore the bound. Map preserves insertion order, so the
+    // head is the least recently created bucket.
+    if (buckets.size > MAX_TRACKED_KEYS) {
+      const excess = buckets.size - MAX_TRACKED_KEYS;
+      let removed = 0;
+      for (const key of buckets.keys()) {
+        buckets.delete(key);
+        if (++removed >= excess) break;
+      }
+    }
+  }
 
   const bucket = buckets.get(key);
   if (!bucket || bucket.resetAt <= now) {
     buckets.set(key, { count: 1, resetAt: now + windowMs });
     return { allowed: true, retryAfter: 0 };
+  }
+
+  // Stop counting once over the limit. A flood previously drove `count` far
+  // past `limit` for the rest of the window, which is harmless for the `>`
+  // check but makes the counter useless for metrics and would misbehave if
+  // anything later keyed backoff on it.
+  if (bucket.count > limit) {
+    return { allowed: false, retryAfter: Math.ceil((bucket.resetAt - now) / 1000) };
   }
 
   bucket.count += 1;

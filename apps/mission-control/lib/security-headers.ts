@@ -21,12 +21,26 @@ type ClerkCspConfig = {
   hostedSignUpUrl?: string;
 };
 
+/**
+ * Host (with port when non-default) from a URL or bare hostname.
+ *
+ * A CSP host-source without a port means the scheme's default port, so dropping
+ * a non-443 port produces an allowlist entry that can never match — and the
+ * failure is invisible, appearing only as a console violation.
+ */
 function hostnameFromUrl(value: string | undefined): string | null {
-  if (!value) return null;
+  const trimmed = value?.trim();
+  if (!trimmed) return null;
 
   try {
-    const url = new URL(value.includes("://") ? value : `https://${value}`);
-    return url.protocol === "https:" ? url.hostname : null;
+    const url = new URL(trimmed.includes("://") ? trimmed : `https://${trimmed}`);
+    if (url.protocol !== "https:") return null;
+    // A single-slash typo (`https:/clerk.pinavia.io`) does not throw: it has no
+    // "://", gets the prefix, and parses to the hostname "https". Requiring a
+    // dot rejects that and every similar typo, so a misconfiguration falls back
+    // to a working default instead of allowlisting a host that cannot exist.
+    if (!url.hostname.includes(".") && url.hostname !== "localhost") return null;
+    return url.port ? `${url.hostname}:${url.port}` : url.hostname;
   } catch {
     return null;
   }
@@ -34,14 +48,26 @@ function hostnameFromUrl(value: string | undefined): string | null {
 
 /** Clerk's browser SDK and hosted auth can use distinct custom domains. */
 export function clerkCspHosts(config: ClerkCspConfig = {}): string[] {
+  // `??` only catches undefined/null. An env var set to "" — what an operator
+  // gets from a blank Render field or a bare `NEXT_PUBLIC_CLERK_DOMAIN=` line —
+  // is a defined empty string, so the default never applied and EVERY Clerk
+  // host dropped out of the allowlist. Auth then breaks with nothing but a
+  // console violation to show for it. Normalise with `||`, and fall back after
+  // parsing as well so a malformed value (`https:/clerk.pinavia.io`) still
+  // yields a usable policy instead of an empty one.
+  const frontend =
+    config.frontendDomain?.trim() || process.env.NEXT_PUBLIC_CLERK_DOMAIN?.trim() || "";
+
   return [
     ...new Set(
       [
+        hostnameFromUrl(frontend) ?? "clerk.accounts.dev",
         hostnameFromUrl(
-          config.frontendDomain ?? process.env.NEXT_PUBLIC_CLERK_DOMAIN ?? "clerk.accounts.dev"
+          config.hostedSignInUrl?.trim() || process.env.NEXT_PUBLIC_CLERK_HOSTED_SIGN_IN_URL
         ),
-        hostnameFromUrl(config.hostedSignInUrl ?? process.env.NEXT_PUBLIC_CLERK_HOSTED_SIGN_IN_URL),
-        hostnameFromUrl(config.hostedSignUpUrl ?? process.env.NEXT_PUBLIC_CLERK_HOSTED_SIGN_UP_URL),
+        hostnameFromUrl(
+          config.hostedSignUpUrl?.trim() || process.env.NEXT_PUBLIC_CLERK_HOSTED_SIGN_UP_URL
+        ),
       ].filter((host): host is string => Boolean(host))
     ),
   ];

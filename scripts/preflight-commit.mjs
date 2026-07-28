@@ -8,12 +8,25 @@ const MIN_TREE_RATIO = 0.8;
 const override = process.env.NEXUS_ALLOW_LARGE_COMMIT === "1";
 
 function git(args) {
-  return execFileSync("git", args, {
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
-    timeout: 15_000,
-    killSignal: "SIGTERM",
-  }).trim();
+  try {
+    return execFileSync("git", args, {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+      timeout: 15_000,
+      killSignal: "SIGTERM",
+    }).trim();
+  } catch (error) {
+    // The 15s timeout replaced a hang, but an uncaught ETIMEDOUT just swaps one
+    // opaque failure for another: the pre-commit hook runs under `set -eu`, so
+    // the commit aborts with a raw stack and no explanation. Fail the same way
+    // the whitespace check below does, with a readable reason.
+    const reason = error?.signal === "SIGTERM" ? "timed out after 15s" : (error?.message ?? "unknown error");
+    console.error(`\n[commit-preflight] BLOCKED\n\n\`git ${args.join(" ")}\` ${reason}.`);
+    console.error(
+      "\nThis checkout is under iCloud Drive; a stalled Git command is usually evicted object data. Try `npm run deps:check`, or re-run once the files have rehydrated.",
+    );
+    process.exit(1);
+  }
 }
 
 function stagedEntries() {
