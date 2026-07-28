@@ -84,6 +84,10 @@ describe("generateRecommendations", () => {
     expect(mocks.addRecommendation).toHaveBeenCalledTimes(1);
     expect(mocks.addRecommendation.mock.calls[0][0]).toMatchObject({
       workspaceId: "workspace-acme",
+      // Pins current behaviour, not intended behaviour: lib/services/recommendations.ts:143
+      // double-prefixes via .replace(/^(?!tenant-)/,"tenant-").replace("workspace-","tenant-").
+      // The value is never persisted (no tenant_id column) so this is cosmetic.
+      // If that derivation is fixed, update this expectation rather than reverting the fix.
       tenantId: "tenant-tenant-acme",
       title: "Renegotiate carrier rates",
       owner: "COO",
