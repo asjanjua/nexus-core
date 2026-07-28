@@ -4,6 +4,8 @@
 
 ## Unreleased — Initial Launch Cockpit V0.7 (2026-07-26)
 
+- Added the ninth V0.7 Figma frame, `Launch Cockpit / 09 Meridian Scope Arc / 1440` (`160:2`), documenting the real two-screen Meridian entry flow: saved regulatory scope first, licence profile second, one persisted workspace record, helpful field context, consequence preview, and no-filing/no-compliance-conclusion boundary.
+- Fixed the cold-start `/meridian/license-profile` path: before Scope exists it now presents a clear `Set regulatory scope first` action rather than an incomplete form whose required fields are hidden. The specific primary labels now distinguish `Save regulatory scope`, `Update regulatory scope`, and `Save licence profile`.
 - Added Figma page `24 Initial Launch Cockpit V0.7` with four screenshot-verified 1440x900 desktop-browser frames: executive launch status, demo route map, final screen QA matrix, and action board.
 - Consolidated the colleague-review starting point across V0.4, V0.5, and V0.6 so final design sources, live routes, external blockers, and safe demo claims appear in one board.
 - Polished the live Meridian Submission Room so each planned deep-route screen now exposes user inputs, action points, and the planned-route boundary, matching the Vantage/Nucleus launch-hub standard.

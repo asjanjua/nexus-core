@@ -18,7 +18,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { MeridianLicenseStatus, MeridianScope } from "@/lib/contracts";
-import { InfoHint, SkeletonLines } from "@/components/ui/nexus-primitives";
+import { GuidedActionCard, InfoHint, SkeletonLines } from "@/components/ui/nexus-primitives";
 
 type ScreenKey = "scope" | "license-profile";
 
@@ -146,6 +146,26 @@ export function MeridianScopeForm({ screen }: { screen: ScreenKey }) {
 
   const isScope = screen === "scope";
   const statusHint = LICENSE_STATUS.find((s) => s.value === form.licenseStatus)?.hint;
+
+  // The profile screen only enriches an existing regulatory scope. Without the
+  // jurisdiction, regulator, licence type, and objective from screen one, its
+  // shared record cannot be validly saved and the hidden required fields would
+  // otherwise make this route look broken.
+  if (!isScope && !saved) {
+    return (
+      <div className="space-y-4">
+        <GuidedActionCard
+          title="Set the regulatory scope first"
+          reason="Licence Profile adds applicant and activity details to a saved jurisdiction, regulator, licence type, and filing objective. Set those scope facts first so this record has a clear regulatory context."
+          href="/meridian/scope"
+          cta="Set regulatory scope"
+        />
+        <Link href="/meridian" className="btn-subtle inline-flex text-sm" prefetch={false}>
+          Back to Submission Room
+        </Link>
+      </div>
+    );
+  }
 
   return (
     <form onSubmit={submit} className="space-y-4">
@@ -346,7 +366,13 @@ export function MeridianScopeForm({ screen }: { screen: ScreenKey }) {
 
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" className="btn-primary disabled:opacity-40" disabled={saving}>
-          {saving ? "Saving..." : saved ? "Update scope" : "Save scope"}
+          {saving
+            ? "Saving..."
+            : isScope
+              ? saved
+                ? "Update regulatory scope"
+                : "Save regulatory scope"
+              : "Save licence profile"}
         </button>
         <Link href="/meridian" className="btn-subtle text-sm" prefetch={false}>
           Back to Submission Room

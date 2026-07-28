@@ -1,8 +1,8 @@
 # UI V0.7 Initial Launch Cockpit
 
 Status: Screenshot-verified Figma coordination board for initial pilot review.
-Date: 2026-07-27.
-Git reference at registration: `f1bfa46` plus follow-up commits through `9428db9`.
+Date: 2026-07-28.
+Git reference at registration: `f1bfa46` plus follow-up commits through `a1bd71d`.
 
 ## Figma Reference
 
@@ -24,6 +24,7 @@ Frames:
 | `Launch Cockpit / 06 Product Brief / 1440` | `141:2` | Code-backed `/product-brief` refresh: Pinavia product-family collateral, mobile room cards, route contract, and standing authority boundary. |
 | `Launch Cockpit / 07 Readiness Result Path / 1440` | `143:2` | Code-backed `/readiness` result-path refresh: Pinavia branding, live CTAs, inherited-result signup, and no contradictory advisor state. |
 | `Launch Cockpit / 08 Diagnostic Intake Path / 1440` | `145:2` | Code-backed `/diagnostic` honesty pass: no unwired checkout promise, diagnostic-intent handoff to `/start-pilot`, helpful user inputs, and authority boundary. |
+| `Launch Cockpit / 09 Meridian Scope Arc / 1440` | `160:2` | Code-backed Meridian entry arc: a regulatory-scope screen followed by a licence-profile screen, one shared persisted record, explicit cold-start gate, consequence preview, and human filing boundary. |
 
 ## Why V0.7 Exists
 
@@ -45,6 +46,8 @@ The seventh frame was added after `/readiness` was refreshed from stale NexusAI-
 
 The eighth frame was added after `/diagnostic` was refreshed from a priced-offer page into an honest diagnostic-intake bridge. It documents the current route contract: `Start diagnostic intake` routes to `/start-pilot?intent=diagnostic`, `Free self-assessment` routes to `/readiness`, diagnostic pricing remains hidden until checkout and receipt flows are implemented, and the no-certification/no-filing/no-legal-opinion/no-approval boundary is visible before action.
 
+The ninth frame records the first real Meridian arc beyond its hub. `/meridian/scope` is the compliance-lead entry point and captures jurisdiction, regulator, licence type/status, and filing objective. `/meridian/license-profile` adds applicant, ownership, director, and activity facts to that same saved scope. The second route now gates cleanly to Scope before any scope exists, rather than exposing an incomplete form with hidden required fields.
+
 ## Launch Truth Captured
 
 | Surface | Current route/demo stance | Design source |
@@ -52,7 +55,7 @@ The eighth frame was added after `/diagnostic` was refreshed from a priced-offer
 | Pinavia | Show now from `https://pinavia.io`; use `/readiness` for free self-assessment, `/diagnostic` for evidence-tested review intake, `/start-pilot` as the governed pilot intake page, and `/product-brief` as the shareable product-family brief. | `00 Executive Landing`, `21 Commercial Pilot Loop V0.4`, V0.7 frames `135:2`, `141:2`, `143:2`, `145:2` |
 | NexusAI | Show as the core execution room; use Ask -> draft decision -> approval as the main demo beat. | `13 NexusAI Executive Room Final`, V0.2 full desktop prototype |
 | Quorum | Show the board lifecycle and governance roadmap through `/board`. | `14 Quorum Board Room Final`, `09 Quorum Governance Workflow V0.2` |
-| Meridian | Show the regulated filing-pack workflow through `/meridian`. | `15 Meridian Submission Room Final`, `21 Commercial Pilot Loop V0.4` |
+| Meridian | Show `/meridian` as the submission hub. In a signed-in pilot, begin the real scope arc at `/meridian/scope`, then `/meridian/license-profile`. | `15 Meridian Submission Room Final`, `21 Commercial Pilot Loop V0.4`, V0.7 frame `160:2` |
 | Vantage | Show the protected deal-room hub through `/vantage`; label deep routes as planned. | `16 Vantage Deal Room Final`, `23 Launch Route Update V0.6` |
 | Nucleus | Show the protected engagement-room hub through `/nucleus`; label tenant deployment and client portal publishing as planned. | `17 Nucleus Engagement Room`, `19 Nucleus Rebuilt`, `23 Launch Route Update V0.6` |
 
@@ -74,7 +77,7 @@ Use these apex routes for immediate demos:
 
 ## Visual Verification
 
-Screenshots were generated and inspected for all eight frames after creation or update.
+Screenshots were generated and inspected for all nine frames after creation or update.
 
 The only defect found was a title/subtitle overlap in `Launch Cockpit / 03 Final Screen QA Matrix / 1440`; it was fixed by shortening the title to `Final UI makes action, trust, and human control obvious`, then re-rendered cleanly.
 
@@ -88,10 +91,12 @@ The seventh frame renders cleanly and records the live `/readiness` result-flow 
 
 The eighth frame initially showed overflow in the buyer-handoff route cards because long URLs were squeezed into four narrow columns. It was rebuilt as a two-by-two route grid and re-rendered cleanly. It records the live `/diagnostic` change through `9428db9`: no `USD 49` checkout claim while checkout is absent, a single primary diagnostic-intake CTA, `/readiness` as the secondary path, and helpful inputs for sponsor/evidence/reviewer handoff. Local TypeScript, production build, local route smoke, and live apex desktop/mobile smoke passed for `/diagnostic` plus `/start-pilot?intent=diagnostic`; `/api/health` returned `ok=true`.
 
+The ninth frame renders both Meridian Scope screens as equal, full-width browser surfaces. It makes the cold-start prerequisite, shared-record behaviour, field-level helper copy, visible consequence preview, specific CTA labels, and no-compliance-conclusion/no-filing boundary legible before implementation review.
+
 ## Next Actions
 
 1. Use V0.7 as the first page for colleague design review.
 2. Complete the external DNS cutover gate before showing product subdomain URLs.
 3. Run signed-in NexusAI Ask -> draft decision -> approval smoke as the core demo proof.
-4. Run signed-in smoke for `/meridian`, `/vantage`, and `/nucleus`.
+4. Run signed-in smoke for `/meridian`, `/meridian/scope`, `/meridian/license-profile`, `/vantage`, and `/nucleus`.
 5. Configure `PINAVIA_ADMIN_PRINCIPALS`, then run the staff invite -> accept -> redeem pilot smoke.

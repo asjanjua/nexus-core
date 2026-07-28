@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-07-28 — Meridian Scope Arc Launch Reference and Cold-Start Fix
+
+- Added V0.7 frame `Launch Cockpit / 09 Meridian Scope Arc / 1440` (`160:2`) in Figma file `Nexus System`. It is a 1440x900 desktop reference for the real protected Meridian entry flow: compliance lead saves Scope at `/meridian/scope`; founder/CFO enriches the same record at `/meridian/license-profile`.
+- Fixed a launch-path UX fault in `components/meridian-scope-form.tsx`: a new workspace visiting the Profile URL first was unable to save because its required Scope fields were intentionally hidden. It now receives a clear prerequisite card back to Scope. CTA labels are specific to the action instead of always saying `Save scope`.
+- The Figma frame was screenshot-validated. Local typecheck/build and signed-in/live smoke are still required before making a live product-flow claim. Public signed-out `/meridian` correctly redirects to Clerk.
+
+---
+
 ## 2026-07-26 — Trial Invite Portal Paperwork and Production Gate
 
 - Verified `bb2af6c` is present on local `main`, alongside three earlier local product commits. The branch is four commits ahead of `origin/main`; none of those commits are live.
