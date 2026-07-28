@@ -27,6 +27,7 @@ The pilot can use apex routes today. Product subdomains remain an infrastructure
 | Meridian scope arc | [V0.7 Meridian Scope `160:2`](https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=160-2) | `/meridian/scope` -> `/meridian/license-profile` | Final | Signed-out protected-route smoke | Signed-in scope then profile save/reload. |
 | Vantage coverage | [V0.7 Vantage Coverage `162:2`](https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=162-2) | `/vantage/coverage` | Final | `f357ace` live signed-out return-path and health smoke | Signed-in governed-evidence coverage run. |
 | Nucleus firm profile | [V0.7 Nucleus Firm Profile `164:2`](https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=164-2) | `/nucleus/profile` | Final | `5e8e7d1` live signed-out return-path and health smoke | Signed-in safe brand save/reload. |
+| End-to-end pilot handoffs | [Meridian evidence/gaps `182:2`](https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=182-2), [Meridian filing `182:74`](https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=182-74), [Vantage IC `182:146`](https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=182-146), [Nucleus review `182:218`](https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=182-218), [Quorum minutes `182:290`](https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=182-290), [NexusAI approval `182:362`](https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=182-362) | Planned deep routes; existing code-backed entry slices remain above | Final design | Screenshot-reviewed reference only | Implement and smoke the specific deep route before describing it as live. |
 
 ## Design Contract
 
@@ -42,7 +43,7 @@ Every launch screen was checked against the same desktop pilot contract:
 
 ## V0.7 Cockpit Inventory
 
-The V0.7 cockpit contains sixteen screenshot-reviewed frames:
+The V0.7 cockpit contains twenty-two screenshot-reviewed frames:
 
 1. Executive Status (`130:2`)
 2. Demo Route Map (`131:2`)
@@ -60,6 +61,12 @@ The V0.7 cockpit contains sixteen screenshot-reviewed frames:
 14. Connector Evidence Intake (`173:2`)
 15. Solutions Page (`176:2`)
 16. Research Page (`176:63`)
+17. Meridian Evidence And Gap Review (`182:2`)
+18. Meridian Filing Pack (`182:74`)
+19. Vantage Red Flags And IC Handoff (`182:146`)
+20. Nucleus Reviewer And Client Preview (`182:218`)
+21. Quorum Minutes And Action Register (`182:290`)
+22. NexusAI Decision Approval (`182:362`)
 
 ## Pilot Demonstration Order
 
@@ -68,7 +75,7 @@ The V0.7 cockpit contains sixteen screenshot-reviewed frames:
 3. Use the buyer's vertical to select the room: NexusAI, Quorum, Meridian, Vantage, or Nucleus.
 4. Lead with the code-backed slice for that room.
 5. State the visible authority boundary before discussing future workflow expansion.
-6. Use planned deep-route screens only as a product roadmap, never as a live capability claim.
+6. Use the six end-to-end handoff screens as design evidence for the pilot operating model, clearly labelled as planned deep routes until their code and signed-in smoke exist.
 
 ## Non-Design Gates
 

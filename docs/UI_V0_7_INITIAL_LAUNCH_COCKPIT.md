@@ -34,6 +34,12 @@ Frames:
 | `Launch Cockpit / 14 Connector Evidence Intake / 1440` | `173:2` | Code-backed Settings -> Connectors entry: a controlled-source pilot sequence, real provider/setup links, an explicit pre-ingest source-policy step, and no-source-writeback boundary. |
 | `Launch Cockpit / 15 Solutions Page / 1440` | `176:2` | Public Pinavia solutions route: governed core, four-stage operating path, five product rooms, and explicit authority boundary. |
 | `Launch Cockpit / 16 Research Page / 1440` | `176:63` | Public Pinavia research route: evidence, authority, and workflow agenda; regulated pilot patterns labelled as patterns rather than client claims; evaluation method and diagnostic handoff. |
+| `Launch Cockpit / 17 Meridian Evidence And Gap Review / 1440` | `182:2` | Design-final Meridian evidence coverage and gap handoff: matched, missing, stale, and review-needed evidence, owner assignment, and no-filing boundary. |
+| `Launch Cockpit / 18 Meridian Filing Pack / 1440` | `182:74` | Design-final Meridian filing-pack handoff: matrix, source index, caveats, attestation, qualified reviewer, and no-auto-filing boundary. |
+| `Launch Cockpit / 19 Vantage Red Flags And IC Handoff / 1440` | `182:146` | Design-final Vantage workbench: evidence-linked materiality, advisor posture, action routing, and a human-owned IC question. |
+| `Launch Cockpit / 20 Nucleus Reviewer And Client Preview / 1440` | `182:218` | Design-final Nucleus delivery/assurance handoff: partner review, evidence appendix, client-preview gate, and fixed trust contract. |
+| `Launch Cockpit / 21 Quorum Minutes And Action Register / 1440` | `182:290` | Design-final Quorum record handoff: quorum, conflicts, resolution draft, actions, chair review, and no-auto-finalization boundary. |
+| `Launch Cockpit / 22 NexusAI Decision Approval / 1440` | `182:362` | Design-final NexusAI approval handoff: AI-drafted cited decision, named owner/approver, evidence freshness, consequence hold, and no-execution boundary. |
 
 ## Why V0.7 Exists
 
@@ -65,6 +71,8 @@ The twelfth frame makes the core NexusAI pilot story executable and inspectable:
 
 The fifteenth and sixteenth frames close the standalone public-navigation gap. `/solutions` gives buyers a concise orientation to Pinavia's shared governed core and the five product rooms. `/research` explains how Pinavia evaluates real operating questions without presenting pilot patterns as completed client case studies. Both frames were screenshot-reviewed; a title/subtitle collision and one duplicated Research navigation label were corrected before registration. `f9de6b2` is live: both apex routes return `200` with their expected launch copy and `/api/health` remains `ok`.
 
+Frames seventeen through twenty-two close the design-story gap inside each pilot. They do not claim future routes are deployed. Instead, each makes the decisive end-of-workflow moment reviewable: Meridian evidence and filing review, Vantage red-flag/IC handoff, Nucleus partner review/client preview, Quorum minutes/action review, and NexusAI approval. All six were screenshot-reviewed; title wraps in Quorum and NexusAI and a too-narrow Vantage status chip were corrected before registration.
+
 ## Launch Truth Captured
 
 | Surface | Current route/demo stance | Design source |
@@ -94,7 +102,7 @@ Use these apex routes for immediate demos:
 
 ## Visual Verification
 
-Screenshots were generated and inspected for all sixteen frames after creation or update.
+Screenshots were generated and inspected for all twenty-two frames after creation or update.
 
 The only defect found was a title/subtitle overlap in `Launch Cockpit / 03 Final Screen QA Matrix / 1440`; it was fixed by shortening the title to `Final UI makes action, trust, and human control obvious`, then re-rendered cleanly.
 

@@ -4,6 +4,15 @@
 
 ---
 
+## 2026-07-28 — End-To-End Pilot Design Closure
+
+- Expanded Figma V0.7 with six screenshot-reviewed 1440x900 decision-grade handoff screens: Meridian evidence/gaps (`182:2`) and filing pack (`182:74`), Vantage red flags/IC handoff (`182:146`), Nucleus reviewer/client preview (`182:218`), Quorum minutes/action register (`182:290`), and NexusAI decision approval (`182:362`).
+- These complete the pilot UX stories from intake through the meaningful human-review moment. Each screen exposes real user inputs, status, source or evidence context, a single next human action, and an explicit authority boundary.
+- Do not call these routes live: they are design-final references for planned deep routes. The code-backed pilot slices and signed-in smoke requirements remain unchanged.
+- Visual review corrected title wrapping in Quorum and NexusAI and a Vantage status-chip wrap before registration.
+
+---
+
 ## 2026-07-28 — Public Solutions and Research Launch Pass
 
 - Added standalone public `/solutions` and `/research` routes so the Pinavia marketing path is no longer dependent on visitors discovering the relevant homepage sections. The public header, homepage footer, sitemap, and route metadata now expose both pages.

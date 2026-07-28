@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-07-28 — End-To-End Pilot Design Closure
+
+- Added six screenshot-reviewed 1440x900 Figma V0.7 handoff frames for Meridian evidence/gaps and filing, Vantage red flags/IC, Nucleus review/client preview, Quorum minutes/actions, and NexusAI approval.
+- The screens complete the end-to-end UX story while keeping planned deep routes explicitly separate from deployed functionality.
+
 ## 2026-07-28 — Public Solutions and Research
 
 - Added standalone Pinavia `/solutions` and `/research` pages, with metadata, canonical URLs, sitemap entries, and public navigation/footer links.
