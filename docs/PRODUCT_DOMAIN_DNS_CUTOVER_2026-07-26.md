@@ -1,8 +1,31 @@
 # Product Domain DNS Cutover -- 2026-07-26
 
-Status: `.io`-only cutover pending external DNS, hosting, and Clerk configuration.
+Status: `.io` application cutover complete. Product domains use Cloudflare-hosted
+301 entry redirects and do not consume additional Render custom-domain slots.
 
-This note records the live state after the V0.6 route-entry deploy. The app code is ready for the product-domain layer, but Cloudflare/Render/Clerk must all agree before these hostnames can be used in buyer demos.
+This note records the original V0.6 route-entry state and the production entry
+layer completed on 2026-07-28. The authenticated application remains on
+`app.pinavia.io`; each product subdomain is a branded, query-preserving entry
+point into its canonical route.
+
+## Live Entry Layer -- 2026-07-28
+
+Cloudflare now proxies the five product hostnames and applies these permanent
+redirects before requests reach Render. This needs no additional Render or Clerk
+custom-domain configuration.
+
+| Product host | Canonical destination |
+|---|---|
+| `nexus.pinavia.io/*` | `https://app.pinavia.io/${1}` |
+| `quorum.pinavia.io/*` | `https://app.pinavia.io/board/${1}` |
+| `meridian.pinavia.io/*` | `https://app.pinavia.io/meridian/${1}` |
+| `vantage.pinavia.io/*` | `https://app.pinavia.io/vantage/${1}` |
+| `nucleus.pinavia.io/*` | `https://app.pinavia.io/nucleus/${1}` |
+
+All five rules are `301` redirects and preserve query strings. The branded host
+is a demo and marketing entry point, not an independent authenticated origin.
+Do not add these hosts to Clerk or Render unless the product later needs to keep
+its own hostname in the browser address bar.
 
 ## Current Evidence
 
@@ -89,13 +112,8 @@ done
 Expected:
 
 - `app.pinavia.io` returns 200 or a same-host sign-in flow, not a redirect to any legacy host.
-- `nexus.pinavia.io` resolves and uses NexusAI branding.
-- `quorum.pinavia.io` resolves and signs into `/board`.
-- `meridian.pinavia.io` resolves and signs into `/meridian`.
-- `vantage.pinavia.io` resolves and signs into `/vantage`.
-- `nucleus.pinavia.io` resolves and signs into `/nucleus`.
+- Each product host returns a `301` to its canonical `app.pinavia.io` route,
+  preserving the supplied path and query string.
 
-Do not demo product subdomain URLs until this gate passes. The code-backed route entries can be demoed from the apex host today:
-
-- `https://pinavia.io/vantage`
-- `https://pinavia.io/nucleus`
+The redirect-entry layer is ready for buyer links and demos. It is deliberately
+not evidence that a product has isolated infrastructure or a complete workflow.
