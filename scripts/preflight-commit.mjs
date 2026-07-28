@@ -36,7 +36,14 @@ const deletions = entries.filter((entry) => entry.status.startsWith("D")).length
 const additions = entries.filter(
   (entry) => entry.status.startsWith("A") || entry.status.startsWith("C"),
 ).length;
-const trackedPaths = git(["ls-files", "-z"]);
+// `-- :/` makes the count repo-wide rather than relative to the current
+// directory: CLAUDE.md tells agents to run `commit:check` from
+// apps/mission-control, where a bare `ls-files` would count only that subtree
+// and compute the mass-delete and tree-shrink gates against the wrong
+// denominator. `--deduplicate` stops a conflicted path being counted once per
+// merge stage, which inflates both counts during exactly the conflict
+// resolution where these gates matter most.
+const trackedPaths = git(["ls-files", "-z", "--deduplicate", "--", ":/"]);
 const afterCount = trackedPaths ? trackedPaths.split("\0").filter(Boolean).length : 0;
 const beforeCount = Math.max(0, afterCount - additions + deletions);
 
@@ -83,6 +90,31 @@ if (whitespace.error) {
   failures.push(`Staged whitespace check could not complete: ${whitespace.error.message}`);
 } else if (whitespace.status !== 0) {
   failures.push(`Staged whitespace errors:\n${(whitespace.stdout || whitespace.stderr).trim()}`);
+}
+
+// A NUL byte in a source file makes Git treat it as binary: `git diff` reports
+// only "Bin N -> M bytes" and shows no content at all. lib/crypto.ts shipped
+// that way, so an AES-GCM key-derivation and rotation change went to review
+// undiffable on GitHub. Escapes (backslash-u-0000) are identical at runtime and keep the
+// file text, so there is never a reason to stage a literal one.
+const TEXT_EXTENSIONS = /\.(?:[cm]?[jt]sx?|json|md|ya?ml|css|sql|sh|mjs|cjs)$/;
+const binaryText = paths.filter((file) => {
+  if (!TEXT_EXTENSIONS.test(file)) return false;
+  const staged = spawnSync("git", ["show", `:${file}`], {
+    encoding: "buffer",
+    timeout: 15_000,
+  });
+  // Deleted or unreadable staged blobs are not this check's problem.
+  if (staged.error || staged.status !== 0 || !staged.stdout) return false;
+  return staged.stdout.includes(0);
+});
+
+if (binaryText.length > 0) {
+  failures.push(
+    `Staged text files contain a NUL byte, which makes Git treat them as binary and hides the diff:\n${binaryText
+      .map((file) => `  ${file}`)
+      .join("\n")}\n\nReplace the literal with the \\u0000 escape (identical at runtime).`,
+  );
 }
 
 console.log(

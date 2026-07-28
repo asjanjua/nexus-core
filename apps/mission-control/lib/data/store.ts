@@ -179,6 +179,11 @@ function publicReviewerSeat(seat: StoredReviewerSeat): ReviewerSeat {
 type StoredTrialInvite = TrialInvite & { inviteCodeHash: string };
 const trialInviteStore = new Map<string, StoredTrialInvite>();
 
+// Email suppression fallback for no-DB/demo mode: workspaceId -> lower-cased
+// addresses. A Set rather than a list because the only question asked is
+// membership.
+const emailSuppressionStore = new Map<string, Set<string>>();
+
 function publicTrialInvite(invite: StoredTrialInvite): TrialInvite {
   const { inviteCodeHash: _hash, ...rest } = invite;
   return rest;
@@ -1208,6 +1213,16 @@ export const store = {
       }
     }
     return null;
+  },
+
+  suppressEmail(workspaceId: string, email: string, _reason = "unsubscribe"): void {
+    const set = emailSuppressionStore.get(workspaceId) ?? new Set<string>();
+    set.add(email.trim().toLowerCase());
+    emailSuppressionStore.set(workspaceId, set);
+  },
+
+  listSuppressedEmails(workspaceId: string): Set<string> {
+    return new Set(emailSuppressionStore.get(workspaceId) ?? []);
   },
 
   revokeTrialInvite(inviteId: string, now = new Date()): TrialInvite | null {

@@ -56,14 +56,49 @@ export function rateLimit(key: string, limit: number, windowMs: number): RateLim
 }
 
 /**
- * Best-effort client identifier. Render terminates TLS upstream, so the left
- * -most x-forwarded-for entry is the client. Falls back to a single shared
- * bucket when no proxy header is present, which is strictly safer than keying
- * on something the caller controls outright.
+ * Number of proxies in front of this app that APPEND to x-forwarded-for.
+ *
+ * Must match the deployment. Behind Cloudflare in front of Render this is 2
+ * (Cloudflare appends the client, Render appends Cloudflare); a single proxy is
+ * 1. Confirm against a real request before changing it — log the raw header
+ * from a production request and count the entries a client did not send.
+ */
+const TRUSTED_PROXY_HOPS = Math.max(
+  1,
+  Number.parseInt(process.env.TRUSTED_PROXY_HOPS ?? "", 10) || 1
+);
+
+/**
+ * Best-effort client identifier.
+ *
+ * x-forwarded-for is APPEND-ONLY: each proxy adds the address it received the
+ * connection from, so entries to the LEFT of our trusted hops were written by
+ * the caller. Keying on the left-most entry therefore lets one client mint an
+ * unlimited number of buckets by rotating the header, which removes the limit
+ * entirely rather than weakening it.
+ *
+ * We index from the right by the trusted hop count instead. If the chain is
+ * shorter than expected — a misconfigured hop count, a direct-to-origin request
+ * that bypassed the proxy — we fall back to a single shared bucket rather than
+ * to a caller-controlled value.
+ *
+ * That failure direction is deliberate: too few buckets throttles unrelated
+ * callers together, which is an availability annoyance; too many removes the
+ * protection altogether. Prefer over-bucketing.
  */
 export function clientKey(request: Request, scope: string): string {
-  const forwarded = request.headers.get("x-forwarded-for") ?? "";
-  const ip = forwarded.split(",")[0]?.trim() || request.headers.get("x-real-ip") || "unknown";
+  const chain = (request.headers.get("x-forwarded-for") ?? "")
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+  // chain[length - hops] is the address the outermost trusted proxy observed.
+  // Anything further left is caller-supplied and must never be used.
+  const trusted = chain.length >= TRUSTED_PROXY_HOPS
+    ? chain[chain.length - TRUSTED_PROXY_HOPS]
+    : undefined;
+
+  const ip = trusted || request.headers.get("x-real-ip") || "unknown";
   return `${scope}:${ip}`;
 }
 

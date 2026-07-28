@@ -49,6 +49,7 @@ import {
   dispatchJobs,
   stripeProcessedEvents,
   readinessSubmissions,
+  emailSuppressions,
   reviewerSeats,
   trialInvites,
   pilotOutcomes,
@@ -4010,6 +4011,50 @@ export const repository = {
   // Reviewer seats (migration 0035) — identity-bound reviewer role. Invite
   // codes are single-use and stored hashed; acceptance binds a Clerk user id.
   // -------------------------------------------------------------------------
+
+  // --- Email suppressions (migration 0039) ---------------------------------
+
+  /**
+   * Record an unsubscribe. Idempotent: a second request for the same address
+   * reactivates rather than erroring, so a recipient clicking an old link twice
+   * stays suppressed instead of hitting a unique-constraint failure.
+   */
+  async suppressEmail(workspaceId: string, email: string, reason = "unsubscribe"): Promise<void> {
+    const normalized = email.trim().toLowerCase();
+    const now = new Date();
+    const wrote = await runDb(async (db) => {
+      await db
+        .insert(emailSuppressions)
+        .values({
+          id: `sup_${workspaceId}_${normalized}`,
+          workspaceId,
+          email: normalized,
+          reason,
+          active: true,
+        })
+        .onConflictDoUpdate({
+          target: [emailSuppressions.workspaceId, emailSuppressions.email],
+          set: { active: true, reason, updatedAt: now },
+        });
+      return true;
+    });
+    if (!wrote) store.suppressEmail(workspaceId, normalized, reason);
+  },
+
+  /**
+   * Addresses currently suppressed for a workspace, lower-cased. The send loop
+   * fetches this once per batch rather than querying per recipient.
+   */
+  async listSuppressedEmails(workspaceId: string): Promise<Set<string>> {
+    const rows = await runDb((db) =>
+      db
+        .select({ email: emailSuppressions.email })
+        .from(emailSuppressions)
+        .where(and(eq(emailSuppressions.workspaceId, workspaceId), eq(emailSuppressions.active, true)))
+    );
+    if (rows === null) return store.listSuppressedEmails(workspaceId);
+    return new Set(rows.map((row) => row.email));
+  },
 
   // --- Trial invites (migration 0038) --------------------------------------
 

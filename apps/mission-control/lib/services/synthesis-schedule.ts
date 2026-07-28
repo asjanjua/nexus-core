@@ -143,7 +143,21 @@ async function sendSynthesisEmails(
   const workspaceSettings = await repository.getWorkspaceSettings(schedule.workspaceId);
   const baseUrl = (process.env.NEXT_PUBLIC_APP_URL?.trim() ?? "").replace(/\/$/, "");
 
+  // Fetched once per batch rather than per recipient. Without this the
+  // unsubscribe route was purely decorative: it audited, rendered a
+  // confirmation page, and this loop kept sending.
+  const suppressed = await repository.listSuppressedEmails(schedule.workspaceId);
+
   for (const email of schedule.emailTargets) {
+    if (suppressed.has(email.trim().toLowerCase())) {
+      void repository.pushAudit({
+        workspaceId: schedule.workspaceId,
+        type: "synthesis_email_suppressed",
+        actor: "synthesis_cron",
+        payload: { role, email, reason: "unsubscribed" },
+      }).catch(() => {});
+      continue;
+    }
     try {
       const token = buildUnsubscribeToken(schedule.workspaceId, email);
       const html = buildSynthesisBriefHtml({

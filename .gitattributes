@@ -1,0 +1,26 @@
+# Force source files to be diffed as text.
+#
+# Git decides binary-vs-text by sniffing for a NUL byte, and a single stray NUL
+# turns a whole file opaque: `git diff` prints only "Bin N -> M bytes" with no
+# content. lib/crypto.ts shipped that way, so a change to AES-GCM key
+# derivation, the versioned blob format, and key rotation reached review with
+# no visible diff on GitHub.
+#
+# scripts/preflight-commit.mjs now blocks a staged text file containing a NUL,
+# which prevents a recurrence. This file covers the other half: a file that is
+# already binary in history still diffs as text from here on, so a fix is
+# reviewable rather than opaque in the very commit that repairs it.
+
+*.ts    diff
+*.tsx   diff
+*.js    diff
+*.jsx   diff
+*.mjs   diff
+*.cjs   diff
+*.json  diff
+*.md    diff
+*.sql   diff
+*.yml   diff
+*.yaml  diff
+*.css   diff
+*.sh    diff

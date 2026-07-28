@@ -700,3 +700,19 @@ export const trialInvites = pgTable("trial_invites", {
   createdAt:           timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt:           timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+/**
+ * Email suppression list (migration 0039).
+ *
+ * The unsubscribe route previously audited and rendered a confirmation page
+ * without suppressing anything. This is the record the send loop checks.
+ */
+export const emailSuppressions = pgTable("email_suppressions", {
+  id:          text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull(),
+  email:       varchar("email", { length: 320 }).notNull(),
+  reason:      varchar("reason", { length: 32 }).notNull().default("unsubscribe"),
+  active:      boolean("active").notNull().default(true),
+  createdAt:   timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:   timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});

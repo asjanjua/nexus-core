@@ -49,11 +49,38 @@ describe("rateLimit", () => {
 });
 
 describe("clientKey", () => {
-  it("uses the left-most x-forwarded-for entry as the client", () => {
+  // The left-most entry is caller-supplied. Keying on it let one client mint an
+  // unlimited number of buckets by rotating the header, which removed the limit
+  // rather than weakening it. We index from the right by the trusted hop count.
+  it("ignores caller-supplied entries and keys on the trusted hop", () => {
     const request = new Request("https://x/api/test", {
       headers: { "x-forwarded-for": "203.0.113.9, 10.0.0.1, 10.0.0.2" },
     });
-    expect(clientKey(request, "scope")).toBe("scope:203.0.113.9");
+    expect(clientKey(request, "scope")).toBe("scope:10.0.0.2");
+  });
+
+  it("gives a spoofing client one shared bucket, not one per forged value", () => {
+    const keys = new Set(
+      Array.from({ length: 200 }, (_, i) =>
+        clientKey(
+          new Request("https://x/api/test", {
+            headers: { "x-forwarded-for": `10.9.9.${i % 256}, 203.0.113.9` },
+          }),
+          "scope"
+        )
+      )
+    );
+    expect(keys.size).toBe(1);
+    expect([...keys][0]).toBe("scope:203.0.113.9");
+  });
+
+  it("falls back to a shared bucket when the chain is shorter than expected", () => {
+    // A direct-to-origin request that never traversed the proxy must not be
+    // able to supply its own key.
+    const request = new Request("https://x/api/test", {
+      headers: { "x-forwarded-for": "" },
+    });
+    expect(clientKey(request, "scope")).toBe("scope:unknown");
   });
 
   it("falls back to x-real-ip when no forwarded header is present", () => {

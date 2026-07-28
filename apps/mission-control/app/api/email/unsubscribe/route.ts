@@ -25,6 +25,11 @@ export async function GET(request: Request) {
 
   const [workspaceId, email] = decoded;
 
+  // Suppress BEFORE auditing or rendering. The page below tells the recipient
+  // they will no longer receive briefs; that sentence must not be printed
+  // unless the suppression it describes has actually been written.
+  await repository.suppressEmail(workspaceId, email);
+
   // Audit the unsubscribe
   await repository.pushAudit({
     workspaceId,
