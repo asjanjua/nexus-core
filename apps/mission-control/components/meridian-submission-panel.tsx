@@ -379,8 +379,11 @@ export function MeridianSubmissionPanel() {
 
       {/* One primary action. */}
       <section className="flex flex-wrap items-center gap-3">
-        <Link href="/start-pilot" className="btn-primary px-5 py-3" prefetch={false}>
-          Resolve {EXAMPLE.outstanding} outstanding requirements
+        <Link href="/meridian/evidence-coverage" className="btn-primary px-5 py-3" prefetch={false}>
+          Review evidence and gaps
+        </Link>
+        <Link href="/meridian/filing-pack" className="btn-subtle px-5 py-3" prefetch={false}>
+          Open filing-pack review
         </Link>
         <span className="text-xs text-white/40">
           {meridianRegulatoryScreens.length} screens defined across{" "}

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-07-28 — Deep Pilot Handoff Routes
+
+- Added protected Meridian evidence/gap and filing-pack routes, Vantage red-flag/IC handoff, Nucleus reviewer console, and Quorum minutes/action review.
+- Each screen is an interactive review workbench that hands off a named owner, deadline, and reviewer note into the existing human-owned Decisions flow. It deliberately does not persist a legal, board, investment, or client conclusion.
+- Updated product-hub CTAs to reach the new review routes. Local TypeScript and production build pass.
+
 ## 2026-07-28 — End-To-End Pilot Design Closure
 
 - Added six screenshot-reviewed 1440x900 Figma V0.7 handoff frames for Meridian evidence/gaps and filing, Vantage red flags/IC, Nucleus review/client preview, Quorum minutes/actions, and NexusAI approval.

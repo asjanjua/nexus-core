@@ -12,6 +12,12 @@
 - Visual review corrected title wrapping in Quorum and NexusAI and a Vantage status-chip wrap before registration.
 - Re-rendered the V0.7 Executive Status and Action Board after the addition: the visible pack count is now 22, and the colleague script starts with the live Pinavia, Solutions, and Research surfaces before the governed product loop.
 
+## 2026-07-28 — Deep Pilot Handoff Routes
+
+- Implemented the remaining design-final handoff screens as protected routes: `/meridian/evidence-coverage`, `/meridian/filing-pack`, `/vantage/red-flags`, `/nucleus/reviewer-console`, and `/board/minutes/draft`. NexusAI's matching handoff remains the existing `/approvals` surface.
+- All five reuse `components/pilot-handoff-workbench.tsx`: a domain-specific review table, named owner/deadline/reviewer-note input, and a single consequential CTA into the existing `/decisions` prefill flow. No conclusion, approval, filing, publication, or execution is persisted by the workbench itself.
+- The Meridian, Vantage, Nucleus, and Quorum hubs now link to the newly code-backed review screens. Local TypeScript and the 185-route production build pass; deployed signed-out/signed-in route smoke remains required.
+
 ---
 
 ## 2026-07-28 — Public Solutions and Research Launch Pass

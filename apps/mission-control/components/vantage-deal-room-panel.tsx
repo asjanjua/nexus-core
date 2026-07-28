@@ -210,6 +210,9 @@ export function VantageDealRoomPanel() {
         <Link href="/vantage/coverage" className="btn-primary px-5 py-3" prefetch={false}>
           Run coverage review
         </Link>
+        <Link href="/vantage/red-flags" className="btn-subtle px-5 py-3" prefetch={false}>
+          Review red flags
+        </Link>
         <span className="text-xs text-white/40">
           {vantageDDScreens.length} screens defined across {vantageDDStages.length} stages in the Vantage registry.
         </span>

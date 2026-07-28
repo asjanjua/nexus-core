@@ -232,6 +232,9 @@ export function NucleusEngagementPanel() {
         <Link href="/nucleus/profile" className="btn-primary px-5 py-3" prefetch={false}>
           Set firm brand
         </Link>
+        <Link href="/nucleus/reviewer-console" className="btn-subtle px-5 py-3" prefetch={false}>
+          Open reviewer console
+        </Link>
         <span className="text-xs text-white/40">
           {nucleusEngagementScreens.length} screens defined across {nucleusEngagementStages.length} stages in the Nucleus registry.
         </span>

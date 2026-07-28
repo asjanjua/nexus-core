@@ -235,6 +235,7 @@ export function BoardRoomPanel() {
             <SecondaryLink href="/dashboard/board" label="Open board dashboard" />
             <SecondaryLink href="/ingestion" label="Upload board pack" />
             <SecondaryLink href="/decisions" label="Review decisions" />
+            <SecondaryLink href="/board/minutes/draft" label="Draft minutes" />
           </div>
         </div>
       </section>
