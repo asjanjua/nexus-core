@@ -114,6 +114,8 @@ The twelfth and thirteenth frames initially exposed header/subtitle overlap. Bot
 
 The fourteenth frame was added with the connector first-run pass. It makes a pilot administrator's sequence visible before the long provider reference: choose a narrow source, prepare provider setup, install with the source owner, then set policy before ingest. Initial visual review caught a heading-wrap collision; it was corrected and re-rendered cleanly. The corresponding code promotes this same intake sequence above the connector catalogue while retaining official provider links, exact redirect-URI guidance, and truthful future-connector scoping links.
 
+The connector pass deployed through `96fcd8f`. CI passed, the live `/settings/connectors` response contains the new intake/reference copy, and `/api/health` remained `ok`. This proves the released UI, not a provider consent, policy save, or ingest outcome; those remain signed-in controlled-workspace checks.
+
 The executive status and action-board frames were reconciled after the new slices landed. They now point directly to the NexusAI, Quorum, Meridian, Vantage, and Nucleus route loops that can be shown today, distinguish live pilot slices from still-planned deeper work, and list the correct signed-in proof instead of describing all Vantage/Nucleus deep routes as unbuilt.
 
 The Vantage Coverage slice was deployed through `f357ace`. Live signed-out smoke confirms `/vantage/coverage` preserves `/vantage/coverage` as the Clerk return path, and the live health endpoint returned `ok=true`. The still-required evidence/run/result smoke needs a signed-in pilot workspace.
