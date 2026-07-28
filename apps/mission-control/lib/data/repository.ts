@@ -2922,7 +2922,12 @@ export const repository = {
           .limit(1)
       );
       return rows?.[0]?.stripeCustomerId ?? null;
-    } catch {
+    } catch (error) {
+      captureHandledError(error, {
+        route: "repository.getStripeCustomerId",
+        errorType: "stripe_customer_lookup_failed",
+        workspaceId,
+      });
       return null;
     }
   },
@@ -3087,7 +3092,14 @@ export const repository = {
           .limit(1)
       );
       return rows?.[0] ?? null;
-    } catch {
+    } catch (error) {
+      // A null here makes the caller treat a Stripe event as belonging to no
+      // workspace, so a lookup failure and an unknown customer are the same
+      // outcome from outside. Distinguish them in the log.
+      captureHandledError(error, {
+        route: "repository.getWorkspaceByStripeCustomer",
+        errorType: "stripe_workspace_lookup_failed",
+      });
       return null;
     }
   },
@@ -3172,9 +3184,30 @@ export const repository = {
     );
     if (!rows || !rows[0]?.enc) return null;
     const plain = decryptCredentials(rows[0].enc);
-    if (!plain) return null;
-    try { return JSON.parse(plain) as Record<string, unknown>; }
-    catch { return null; }
+    if (!plain) {
+      // Undecryptable stored credentials mean the connector is dead until it
+      // is reconnected — most likely a rotated key without a re-encryption
+      // pass (see the rotation procedure in lib/crypto.ts). Callers only see
+      // null, which is indistinguishable from "never connected".
+      captureHandledError(new Error("stored credentials could not be decrypted"), {
+        route: "repository.getConnectorCredentials",
+        errorType: "connector_credentials_undecryptable",
+        workspaceId,
+        extra: { connectorType: type },
+      });
+      return null;
+    }
+    try {
+      return JSON.parse(plain) as Record<string, unknown>;
+    } catch (error) {
+      captureHandledError(error, {
+        route: "repository.getConnectorCredentials",
+        errorType: "connector_credentials_unparseable",
+        workspaceId,
+        extra: { connectorType: type },
+      });
+      return null;
+    }
   },
 
   async revokeConnector(workspaceId: string, type: string): Promise<void> {

@@ -14,6 +14,7 @@ import JSZip from "jszip";
 // inside webpack/Next.js bundles that don't preserve a real require chain.
 // The internal lib has no such check.
 import pdfParse from "pdf-parse/lib/pdf-parse.js";
+import { captureHandledError } from "@/lib/observability/sentry";
 
 export type ExtractionResult = {
   text: string;
@@ -169,7 +170,11 @@ async function extractFromPdf(buffer: Buffer): Promise<ExtractionResult> {
     const text = data.text.replace(/\s+/g, " ").trim();
     const charCount = text.length;
     return { text, method: "pdf_parse", charCount, extractionConfidence: deriveConfidence(charCount, "pdf_parse") };
-  } catch {
+  } catch (error) {
+    captureHandledError(error, {
+      route: "lib/services/extract.extractFromPdf",
+      errorType: "pdf_parse_failed_using_heuristic",
+    });
     return extractFromPdfHeuristic(buffer);
   }
 }
@@ -250,7 +255,14 @@ export async function extractTextFromBuffer(filename: string, buffer: Buffer): P
     if (lower.endsWith(".xlsx")) return await extractFromXlsx(buffer);
     if (lower.endsWith(".pdf")) return await extractFromPdf(buffer);
     if (lower.endsWith(".txt") || lower.endsWith(".md")) return extractFromPlainText(buffer);
-  } catch {
+  } catch (error) {
+    // A supported extension that fails to parse is a different condition from
+    // an unsupported one, and both reach the caller as `unsupported`. Report
+    // the failure so a systematically broken format is diagnosable.
+    captureHandledError(error, {
+      route: "lib/services/extract.extractTextFromBuffer",
+      errorType: "extraction_failed",
+    });
     return unsupported;
   }
 

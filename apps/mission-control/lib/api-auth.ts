@@ -20,6 +20,7 @@ import { auth } from "@clerk/nextjs/server";
 import { decodeBearerToken } from "@/lib/tokens";
 import { fail } from "@/lib/api";
 import { repository, evaluateWorkspaceAccess } from "@/lib/data/repository";
+import { captureHandledError } from "@/lib/observability/sentry";
 
 export type AuthContext = {
   workspaceId: string;
@@ -140,8 +141,17 @@ async function checkWorkspaceAccess(workspaceId: string): Promise<{ blocked: boo
   if (cached && cached.expiresAt > Date.now()) {
     return { blocked: cached.blocked, reason: cached.reason };
   }
-  const record = await repository.getWorkspaceStatus(workspaceId).catch(() => null);
-  // Fail open on a lookup error — never lock everyone out because of a DB blip.
+  // Fail open on a lookup error — never lock everyone out because of a DB blip
+  // — but report it, because a sustained failure means suspended and expired
+  // workspaces are being served as if they were active.
+  const record = await repository.getWorkspaceStatus(workspaceId).catch((error: unknown) => {
+    captureHandledError(error, {
+      route: "lib/api-auth.checkWorkspaceAccess",
+      errorType: "workspace_access_check_failed_open",
+      workspaceId,
+    });
+    return null;
+  });
   const result = record ? evaluateWorkspaceAccess(record) : { blocked: false, reason: null };
   accessCache.set(workspaceId, { ...result, expiresAt: Date.now() + ACCESS_CACHE_TTL_MS });
   return result;

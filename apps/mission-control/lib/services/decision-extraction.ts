@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { AgentOutput, DecisionPriority } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
 import { ask } from "@/lib/services/llm";
+import { captureHandledError } from "@/lib/observability/sentry";
 
 export const proposedActionSchema = z.object({
   actionText: z.string().min(1).max(1000),
@@ -160,7 +161,12 @@ export async function proposeDecisionsFromAgentOutputs(input: {
             ? decision.evidenceRefs
             : refsByOutputId.get(decision.sourceOutputId) ?? []
       }));
-  } catch {
+  } catch (error) {
+    captureHandledError(error, {
+      route: "lib/services/decision-extraction",
+      errorType: "decision_extraction_failed_using_fallback",
+      workspaceId: input.workspaceId,
+    });
     return fallbackExtract(activeOutputs);
   }
 }

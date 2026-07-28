@@ -9,15 +9,22 @@
  * Feature flag: NEXUS_VECTOR_SEARCH=enabled
  *   - When off (default): all functions return null / false without making
  *     any network call. Keyword search continues as before.
- *   - When on: OPENAI_API_KEY must also be set or calls silently return null.
+ *   - When on: OPENAI_API_KEY must also be set, or calls return null. A
+ *     misconfigured key or an upstream outage is reported through
+ *     lib/observability so a permanently degraded index is visible in logs.
  *
  * The caller (ingestion, retrieval) must handle null gracefully — vector
  * search is always additive, never blocking.
  */
 
+import { captureDegradedState, captureHandledError } from "@/lib/observability/sentry";
+
 const EMBED_API = "https://api.openai.com/v1/embeddings";
 const EMBED_MODEL = "text-embedding-3-small"; // 1536-dim output
 const MAX_INPUT_CHARS = 8_000; // ~6k tokens, well within the 8k token limit
+
+/** Misconfiguration is a constant, so it is reported once rather than per call. */
+let reportedMissingKey = false;
 
 export function isVectorSearchEnabled(): boolean {
   return process.env.NEXUS_VECTOR_SEARCH === "enabled";
@@ -32,7 +39,16 @@ export async function generateEmbedding(text: string): Promise<number[] | null> 
   if (!isVectorSearchEnabled()) return null;
 
   const key = process.env.OPENAI_API_KEY;
-  if (!key) return null;
+  if (!key) {
+    if (!reportedMissingKey) {
+      reportedMissingKey = true;
+      captureDegradedState("vector search is enabled but OPENAI_API_KEY is unset", {
+        route: "lib/services/embeddings",
+        errorType: "embedding_provider_unconfigured",
+      });
+    }
+    return null;
+  }
 
   // Truncate to avoid token limit errors on large documents.
   const input = text.slice(0, MAX_INPUT_CHARS);
@@ -47,13 +63,23 @@ export async function generateEmbedding(text: string): Promise<number[] | null> 
       body: JSON.stringify({ model: EMBED_MODEL, input })
     });
 
-    if (!res.ok) return null;
+    if (!res.ok) {
+      captureDegradedState(`embedding request failed with status ${res.status}`, {
+        route: "lib/services/embeddings",
+        errorType: "embedding_request_failed",
+      });
+      return null;
+    }
 
     const json = (await res.json()) as {
       data: Array<{ embedding: number[] }>;
     };
     return json.data[0]?.embedding ?? null;
-  } catch {
+  } catch (error) {
+    captureHandledError(error, {
+      route: "lib/services/embeddings",
+      errorType: "embedding_request_failed",
+    });
     return null;
   }
 }

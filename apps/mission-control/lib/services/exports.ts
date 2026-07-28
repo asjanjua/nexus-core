@@ -18,6 +18,7 @@
 
 import { repository } from "@/lib/data/repository";
 import { ask } from "@/lib/services/llm";
+import { captureHandledError } from "@/lib/observability/sentry";
 import { buildCompanyContext } from "@/lib/domain/sector-library";
 import type { EvidenceRecord, Recommendation } from "@/lib/contracts";
 
@@ -179,7 +180,13 @@ async function generateRoleBrief(
       route: "exports_brief",
       surfaceId: "daily_executive_brief"
     });
-  } catch {
+  } catch (error) {
+    captureHandledError(error, {
+      route: "lib/services/exports.roleBrief",
+      errorType: "export_brief_failed",
+      workspaceId,
+      extra: { role },
+    });
     return `Evidence available but AI synthesis unavailable. Check your LLM API key configuration.`;
   }
 }

@@ -16,6 +16,7 @@ import { briefLanguageInstruction, buildCompanyContext } from "@/lib/domain/sect
 import { repository } from "@/lib/data/repository";
 import { checkOutput } from "@/lib/security/red-team";
 import { getPrompt } from "@/lib/prompts/registry";
+import { captureHandledError } from "@/lib/observability/sentry";
 
 type DashboardCards = Awaited<ReturnType<typeof cardsForRole>>;
 
@@ -182,7 +183,12 @@ async function answerQuestion(
       route: "synthesis",
       surfaceId: "daily_executive_brief",
     });
-  } catch {
+  } catch (error) {
+    captureHandledError(error, {
+      route: "lib/services/synthesis.answerQuestion",
+      errorType: "synthesis_answer_failed",
+      workspaceId,
+    });
     answer = "Synthesis unavailable — verify AI provider credentials in your Render environment.";
   }
 
@@ -377,7 +383,13 @@ export async function synthesiseBoardDelta(
   let priorBrief: ExecutiveSynthesis | null = null;
   try {
     priorBrief = JSON.parse(priorOutput.content) as ExecutiveSynthesis;
-  } catch {
+  } catch (error) {
+    captureHandledError(error, {
+      route: "lib/services/synthesis.boardDelta",
+      errorType: "prior_brief_unparseable",
+      workspaceId,
+      extra: { outputId: priorOutput.id },
+    });
     priorBrief = null;
   }
 
@@ -396,7 +408,12 @@ export async function synthesiseBoardDelta(
       route: "synthesis",
       surfaceId: "daily_executive_brief",
     });
-  } catch {
+  } catch (error) {
+    captureHandledError(error, {
+      route: "lib/services/synthesis.boardDelta",
+      errorType: "synthesis_delta_failed",
+      workspaceId,
+    });
     delta = "Delta unavailable — verify AI provider credentials in your Render environment.";
   }
 

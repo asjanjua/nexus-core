@@ -10,6 +10,7 @@
 
 import type { BillingFeature, BillingPlan, PlanDefinition, TokenBudgetStatus, WorkspacePlanSummary } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
+import { captureHandledError } from "@/lib/observability/sentry";
 
 // ---------------------------------------------------------------------------
 // In-process cache (5-minute TTL)
@@ -102,8 +103,15 @@ export async function checkTokenBudget(workspaceId: string): Promise<TokenBudget
     });
 
     return status;
-  } catch {
-    // Non-fatal: if DB is down, allow the call with a permissive fallback
+  } catch (error) {
+    // Non-fatal: if DB is down, allow the call with a permissive fallback.
+    // Reported because a sustained failure here means budgets are not being
+    // enforced at all, which is invisible from the outside.
+    captureHandledError(error, {
+      route: "lib/billing/budget.checkTokenBudget",
+      errorType: "budget_check_failed_open",
+      workspaceId,
+    });
     return { allowed: true, used: 0, limit: 500_000, percentUsed: 0, plan: "free" };
   }
 }
@@ -152,7 +160,13 @@ export async function canUseFeature(
     const field = FEATURE_TO_PLAN_FIELD[feature];
     const allowed = Boolean(planDef[field]);
     return { allowed, requiredPlan: FEATURE_MIN_PLAN[feature] };
-  } catch {
+  } catch (error) {
+    captureHandledError(error, {
+      route: "lib/billing/budget.canUseFeature",
+      errorType: "feature_gate_failed_open",
+      workspaceId,
+      extra: { feature },
+    });
     return { allowed: true, requiredPlan: FEATURE_MIN_PLAN[feature] };
   }
 }
@@ -175,7 +189,12 @@ export async function checkEvidenceLimit(workspaceId: string): Promise<LimitChec
     const used = evidence.length;
     if (limit === -1) return { allowed: true, used, limit };
     return { allowed: used < limit, used, limit, requiredPlan: used >= limit ? "pro" : undefined };
-  } catch {
+  } catch (error) {
+    captureHandledError(error, {
+      route: "lib/billing/budget.checkEvidenceLimit",
+      errorType: "evidence_limit_failed_open",
+      workspaceId,
+    });
     return { allowed: true, used: 0, limit: -1 };
   }
 }

@@ -3,6 +3,7 @@ import type { EvidenceRecord, EvidenceSourceType, IngestionStatus } from "@/lib/
 import { repository } from "@/lib/data/repository";
 import { generateEmbedding, isVectorSearchEnabled } from "@/lib/services/embeddings";
 import { extractAndStoreEntitiesForEvidence } from "@/lib/services/entity-extraction";
+import { captureHandledError } from "@/lib/observability/sentry";
 
 export const MAX_UPLOAD_BYTES = 50 * 1024 * 1024; // 50 MB hard cap
 
@@ -135,15 +136,29 @@ export async function ingestEvidence(input: IngestionInput): Promise<EvidenceRec
   // Only runs when NEXUS_VECTOR_SEARCH=enabled and OPENAI_API_KEY is set.
   // Failure here never blocks ingest; the record is already committed.
   if (isVectorSearchEnabled()) {
-    void generateEmbedding(input.text).then((embedding) => {
-      if (embedding) {
-        void repository.storeEmbedding(saved.id, embedding);
-      }
+    void (async () => {
+      const embedding = await generateEmbedding(input.text);
+      if (!embedding) return;
+      await repository.storeEmbedding(saved.id, embedding);
+    })().catch((error) => {
+      captureHandledError(error, {
+        route: "lib/services/ingestion",
+        errorType: "embedding_store_failed",
+        workspaceId: saved.workspaceId,
+        extra: { evidenceId: saved.id },
+      });
     });
   }
 
   if (saved.ingestionStatus === "processed") {
-    void extractAndStoreEntitiesForEvidence(saved).catch(() => undefined);
+    void extractAndStoreEntitiesForEvidence(saved).catch((error) => {
+      captureHandledError(error, {
+        route: "lib/services/ingestion",
+        errorType: "entity_extraction_failed",
+        workspaceId: saved.workspaceId,
+        extra: { evidenceId: saved.id },
+      });
+    });
   }
 
   return saved;

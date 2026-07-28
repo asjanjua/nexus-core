@@ -4,6 +4,7 @@ import { knowledgeNoteInputSchema } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
 import { writeNoteToVault } from "@/lib/services/vault-sync";
 import { generateEmbedding } from "@/lib/services/embeddings";
+import { captureHandledError } from "@/lib/observability/sentry";
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { ctx, error } = await requireScope(request, "read:knowledge");
@@ -49,10 +50,17 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   );
   await writeNoteToVault(note);
   // Fire-and-forget embedding generation for semantic search
-  void generateEmbedding(`${note.title}\n\n${note.body}`).then((embedding) => {
-    if (embedding) {
-      void repository.storeKnowledgeEmbedding(note.id, embedding);
-    }
+  void (async () => {
+    const embedding = await generateEmbedding(`${note.title}\n\n${note.body}`);
+    if (!embedding) return;
+    await repository.storeKnowledgeEmbedding(note.id, embedding);
+  })().catch((embeddingError) => {
+    captureHandledError(embeddingError, {
+      route: "/api/knowledge/notes/[id]",
+      errorType: "knowledge_embedding_store_failed",
+      workspaceId: ctx.workspaceId,
+      extra: { noteId: note.id },
+    });
   });
   return ok({ note });
 }

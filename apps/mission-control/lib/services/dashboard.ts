@@ -17,6 +17,7 @@ import type { AgentControlProfile } from "@/lib/contracts";
 import { getPrompt } from "@/lib/prompts/registry";
 import { checkOutput } from "@/lib/security/red-team";
 import { shouldRouteOutputToReview } from "@/lib/security/ai-policy";
+import { captureHandledError } from "@/lib/observability/sentry";
 
 // ---------------------------------------------------------------------------
 // Agent prompt configuration
@@ -92,7 +93,12 @@ Task: Produce this agent's brief using only the evidence above. Include what cha
       route: "dashboard",
       surfaceId: "dashboard_cards"
     });
-  } catch {
+  } catch (error) {
+    captureHandledError(error, {
+      route: "lib/services/dashboard.buildCard",
+      errorType: "agent_brief_failed",
+      workspaceId,
+    });
     summary = `Evidence count: ${evidenceRefs.length}. AI synthesis unavailable — verify DEEPSEEK_API_KEY (or ANTHROPIC_API_KEY) is set in your Render environment.`;
   }
 

@@ -29,6 +29,7 @@ import { getPrompt } from "@/lib/prompts/registry";
 import { checkOutput } from "@/lib/security/red-team";
 import { fenceUntrusted, UNTRUSTED_CONTENT_RULE } from "@/lib/security/prompt-fencing";
 import { shouldRouteOutputToReview } from "@/lib/security/ai-policy";
+import { captureHandledError } from "@/lib/observability/sentry";
 
 // ---------------------------------------------------------------------------
 // Keyword ranking (pre-filter before LLM call)
@@ -397,8 +398,13 @@ export async function answerWithEvidence(
       escalationRequired: gate.escalationRequired,
       escalationReason: gate.escalationRequired ? gate.reason : undefined
     };
-  } catch {
+  } catch (error) {
     // LLM call failed - fallback to bullet summary so the app still works
+    captureHandledError(error, {
+      route: "lib/services/retrieval.askQuestion",
+      errorType: "ask_synthesis_failed",
+      workspaceId,
+    });
     const fallback = [
       ...results.map((r) => `- ${r.text}`),
       ...notes.map((note) => `- ${note.title}: ${note.body.slice(0, 260)}`)
