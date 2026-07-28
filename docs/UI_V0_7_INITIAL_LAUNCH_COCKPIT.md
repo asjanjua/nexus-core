@@ -2,7 +2,7 @@
 
 Status: Screenshot-verified Figma coordination board for initial pilot review.
 Date: 2026-07-28.
-Git reference at registration: `f1bfa46` plus follow-up commits through `a1bd71d`.
+Git reference at registration: `f1bfa46` plus follow-up commits through `7270c25`; code-backed Nucleus profile deployed through `5e8e7d1`.
 
 ## Figma Reference
 
