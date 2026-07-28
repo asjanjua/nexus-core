@@ -88,6 +88,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     pathname === "/start-pilot" ||
     pathname === "/workspace" ||
     pathname === "/diagnostic" ||
+    // Lead capture. It is listed in sitemap.ts, so it must render the public
+    // shell — otherwise Google indexes a page that shows visitors a signed-out
+    // app frame instead of the waitlist form.
+    pathname === "/pro-waitlist" ||
     pathname.startsWith("/readiness") ||
     pathname.startsWith("/terms") ||
     pathname.startsWith("/privacy") ||

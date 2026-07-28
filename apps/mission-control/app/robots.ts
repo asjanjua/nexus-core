@@ -29,7 +29,13 @@ const DISALLOW = [
   "/ingestion",
   "/workflows",
   "/workspace",
+  // Product room hubs. Each is gated with requireWorkspaceId, so a crawler
+  // following one only reaches a sign-in redirect while still consuming
+  // rate-limited budget. Adding a new room means adding it here — the
+  // robots-coverage test below fails the build if you forget.
   "/meridian",
+  "/vantage",
+  "/nucleus",
   "/settings",
   "/export",
   "/board",
