@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { productFromHost } from "@/lib/product-detection";
 import { cspDirectives, withSecurityHeaders } from "@/lib/security-headers";
 
-function appResponse(request: NextRequest, nonce: string): NextResponse {
+function appResponse(request: NextRequest, nonce: string, csp: string): NextResponse {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-nexus-pathname", request.nextUrl.pathname);
   requestHeaders.set("x-nexus-product", productFromHost(request.headers.get("host") ?? ""));
@@ -12,7 +12,7 @@ function appResponse(request: NextRequest, nonce: string): NextResponse {
   // nonce-based policy would block Next's own scripts. x-nonce is the
   // conventional name for server components that need to read it directly.
   requestHeaders.set("x-nonce", nonce);
-  requestHeaders.set("content-security-policy", cspDirectives(nonce));
+  requestHeaders.set("content-security-policy", csp);
   return NextResponse.next({ request: { headers: requestHeaders } });
 }
 
@@ -27,8 +27,12 @@ export default clerkMiddleware((_auth, request) => {
   // Per-request nonce so script-src can drop 'unsafe-inline'. crypto.randomUUID
   // is available on the edge runtime; no Node crypto import is pulled in.
   const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
-  const response = appResponse(request, nonce);
-  return withSecurityHeaders(response, request, nonce);
+  // Built once and reused. The request header and the response header were each
+  // calling cspDirectives(), so every request rebuilt the same policy string
+  // from process.env twice.
+  const csp = cspDirectives(nonce);
+  const response = appResponse(request, nonce, csp);
+  return withSecurityHeaders(response, request, nonce, csp);
 });
 
 export const config = {

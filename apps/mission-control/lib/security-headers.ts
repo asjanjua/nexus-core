@@ -140,14 +140,19 @@ export function cspDirectives(nonce?: string, clerkConfig?: ClerkCspConfig): str
  */
 export const CSP_DIRECTIVES = cspDirectives();
 
-export function securityHeaderEntries(nonce?: string): Array<{ key: string; value: string }> {
+export function securityHeaderEntries(
+  nonce?: string,
+  /** Prebuilt policy. The middleware already built one for the request header;
+   *  passing it through avoids rebuilding the same string from env per request. */
+  csp?: string
+): Array<{ key: string; value: string }> {
   const entries = [
     { key: "x-content-type-options", value: "nosniff" },
     { key: "x-frame-options", value: "DENY" },
     { key: "referrer-policy", value: "strict-origin-when-cross-origin" },
     { key: "permissions-policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
     { key: "cross-origin-opener-policy", value: "same-origin-allow-popups" },
-    { key: "content-security-policy", value: cspDirectives(nonce) },
+    { key: "content-security-policy", value: csp ?? cspDirectives(nonce) },
   ];
 
   if (process.env.NODE_ENV === "production") {
@@ -163,9 +168,10 @@ export function securityHeaderEntries(nonce?: string): Array<{ key: string; valu
 export function withSecurityHeaders(
   response: NextResponse,
   request: NextRequest,
-  nonce?: string
+  nonce?: string,
+  csp?: string
 ): NextResponse {
-  for (const { key, value } of securityHeaderEntries(nonce)) response.headers.set(key, value);
+  for (const { key, value } of securityHeaderEntries(nonce, csp)) response.headers.set(key, value);
 
   const origin = request.headers.get("origin") ?? "";
   if (request.nextUrl.pathname.startsWith("/api/")) {
