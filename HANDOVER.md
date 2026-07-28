@@ -9,6 +9,7 @@
 - Expanded `24 Initial Launch Cockpit V0.7` in Figma with two screenshot-verified desktop frames: `167:2` for the code-backed NexusAI Ask -> evidence -> AI answer -> draft-decision -> named-approval loop, and `167:57` for the code-backed Quorum stable-baseline -> board-delta -> director-review loop.
 - Both frames use the same visible authority discipline as Meridian, Vantage, and Nucleus. NexusAI does not convert an answer into a decision; Quorum does not approve, send, sign, or file board action.
 - Visual review caught title/subtitle overlap on both frames and an overlong Quorum status-card headline. All were corrected and re-rendered cleanly. No runtime code changed in this Figma/documentation pass.
+- Follow-up reconciliation updated the V0.7 executive-status and action-board frames so their route/design cells now name the real NexusAI, Quorum, Meridian, Vantage, and Nucleus pilot loops. The old `Deep routes planned` label now reads `Pilot slices live`; the remaining work is accurately stated as signed-in smoke plus deeper planned workflows.
 
 ---
 

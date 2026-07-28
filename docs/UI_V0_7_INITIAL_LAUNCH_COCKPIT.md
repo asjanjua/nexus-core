@@ -109,6 +109,8 @@ The eleventh frame was re-rendered after heading and saved-state spacing correct
 
 The twelfth and thirteenth frames initially exposed header/subtitle overlap. Both were re-rendered after a shared header rhythm correction; the Quorum status card was also shortened so its authority boundary remains readable at desktop review size.
 
+The executive status and action-board frames were reconciled after the new slices landed. They now point directly to the NexusAI, Quorum, Meridian, Vantage, and Nucleus route loops that can be shown today, distinguish live pilot slices from still-planned deeper work, and list the correct signed-in proof instead of describing all Vantage/Nucleus deep routes as unbuilt.
+
 The Vantage Coverage slice was deployed through `f357ace`. Live signed-out smoke confirms `/vantage/coverage` preserves `/vantage/coverage` as the Clerk return path, and the live health endpoint returned `ok=true`. The still-required evidence/run/result smoke needs a signed-in pilot workspace.
 
 The Nucleus Firm Profile slice was deployed through `5e8e7d1`. Live signed-out smoke confirms `/nucleus/profile` preserves `/nucleus/profile` as the Clerk return path, and the live health endpoint returned `ok=true`. The still-required save/reload proof needs a signed-in pilot workspace and a safe test brand.
