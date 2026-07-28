@@ -11,11 +11,22 @@
  * evidence record. Confidence is estimated based on the file type.
  */
 
-import crypto from "crypto";
 import { ok, fail } from "@/lib/api";
 import { requireScope } from "@/lib/api-auth";
-import { repository } from "@/lib/data/repository";
+import {
+  getActiveConnector,
+  getValidConnectorAuth,
+} from "@/lib/connectors/shared/access-token";
 import { ingestEvidence } from "@/lib/services/ingestion";
+import {
+  decodeDownloadedText,
+  departmentField,
+  estimateExtractionConfidence,
+  evidenceHash,
+  readStreamToBuffer,
+  sensitivityField,
+  tenantIdForWorkspace,
+} from "@/lib/connectors/shared/ingest";
 import {
   downloadFile,
   refreshAccessToken,
@@ -24,58 +35,9 @@ import { z } from "zod";
 
 const ingestBodySchema = z.object({
   fileId: z.string().min(1),
-  sensitivity: z
-    .enum(["public", "internal", "confidential", "restricted"])
-    .optional()
-    .default("internal"),
-  department: z.string().max(200).optional(),
+  sensitivity: sensitivityField("internal"),
+  department: departmentField,
 });
-
-async function getValidAccessToken(
-  workspaceId: string,
-  type: string
-): Promise<string | null> {
-  const creds = await repository.getConnectorCredentials(workspaceId, type);
-  if (!creds) return null;
-
-  const accessToken = creds.accessToken as string | undefined;
-  const refreshToken = creds.refreshToken as string | undefined;
-  const obtainedAt = creds.obtainedAt as string | undefined;
-  const expiresIn = creds.expiresIn as number | undefined;
-
-  if (!accessToken) return null;
-
-  if (obtainedAt && expiresIn) {
-    const obtained = new Date(obtainedAt).getTime();
-    const expiresAt = obtained + (expiresIn - 60) * 1000;
-    if (Date.now() < expiresAt) {
-      return accessToken;
-    }
-  }
-
-  if (refreshToken) {
-    try {
-      const newTokens = await refreshAccessToken(refreshToken);
-      await repository.upsertConnector({
-        workspaceId,
-        type,
-        installedBy: "token-refresh",
-        credentials: {
-          accessToken: newTokens.access_token,
-          refreshToken: newTokens.refresh_token ?? refreshToken,
-          scope: newTokens.scope,
-          expiresIn: newTokens.expires_in,
-          obtainedAt: new Date().toISOString(),
-        },
-      });
-      return newTokens.access_token;
-    } catch {
-      return null;
-    }
-  }
-
-  return accessToken;
-}
 
 export async function POST(request: Request) {
   const { ctx, error } = await requireScope(request, "admin");
@@ -91,16 +53,17 @@ export async function POST(request: Request) {
   const { fileId, sensitivity, department } = parsed.data;
 
   // Check connector is active
-  const connectors = await repository.listConnectors(ctx.workspaceId);
-  const connector = connectors.find((c) => c.type === "google-drive");
-  if (!connector || connector.status !== "active") {
+  const connector = await getActiveConnector(ctx.workspaceId, "google-drive");
+  if (!connector) {
     return fail("connector_not_active", 404);
   }
 
-  const accessToken = await getValidAccessToken(
-    ctx.workspaceId,
-    "google-drive"
-  );
+  const auth = await getValidConnectorAuth({
+    workspaceId: ctx.workspaceId,
+    type: "google-drive",
+    refreshAccessToken,
+  });
+  const accessToken = auth?.accessToken;
   if (!accessToken) {
     return fail("google_drive_auth_expired", 401);
   }
@@ -118,57 +81,20 @@ export async function POST(request: Request) {
     return fail("file_body_empty", 502);
   }
 
-  // Read full body into buffer
-  const chunks: Uint8Array[] = [];
-  const reader = download.body.getReader();
-  try {
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
-    }
-  } finally {
-    reader.releaseLock();
-  }
-
-  const totalLength = chunks.reduce((acc, c) => acc + c.length, 0);
-  const buffer = Buffer.concat(
-    chunks.map((c) => Buffer.from(c.buffer, c.byteOffset, c.byteLength))
-  );
+  const buffer = await readStreamToBuffer(download.body);
 
   // Compute hash for provenance
-  const hash = crypto.createHash("sha256").update(buffer).digest("base64url");
+  const hash = evidenceHash(buffer);
 
-  // Try to read as text — fall back to base64 for binary files
-  let text: string;
-  try {
-    text = buffer.toString("utf-8");
-    // Quick binary check — if it contains null bytes, encode as base64
-    if (text.includes("\0")) {
-      text = buffer.toString("base64");
-    }
-  } catch {
-    text = buffer.toString("base64");
-  }
+  const text = decodeDownloadedText(buffer);
 
-  // Estimate confidence based on file type
-  const contentType = download.contentType;
-  let extractionConfidence = 0.6; // default for unknown
-  if (contentType.includes("text/plain") || contentType.includes("text/markdown")) {
-    extractionConfidence = 0.95;
-  } else if (contentType.includes("application/pdf")) {
-    extractionConfidence = 0.85;
-  } else if (contentType.includes("application/vnd.google-apps.document")) {
-    extractionConfidence = 0.90;
-  } else if (
-    contentType.includes("application/vnd.openxmlformats") ||
-    contentType.includes("application/msword")
-  ) {
-    extractionConfidence = 0.85;
-  }
+  const extractionConfidence = estimateExtractionConfidence(
+    download.contentType,
+    "google-drive"
+  );
 
   const connectorInstanceId = connector.id;
-  const tenantId = ctx.workspaceId.replace("workspace-", "tenant-");
+  const tenantId = tenantIdForWorkspace(ctx.workspaceId);
 
   // Ingest via the pipeline
   let evidence;
@@ -195,7 +121,7 @@ export async function POST(request: Request) {
   return ok({
     evidence,
     fileId,
-    bytesIngested: totalLength,
+    bytesIngested: buffer.length,
     contentType: download.contentType,
   });
 }

@@ -18,42 +18,14 @@
  *   AUTH_SECRET
  */
 
-import crypto from "crypto";
-import { NextResponse } from "next/server";
 import { repository } from "@/lib/data/repository";
-import { requireAuthSecret, timingSafeEqualString } from "@/lib/security";
+import {
+  connectorAppUrl,
+  redirectWithConnectorError,
+  redirectWithConnectorInstalled,
+} from "@/lib/connectors/shared/oauth-callback";
+import { verifyConnectorState } from "@/lib/connectors/shared/oauth-state";
 import { exchangeCode, getAccessibleResources } from "@/lib/connectors/jira";
-
-type StatePayload = { workspaceId: string; ts: number };
-
-function verifyState(state: string): StatePayload | null {
-  const parts = state.split(".");
-  if (parts.length !== 2) return null;
-  const [encoded, sig] = parts;
-
-  const expected = crypto
-    .createHmac("sha256", requireAuthSecret())
-    .update(encoded)
-    .digest("hex");
-
-  if (!timingSafeEqualString(expected, sig, "hex")) return null;
-
-  try {
-    const payload = JSON.parse(
-      Buffer.from(encoded, "base64url").toString()
-    ) as StatePayload;
-    if (Date.now() - payload.ts > 10 * 60 * 1000) return null;
-    return payload;
-  } catch {
-    return null;
-  }
-}
-
-function redirectWithError(appUrl: string, error: string): NextResponse {
-  const url = new URL("/settings/connectors", appUrl);
-  url.searchParams.set("error", error);
-  return NextResponse.redirect(url.toString());
-}
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -61,26 +33,26 @@ export async function GET(request: Request) {
   const state = url.searchParams.get("state");
   const jiraError = url.searchParams.get("error");
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+  const appUrl = connectorAppUrl();
 
   if (jiraError) {
-    return redirectWithError(
+    return redirectWithConnectorError(
       appUrl,
       jiraError === "access_denied" ? "access_denied" : "jira_error"
     );
   }
 
   if (!code || !state) {
-    return redirectWithError(appUrl, "missing_params");
+    return redirectWithConnectorError(appUrl, "missing_params");
   }
 
-  const statePayload = verifyState(state);
+  const statePayload = verifyConnectorState(state);
   if (!statePayload) {
-    return redirectWithError(appUrl, "invalid_state");
+    return redirectWithConnectorError(appUrl, "invalid_state");
   }
 
   if (!process.env.JIRA_CLIENT_ID || !process.env.JIRA_CLIENT_SECRET) {
-    return redirectWithError(appUrl, "jira_not_configured");
+    return redirectWithConnectorError(appUrl, "jira_not_configured");
   }
 
   let tokens;
@@ -88,11 +60,11 @@ export async function GET(request: Request) {
     tokens = await exchangeCode(code);
   } catch (err) {
     const message = err instanceof Error ? err.message : "token_exchange_failed";
-    return redirectWithError(appUrl, encodeURIComponent(message));
+    return redirectWithConnectorError(appUrl, encodeURIComponent(message));
   }
 
   if (!tokens.access_token) {
-    return redirectWithError(appUrl, "token_exchange_failed");
+    return redirectWithConnectorError(appUrl, "token_exchange_failed");
   }
 
   // Resolve which Jira Cloud site this token can access
@@ -105,11 +77,11 @@ export async function GET(request: Request) {
       siteName = resources[0].name;
     }
   } catch {
-    return redirectWithError(appUrl, "jira_site_resolution_failed");
+    return redirectWithConnectorError(appUrl, "jira_site_resolution_failed");
   }
 
   if (!cloudId) {
-    return redirectWithError(appUrl, "jira_no_accessible_site");
+    return redirectWithConnectorError(appUrl, "jira_no_accessible_site");
   }
 
   try {
@@ -132,10 +104,8 @@ export async function GET(request: Request) {
       },
     });
   } catch {
-    return redirectWithError(appUrl, "connector_store_failed");
+    return redirectWithConnectorError(appUrl, "connector_store_failed");
   }
 
-  const successUrl = new URL("/settings/connectors", appUrl);
-  successUrl.searchParams.set("installed", "Jira");
-  return NextResponse.redirect(successUrl.toString());
+  return redirectWithConnectorInstalled(appUrl, "Jira");
 }

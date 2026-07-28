@@ -9,33 +9,26 @@
  *   { mailbox?: string, uid: number, sensitivity?: string, department?: string }
  */
 
-import crypto from "crypto";
 import { ok, fail } from "@/lib/api";
 import { requireScope } from "@/lib/api-auth";
 import { repository } from "@/lib/data/repository";
+import { getActiveConnector } from "@/lib/connectors/shared/access-token";
 import { ingestEvidence } from "@/lib/services/ingestion";
-import { getMessage, type ImapConnectionConfig } from "@/lib/connectors/imap";
+import {
+  departmentField,
+  evidenceHash,
+  sensitivityField,
+  tenantIdForWorkspace,
+} from "@/lib/connectors/shared/ingest";
+import { credentialsToImapConfig, getMessage } from "@/lib/connectors/imap";
 import { z } from "zod";
 
 const ingestBodySchema = z.object({
   mailbox: z.string().max(255).optional().default("INBOX"),
   uid: z.number().int().positive(),
-  sensitivity: z
-    .enum(["public", "internal", "confidential", "restricted"])
-    .optional()
-    .default("internal"),
-  department: z.string().max(200).optional(),
+  sensitivity: sensitivityField("internal"),
+  department: departmentField,
 });
-
-function credsToConfig(creds: Record<string, unknown>): ImapConnectionConfig | null {
-  const host = creds.host as string | undefined;
-  const port = creds.port as number | undefined;
-  const secure = creds.secure as boolean | undefined;
-  const username = creds.username as string | undefined;
-  const password = creds.password as string | undefined;
-  if (!host || !port || !username || !password) return null;
-  return { host, port, secure: secure ?? true, username, password };
-}
 
 export async function POST(request: Request) {
   const { ctx, error } = await requireScope(request, "admin");
@@ -50,14 +43,13 @@ export async function POST(request: Request) {
 
   const { mailbox, uid, sensitivity, department } = parsed.data;
 
-  const connectors = await repository.listConnectors(ctx.workspaceId);
-  const connector = connectors.find((c) => c.type === "imap");
-  if (!connector || connector.status !== "active") {
+  const connector = await getActiveConnector(ctx.workspaceId, "imap");
+  if (!connector) {
     return fail("connector_not_active", 404);
   }
 
   const creds = await repository.getConnectorCredentials(ctx.workspaceId, "imap");
-  const config = creds ? credsToConfig(creds) : null;
+  const config = creds ? credentialsToImapConfig(creds) : null;
   if (!config) {
     return fail("imap_credentials_missing", 401);
   }
@@ -79,9 +71,9 @@ export async function POST(request: Request) {
     message.text,
   ].join("\n");
 
-  const hash = crypto.createHash("sha256").update(text).digest("base64url");
+  const hash = evidenceHash(text);
   const connectorInstanceId = connector.id;
-  const tenantId = ctx.workspaceId.replace("workspace-", "tenant-");
+  const tenantId = tenantIdForWorkspace(ctx.workspaceId);
   const sourceTimestamp = message.date ?? new Date().toISOString();
 
   let evidence;
