@@ -31,6 +31,7 @@ Frames:
 | `Launch Cockpit / 11 Nucleus Firm Profile / 1440` | `164:2` | Code-backed Nucleus profile: firm name, logo URL, accent, and typeface persist through the guarded workspace settings route; protected trust controls sit outside the editable brand layer. |
 | `Launch Cockpit / 12 NexusAI Governed Ask / 1440` | `167:2` | Code-backed NexusAI core loop: workspace-scoped Ask, evidence strip, AI-drafted answer, confidence/freshness, and the explicit human decision-draft handoff. |
 | `Launch Cockpit / 13 Quorum Board Action Loop / 1440` | `167:57` | Code-backed Quorum board loop: stable board identifier, governed baseline, between-meetings delta, cited board status, and a director-owned decision boundary. |
+| `Launch Cockpit / 14 Connector Evidence Intake / 1440` | `173:2` | Code-backed Settings -> Connectors entry: a controlled-source pilot sequence, real provider/setup links, an explicit pre-ingest source-policy step, and no-source-writeback boundary. |
 
 ## Why V0.7 Exists
 
@@ -89,7 +90,7 @@ Use these apex routes for immediate demos:
 
 ## Visual Verification
 
-Screenshots were generated and inspected for all thirteen frames after creation or update.
+Screenshots were generated and inspected for all fourteen frames after creation or update.
 
 The only defect found was a title/subtitle overlap in `Launch Cockpit / 03 Final Screen QA Matrix / 1440`; it was fixed by shortening the title to `Final UI makes action, trust, and human control obvious`, then re-rendered cleanly.
 
@@ -110,6 +111,8 @@ The tenth frame initially had a long status-card headline overlapping its proof 
 The eleventh frame was re-rendered after heading and saved-state spacing corrections. It shows both the real brand inputs and a separate contractually-fixed trust panel without overlap.
 
 The twelfth and thirteenth frames initially exposed header/subtitle overlap. Both were re-rendered after a shared header rhythm correction; the Quorum status card was also shortened so its authority boundary remains readable at desktop review size.
+
+The fourteenth frame was added with the connector first-run pass. It makes a pilot administrator's sequence visible before the long provider reference: choose a narrow source, prepare provider setup, install with the source owner, then set policy before ingest. Initial visual review caught a heading-wrap collision; it was corrected and re-rendered cleanly. The corresponding code promotes this same intake sequence above the connector catalogue while retaining official provider links, exact redirect-URI guidance, and truthful future-connector scoping links.
 
 The executive status and action-board frames were reconciled after the new slices landed. They now point directly to the NexusAI, Quorum, Meridian, Vantage, and Nucleus route loops that can be shown today, distinguish live pilot slices from still-planned deeper work, and list the correct signed-in proof instead of describing all Vantage/Nucleus deep routes as unbuilt.
 

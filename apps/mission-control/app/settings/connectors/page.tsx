@@ -806,28 +806,26 @@ const LANE_LABELS: Record<ConnectorDef["lane"], string> = {
 
 function ConnectorSetupGuide() {
   return (
-    <section className="rounded-xl border border-white/10 bg-black/20 p-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+    <details className="group rounded-xl border border-white/10 bg-black/20 p-4">
+      <summary className="flex cursor-pointer list-none flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <p className="text-sm font-semibold text-white/80">
             <HelpLabel
               title="Connector setup guide"
               help="This is the complete connector list for this workspace. Use it to see which connectors are live, which are future, what credentials are required, and which provider setup page to open before clicking Install."
             >
-              Connector setup guide
+              Connector setup reference
             </HelpLabel>
           </p>
           <p className="mt-1 max-w-3xl text-xs leading-5 text-white/45">
-            OAuth connectors need provider credentials and an exact redirect URI before the in-app Install button will work.
-            Manual connectors collect settings in Nexus. Future connectors show planning links instead of fake install actions.
+            Provider-specific credentials, redirect URIs, scopes, and official documentation for every available and planned connector.
           </p>
         </div>
-        <span className="text-xs text-white/35">
-          docs/CONNECTOR_SETUP_GUIDE.md
-        </span>
-      </div>
+        <span className="text-xs text-nexus-accent group-open:hidden">Show reference</span>
+        <span className="hidden text-xs text-nexus-accent group-open:inline">Hide reference</span>
+      </summary>
 
-      <div className="mt-4 grid gap-3 xl:grid-cols-2">
+      <div className="mt-4 grid gap-3 border-t border-white/10 pt-4 xl:grid-cols-2">
         {CONNECTOR_CATALOGUE.map((connector) => {
           const redirectUri = connector.redirectPath
             ? `{NEXT_PUBLIC_APP_URL}${connector.redirectPath}`
@@ -890,6 +888,52 @@ function ConnectorSetupGuide() {
           );
         })}
       </div>
+    </details>
+  );
+}
+
+function PilotEvidenceIntake() {
+  return (
+    <section className="rounded-xl border border-nexus-accent/25 bg-nexus-accent/[0.06] p-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+        <div className="max-w-3xl">
+          <p className="text-xs font-semibold uppercase tracking-wider text-nexus-accent">Pilot evidence intake</p>
+          <h2 className="mt-2 text-lg font-semibold text-white">Connect one controlled source before you ask Nexus to reason over it.</h2>
+          <p className="mt-2 text-sm leading-6 text-white/60">
+            Start with a read-only source that the pilot owner can explain. Nexus records evidence and boundaries; it does not write back to the source, approve a decision, or widen access on its own.
+          </p>
+        </div>
+        <a href="#live-connectors" className="btn-primary shrink-0 text-sm">
+          Choose a live connector
+        </a>
+      </div>
+
+      <ol className="mt-5 grid gap-3 md:grid-cols-4">
+        <li className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs leading-5 text-white/55">
+          <span className="text-nexus-accent">01</span>
+          <p className="mt-1 font-medium text-white/85">Choose a narrow source</p>
+          <p className="mt-1">Use a small shared drive, named Slack channels, or a pilot mailbox. Avoid a whole-company first sync.</p>
+        </li>
+        <li className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs leading-5 text-white/55">
+          <span className="text-nexus-accent">02</span>
+          <p className="mt-1 font-medium text-white/85">Prepare provider setup</p>
+          <p className="mt-1">Open the provider setup link and add the exact redirect URI and read-only scope shown in the reference.</p>
+        </li>
+        <li className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs leading-5 text-white/55">
+          <span className="text-nexus-accent">03</span>
+          <p className="mt-1 font-medium text-white/85">Install with the source owner</p>
+          <p className="mt-1">The provider consent screen remains the source owner&apos;s authorization step. Nexus never uses it to request write access.</p>
+        </li>
+        <li className="rounded-lg border border-white/10 bg-black/20 p-3 text-xs leading-5 text-white/55">
+          <span className="text-nexus-accent">04</span>
+          <p className="mt-1 font-medium text-white/85">Set source policy before ingest</p>
+          <p className="mt-1">Cap sensitivity, specify an allowlist where relevant, and choose read-only or manual-review handling.</p>
+        </li>
+      </ol>
+
+      <p className="mt-4 text-xs leading-5 text-white/45">
+        For a first demo, Google Drive, Slack, SharePoint, GitHub, Gmail, Outlook Mail, and IMAP have implemented connection paths. Future warehouse and private connectors open planning or scoping links instead of non-functional install actions.
+      </p>
     </section>
   );
 }
@@ -1067,7 +1111,7 @@ export default function ConnectorsPage() {
         </div>
       )}
 
-      <ConnectorSetupGuide />
+      <PilotEvidenceIntake />
 
       {loading ? (
         <div className="py-12 text-center text-sm text-white/40">Loading connectors...</div>
@@ -1076,7 +1120,7 @@ export default function ConnectorsPage() {
           {lanes.map((lane) => {
             const defs = CONNECTOR_CATALOGUE.filter((c) => c.lane === lane);
             return (
-              <section key={lane}>
+              <section key={lane} id={lane === "saas" ? "live-connectors" : undefined}>
                 <p className="mb-3 text-xs font-semibold uppercase tracking-wider text-white/40">
                   {LANE_LABELS[lane]}
                 </p>
@@ -1100,6 +1144,10 @@ export default function ConnectorsPage() {
           })}
         </div>
       )}
+
+      <div className="mt-8">
+        <ConnectorSetupGuide />
+      </div>
 
       <div className="mt-8 rounded-xl border border-white/10 bg-black/20 p-4 text-xs leading-5 text-white/45">
         Connector credentials are stored separately from source policy. After any connector is installed, open

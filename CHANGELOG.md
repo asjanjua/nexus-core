@@ -1,5 +1,10 @@
 # Changelog
 
+## 2026-07-28 — Governed Connector Intake
+
+- Refined Settings -> Connectors into a usable pilot evidence intake: the page now leads with one controlled, read-only source; provider setup; owner-led installation; and source policy before any ingest. The provider catalogue and official external links remain available in a progressively disclosed reference section rather than burying the first action under implementation detail.
+- Added screenshot-reviewed Figma V0.7 frame `Launch Cockpit / 14 Connector Evidence Intake / 1440` (`173:2`) in `Nexus System`. It represents only implemented OAuth/manual routes as live and sends warehouse/private integrations to transparent planning or scoping actions.
+
 ---
 
 ## Unreleased — Initial Launch Cockpit V0.7 (2026-07-26)

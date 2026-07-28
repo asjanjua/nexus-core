@@ -4,6 +4,14 @@
 
 ---
 
+## 2026-07-28 — Governed Connector Intake Launch Pass
+
+- Settings -> Connectors now starts with a four-step pilot evidence intake instead of dropping an administrator into the full provider catalogue: choose a narrow source, prepare exact provider setup, install with the source owner, and set source policy before ingest. It keeps the no-writeback/no-autonomous-approval boundary visible.
+- The provider-specific guide is still complete, with official provider setup/docs links, redirect URI, environment, scope, and implementation limits. It is now progressively disclosed below the live/future catalogue so first-run action is clearer without hiding technical preparation.
+- Added screenshot-reviewed Figma V0.7 frame `Launch Cockpit / 14 Connector Evidence Intake / 1440` (`173:2`). Visual review caught and fixed the only header-wrap collision. Remaining live proof requires a signed-in pilot workspace and a controlled source; do not claim an install, policy save, or evidence ingestion outcome until it has been exercised.
+
+---
+
 ## 2026-07-28 — Core Pilot Walkthrough Screens
 
 - Expanded `24 Initial Launch Cockpit V0.7` in Figma with two screenshot-verified desktop frames: `167:2` for the code-backed NexusAI Ask -> evidence -> AI answer -> draft-decision -> named-approval loop, and `167:57` for the code-backed Quorum stable-baseline -> board-delta -> director-review loop.
