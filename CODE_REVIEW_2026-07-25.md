@@ -255,11 +255,11 @@ That last pair is the empirical case for not using `'strict-dynamic'`. Under str
 
 ### 9.2 `NEXT_PUBLIC_CLERK_DOMAIN` is a deploy-blocking variable
 
-Surfaced by the browser test. Clerk uses two custom hosts: `clerk.pinavia.co`
-serves the browser SDK, while `accounts.pinavia.co` hosts sign-in and sign-up.
+Surfaced by the browser test. Clerk uses two custom hosts: `clerk.pinavia.io`
+serves the browser SDK, while `accounts.pinavia.io` hosts sign-in and sign-up.
 `lib/security-headers.ts` now allowlists the configured frontend API host and derives
 the hosted-auth host from the configured URLs. The Render Blueprint declares
-`NEXT_PUBLIC_CLERK_DOMAIN=clerk.pinavia.co` rather than leaving this non-secret
+`NEXT_PUBLIC_CLERK_DOMAIN=clerk.pinavia.io` rather than leaving this non-secret
 setting as `sync: false`.
 
 If it is unset or wrong on a Clerk instance with a custom domain, the CSP allowlists the wrong host and the browser blocks Clerk's script. Auth fails with nothing but a console violation to show for it — no server error, no failing health check. It is now in the required set checked by `npm run check:env`.
@@ -272,7 +272,7 @@ This risk predates the nonce work: the old policy carried the same host list, an
 
 ### 9.4 Before the production run
 
-1. Confirm Render has synchronized `NEXT_PUBLIC_CLERK_DOMAIN=clerk.pinavia.co` from the Blueprint (9.2). `npm run check:env` against the deploy environment verifies this and the other four required variables.
+1. Confirm Render has synchronized `NEXT_PUBLIC_CLERK_DOMAIN=clerk.pinavia.io` from the Blueprint (9.2). `npm run check:env` against the deploy environment verifies this and the other four required variables.
 2. Optionally set `NEXUS_CREDENTIALS_SECRET` to split credential encryption from `AUTH_SECRET`. Unset, it falls back and everything works; set, it removes the risk that regenerating `AUTH_SECRET` destroys every stored connector credential. If set, run a re-encryption pass — the machinery and procedure are in `lib/crypto.ts`.
 3. Confirm the Render dashboard carries a production Clerk key, not the `pk_test_` instance in the local `.env.production.local`.
 

@@ -593,7 +593,7 @@ The corrected workspace smoke still passed the production URL as a positional ar
 `Missing APP_URL or NEXT_PUBLIC_APP_URL.`
 
 ### Context
-- The runner's header documents `APP_URL=https://app.pinavia.co npm run smoke:domain -w @nexus/mission-control`.
+- The runner's header documents `APP_URL=https://app.pinavia.io npm run smoke:domain -w @nexus/mission-control`.
 - It exited before making a production request.
 
 ### Suggested Fix

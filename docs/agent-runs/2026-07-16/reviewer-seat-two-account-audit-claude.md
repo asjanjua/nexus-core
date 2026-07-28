@@ -46,7 +46,7 @@ M .claude/skills/BUILDEROS_LICENSE.txt
 **Completed this checkpoint:**
 
 - Read in full, read-only, no edits: `apps/mission-control/db/migrations/0035_reviewer_seats.sql`, `app/api/reviewer-seat/route.ts` (GET/POST/DELETE), `app/api/reviewer-seat/accept/route.ts`, `app/api/reviewer-seat/resend/route.ts`, `tests/reviewer-seat.test.ts` (8 passing cases at repository layer), `app/reviewer-seat/page.tsx` (388-line admin UI), `app/reviewer-seat/accept/page.tsx` (126-line redemption UI).
-- Checked live production state via authenticated browser session: `https://app.pinavia.co/reviewer-seat` (Render cold start observed and waited out, confirmed rendered).
+- Checked live production state via authenticated browser session: `https://app.pinavia.io/reviewer-seat` (Render cold start observed and waited out, confirmed rendered).
 
 **Live starting state (read-only, confirmed by screenshot at 00:46 PKT):**
 
@@ -103,7 +103,7 @@ M .claude/skills/BUILDEROS_LICENSE.txt
 
 **User authorization:** Ali supplied the real second-account email (`ali.janjua@leap-associates.me`, his own domain) in direct response to the packet's two open questions. Treated as authorization for the single mutating call, per the request's context.
 
-**Action taken:** Opened `https://app.pinavia.co/reviewer-seat` (live, authenticated), entered the email, clicked "Send invite." This is the one real mutation defined in the packet's mutation boundary — executed exactly once, nothing else touched.
+**Action taken:** Opened `https://app.pinavia.io/reviewer-seat` (live, authenticated), entered the email, clicked "Send invite." This is the one real mutation defined in the packet's mutation boundary — executed exactly once, nothing else touched.
 
 **Evidence (acceptance criterion 1, confirmed):**
 
@@ -124,7 +124,7 @@ M .claude/skills/BUILDEROS_LICENSE.txt
 
 **Status:** `operationally verified` for invite + identity-bound accept. `deferred` for the approval-from-reviewer-account leg (separate, not attempted this slice — no approval action was taken, no recommendation/decision record was touched).
 
-**Evidence (live, `https://app.pinavia.co/reviewer-seat`, re-checked after Ali's confirmation):**
+**Evidence (live, `https://app.pinavia.io/reviewer-seat`, re-checked after Ali's confirmation):**
 
 - "CURRENT REVIEWER" now shows `ali.janjua@leap-associates.me`, badge `Accepted`, `accepted Jul 16, 2026, 12:59 AM`, with a `Revoke` action.
 - "INVITE A REVIEWER" panel now reads "One reviewer per workspace in this version. Revoke the current reviewer first to invite a different one." — the UI itself refuses a second concurrent invite while one is accepted. This satisfies acceptance criterion 4 (one-seat constraint holds in production) without needing a raw duplicate-POST/409 probe; the UI-level block is the same constraint surfacing to the actual admin, which is the more relevant proof for a demo rehearsal.

@@ -11,36 +11,36 @@ const rootLayoutSource = readFileSync(
 describe("hosted Clerk URL handoff", () => {
   it("builds an absolute redirect back to the active application host", () => {
     const appOrigin = applicationOrigin({
-      host: "app.pinavia.co",
+      host: "app.pinavia.io",
       forwardedProto: "https"
     });
 
     expect(hostedClerkUrl({
-      configuredUrl: "https://accounts.pinavia.co/sign-in",
+      configuredUrl: "https://accounts.pinavia.io/sign-in",
       redirectPath: "/dashboard/ceo",
       appOrigin
     })).toBe(
-      "https://accounts.pinavia.co/sign-in?redirect_url=https%3A%2F%2Fapp.pinavia.co%2Fdashboard%2Fceo"
+      "https://accounts.pinavia.io/sign-in?redirect_url=https%3A%2F%2Fapp.pinavia.io%2Fdashboard%2Fceo"
     );
   });
 
   it("uses the configured application URL when request host headers are unavailable", () => {
     const appOrigin = applicationOrigin({
-      configuredAppUrl: "https://app.pinavia.co/some/path"
+      configuredAppUrl: "https://app.pinavia.io/some/path"
     });
 
     expect(hostedClerkUrl({
-      configuredUrl: "https://accounts.pinavia.co/sign-up",
+      configuredUrl: "https://accounts.pinavia.io/sign-up",
       redirectPath: "/onboarding",
       appOrigin
-    })).toContain("redirect_url=https%3A%2F%2Fapp.pinavia.co%2Fonboarding");
+    })).toContain("redirect_url=https%3A%2F%2Fapp.pinavia.io%2Fonboarding");
   });
 
   it("rejects cross-origin redirect paths", () => {
     expect(hostedClerkUrl({
-      configuredUrl: "https://accounts.pinavia.co/sign-in",
+      configuredUrl: "https://accounts.pinavia.io/sign-in",
       redirectPath: "https://evil.example/steal",
-      appOrigin: "https://app.pinavia.co"
+      appOrigin: "https://app.pinavia.io"
     })).toBeNull();
   });
 

@@ -32,6 +32,15 @@ test("Render applies idempotent migrations only after a successful web build", (
   );
 });
 
+test("Render Blueprint uses .io-only Pinavia application and Clerk hosts", () => {
+  const web = webServices.find((service) => /^  - type: web$/m.test(service));
+
+  assert.match(web, /value: https:\/\/accounts\.pinavia\.io\/sign-in/);
+  assert.match(web, /value: https:\/\/accounts\.pinavia\.io\/sign-up/);
+  assert.match(web, /value: clerk\.pinavia\.io/);
+  assert.doesNotMatch(web, /pinavia\.(co|com)\b/);
+});
+
 test("Render cron services use a supported plan and Node 24", () => {
   const crons = cronServices.filter((service) => /^  - type: cron$/m.test(service));
 

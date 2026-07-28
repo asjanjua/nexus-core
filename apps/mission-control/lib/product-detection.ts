@@ -15,7 +15,9 @@
  *
  * Product domains are intentionally configurable because the pilot host may
  * move. Set NEXUS_PRODUCT_DOMAINS to a comma-separated list such as
- * "pinavia.co,pinavia.com". Defaults keep the current and prior Pinavia hosts.
+ * "pinavia.io". The default is deliberately `.io`-only; legacy domains must
+ * be supplied explicitly during a time-bounded migration, never retained by
+ * accident.
  */
 
 export type ProductKey = "nexusai" | "quorum" | "meridian" | "vantage" | "nucleus";
@@ -76,7 +78,7 @@ const SUBDOMAIN_PRODUCT: Record<string, ProductKey> = {
   nucleus: "nucleus",
 };
 
-const DEFAULT_PRODUCT_DOMAINS = ["pinavia.co", "pinavia.io"];
+const DEFAULT_PRODUCT_DOMAINS = ["pinavia.io"];
 
 export function productDomains(): string[] {
   const configured = process.env.NEXUS_PRODUCT_DOMAINS?.split(",") ?? DEFAULT_PRODUCT_DOMAINS;

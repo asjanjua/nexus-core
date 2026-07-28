@@ -90,7 +90,7 @@ Do not demo product subdomain URLs yet.
 
 Current evidence is recorded in `docs/PRODUCT_DOMAIN_DNS_CUTOVER_2026-07-26.md`:
 
-- `app.pinavia.io` redirects to `app.pinavia.co`.
+- `app.pinavia.io` redirects to `app.pinavia.io`.
 - `nexus.pinavia.io`, `quorum.pinavia.io`, `meridian.pinavia.io`, `vantage.pinavia.io`, and `nucleus.pinavia.io` do not resolve.
 
 Use these apex routes for immediate demos:

@@ -26,7 +26,7 @@ vi.mock("@/lib/demo/seed-sector-pack", () => ({
 const { POST } = await import("@/app/api/trial-invites/redeem/route");
 
 const request = (code = "a-valid-single-use-code") =>
-  new Request("https://app.pinavia.co/api/trial-invites/redeem", {
+  new Request("https://app.pinavia.io/api/trial-invites/redeem", {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({ code }),

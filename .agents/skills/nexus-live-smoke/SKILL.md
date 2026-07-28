@@ -12,7 +12,7 @@ Prove what is live without conflating code, configuration, DNS, session, migrati
 1. Read `AGENTS.md`, the current release gate, `docs/PRODUCTION_HEALTH_CHECKLIST.md`, and [references/smoke-matrix.md](references/smoke-matrix.md).
 2. Confirm authorization for live read actions and any planned external mutations. Do not change DNS, Clerk, Render, Neon, mail, or production data merely to complete a smoke check.
 3. Record local HEAD, pushed SHA, expected deployed SHA, active origin, product domain, and migration expectations.
-4. Use a configurable origin. Do not hardcode `app.pinavia.co` as a permanent product invariant.
+4. Use a configurable origin. Do not hardcode `app.pinavia.io` as a permanent product invariant.
 
 ## Prove deployment identity
 

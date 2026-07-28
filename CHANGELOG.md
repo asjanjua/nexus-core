@@ -67,7 +67,7 @@
 - Added a dedicated Nucleus engagement workflow registry and tests so Nucleus now owns its profile -> package -> delivery -> assurance lifecycle instead of relying on a generic white-label helper.
 - Updated product-domain sign-in redirects and Specialist Rooms navigation so Meridian, Vantage, and Nucleus land on real product hubs instead of the executive-room fallback.
 - Added Figma page `23 Launch Route Update V0.6` with three 1440x900 desktop-browser frames: readiness delta, Vantage/Nucleus route hubs, and updated demo script.
-- Recorded the remaining product-domain DNS cutover blocker in `docs/PRODUCT_DOMAIN_DNS_CUTOVER_2026-07-26.md`: the apex route smoke passes, but `app.pinavia.io` still redirects to `app.pinavia.co` and the product subdomains do not resolve yet.
+- Recorded the remaining product-domain DNS cutover blocker in `docs/PRODUCT_DOMAIN_DNS_CUTOVER_2026-07-26.md`: the apex route smoke passes, but `app.pinavia.io` still redirects to `app.pinavia.io` and the product subdomains do not resolve yet.
 
 ---
 
@@ -84,7 +84,7 @@
 - Added Figma page `21 Commercial Pilot Loop V0.4` in `Nexus System`, with six 1440x900 desktop-browser frames mapping the current code-backed buyer path: landing CTA delta, priced diagnostic, Meridian Submission Room, trial invite admin portal, invite accept/redeem, and deploy storyboard.
 - Recorded the V0.4 candidate in `docs/UI_BASELINE_VERSIONING.md` and added `docs/UI_V0_4_COMMERCIAL_PILOT_LOOP_FIGMA_PLAN.md` so Figma, code routes, and Render verification stay aligned.
 - Hardened trial invite redemption so the one-time invite claim and Pro trial entitlement are provisioned together, with optional sector-pack sample material seeded server-side after redemption rather than via the admin-only demo-reset endpoint.
-- Deployed the commercial pilot loop with `app.pinavia.co` as the canonical authenticated application host; its full eight-check platform smoke passed. `pinavia.io` serves the public landing flow but is intentionally not an API CORS origin. Staff invite issuance and full redemption smoke remain gated on the Render-managed `PINAVIA_ADMIN_PRINCIPALS` allowlist.
+- Deployed the commercial pilot loop with `app.pinavia.io` as the canonical authenticated application host; its full eight-check platform smoke passed. `pinavia.io` serves the public landing flow but is intentionally not an API CORS origin. Staff invite issuance and full redemption smoke remain gated on the Render-managed `PINAVIA_ADMIN_PRINCIPALS` allowlist.
 - Trial sample packs now refuse non-empty workspaces, preventing a forwarded invite from replacing a customer's existing evidence or recommendations.
 
 ---
@@ -116,7 +116,7 @@
 - Hardened reviewer-seat acceptance: the invite is consumed only by a Clerk user with a verified email matching the invite and a non-admin organization role. This blocks an administrator from self-accepting a reviewer seat through a secondary email.
 - Added a first-run, dismissible Company Setup helper for authenticated users. It guides company context, evidence intake, approval, and first-workflow selection without claiming server-owned readiness steps are complete.
 - Added `docs/DEMO_ACCESS_RUNBOOK.md` with the recommended three-identity Clerk demo model: owner/admin, executive/member, and reviewer/member. Passwords remain managed exclusively by Clerk and are never stored in Nexus code or configuration.
-- Declared the verified public Clerk frontend API host, `clerk.pinavia.co`, in the Render Blueprint. The separately configured hosted-auth URLs add `accounts.pinavia.co` to the nonce-based CSP allowlist without placing any credential in Git.
+- Declared the verified public Clerk frontend API host, `clerk.pinavia.io`, in the Render Blueprint. The separately configured hosted-auth URLs add `accounts.pinavia.io` to the nonce-based CSP allowlist without placing any credential in Git.
 - Overrode Next's optional Sharp dependency to `0.35.3`, removing the high-severity libvips advisory from the shipped dependency tree. The remaining high PostCSS advisory is pinned in Next 15's trusted build pipeline and is tracked for a tested Next major upgrade.
 
 ## Unreleased — Node 24 Production Promotion (2026-07-15)
@@ -166,7 +166,7 @@
 
 ## Unreleased — Hosted Clerk Redirect Repair (2026-07-10)
 
-Fixed the production sign-in handoff after the `b268a25` release exposed two missing layers: Render did not have `NEXT_PUBLIC_CLERK_HOSTED_SIGN_IN_URL` / `_SIGN_UP_URL`, and the handoff passed Clerk a relative redirect such as `/dashboard/ceo`. Render now receives the Clerk Account Portal URLs through the blueprint, while sign-in and sign-up construct same-origin absolute return URLs from the active application host. This prevents Clerk from resolving the return path on `accounts.pinavia.co` and rendering a 404. Added regression coverage for active-host redirects, configured-origin fallback, and cross-origin rejection.
+Fixed the production sign-in handoff after the `b268a25` release exposed two missing layers: Render did not have `NEXT_PUBLIC_CLERK_HOSTED_SIGN_IN_URL` / `_SIGN_UP_URL`, and the handoff passed Clerk a relative redirect such as `/dashboard/ceo`. Render now receives the Clerk Account Portal URLs through the blueprint, while sign-in and sign-up construct same-origin absolute return URLs from the active application host. This prevents Clerk from resolving the return path on `accounts.pinavia.io` and rendering a 404. Added regression coverage for active-host redirects, configured-origin fallback, and cross-origin rejection.
 
 The resulting authenticated smoke exposed a third issue: commit `68a5a0b` had removed `middleware.ts` while API routes still called Clerk `auth()`, causing every protected API to throw `auth() was called but Clerk can't detect usage of clerkMiddleware()`. Restored a deliberately minimal Clerk middleware that injects auth context and Nexus request metadata without reintroducing the build-heavy instrumentation removed by that commit. Route handlers remain the authorization boundary and continue to support bearer tokens.
 
@@ -226,7 +226,7 @@ Closed three paid-pilot follow-ups from the readiness/scorer work.
 
 ## Unreleased — Clerk Production Domain Cutover Hygiene (2026-07-06)
 
-Removed legacy `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL` and `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL` from the Render blueprint and env template, and removed global `signInFallbackRedirectUrl` / `signUpFallbackRedirectUrl` props from `ClerkProvider`. Sign-in and sign-up redirects now live on the Clerk auth components themselves, which preserves the post-auth landing behavior without serializing deprecated redirect fields on the live `pinavia.co` sign-in/sign-up pages.
+Removed legacy `NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL` and `NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL` from the Render blueprint and env template, and removed global `signInFallbackRedirectUrl` / `signUpFallbackRedirectUrl` props from `ClerkProvider`. Sign-in and sign-up redirects now live on the Clerk auth components themselves, which preserves the post-auth landing behavior without serializing deprecated redirect fields on the live `pinavia.io` sign-in/sign-up pages.
 
 ---
 

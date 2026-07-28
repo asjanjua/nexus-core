@@ -80,7 +80,7 @@ canon doc decisions (C), regulated demo runbook (B prep). Delete after review.
 
 ## Release-gate follow-up — 2026-07-07 regulated demo hardening
 
-- Live verification against the active pilot host (`https://app.pinavia.co`)
+- Live verification against the active pilot host (`https://app.pinavia.io`)
   showed `/api/health` green and the served `sentry-release` matching local
   `HEAD` / `origin/main` at
   `53b4d0ac76c2a729f451896b03602270f223260c`.

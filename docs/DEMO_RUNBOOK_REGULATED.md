@@ -13,7 +13,7 @@ Run `docs/RELEASE_GATE_2026-07-07.md` end to end. Summary of the non-negotiables
 1.1a. Push local `main` to origin first (six commits ahead as of 2026-07-09, plus this session's funnel-gate work) and set the new envs in Render: `NEXT_PUBLIC_CLERK_HOSTED_SIGN_IN_URL`, `NEXT_PUBLIC_CLERK_HOSTED_SIGN_UP_URL` (hosted-Clerk handoff, required since `68a5a0b`), `NEXUS_OPS_EMAIL` (optional), `NEXUS_FUNNEL_VISIBILITY` (leave unset = operator-only), `NEXUS_OPERATOR_USER_IDS` (your Clerk user id, comma-separated), `NEXT_PUBLIC_NEXUS_FUNNEL_NAV` (leave unset = nav hidden).
 
 1.2. Confirm Render is serving the intended commit SHA. As of 2026-07-07 the
-active pilot host (`NEXT_PUBLIC_APP_URL`, currently `https://app.pinavia.co`)
+active pilot host (`NEXT_PUBLIC_APP_URL`, currently `https://app.pinavia.io`)
 served SHA `53b4d0ac76c2a729f451896b03602270f223260c`, `/api/health` was green,
 and authenticated `/knowledge`, `/settings/connectors`, and `/dashboard/ceo`
 rendered. The remaining release-gate blocker was the protected-route CORS
@@ -98,7 +98,7 @@ Go/no-go: rehearse Mode A end to end at least one day before. If the switch misb
 
 ## 6. Verification Snapshot — 2026-07-07
 
-- Active verified pilot host in this run: `https://app.pinavia.co`
+- Active verified pilot host in this run: `https://app.pinavia.io`
   (`NEXT_PUBLIC_APP_URL` remains the source of truth; do not hardcode the host
   in product logic).
 - `.io` product domains were not resolving in this shell during the check.

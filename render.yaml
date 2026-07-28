@@ -38,9 +38,9 @@ services:
       - key: NEXT_PUBLIC_CLERK_SIGN_UP_URL
         value: /sign-up
       - key: NEXT_PUBLIC_CLERK_HOSTED_SIGN_IN_URL
-        value: https://accounts.pinavia.co/sign-in
+        value: https://accounts.pinavia.io/sign-in
       - key: NEXT_PUBLIC_CLERK_HOSTED_SIGN_UP_URL
-        value: https://accounts.pinavia.co/sign-up
+        value: https://accounts.pinavia.io/sign-up
       - key: NEXT_PUBLIC_APP_NAME
         value: NexusAI Mission Control
       # Cookieless marketing analytics for the public Pinavia surfaces.
@@ -59,7 +59,7 @@ services:
       - key: NEXT_PUBLIC_CLERK_DOMAIN
         # Clerk's browser SDK host. The hosted sign-in URL is configured
         # separately above; Nexus allowlists both hosts in its CSP.
-        value: clerk.pinavia.co
+        value: clerk.pinavia.io
       - key: CLERK_SECRET_KEY
         sync: false
       - key: CLERK_WEBHOOK_SECRET

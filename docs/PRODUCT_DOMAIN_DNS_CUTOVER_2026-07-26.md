@@ -1,6 +1,6 @@
 # Product Domain DNS Cutover -- 2026-07-26
 
-Status: External DNS and hosting setup required before demoing product subdomains.
+Status: `.io`-only cutover pending external DNS, hosting, and Clerk configuration.
 
 This note records the live state after the V0.6 route-entry deploy. The app code is ready for the product-domain layer, but Cloudflare/Render/Clerk must all agree before these hostnames can be used in buyer demos.
 
@@ -13,7 +13,6 @@ curl -sS -I https://pinavia.io
 curl -sS -I https://pinavia.io/vantage
 curl -sS -I https://pinavia.io/nucleus
 curl -sS -I https://app.pinavia.io
-curl -sS -I https://app.pinavia.co
 ```
 
 Results:
@@ -23,8 +22,7 @@ Results:
 | `pinavia.io` | 200 from Cloudflare/Render | Public landing host is live. |
 | `pinavia.io/vantage` | 307 to `/sign-in?redirect_url=%2Fvantage` | Vantage protected hub is deployed on the apex host. |
 | `pinavia.io/nucleus` | 307 to `/sign-in?redirect_url=%2Fnucleus` | Nucleus protected hub is deployed on the apex host. |
-| `app.pinavia.io` | 301 to `https://app.pinavia.co/` from Cloudflare | There is a Cloudflare-side redirect or forwarding rule to remove before `.io` app cutover. |
-| `app.pinavia.co` | 200 from Cloudflare/Render | Prior authenticated app host is still reachable. |
+| `app.pinavia.io` | 301 to a legacy host from Cloudflare | The legacy forwarding rule must be removed before the `.io` app cutover. |
 | `nexus.pinavia.io` | DNS resolution failed | Missing DNS record. |
 | `quorum.pinavia.io` | DNS resolution failed | Missing DNS record. |
 | `meridian.pinavia.io` | DNS resolution failed | Missing DNS record. |
@@ -64,7 +62,7 @@ Keep `pinavia.io` and `www.pinavia.io` pointed at the public landing app unless/
 
 ## Required Cutover Sequence
 
-1. In Cloudflare, remove or disable the rule that redirects `app.pinavia.io` to `app.pinavia.co`.
+1. In Cloudflare, remove or disable the legacy forwarding rule from `app.pinavia.io`.
 2. In Render, attach these custom domains to `nexus-mission-control`:
    - `app.pinavia.io`
    - `nexus.pinavia.io`
@@ -74,7 +72,7 @@ Keep `pinavia.io` and `www.pinavia.io` pointed at the public landing app unless/
    - `nucleus.pinavia.io`
 3. In Cloudflare DNS, create the missing CNAME records above. If Render displays a different validation target, use Render's target for that host.
 4. In Clerk, add every product domain used in demos to allowed origins and redirect URLs.
-5. In Render, keep `NEXT_PUBLIC_SITE_URL=https://pinavia.io`. Set `NEXT_PUBLIC_APP_URL=https://app.pinavia.io` only after the `.io` app host stops redirecting to `.co` and the auth smoke passes.
+5. In Render, keep `NEXT_PUBLIC_SITE_URL=https://pinavia.io`. Set `NEXT_PUBLIC_APP_URL=https://app.pinavia.io` only after the `.io` app host stops redirecting to any legacy host and the auth smoke passes.
 6. Redeploy the Render service after environment or custom-domain changes.
 
 ## Smoke Gate
@@ -90,7 +88,7 @@ done
 
 Expected:
 
-- `app.pinavia.io` returns 200 or a same-host sign-in flow, not a redirect to `app.pinavia.co`.
+- `app.pinavia.io` returns 200 or a same-host sign-in flow, not a redirect to any legacy host.
 - `nexus.pinavia.io` resolves and uses NexusAI branding.
 - `quorum.pinavia.io` resolves and signs into `/board`.
 - `meridian.pinavia.io` resolves and signs into `/meridian`.

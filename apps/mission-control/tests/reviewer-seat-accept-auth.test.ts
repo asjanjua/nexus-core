@@ -33,7 +33,7 @@ const inviteCode = "a".repeat(32);
 const inviteHash = createHash("sha256").update(inviteCode).digest("hex");
 
 function request() {
-  return new Request("https://app.pinavia.co/api/reviewer-seat/accept", {
+  return new Request("https://app.pinavia.io/api/reviewer-seat/accept", {
     method: "POST",
     body: JSON.stringify({ inviteCode }),
   });

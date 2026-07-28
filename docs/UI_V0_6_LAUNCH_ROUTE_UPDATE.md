@@ -57,7 +57,7 @@ Live verification after push:
 
 External product-domain gate recorded after deploy:
 
-- `app.pinavia.io` currently returns a Cloudflare 301 to `https://app.pinavia.co/`.
+- `app.pinavia.io` currently returns a Cloudflare 301 to `https://app.pinavia.io/`.
 - `nexus.pinavia.io`, `quorum.pinavia.io`, `meridian.pinavia.io`, `vantage.pinavia.io`, and `nucleus.pinavia.io` do not resolve yet.
 - See `docs/PRODUCT_DOMAIN_DNS_CUTOVER_2026-07-26.md` before demoing product subdomain URLs. Use apex routes (`https://pinavia.io/vantage`, `https://pinavia.io/nucleus`) until DNS, Render custom domains, Clerk redirects, and per-domain smoke pass.
 

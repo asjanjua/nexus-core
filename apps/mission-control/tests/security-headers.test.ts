@@ -78,16 +78,16 @@ describe("Security headers", () => {
 
   it("allows separate Clerk frontend API and hosted-auth custom domains", () => {
     const config = {
-      frontendDomain: "clerk.pinavia.co",
-      hostedSignInUrl: "https://accounts.pinavia.co/sign-in",
-      hostedSignUpUrl: "https://accounts.pinavia.co/sign-up",
+      frontendDomain: "clerk.pinavia.io",
+      hostedSignInUrl: "https://accounts.pinavia.io/sign-in",
+      hostedSignUpUrl: "https://accounts.pinavia.io/sign-up",
     };
     const hosts = clerkCspHosts(config);
     const csp = cspDirectives("n", config);
 
-    expect(hosts).toEqual(["clerk.pinavia.co", "accounts.pinavia.co"]);
-    expect(csp).toContain("https://clerk.pinavia.co");
-    expect(csp).toContain("https://accounts.pinavia.co");
+    expect(hosts).toEqual(["clerk.pinavia.io", "accounts.pinavia.io"]);
+    expect(csp).toContain("https://clerk.pinavia.io");
+    expect(csp).toContain("https://accounts.pinavia.io");
   });
 
   it("keeps style-src unsafe-inline, which Tailwind and React inline styles need", async () => {
@@ -152,10 +152,10 @@ describe("Security headers", () => {
     it("returns a 204 preflight and echoes allowed product origins", () => {
       const res = withSecurityHeaders(
         NextResponse.next(),
-        fakeRequest("/api/ask", { method: "OPTIONS", origin: "https://app.pinavia.co" })
+        fakeRequest("/api/ask", { method: "OPTIONS", origin: "https://app.pinavia.io" })
       );
       expect(res.status).toBe(204);
-      expect(res.headers.get("access-control-allow-origin")).toBe("https://app.pinavia.co");
+      expect(res.headers.get("access-control-allow-origin")).toBe("https://app.pinavia.io");
       expect(res.headers.get("access-control-allow-methods")).toContain("POST");
     });
   });

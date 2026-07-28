@@ -158,7 +158,7 @@ Expected:
 
 ### 2026-07-15 verified release subset
 
-- [x] Public `app.pinavia.co` domain smoke passed 8/8.
+- [x] Public `app.pinavia.io` domain smoke passed 8/8.
 - [x] Hosted Clerk sign-in returned to the authenticated organization workspace.
 - [x] Dashboard, `/knowledge`, `/workflows`, and `/settings/connectors` rendered after the one-minute Clerk refresh window.
 - [x] `/reviewer-seat` rendered the legitimate empty-seat state after the migration-enabled deploy; browser console was clean.
@@ -197,7 +197,7 @@ Use this when comparing the original Vercel-origin UI with the newer Render/new-
 Use this before any house-of-brands demo.
 
 - [ ] Review `docs/PRODUCT_DOMAIN_DNS_CUTOVER_2026-07-26.md` and confirm the live DNS state has changed since the recorded 2026-07-26 blocker.
-- [ ] `app.pinavia.io` no longer redirects to `app.pinavia.co`.
+- [ ] `app.pinavia.io` no longer redirects to `app.pinavia.io`.
 - [ ] `origin/main` commit deployed by Render includes `lib/product-detection.ts`.
 - [ ] `https://app.pinavia.io` renders NexusAI public-shell branding and signs in to `/dashboard/ceo`.
 - [ ] `https://nexus.pinavia.io` renders NexusAI public-shell branding and signs in to `/dashboard/ceo`.

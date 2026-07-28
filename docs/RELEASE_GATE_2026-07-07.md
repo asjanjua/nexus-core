@@ -39,8 +39,8 @@ Open the `nexus-mission-control` service. These must be set for this release. It
 
 ```text
 DATABASE_URL=                     # Neon pooled connection string
-NEXT_PUBLIC_APP_URL=              # NEW-critical: canonical deployed app URL, e.g. https://app.pinavia.co — used to build readiness claim links
-NEXUS_PRODUCT_DOMAINS=            # Optional comma-separated product-domain bases. Defaults include pinavia.co and pinavia.io.
+NEXT_PUBLIC_APP_URL=              # NEW-critical: canonical deployed app URL, e.g. https://app.pinavia.io — used to build readiness claim links
+NEXUS_PRODUCT_DOMAINS=            # Optional comma-separated product-domain bases. Defaults include pinavia.io.
 NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
 CLERK_SECRET_KEY=
 CLERK_WEBHOOK_SECRET=
@@ -54,7 +54,7 @@ NEXUS_FROM_EMAIL=                 # NEW-optional: defaults to "NexusAI <briefs@p
 
 Two deliberate behaviours to know:
 
-- Do not hardcode `app.pinavia.co` in product logic or future runbooks. It is the current pilot host only and may change after this month. Runtime code should use `NEXT_PUBLIC_APP_URL` for canonical links and `NEXUS_PRODUCT_DOMAINS` for allowed product-domain host detection/CORS.
+- Do not hardcode `app.pinavia.io` in product logic or future runbooks. It is the current pilot host only and may change after this month. Runtime code should use `NEXT_PUBLIC_APP_URL` for canonical links and `NEXUS_PRODUCT_DOMAINS` for allowed product-domain host detection/CORS.
 - With `NEXUS_DB_REQUIRED=true`, the strategy-profile store fallback is bypassed and the app uses Postgres only. The fallback is for no-database demos, never production.
 - If `NEXUS_RESEND_API_KEY` is unset, readiness still works; the claim travels by URL and sessionStorage, and the email step is skipped and logged. Set it only when the `pinavia.io` sender domain is verified in Resend.
 
@@ -115,7 +115,7 @@ Release is complete when: tests and build passed locally, `0033` and `0034` are 
 
 ## 9. Verification Snapshot — 2026-07-07
 
-This is the dated evidence from the 2026-07-07 regulated-demo release-gate run.
+This is dated evidence from the 2026-07-07 regulated-demo release-gate run. Retired Pinavia custom-domain references have been normalized to the `.io` destination; use the associated commit and provider history for the exact legacy hostname.
 
 - **Local verification**
   - `npm exec -w @nexus/mission-control vitest run` -> `62` files / `438` tests passed.
@@ -127,15 +127,15 @@ This is the dated evidence from the 2026-07-07 regulated-demo release-gate run.
   - `npm run build -w @nexus/mission-control` exited `0`.
 - **Served commit**
   - Local `HEAD` and `origin/main`: `53b4d0ac76c2a729f451896b03602270f223260c`
-  - Live `https://app.pinavia.co/sign-in` page includes
+  - Live `https://app.pinavia.io/sign-in` page includes
     `sentry-release=53b4d0ac76c2a729f451896b03602270f223260c`
   - Conclusion: the active pilot host is serving the expected commit.
 - **Health**
-  - `https://app.pinavia.co/api/health` returned `ok=true` with healthy
+  - `https://app.pinavia.io/api/health` returned `ok=true` with healthy
     database, vector search, originals storage, and llm checks at
     `2026-07-07T15:55:58.471Z`.
 - **Domain/DNS**
-  - `app.pinavia.co` resolves to the Render service and is the active verified
+  - `app.pinavia.io` resolves to the Render service and is the active verified
     pilot host.
   - `app.pinavia.io` and `nexus.pinavia.io` did not resolve in this shell during
     the check. Treat that as DNS/provider propagation pending, not an app-code
@@ -147,7 +147,7 @@ This is the dated evidence from the 2026-07-07 regulated-demo release-gate run.
     lane, and the authenticated dashboard rendered pilot status fields
     (`selectedWorkflow`, `pilotReady`, `pilotGates`) from `strategy_profiles`.
 - **Authenticated workflow smoke**
-  - Verified live in an authenticated browser on `app.pinavia.co`:
+  - Verified live in an authenticated browser on `app.pinavia.io`:
     1. `/readiness` with a regulated profile returned governed deployment.
     2. Continue link carried `?readiness=...` into signup.
     3. `/onboarding` showed the inherited regulated banner and sector context.
@@ -159,7 +159,7 @@ This is the dated evidence from the 2026-07-07 regulated-demo release-gate run.
     transition in a brand-new workspace, nor re-run the optional
     `pilot_gates_unmet` API check on a blocked workspace.
 - **Current release blocker**
-  - `APP_URL=https://app.pinavia.co EXPECT_CORS_ORIGIN=https://app.pinavia.co node scripts/smoke-domain.mjs`
+  - `APP_URL=https://app.pinavia.io EXPECT_CORS_ORIGIN=https://app.pinavia.io node scripts/smoke-domain.mjs`
     still fails one check on production:
     `FAIL CORS allows expected origin — origin=none`
   - Root cause reproduced live: `OPTIONS` requests to protected API routes are
@@ -176,14 +176,14 @@ currently active deployment:
 
 - **Deploy**
   - Commit `920f562a5a8fc3f4de0e1bfe2adbfd4c9bf137ed` was pushed to `origin/main`.
-  - `https://app.pinavia.co/sign-in?t=<cache-bust>` served
+  - `https://app.pinavia.io/sign-in?t=<cache-bust>` served
     `sentry-release=920f562a5a8fc3f4de0e1bfe2adbfd4c9bf137ed`.
 - **Live health**
-  - `https://app.pinavia.co/api/health` remained `ok=true`.
+  - `https://app.pinavia.io/api/health` remained `ok=true`.
   - `https://app.pinavia.io/api/health` also returned `ok=true` once DNS
     propagated.
 - **Domain smoke**
-  - `APP_URL=https://app.pinavia.co EXPECT_CORS_ORIGIN=https://app.pinavia.co node scripts/smoke-domain.mjs`
+  - `APP_URL=https://app.pinavia.io EXPECT_CORS_ORIGIN=https://app.pinavia.io node scripts/smoke-domain.mjs`
     passed all 8 checks after the middleware deploy.
   - `APP_URL=https://app.pinavia.io EXPECT_CORS_ORIGIN=https://app.pinavia.io node scripts/smoke-domain.mjs`
     also passed all 8 checks.
@@ -218,7 +218,7 @@ currently active deployment:
 
 - **Release identity:** PR #4 was merged and Render deployment `dep-d9btcjmq1p3s73975msg` reached `live` at application commit `32166903b55b2ce8239bd5eb21fc0bd4121811e2`. GitHub CI and CodeQL completed successfully for the same SHA.
 - **Runtime:** Render selected Node 24.18.0. Node 24.14.1 locally passed boundaries, TypeScript, 71 Vitest files / 481 assertions, and the 163-page production build; Node 22.22.3 remains the CI compatibility rung.
-- **Public smoke:** `app.pinavia.co` passed all 8 canonical checks: health, home, HSTS, CSP, frame protection, protected-route redirect, expected-origin CORS, and unknown-origin rejection.
+- **Public smoke:** `app.pinavia.io` passed all 8 canonical checks: health, home, HSTS, CSP, frame protection, protected-route redirect, expected-origin CORS, and unknown-origin rejection.
 - **Hydration repair:** dashboard timestamps now render through a deterministic UTC formatter. The live dashboard showed the UTC value and no current React hydration error.
 - **Session repair:** root `<ClerkProvider>` was restored without the previously removed Clerk widgets/hooks. Beyond the one-minute token window, `/knowledge`, `/settings/connectors`, `/workflows`, and `/reviewer-seat` remained organization-authenticated with no Nexus console errors.
 - **Schema repair:** free-tier Render builds now run `npm ci && npm run build && npm run db:migrate`; migrations cannot run after a failed build. The authenticated reviewer-seat page moved from a network error to its legitimate empty-seat state, providing live read-path proof for migration `0035`. Additive migrations `0036` and `0037` share the same idempotent ordered runner; their feature behavior still needs dedicated smoke.

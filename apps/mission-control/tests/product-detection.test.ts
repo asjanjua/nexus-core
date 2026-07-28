@@ -27,7 +27,6 @@ describe("productFromHost", () => {
   });
 
   it("maps default Pinavia subdomains to products without hardcoding the current app host", () => {
-    expect(productFromHost("app.pinavia.co")).toBe("nexusai");
     expect(productFromHost("nexus.pinavia.io")).toBe("nexusai");
     expect(productFromHost("nexusai.pinavia.io")).toBe("nexusai");
     expect(productFromHost("app.pinavia.io")).toBe("nexusai");
@@ -38,7 +37,7 @@ describe("productFromHost", () => {
   });
 
   it("handles port numbers", () => {
-    expect(productFromHost("app.pinavia.co:443")).toBe("nexusai");
+    expect(productFromHost("app.pinavia.io:443")).toBe("nexusai");
     expect(productFromHost("quorum.pinavia.io:443")).toBe("quorum");
     expect(productFromHost("localhost:3000")).toBe("nexusai");
   });
@@ -49,7 +48,7 @@ describe("productFromHost", () => {
     expect(productDomains()).toEqual(["example.app", "pinavia.test"]);
     expect(productFromHost("app.example.app")).toBe("nexusai");
     expect(productFromHost("quorum.pinavia.test")).toBe("quorum");
-    expect(productFromHost("quorum.pinavia.co")).toBe("nexusai");
+    expect(productFromHost("quorum.pinavia.io")).toBe("nexusai");
   });
 
   it("falls back to nexusai for unrecognized hosts", () => {
@@ -81,7 +80,6 @@ describe("productSignInRedirect", () => {
 describe("productOrigins", () => {
   it("includes all pivot subdomains", () => {
     const origins = productOrigins();
-    expect(origins).toContain("app.pinavia.co");
     expect(origins).toContain("app.pinavia.io");
     expect(origins).toContain("nexus.pinavia.io");
     expect(origins).toContain("quorum.pinavia.io");
