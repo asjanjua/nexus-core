@@ -51,7 +51,7 @@ These are the highest-priority operational items because they determine whether 
 
 | Item | Status | Source | Notes |
 |---|---|---|---|
-| Commercial pilot loop design-to-deploy | deployed, authenticated smoke pending | `docs/UI_V0_4_COMMERCIAL_PILOT_LOOP_FIGMA_PLAN.md`, Figma page `121:2` | Six code-backed desktop frames now map the buyer path from `/` -> `/diagnostic` -> trial invite -> `/meridian` -> human sign-off. The full 8-check platform smoke passes on `app.pinavia.io`; `pinavia.io` is the public landing surface, not an API CORS origin. Remaining gate is Render `PINAVIA_ADMIN_PRINCIPALS` plus authenticated staff invite and redemption smoke. |
+| Commercial pilot loop design-to-deploy | public smoke passed, authenticated smoke pending | `docs/UI_V0_4_COMMERCIAL_PILOT_LOOP_FIGMA_PLAN.md`, Figma page `121:2`, `docs/PRODUCTION_HEALTH_CHECKLIST.md` | Local Node 24 release preflight passed on 2026-07-29 (729 tests, TypeScript, boundaries, production build). A manual latest-commit deployment was initiated in Render; immediately afterward, `app.pinavia.io` passed the full 8-check public domain smoke. Render's dashboard UI did not expose the resulting SHA, so exact deployment identity remains an observation gap. Next gate: set `PINAVIA_ADMIN_PRINCIPALS` and complete authenticated staff invite/redemption smoke. |
 
 ### Initial Launch UI Final Pack V0.5
 
@@ -67,7 +67,7 @@ These are the highest-priority operational items because they determine whether 
 | Product-family brief refresh | done | `/product-brief`, V0.7 frame `141:2`, `4c17bb3`, `4e8b71f` | Stale NexusAI-only product brief replaced with a Pinavia family pilot brief: current room routes, buyer/workflow/proof/boundary table on desktop, readable room cards on mobile, pilot inputs/outputs, trust claims, standing authority boundary, and Start pilot/diagnostic follow-up. Live smoke passed on desktop/mobile: Pinavia shell present, stale contact strings absent, three `/start-pilot` links, all room links present, no body overflow, desktop table retained, mobile table hidden, and five mobile room cards rendered. |
 | Readiness result path refresh | done | `/readiness`, V0.7 frame `143:2`, `d1ac9b2` | Stale NexusAI-only result copy and personal-email CTAs replaced with Pinavia result copy, `/diagnostic` or `/start-pilot` band CTAs, `hello@pinavia.io` advisor fallback, teal top-band treatment, and a single result path when a lane exists. Live desktop/mobile result-flow smoke passed: AI-Native result rendered, inherited signup link produced, `/start-pilot` CTA present, no stale personal-email/NexusAI-only copy, no contradictory advisor panel, and no body overflow. |
 | Diagnostic intake honesty pass | done | `/diagnostic`, `/start-pilot?intent=diagnostic`, V0.7 frame `145:2`, `9428db9` | The diagnostic page no longer advertises an unwired paid checkout. Primary CTA now reads `Start diagnostic intake` and routes to `/start-pilot?intent=diagnostic`; `/start-pilot` acknowledges diagnostic intent; the page keeps `/readiness` as secondary, hides pricing while checkout/receipt flows are absent, and states the no-certification/no-filing/no-legal-opinion/no-approval boundary. Local TypeScript, production build, local route smoke, and live apex desktop/mobile smoke passed. |
-| Product subdomain DNS cutover | production pending | `docs/PRODUCT_DOMAIN_DNS_CUTOVER_2026-07-26.md`, Cloudflare DNS, Render custom domains, Clerk allowed origins | Current evidence: `app.pinavia.io` 301s to `app.pinavia.io`, and `nexus`, `quorum`, `meridian`, `vantage`, and `nucleus.pinavia.io` do not resolve. Do not demo product subdomain URLs until DNS, Render custom domains, Clerk redirects, and per-domain smoke pass. |
+| Product subdomain entry redirects | done; canonical auth smoke pending | `docs/PRODUCT_DOMAIN_DNS_CUTOVER_2026-07-26.md`, Cloudflare redirect rules | Cloudflare now sends each branded hostname to its canonical `app.pinavia.io` route without needing separate Render or Clerk domains. Verified again on 2026-07-29: `quorum.pinavia.io/demo?source=preflight` returned `301` to `https://app.pinavia.io/board/demo?source=preflight`, and the canonical app passed public domain smoke. Signed-in product-path smoke remains required. |
 
 ### Pinavia Trial-Invite Production Enablement
 
@@ -78,19 +78,27 @@ These are the highest-priority operational items because they determine whether 
 | Item | Status | Source | Notes |
 |---|---|---|---|
 | Confirm/apply migrations `0025-0026` in production database | done | `TASKS.md`, `HANDOVER.md`, `docs/PRODUCTION_HEALTH_CHECKLIST.md` | Applied successfully on 2026-06-25; `db:check` returned `ok=true` against `neondb`. |
-| Commit/push/deploy | production pending | `HANDOVER.md`, `docs/ROADMAP.md` | `origin/main` is now at commit `c55417e` (`feat: add product subdomain detection`). Render dashboard login is needed to confirm the service has deployed this SHA before demoing product-specific domains. |
+| Commit/push/deploy | public smoke passed; SHA confirmation pending | `HANDOVER.md`, `docs/ROADMAP.md`, Render service `srv-d8bv48jtqb8s73a95gg0` | `origin/main` was at `80ed650` when a manual latest-commit deploy was initiated on 2026-07-29. `APP_URL=https://app.pinavia.io npm run smoke:domain -w @nexus/mission-control` passed all 8 checks afterward. Render's dashboard stayed on a loading shell, so confirm the exact deployed SHA once its UI recovers. |
 | Preserve original UI baseline before choosing newer UI direction | done (refs captured) | `docs/UI_BASELINE_VERSIONING.md`, `DEPLOY.md`, `docs/PRODUCTION_HEALTH_CHECKLIST.md` | Vercel is historical origin only. Ledger now captures V0.1/V0.2 Figma refs, current git ref at registry time, Render comparison route, source formats, screen sets, and route mapping. Exact Render deploy ID remains part of the separate deploy-confirmation item. |
 | Authenticated Render smoke for `/knowledge`, `/workflows`, `/settings/connectors`, and reviewer-seat | done | `TASKS.md`, `HANDOVER.md`, `docs/PRODUCTION_HEALTH_CHECKLIST.md` | Verified 2026-07-15 in a logged-in organization session after the Clerk refresh window; all four routes rendered without Nexus console errors. Ask `noteRefs` remains a separate behavior check. |
 | Confirm Render deployed intended commit | done | `docs/PRODUCTION_HEALTH_CHECKLIST.md` | Render served application commit `32166903b55b2ce8239bd5eb21fc0bd4121811e2`; GitHub CI/CodeQL and the 8/8 public smoke passed on the same release line. |
-| Product subdomain infrastructure | production pending | `TASKS.md`, `docs/RENDER_DEPLOY.md`, `docs/INFRA_DECISION_MEMO.md` | Code layer shipped in `c55417e`, but Cloudflare DNS, Render custom domains, Clerk allowed origins/redirect URLs, and per-domain smoke remain external setup work. Use one shared Render service unless a product later needs isolated infrastructure. |
+| Product subdomain infrastructure | done as redirect-entry layer | `docs/PRODUCT_DOMAIN_DNS_CUTOVER_2026-07-26.md` | Product hosts are Cloudflare 301 entry redirects into one shared canonical app origin. This intentionally avoids separate Render custom-domain slots and Clerk origins. Do not describe them as isolated product deployments. |
 | Define Render cron jobs | production pending | `render.cron.yaml`, `TASKS.md`, architecture review | Dispatch, billing, synthesis, and readiness-prune are defined as opt-in paid `starter` services in `render.cron.yaml`. The primary `render.yaml` is web-only. Activation, secret injection, schedule verification, and billing approval remain pending. |
-| `/api/health` returns `status=ok` in production | done | `docs/PRODUCTION_HEALTH_CHECKLIST.md` | Verified 2026-06-25: DB, vector search, R2 originals, and DeepSeek LLM config are healthy. |
+| `/api/health` returns `status=ok` in production | done; release identity confirmation pending | `docs/PRODUCTION_HEALTH_CHECKLIST.md` | After the manual latest-commit deploy was initiated on 2026-07-29, `https://app.pinavia.io/api/health` returned `200` with database, vector search, originals storage, and DeepSeek checks all healthy. |
 
 ---
 
 ## P1 — Paid Pilot Readiness Backlog
 
 These are the minimum trust and operations items before a paid pilot contract should be signed.
+
+### Nexus Room Portfolio and Product-Room Activation
+
+| Item | Status | Source | Notes |
+|---|---|---|---|
+| Room Portfolio design and policy | done (Figma/design) | `docs/NEXUS_ROOM_PORTFOLIO_ACTIVATION.md`, Figma page `212:2`, Pinavia Tree `216:2` | Every workspace sees the curated leadership and product-room portfolio from day one. Visibility is not activation; a workspace administrator must confirm owner, evidence scope or empty-state reason, default agent boundary, and human authority before activation. |
+| Durable room configuration and `/rooms` | open | `docs/NEXUS_ROOM_PORTFOLIO_ACTIVATION.md` | Extract onboarding role-state controls into shared room primitives, persist room configuration and audit events, build `/rooms`, and derive specialist navigation from active rooms. Do not present the Figma flow as live until code, authorization, keyboard/mobile, and route smoke evidence pass. |
+| Product-room activation adapters | open | Quorum, Meridian, Vantage, and Nucleus registries; `docs/NEXUS_ROOM_PORTFOLIO_ACTIVATION.md` | Product rooms are discoverable in the portfolio but retain their own workflow registry and authority boundary. Activation must hand into the vertical rather than creating generic C-suite dashboards. |
 
 | Item | Status | Source | Notes |
 |---|---|---|---|

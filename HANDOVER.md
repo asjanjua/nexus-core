@@ -4,6 +4,27 @@
 
 ---
 
+## 2026-07-29 — Nexus Room Portfolio Design Source
+
+- Figma page `29 Nexus Room Portfolio / 2026-07-29` (`212:2`) is the current design source for the Nexus room model: populated portfolio `213:2`, day-one portfolio `213:61`, template picker `214:2`, configuration `214:59`, activation review `214:114`, Finance Room detail `215:2`, and Product Room Portfolio `215:49`.
+- Locked policy: every workspace sees the complete curated room portfolio from day one. Only an administrator can activate a room; activation requires accountable owner, evidence scope or explicit empty-state reason, default agent boundary, human-authority acknowledgement, and an audit event. Visibility never grants authority.
+- Current code already has onboarding role suggestion, staged roles, dual hats, and custom role titles in `app/onboarding/wizard.tsx`, a role registry, and static specialist navigation. It does not yet have durable room configuration, `/rooms`, configuration-derived navigation, or product activation adapters.
+- The Pinavia Code-to-Visual Tree now includes frame `216:2`, which maps onboarding role states -> planned Room Portfolio -> product-room layer. Implement from `docs/NEXUS_ROOM_PORTFOLIO_ACTIVATION.md`; do not flatten Quorum, Meridian, Vantage, or Nucleus into generic role dashboards.
+
+---
+
+## 2026-07-29 — Release Preflight and Canonical-App Recovery Gate
+
+- `main` is clean at `80ed650`. The current Node 24 release preflight passed: build-boundary checks, TypeScript, 99 Vitest files / 729 tests, and the sequential Next.js production build.
+- The local shell initially ran Node 22 and correctly failed before tests because the dependency cache is intentionally Node-24-specific. Use `PATH=/opt/homebrew/opt/node@24/bin:$PATH npm run verify:release` for production-parity verification. Do not run TypeScript and the Next build concurrently in this checkout.
+- Cloudflare product entry redirects are live. On 2026-07-29, `https://quorum.pinavia.io/demo?source=preflight` returned a query-preserving `301` to `https://app.pinavia.io/board/demo?source=preflight`.
+- A manual latest-commit deployment was initiated in Render. After it was requested, `https://app.pinavia.io/api/health` returned `200` with database, vector search, originals storage, and DeepSeek checks healthy; the full 8-check `smoke:domain` run also passed.
+- Render's dashboard remained on a loading shell after the request, so its exact deployed SHA is not yet visible. Treat this as an observation gap, not proof that `80ed650` is live. The service remains on the Free plan and can sleep for 50 seconds or more.
+- Local follow-up fixed the `/admin/invites` page shell: it is now a server-gated route, so signed-out users are redirected before the client form mounts and signed-in non-staff get a restricted state. The existing API platform-admin guard remains in place as defense in depth. Focused invite tests, TypeScript, and production build passed.
+- Next action: confirm the Render SHA when the dashboard UI recovers, then set the non-secret Render `PINAVIA_ADMIN_PRINCIPALS` allowlist, confirm migration 0038, and run a real staff invite -> separate Clerk identity -> redeem -> demo-pack smoke. Do not call the product demo-ready until authenticated mutable smoke has passed.
+
+---
+
 ## 2026-07-28 — End-To-End Pilot Design Closure
 
 - Expanded Figma V0.7 with six screenshot-reviewed 1440x900 decision-grade handoff screens: Meridian evidence/gaps (`182:2`) and filing pack (`182:74`), Vantage red flags/IC handoff (`182:146`), Nucleus reviewer/client preview (`182:218`), Quorum minutes/action register (`182:290`), and NexusAI decision approval (`182:362`).

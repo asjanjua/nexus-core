@@ -6,14 +6,28 @@ Neon, Cloudflare, Clerk, GitHub, or the command line.
 
 ---
 
+## Current Release Status -- 2026-07-29
+
+- [x] Current `main` (`80ed650`) passed the Node 24 release preflight: 729
+  tests, TypeScript, build-boundary checks, and production build.
+- [x] Cloudflare product-entry redirect is live: `quorum.pinavia.io` preserves
+  its query string while redirecting to the canonical Board route.
+- [x] A manual latest-commit deployment was initiated in Render and the
+  canonical app subsequently passed the full 8-check public smoke.
+- [ ] Render's dashboard remained on a loading shell after the deploy request,
+  so its exact resulting Git SHA still needs confirmation. The Free plan can
+  sleep for 50 seconds or more and is not suitable for a time-critical demo.
+
+---
+
 ## 1. Required Services
 
-- [x] Render web service is deployed from the intended application Git commit. Verified `32166903b55b2ce8239bd5eb21fc0bd4121811e2` live on 2026-07-15; paperwork-only commits may advance `main` afterward.
-- [x] Render service is running the production build on Node 24. Verified in deployment logs on 2026-07-15.
+- [ ] Render web service is deployed from the intended application Git commit. A latest-commit deploy was initiated from `80ed650` and public smoke passed afterward; confirm the SHA when Render's dashboard recovers.
+- [x] Render service is running a responsive production instance on Node 24. `app.pinavia.io` passed the public smoke after the deployment request; Free-plan sleep remains an operational constraint.
 - [ ] Clerk sign-in and sign-up URLs point to the live app URL.
-- [ ] Product custom domains are attached in Render if demoing `app`, `nexus`, `quorum`, `meridian`, `vantage`, or `nucleus.pinavia.io`.
-- [ ] Cloudflare DNS records for product custom domains are proxied/active and resolve to the Render service.
-- [ ] Clerk allowed origins and redirect URLs include every product domain used in the demo.
+- [x] Product hosts use Cloudflare redirect-entry rules into canonical `app.pinavia.io`; separate Render custom domains are not required for `nexus`, `quorum`, `meridian`, `vantage`, or `nucleus`.
+- [x] Cloudflare redirect behavior is active for product hosts. Verify the exact branded URL used in a demo and then verify the canonical app responds.
+- [x] Clerk configuration only needs the canonical `app.pinavia.io` origin for this redirect-entry model.
 - [ ] Neon/Postgres is reachable from the app.
 - [ ] Cloudflare R2 bucket exists if original-file storage is enabled.
 - [ ] LLM provider key is configured for the selected provider.
@@ -192,20 +206,16 @@ Use this when comparing the original Vercel-origin UI with the newer Render/new-
 
 ---
 
-## 5B. Product Subdomain Gate
+## 5B. Product Entry-Redirect Gate
 
 Use this before any house-of-brands demo.
 
-- [ ] Review `docs/PRODUCT_DOMAIN_DNS_CUTOVER_2026-07-26.md` and confirm the live DNS state has changed since the recorded 2026-07-26 blocker.
-- [ ] `app.pinavia.io` no longer redirects to `app.pinavia.io`.
-- [ ] `origin/main` commit deployed by Render includes `lib/product-detection.ts`.
-- [ ] `https://app.pinavia.io` renders NexusAI public-shell branding and signs in to `/dashboard/ceo`.
-- [ ] `https://nexus.pinavia.io` renders NexusAI public-shell branding and signs in to `/dashboard/ceo`.
-- [ ] `https://quorum.pinavia.io` renders Quorum public-shell branding and signs in to `/board`.
-- [ ] `https://meridian.pinavia.io` renders Meridian public-shell branding and signs in to `/meridian`.
-- [ ] `https://vantage.pinavia.io` renders Vantage public-shell branding and signs in to `/vantage`.
-- [ ] `https://nucleus.pinavia.io` renders Nucleus public-shell branding and signs in to `/nucleus`.
-- [ ] Clerk sign-in and sign-up complete successfully from every product domain used in the demo.
+- [x] Review `docs/PRODUCT_DOMAIN_DNS_CUTOVER_2026-07-26.md`; the 2026-07-28 redirect-entry model supersedes the older custom-domain plan.
+- [x] Product hosts redirect query-preservingly into `app.pinavia.io`; `quorum.pinavia.io/demo?source=preflight` was verified on 2026-07-29.
+- [x] `https://app.pinavia.io` responds and passed the public health/security/CORS smoke after the manual deploy request.
+- [ ] `https://app.pinavia.io` renders NexusAI public-shell branding and signs in to `/dashboard/ceo` in an authenticated browser session.
+- [ ] Each branded host used in a demo reaches its documented canonical route in a browser smoke.
+- [ ] Clerk sign-in and sign-up complete successfully on the canonical `app.pinavia.io` destination.
 - [ ] Product-specific claims in demo copy match shipped routes; do not imply deep Meridian/Vantage/Nucleus workflows are live solely because protected hub routes resolve.
 
 ---

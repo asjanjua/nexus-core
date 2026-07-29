@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-07-29 — Nexus Room Portfolio (Design)
+
+- Added Figma page `29 Nexus Room Portfolio / 2026-07-29` with the Nexus day-one Room Portfolio, first-run state, governed Add Room flow, Finance Room detail, and product-room discovery layer.
+- Locked the policy that every workspace sees the complete curated portfolio from day one. Only administrators may activate rooms, and activation requires owner, evidence scope or explicit empty-state reason, draft-only agent boundary, human-authority acknowledgement, and audit event.
+- Extended the Pinavia Code-to-Visual Tree with the room activation branch (`216:2`). Quorum, Meridian, Vantage, and Nucleus are discoverable in the portfolio but retain their separate vertical workflow and refusal boundaries.
+- This is a design and documentation pass. No `/rooms` route, durable room entity, dynamic navigation, or activation workflow is represented as live.
+
+## 2026-07-29 — Release Readiness Reconciliation
+
+- Ran the sequential Node 24 release preflight on current `main`: build-boundary checks, TypeScript, 99 Vitest files / 729 tests, and the production build passed.
+- Reconciled `BACKLOG.md`, `TASKS.md`, `HANDOVER.md`, `docs/ROADMAP.md`, and the production health checklist to distinguish code-ready from live-ready. Cloudflare product entry redirects are live; after a manual latest-commit Render deploy was initiated, the canonical app passed its health and 8-check public domain smoke.
+- The remaining release gates are exact Render SHA confirmation, the staff allowlist/migration check, and the authenticated trial-invite redemption smoke. No customer-demo readiness claim is advanced by the public smoke alone.
+- Moved `/admin/invites` access handling into the server route: signed-out visitors now redirect to Clerk before the invite form renders, and signed-in non-staff receive a clear restricted state. The API's fail-closed platform-admin gate remains the authority layer.
+
 ## 2026-07-29 — Pinavia Code-to-Visual Tree (Design)
 
 - Added dated Figma page `28 Pinavia Code-to-Visual Tree / 2026-07-29` with detailed boards for product and route forks, code and deployment boundaries, and Git-to-visual provenance.

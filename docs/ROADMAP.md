@@ -34,9 +34,9 @@ Autonomous loops, workflow runners, local/on-prem auth, connector sync, and veri
 
 ---
 
-## Where We Are -- Current State (Node 24 production verified 2026-07-15)
+## Where We Are -- Current State (release preflight verified 2026-07-29)
 
-The product is demo-ready and pilot-design-ready on a Node 24 production baseline. On 2026-07-15, GitHub CI/CodeQL, Render deployment, the 8/8 public domain smoke, dashboard hydration, Clerk session refresh, and authenticated read smoke for `/knowledge`, `/workflows`, `/settings/connectors`, and `/reviewer-seat` passed. Mutable customer-demo flows remain separately gated: upload/approval, Ask citations, two-account reviewer acceptance/approval, waitlist behavior, pilot-afterlife behavior, and scheduled product email.
+The product is code-ready and pilot-design-ready on a Node 24 baseline. On 2026-07-29, current `main` passed the sequential release preflight (729 tests, TypeScript, build boundaries, and production build). A manual latest-commit Render deployment was initiated and `app.pinavia.io` subsequently passed all eight public domain checks. Render's dashboard did not expose the final SHA after the request, so deployment identity still needs confirmation before calling the product demo-ready. Mutable customer-demo flows remain separately gated: upload/approval, Ask citations, two-account reviewer acceptance/approval, waitlist behavior, pilot-afterlife behavior, and scheduled product email.
 
 **What is built and verified:**
 
@@ -61,7 +61,7 @@ The product is demo-ready and pilot-design-ready on a Node 24 production baselin
 - **Exports:** Weekly brief, risk radar CSV, reco register CSV, one-pager. Export hub.
 - **Demo/Sales:** 3 CEO-grade demo sector packs, demo mode with reset, pilot kit, product brief page, readiness assessment (public), SOW templates, demo scripts, ROI calculator.
 - **Auth:** Clerk SSO, scope-based API keys, workspace status (trial/pilot/active/suspended), LLM cost tracking.
-- **Product subdomains:** shared Render runtime with hostname-based product shell detection for `app`, `nexus`, `quorum`, `meridian`, `vantage`, and `nucleus.pinavia.io`. `quorum.pinavia.io` routes to `/board`; Meridian, Vantage, and Nucleus route to protected product hubs once V0.6 is deployed. DNS, Render custom domains, Clerk redirects, and product-domain smoke remain production cutover work.
+- **Product entry layer:** Cloudflare gives `nexus`, `quorum`, `meridian`, `vantage`, and `nucleus.pinavia.io` query-preserving redirects into canonical `app.pinavia.io` routes. This is a shared-entry model, not independent product hosting; app health and canonical Clerk smoke remain release gates.
 
 **What is confirmed missing (2026-06-17 audit):**
 
