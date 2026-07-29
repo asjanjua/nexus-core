@@ -4,6 +4,7 @@
 
 - Added nine editable desktop Figma frames for a simplified Pinavia home, an open Products dropdown, five vertical product front doors, About Pinavia, and a content-ready Leap Associates team page.
 - Product-front-door copy reflects the live Cloudflare entry pattern: branded product URLs lead to canonical app routes, while authentication remains on the shared Pinavia core.
+- Added a `Pinavia Theme` variable collection with semantic Dark and Day modes, plus Day-mode references for the simplified home, product menu, and all five vertical front doors. This is a Figma-only design system improvement; runtime theme switching is not yet implemented.
 - This is a design-only pass. No public-site implementation or deploy is claimed by these frames.
 
 ## 2026-07-28 — Deep Pilot Handoff Routes
