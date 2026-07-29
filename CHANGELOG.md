@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-07-29 — Pinavia Product Front Doors (Design)
+
+- Added nine editable desktop Figma frames for a simplified Pinavia home, an open Products dropdown, five vertical product front doors, About Pinavia, and a content-ready Leap Associates team page.
+- Product-front-door copy reflects the live Cloudflare entry pattern: branded product URLs lead to canonical app routes, while authentication remains on the shared Pinavia core.
+- This is a design-only pass. No public-site implementation or deploy is claimed by these frames.
+
 ## 2026-07-28 — Deep Pilot Handoff Routes
 
 - Added protected Meridian evidence/gap and filing-pack routes, Vantage red-flag/IC handoff, Nucleus reviewer console, and Quorum minutes/action review.
