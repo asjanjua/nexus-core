@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-07-29 — Pinavia Site Flow + Design Audit (Design)
+
+- Added dated Figma page `27 Pinavia Site Flow + Design Audit / 2026-07-29` with editable frames for the public-to-product flow, a design scorecard, and an ordered action ledger.
+- The audit explicitly separates live route/service claims from design-only references and prioritises the public-site implementation, Dark/Day preference, accessibility proof, regulated pilot patterns, and conversion instrumentation.
+- This is a design-only review artefact. It does not change or certify production behaviour.
+
 ## 2026-07-29 — Pinavia Product Front Doors (Design)
 
 - Added nine editable desktop Figma frames for a simplified Pinavia home, an open Products dropdown, five vertical product front doors, About Pinavia, and a content-ready Leap Associates team page.
