@@ -1,5 +1,11 @@
 # Changelog
 
+## 2026-07-29 — Pinavia Code-to-Visual Tree (Design)
+
+- Added dated Figma page `28 Pinavia Code-to-Visual Tree / 2026-07-29` with detailed boards for product and route forks, code and deployment boundaries, and Git-to-visual provenance.
+- The tree makes the core architectural boundary explicit: one governed Next.js service and shared operating core, with five vertical workflow forks that retain their own domain language, lifecycle, and human-authority boundaries.
+- Green marks live/code-backed surfaces, violet marks designed next-state work, blue marks external service boundaries, and each pivot uses its product accent. This is an architecture/design reference, not a new production certification.
+
 ## 2026-07-29 — Pinavia Site Flow + Design Audit (Design)
 
 - Added dated Figma page `27 Pinavia Site Flow + Design Audit / 2026-07-29` with editable frames for the public-to-product flow, a design scorecard, and an ordered action ledger.
