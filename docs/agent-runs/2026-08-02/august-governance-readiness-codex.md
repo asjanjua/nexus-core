@@ -172,3 +172,12 @@ Reconcile the August governance milestone against remote-tip code and live read-
 - **Deployed SHA:** `81359ecdf8502118e0a573981825879d1e747047` is live before this correction.
 - **Blockers:** The final controlled invite must not be issued until this code is live and its generated host is verified as `https://app.pinavia.io`. A separate Clerk identity redemption and non-staff denial remain pending thereafter. No Quorum proof or commercial SOW may be claimed without Decision B or Decision A respectively.
 - **Next exact action:** Commit and publish the tested origin correction, wait for Render to deploy it, verify only the generated host (never the bearer URL), then continue the bounded second-identity redemption smoke.
+
+### 2026-08-02T23:27:00+05:00 — controlled invite is now origin-safe
+
+- **Completed:** Published `e651129` and follow-up `48a2e69` after real Render proxy behavior showed the request URL uses its internal `localhost:10000` origin. The final resolver uses Render's forwarded public host/protocol, with a focused regression test that reproduces the proxy request. Render deployed `48a2e69` live.
+- **Verification:** A final staff-issued invite resolves to `https://app.pinavia.io` (host only checked; bearer code never recorded), is 30 days with no demo material, and production Neon reports exactly one `invited` row and five prior `revoked` rows for the controlled email. No invite has been redeemed, no workspace seeded, and no staff/customer allowlist changed.
+- **Pushed SHA:** `48a2e69` on `main`.
+- **Deployed SHA:** `48a2e69`, live on Render.
+- **Blockers:** Separate controlled Clerk identity sign-in/redemption and a non-staff `/admin` denial remain required to close the invitation proof. The existing Chrome context retains the staff session, so that final step requires an isolated/alternate Clerk session rather than accidentally redeeming with staff authority.
+- **Next exact action:** Redeem the active one-time invite with the approved non-staff identity in an isolated Clerk session; verify trial entitlement, expiry, redemption audit, and `/admin` denial; then revoke any unused test artefact only if it remains unredeemed.
