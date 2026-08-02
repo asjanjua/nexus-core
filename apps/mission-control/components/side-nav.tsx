@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { SignOutButton } from "@clerk/nextjs";
 
 // ---------------------------------------------------------------------------
 // Three-tier IA (locked 2026-07-25, see Figma "18 IA & States Reference"):
@@ -264,6 +265,16 @@ export function SideNav() {
           </div>
         </div>
         <nav className="space-y-5">{renderArcs}</nav>
+        <div className="mt-6 border-t border-white/10 pt-4">
+          <SignOutButton redirectUrl="/sign-in">
+            <button
+              type="button"
+              className="w-full rounded-lg border border-white/10 px-3 py-2 text-left text-sm text-white/60 transition hover:border-white/20 hover:bg-white/[0.045] hover:text-white"
+            >
+              Sign out
+            </button>
+          </SignOutButton>
+        </div>
       </aside>
     </>
   );
