@@ -20,6 +20,11 @@ digital-native companies in GCC, Pakistan, and emerging markets.
 
 ## 2026-07-29 — Nexus Room Portfolio Design-to-Code
 
+## 2026-08-02 — Pinavia Operational Control Point
+
+- [x] Build staff-only `/admin` Pinavia Control center — consolidates bounded invites, safe health/configuration signals, AI-routing status, and direct Render/Clerk controls without exposing secrets or customer-wide authority.
+- [ ] Complete authenticated control-center smoke — sign in with the approved staff Clerk identity after the Clerk key repair, confirm non-staff denial, and then execute the separate controlled trial-identity proof.
+
 - [x] Define the Room Portfolio policy — every workspace sees the complete curated portfolio from day one; visibility is not activation and activation is not authority. Source: `docs/NEXUS_ROOM_PORTFOLIO_ACTIVATION.md`.
 - [x] Create Room Portfolio Figma references — page `29 Nexus Room Portfolio / 2026-07-29` (`212:2`) covers populated and first-run portfolio states, template selection, owner/evidence configuration, boundary review, activation, active Finance Room detail, and product-room discovery.
 - [x] Add the room activation branch to the Pinavia Code-to-Visual Tree — frame `216:2` records code-now onboarding role states, the planned `/rooms` control plane, product-room handoff, and the required activation contract.

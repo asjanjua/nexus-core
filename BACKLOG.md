@@ -72,6 +72,10 @@ These are the highest-priority operational items because they determine whether 
 ### Pinavia Trial-Invite Production Enablement
 
 | Item | Status | Source | Notes |
+|---|---|---|
+| Pinavia Control center | local verification pending | `/admin`, `TASKS.md` § Pinavia Operational Control Point | One staff-only operational front door for invite lifecycle, safe health/configuration indicators, AI-routing posture, and links to Render/Clerk. It never displays credentials or grants customer-wide administration. Authenticated staff and non-staff smoke follows the Clerk repair. |
+
+| Item | Status | Source | Notes |
 |---|---|---|---|
 | Pinavia trial-invite production enablement | deployed, authenticated smoke pending | `bb2af6c`, `docs/TRIAL_INVITE_RUNBOOK.md` | Code is pushed and public routes are live. Remaining production proof requires a Render-managed `PINAVIA_ADMIN_PRINCIPALS` staff allowlist, then a real invite -> Clerk sign-up -> provision workspace -> redeem -> server-side demo-pack seed smoke. In-memory fallback is not valid for real invites. |
 
