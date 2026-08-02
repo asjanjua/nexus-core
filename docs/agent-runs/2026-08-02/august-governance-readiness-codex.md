@@ -145,3 +145,12 @@ Reconcile the August governance milestone against remote-tip code and live read-
 - **Deployed SHA:** `1252263ca521c460a99fb27898019ccc402048ec` remains the last Render-verified deployment.
 - **Blockers:** The source of the live API non-success is still unclassified. It must be observed through the now-safe response after release; no second mutation will be attempted until the no-row check is repeated.
 - **Next exact action:** Publish the bounded, release-gated correction to the Render-tracked branch, wait for the deployment to become live, then revisit the staff portal and classify the API response before any renewed authorised issue attempt.
+
+### 2026-08-02T22:04:00+05:00 — invite diagnostic published and deployed
+
+- **Completed:** Fast-forwarded the tested branch through `eaa4800` to `origin/main`; Render auto-deploy `dep-d9nnfoht0dsc7397f8r0` reached **live** for that revision. GitHub CI and CodeQL both completed successfully for the same SHA.
+- **Verification:** Render event history identifies the live revision as `eaa4800`; `origin/main` resolves to `eaa48006c9e26088dbc54810366048445fc8d9b9`. No invitation was issued as part of release verification.
+- **Pushed SHA:** `eaa48006c9e26088dbc54810366048445fc8d9b9` on `main`.
+- **Deployed SHA:** `eaa48006c9e26088dbc54810366048445fc8d9b9`, live on Render.
+- **Blockers:** The browser control session disconnected while reopening the existing authenticated staff tab after the deployment. This prevents reading the newly surfaced API reason in this checkpoint; it does not constitute an application failure or authorization change. The database remains the authority before any retry.
+- **Next exact action:** Reconnect to the existing staff session, confirm the zero-row state in Neon, then retry the single already-authorised 30-day no-pack invitation once and classify the displayed safe result without exposing its bearer URL.
