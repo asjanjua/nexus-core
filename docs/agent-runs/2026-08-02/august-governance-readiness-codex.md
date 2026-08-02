@@ -82,3 +82,12 @@ Reconcile the August governance milestone against remote-tip code and live read-
 - **Deployed SHA:** `1252263ca521c460a99fb27898019ccc402048ec`, verified from the Render event history.
 - **Blockers:** Production migration `0038` remains unconfirmed, and a real invite/reviewer round trip still needs an explicitly authorised second test identity. Nightly backup remains blocked on missing GitHub repository secrets.
 - **Next exact action:** Confirm migration `0038` through an authorised read-only Neon session, then obtain an authorised controlled second identity before issuing any live trial invite or reviewer-seat invitation.
+
+### 2026-08-02T21:31:00+05:00 — milestone decision package committed
+
+- **Completed:** Re-read the August–September objective and created `docs/AUGUST_SEPTEMBER_2026_MILESTONE_DECISION_PACKET.md`, then registered it in `TASKS.md`, `BACKLOG.md`, and `HANDOVER.md`. It captures the two externally owned nomination records, proof acceptance, and the SOW evidence gate without creating a fictitious pilot participant or board pack.
+- **Verification:** `git diff --check` and staged-tree `npm run commit:check` passed. Local commit `c63dee38957e27a03b477f0cf9cf2c09060428ff` contains 123 documentation insertions and no deletions.
+- **Pushed SHA:** Not pushed; user directed continuous commits but has not authorised remote publication.
+- **Deployed SHA:** Remains `1252263ca521c460a99fb27898019ccc402048ec` from Render event history.
+- **Blockers:** The only visible Neon console tab is at its login screen, not an authenticated console session, so production migration `0038` is still unverified. The controlled second identity and both external nominations remain absent. These cannot be substituted with an existing customer identity, a guessed contact, or synthetic authority.
+- **Next exact action:** After the owner authenticates Neon, run an authorised read-only migration check; then request a named, controlled second identity and per-action permission before any invite issuance or redemption.
