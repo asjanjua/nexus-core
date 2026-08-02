@@ -1342,7 +1342,15 @@ function Step5({
 
   function applyFiles(incoming: FileList | null) {
     if (!incoming) return;
-    const selected = Array.from(incoming).slice(0, MAX_ONBOARDING_FILES);
+    const existingKeys = new Set(filesWithMeta.map((fm) => `${fm.file.name}:${fm.file.size}:${fm.file.lastModified}`));
+    const additions = Array.from(incoming).filter((f) => {
+      const key = `${f.name}:${f.size}:${f.lastModified}`;
+      if (existingKeys.has(key)) return false;
+      existingKeys.add(key);
+      return true;
+    });
+    const available = Math.max(0, MAX_ONBOARDING_FILES - filesWithMeta.length);
+    const selected = additions.slice(0, available);
     const withMeta: FileWithMeta[] = selected.map((f) => {
       const cls = classifyFilename(f.name, sector);
       return {
@@ -1353,13 +1361,18 @@ function Step5({
           : cls.sensitivity,
       };
     });
-    setFilesWithMeta(withMeta);
+    setFilesWithMeta((prev) => [...prev, ...withMeta]);
     setUploadedCount(0);
-    if (incoming.length > MAX_ONBOARDING_FILES) {
-      setError(`Only the first ${MAX_ONBOARDING_FILES} files will be uploaded.`);
+    if (additions.length > available) {
+      setError(`You can queue up to ${MAX_ONBOARDING_FILES} files per batch.`);
     } else {
       setError(null);
     }
+  }
+
+  function removeFile(index: number) {
+    setFilesWithMeta((prev) => prev.filter((_, i) => i !== index));
+    setError(null);
   }
 
   function updateSensitivity(idx: number, sensitivity: FileWithMeta["sensitivity"]) {
@@ -1457,9 +1470,12 @@ function Step5({
             onChange={(e) => applyFiles(e.target.files)}
           />
           {filesWithMeta.length > 0 ? (
-            <p className="text-sm font-medium text-white">
-              {filesWithMeta.length} file{filesWithMeta.length === 1 ? "" : "s"} selected
-            </p>
+            <>
+              <p className="text-sm font-medium text-white">
+                {filesWithMeta.length} file{filesWithMeta.length === 1 ? "" : "s"} queued
+              </p>
+              <p className="mt-1 text-xs text-white/40">Add more documents below, or remove any file before ingesting.</p>
+            </>
           ) : (
             <div className="text-center">
               <p className="text-2xl mb-2 text-white/30">⊕</p>
@@ -1507,9 +1523,26 @@ function Step5({
                     <option value="confidential">confidential</option>
                     <option value="restricted">restricted</option>
                   </select>
+                  <button
+                    type="button"
+                    onClick={() => removeFile(idx)}
+                    className="rounded-md px-2 py-1 text-xs text-white/40 transition hover:bg-white/10 hover:text-white"
+                    aria-label={`Remove ${fm.file.name}`}
+                  >
+                    Remove
+                  </button>
                 </div>
               </div>
             ))}
+            {filesWithMeta.length < MAX_ONBOARDING_FILES && (
+              <button
+                type="button"
+                onClick={(event) => { event.stopPropagation(); fileRef.current?.click(); }}
+                className="w-full rounded-lg border border-dashed border-white/15 px-3 py-2 text-xs text-white/50 transition hover:border-white/30 hover:text-white/80"
+              >
+                + Add more documents
+              </button>
+            )}
           </div>
         )}
 

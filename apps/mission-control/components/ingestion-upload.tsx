@@ -86,13 +86,26 @@ export function IngestionUpload({ workspaceId }: { workspaceId?: string }) {
 
   function pickFiles(incoming: FileList | null) {
     if (!incoming) return;
-    const selected = Array.from(incoming).slice(0, MAX_FILES);
-    setFiles(selected);
+    const existingKeys = new Set(files.map((file) => `${file.name}:${file.size}:${file.lastModified}`));
+    const additions = Array.from(incoming).filter((file) => {
+      const key = `${file.name}:${file.size}:${file.lastModified}`;
+      if (existingKeys.has(key)) return false;
+      existingKeys.add(key);
+      return true;
+    });
+    const available = Math.max(0, MAX_FILES - files.length);
+    const selected = additions.slice(0, available);
+    setFiles((prev) => [...prev, ...selected]);
     setFileResults([]);
     setError(null);
-    if (incoming.length > MAX_FILES) {
-      setError(`Only the first ${MAX_FILES} files will be uploaded.`);
+    if (additions.length > available) {
+      setError(`You can queue up to ${MAX_FILES} files per batch.`);
     }
+  }
+
+  function removeFile(index: number) {
+    setFiles((prev) => prev.filter((_, i) => i !== index));
+    setError(null);
   }
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -198,17 +211,27 @@ export function IngestionUpload({ workspaceId }: { workspaceId?: string }) {
               {files.length} file{files.length !== 1 ? "s" : ""} selected
             </p>
             <div className="max-h-36 space-y-1 overflow-auto rounded-lg border border-white/10 bg-black/20 p-2">
-              {files.map((f) => (
+              {files.map((f, index) => (
                 <div
                   key={`${f.name}-${f.lastModified}`}
                   className="flex items-center justify-between gap-3 text-xs"
                 >
                   <span className="truncate text-white/70">{f.name}</span>
-                  <span className="shrink-0 text-white/35">{(f.size / 1024).toFixed(0)} KB</span>
+                  <span className="flex shrink-0 items-center gap-2 text-white/35">
+                    {(f.size / 1024).toFixed(0)} KB
+                    <button
+                      type="button"
+                      onClick={(event) => { event.stopPropagation(); removeFile(index); }}
+                      className="rounded px-1 text-white/40 hover:bg-white/10 hover:text-white"
+                      aria-label={`Remove ${f.name}`}
+                    >
+                      ×
+                    </button>
+                  </span>
                 </div>
               ))}
             </div>
-            <p className="text-center text-xs text-white/40">Click to change selection</p>
+            <p className="text-center text-xs text-white/40">Click to add more files or change selection</p>
           </div>
         ) : loading ? (
           <div className="text-center space-y-2">
