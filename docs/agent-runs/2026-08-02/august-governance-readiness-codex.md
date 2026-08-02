@@ -136,3 +136,12 @@ Reconcile the August governance milestone against remote-tip code and live read-
 - **Deployed SHA:** `1252263ca521c460a99fb27898019ccc402048ec`; it contains the old client and remains the failing invite API surface.
 - **Blockers:** The live API failure cannot be classified from its generic production response or Render's request-log-free output. The next safe step is deploy the tested client diagnostic, then read its safe error code before deciding whether a server correction is needed. No invitation has been issued.
 - **Next exact action:** Commit, publish, and deploy the tested portal contract correction; retry the one authorised issue only after the safe error reason is visible and only if Neon still confirms no row exists.
+
+### 2026-08-02T22:05:00+05:00 — portal failure diagnostic committed and release-gated
+
+- **Completed:** Committed the portal API-envelope correction and safe failure-code display as `127b1d1` (`fix: surface trial invite API failures`). This is a diagnostic/UI contract correction only; it does not alter invite authority, send another invitation, or create any production record.
+- **Verification:** Node 24 release gate completed successfully: `npm run check:boundaries`, full `npm test` (100 Vitest files / 732 tests, plus relay/dependency/blueprint suites), `NEXT_TELEMETRY_DISABLED=1 npm run build`, and `git diff --check`. The production build reports existing lint warnings only.
+- **Pushed SHA:** Not yet pushed. The currently deployed production code remains the earlier baseline and therefore cannot expose the diagnostic response.
+- **Deployed SHA:** `1252263ca521c460a99fb27898019ccc402048ec` remains the last Render-verified deployment.
+- **Blockers:** The source of the live API non-success is still unclassified. It must be observed through the now-safe response after release; no second mutation will be attempted until the no-row check is repeated.
+- **Next exact action:** Publish the bounded, release-gated correction to the Render-tracked branch, wait for the deployment to become live, then revisit the staff portal and classify the API response before any renewed authorised issue attempt.
