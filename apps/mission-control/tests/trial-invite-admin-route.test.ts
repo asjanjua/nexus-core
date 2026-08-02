@@ -70,9 +70,13 @@ describe("trial invite admin API contract", () => {
     process.env.NEXT_PUBLIC_APP_URL = "https://app.pinavia.co";
     try {
       const response = await POST(
-        new Request("https://app.pinavia.io/api/admin/trial-invites", {
+        new Request("http://localhost:10000/api/admin/trial-invites", {
           method: "POST",
-          headers: { "content-type": "application/json" },
+          headers: {
+            "content-type": "application/json",
+            "x-forwarded-host": "app.pinavia.io",
+            "x-forwarded-proto": "https",
+          },
           body: JSON.stringify({ email: "prospect@example.com", trialDays: 30 }),
         })
       );

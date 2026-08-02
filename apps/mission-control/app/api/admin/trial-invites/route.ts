@@ -149,8 +149,13 @@ export async function DELETE(request: Request) {
 function buildAcceptUrl(request: Request, inviteCode: string): string {
   // The recipient must return to the exact host where the operator issued the
   // invite. A stale deployment variable must never send a live `.io` invite to
-  // a retired host during a domain cutover. Next preserves the request origin
-  // here, including behind Render's proxy.
-  const origin = new URL(request.url).origin;
+  // a retired host during a domain cutover. Render terminates the public request
+  // before forwarding to Next, so request.url is its internal localhost origin;
+  // forwarded host/protocol preserve the public origin in that case.
+  const forwardedHost = request.headers.get("x-forwarded-host")?.split(",")[0]?.trim();
+  const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+  const origin = forwardedHost
+    ? new URL(`${forwardedProto === "http" ? "http" : "https"}://${forwardedHost}`).origin
+    : new URL(request.url).origin;
   return `${origin}/invite/accept?code=${encodeURIComponent(inviteCode)}`;
 }
