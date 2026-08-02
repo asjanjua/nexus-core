@@ -64,3 +64,12 @@ Reconcile the August governance milestone against remote-tip code and live read-
 - **Deployed SHA:** Not independently verified. `https://app.pinavia.io` is publicly healthy and passed canonical smoke, but no public release marker identifies its commit.
 - **Blockers:** `migration 0038` cannot be confirmed in production from a public endpoint; staff principal/original test identity and explicit Render/production-mutation authorization are still required for the real trial-invite and two-identity reviewer workflows. Quorum's controlled board-cycle proof likewise requires an authorized or synthetic pack and named human roles; no such authorization or materials were provided.
 - **Next exact action:** Inspect the evidence-only diff and staged-tree guardrails, commit the ledger, push the focused branch, and open a draft PR for the evidence reconciliation. No production deploy or mutation is requested or implied.
+
+### 2026-08-02T20:25:20+05:00 — evidence checkpoint committed locally
+
+- **Completed:** Reviewed and staged only this ledger. `npm run commit:check` reported 1 changed file, 0 deletions, and a safe staged tree. Created local commit `2085de03ff98ede884adc2a1e46a3574b5394dc5` (`docs: record August governance readiness evidence`).
+- **Verification:** The committed content contains the clean remote-tip baseline, local Node 24 and release-gate results, source-control findings, canonical public smoke result, and explicitly separated unverified production/deployment conditions.
+- **Pushed SHA:** Not pushed. The user has explicitly directed commits but has not separately authorized remote publication/PR creation in this turn.
+- **Deployed SHA:** Not independently verified; no deployment has been requested or initiated.
+- **Blockers:** External proof still requires an authorized staff principal plus a controlled second identity for trial-invite/reviewer mutation, and named/authorized board-cycle participants and source pack for Quorum. These cannot be truthfully completed from repository or public-health evidence.
+- **Next exact action:** Commit this final ledger checkpoint, then wait for explicit remote-publication or controlled-production-workflow authorization.
