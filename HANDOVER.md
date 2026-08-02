@@ -11,6 +11,11 @@
 - Do not overstate this as a completed trial-invite release: migration `0038_trial_invites.sql` is present in source but has not yet been confirmed in production; the browser bridge could not access the existing signed-in application tab for a read-only staff-page check; and no authorised second identity exists yet for genuine invite/redeem/reviewer acceptance smoke.
 - Next production proof: use an authorised read-only Neon session to verify migration `0038`, then obtain a named controlled second identity and explicit permission immediately before issuing one live trial invite or reviewer-seat invite. Do not use an existing customer identity or guess one.
 
+## 2026-08-02 — August–September Decision Packet Is Ready for Real Nominations
+
+- `docs/AUGUST_SEPTEMBER_2026_MILESTONE_DECISION_PACKET.md` is the decision-ready source for the 2026-08-05 NexusAI pilot and Quorum design-partner nominations. It encodes the required named roles, authority/synthetic-pack confirmation, proof acceptance, and the rule that a commercial SOW is not signable before evidence exists.
+- The packet records the actual live staff-gate/deployment state and deliberately does not invent any buyer, separate reviewer, board participant, source bundle, retention rule, or board-cycle date. Capture those only from explicit external decisions.
+
 ---
 
 ## 2026-08-02 — Nightly Backup Is Blocked on Missing GitHub Repository Secrets
