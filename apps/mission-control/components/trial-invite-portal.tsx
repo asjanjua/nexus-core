@@ -16,6 +16,8 @@ import { PageShell } from "@/components/page-shell";
 import type { TrialInvite } from "@/lib/contracts";
 
 type Issued = { invite: TrialInvite; inviteCode: string; acceptUrl: string; emailSent: boolean };
+type ApiSuccess<T> = { ok: true; data: T };
+type ApiFailure = { ok: false; error?: string };
 
 const SECTORS = [
   { value: "", label: "No sample material" },
@@ -51,20 +53,22 @@ export default function TrialInvitePortalPage() {
     try {
       const res = await fetch("/api/admin/trial-invites");
       if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        const body = (await res.json().catch(() => null)) as ApiFailure | null;
         // A blanket 403 here is far more often an unset PINAVIA_ADMIN_PRINCIPALS
         // than a genuine authorisation decision, so say so rather than leaving an
         // operator to guess.
         setLoadError(
           body?.error === "platform_admin_required"
             ? "Your account is not on the Pinavia admin list. Check PINAVIA_ADMIN_PRINCIPALS includes your Clerk org or user id."
-            : "Could not load invites."
+            : body?.error
+              ? `Could not load invites (${body.error}).`
+              : "Could not load invites."
         );
         setInvites([]);
         return;
       }
-      const body = (await res.json()) as { invites?: TrialInvite[] };
-      setInvites(body.invites ?? []);
+      const body = (await res.json()) as ApiSuccess<{ invites?: TrialInvite[] }>;
+      setInvites(body.data.invites ?? []);
       setLoadError(null);
     } catch {
       setLoadError("Network error loading invites.");
@@ -96,15 +100,18 @@ export default function TrialInvitePortalPage() {
         }),
       });
       if (!res.ok) {
-        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        const body = (await res.json().catch(() => null)) as ApiFailure | null;
         setFormError(
           body?.error === "invalid_request"
             ? "Check the email address and trial length."
-            : "Could not issue the invite."
+            : body?.error
+              ? `Could not issue the invite (${body.error}).`
+              : "Could not issue the invite."
         );
         return;
       }
-      setIssued((await res.json()) as Issued);
+      const body = (await res.json()) as ApiSuccess<Issued>;
+      setIssued(body.data);
       setEmail("");
       setName("");
       setCompany("");

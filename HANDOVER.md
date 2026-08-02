@@ -12,6 +12,12 @@
 - Do not overstate this as a completed trial-invite release: the browser bridge timed out trying to reach the existing signed-in `/admin/invites` page, and no authorised second identity exists yet for genuine invite/redeem/reviewer acceptance smoke.
 - Next production proof: obtain a named controlled second identity and explicit permission immediately before issuing one live trial invite, then verify redeem, workspace trial state, audit events, and non-staff denial. Do not use an existing customer identity or guess one.
 
+## 2026-08-02 — Google Staff Sign-In Repaired; Trial-Invite API Still Failing
+
+- Google Cloud OAuth client `Pinavia Clerk Google Sign-In` had only the stale callback `https://clerk.pinavia.co/v1/oauth_callback`. Under explicit owner authorisation, added and saved `https://clerk.pinavia.io/v1/oauth_callback` without removing the legacy value. Google sign-in then reached account selection and successfully rendered the authenticated staff `/admin/invites` portal.
+- The live staff portal's invite list GET and one authorised POST for `ali.janjua@live.com` both failed; a read-only Neon query confirms no invite row was created, so no retry or revocation is required. Do not attempt another issue until the server-side cause is visible and fixed.
+- Local commit pending: the portal now consumes the standard `{ ok, data }` API envelope correctly and displays a safe returned error code. Its direct route-contract regression plus focused invite/auth tests passed 26/26 and TypeScript passed. Deploy that fix, use the returned safe code to repair the actual API failure, then retry exactly once.
+
 ## 2026-08-02 — August–September Decision Packet Is Ready for Real Nominations
 
 - `docs/AUGUST_SEPTEMBER_2026_MILESTONE_DECISION_PACKET.md` is the decision-ready source for the 2026-08-05 NexusAI pilot and Quorum design-partner nominations. It encodes the required named roles, authority/synthetic-pack confirmation, proof acceptance, and the rule that a commercial SOW is not signable before evidence exists.

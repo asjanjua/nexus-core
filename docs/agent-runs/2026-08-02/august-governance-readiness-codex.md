@@ -127,3 +127,12 @@ Reconcile the August governance milestone against remote-tip code and live read-
 - **Deployed SHA:** `1252263ca521c460a99fb27898019ccc402048ec`.
 - **Blockers:** The same external prerequisites remain absent across the completion audit: a controlled second identity and per-action invitation authority; actual Decision A sponsor/owner/reviewer/workflow/bundle/term/signatories; actual Decision B governance lead/reviewer/pack/permission/retention/date; and explicit publication authority for current local commits. No repository operation can create these facts truthfully.
 - **Next exact action:** Wait for these named external inputs; then execute the bounded production actions exactly as the decision packet specifies.
+
+### 2026-08-02T21:57:00+05:00 — controlled invite smoke exposed two production defects
+
+- **Completed:** With the named controlled identity `ali.janjua@live.com` and authorisation for a single 30-day no-pack invitation, exercised the staff path. The initial Google OAuth attempt failed on a redirect URI mismatch. After explicit authorisation to modify Google Cloud, added `https://clerk.pinavia.io/v1/oauth_callback` to the existing OAuth client while retaining the stale `.co` callback. A fresh sign-in completed and rendered the platform-staff invite portal.
+- **Verification:** The live portal GET list and single POST issue attempt both returned non-success. A read-only Neon query for the exact test email returned `false`, proving the attempt created no `trial_invites` row. Local correction: the client had consumed the standard API success envelope as a flat object; it now unwraps `{ ok, data }` and displays safe server error codes. New `trial-invite-admin-route` regression and focused invite/auth suite passed (4 files, 26 tests); TypeScript and `git diff --check` passed.
+- **Pushed SHA:** Not pushed. The client correction is local pending its normal release path.
+- **Deployed SHA:** `1252263ca521c460a99fb27898019ccc402048ec`; it contains the old client and remains the failing invite API surface.
+- **Blockers:** The live API failure cannot be classified from its generic production response or Render's request-log-free output. The next safe step is deploy the tested client diagnostic, then read its safe error code before deciding whether a server correction is needed. No invitation has been issued.
+- **Next exact action:** Commit, publish, and deploy the tested portal contract correction; retry the one authorised issue only after the safe error reason is visible and only if Neon still confirms no row exists.
