@@ -1,6 +1,7 @@
-import { headers } from "next/headers";
-import { applicationOrigin, hostedClerkUrl, safeAppRedirectPath } from "@/lib/auth/hosted-clerk-url";
+import { SignIn } from "@clerk/nextjs";
+import { safeAppRedirectPath } from "@/lib/auth/hosted-clerk-url";
 import { PRODUCT_META, productFromHost, productSignInRedirect } from "@/lib/product-detection";
+import { headers } from "next/headers";
 
 export default async function SignInPage({
   searchParams,
@@ -13,16 +14,7 @@ export default async function SignInPage({
   const fallbackRedirectUrl = productSignInRedirect(productKey);
   const params = await searchParams;
   const redirectPath = safeAppRedirectPath(params.redirect_url, fallbackRedirectUrl);
-  const appOrigin = applicationOrigin({
-    host: hdrs.get("x-forwarded-host") ?? hdrs.get("host"),
-    forwardedProto: hdrs.get("x-forwarded-proto"),
-    configuredAppUrl: process.env.NEXT_PUBLIC_APP_URL
-  });
-  const hostedSignIn = hostedClerkUrl({
-    configuredUrl: process.env.NEXT_PUBLIC_CLERK_HOSTED_SIGN_IN_URL,
-    redirectPath,
-    appOrigin
-  });
+  const signUpUrl = `/sign-up?redirect_url=${encodeURIComponent(redirectPath)}`;
 
   return (
     <main className="flex min-h-screen items-center justify-center px-6 py-12">
@@ -31,28 +23,17 @@ export default async function SignInPage({
           <p className="text-xs uppercase tracking-[0.24em] text-nexus-accent/80">{product.subtitle}</p>
           <h1 className="mt-2 text-3xl font-semibold text-white">Sign in to {product.name}</h1>
           <p className="mt-3 text-sm leading-6 text-white/60">
-            Nexus uses Clerk for identity. This lightweight handoff page avoids bundling Clerk&apos;s
-            client UI into the production build while keeping server-side session checks active.
+            Nexus uses Clerk for identity. Sign in here, then return directly to your governed workspace.
           </p>
         </div>
-        {hostedSignIn ? (
-          <a href={hostedSignIn} className="btn-primary inline-flex justify-center text-sm">
-            Continue with Clerk
-          </a>
-        ) : (
-          <div className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-left text-sm text-amber-100">
-            <p className="font-medium">Hosted Clerk sign-in URL is not configured.</p>
-            <p className="mt-1 text-amber-100/75">
-              Set <code>NEXT_PUBLIC_CLERK_HOSTED_SIGN_IN_URL</code> to re-enable new sign-ins.
-              Existing authenticated sessions can continue to open their workspace.
-            </p>
-          </div>
-        )}
+        <div className="flex justify-center">
+          <SignIn forceRedirectUrl={redirectPath} signUpUrl={signUpUrl} />
+        </div>
         <div className="flex flex-wrap justify-center gap-2 text-sm">
           <a href={redirectPath} className="btn-subtle">
             View workspace
           </a>
-          <a href="/sign-up" className="btn-subtle">
+          <a href={signUpUrl} className="btn-subtle">
             Start a pilot
           </a>
         </div>

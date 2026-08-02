@@ -1,24 +1,14 @@
-import { headers } from "next/headers";
-import { applicationOrigin, hostedClerkUrl, safeAppRedirectPath } from "@/lib/auth/hosted-clerk-url";
+import { SignUp } from "@clerk/nextjs";
+import { safeAppRedirectPath } from "@/lib/auth/hosted-clerk-url";
 
 export default async function SignUpPage({
   searchParams,
 }: {
   searchParams: Promise<{ redirect_url?: string | string[] }>;
 }) {
-  const hdrs = await headers();
   const params = await searchParams;
   const redirectPath = safeAppRedirectPath(params.redirect_url, "/onboarding");
-  const appOrigin = applicationOrigin({
-    host: hdrs.get("x-forwarded-host") ?? hdrs.get("host"),
-    forwardedProto: hdrs.get("x-forwarded-proto"),
-    configuredAppUrl: process.env.NEXT_PUBLIC_APP_URL
-  });
-  const hostedSignUp = hostedClerkUrl({
-    configuredUrl: process.env.NEXT_PUBLIC_CLERK_HOSTED_SIGN_UP_URL,
-    redirectPath,
-    appOrigin
-  });
+  const signInUrl = `/sign-in?redirect_url=${encodeURIComponent(redirectPath)}`;
 
   return (
     <main className="flex min-h-screen items-center justify-center px-6 py-12">
@@ -27,27 +17,17 @@ export default async function SignUpPage({
           <p className="text-xs uppercase tracking-[0.24em] text-nexus-accent/80">NexusAI pilot</p>
           <h1 className="mt-2 text-3xl font-semibold text-white">Create your workspace</h1>
           <p className="mt-3 text-sm leading-6 text-white/60">
-            Sign-up is handled by Clerk. Configure a hosted sign-up URL to hand new users
-            into Clerk without embedding the Clerk client bundle in this app build.
+            Sign-up is handled by Clerk and returns directly to your new governed workspace.
           </p>
         </div>
-        {hostedSignUp ? (
-          <a href={hostedSignUp} className="btn-primary inline-flex justify-center text-sm">
-            Continue to signup
-          </a>
-        ) : (
-          <div className="rounded-lg border border-amber-300/30 bg-amber-300/10 px-4 py-3 text-left text-sm text-amber-100">
-            <p className="font-medium">Hosted Clerk sign-up URL is not configured.</p>
-            <p className="mt-1 text-amber-100/75">
-              Set <code>NEXT_PUBLIC_CLERK_HOSTED_SIGN_UP_URL</code> before opening self-serve signup.
-            </p>
-          </div>
-        )}
+        <div className="flex justify-center">
+          <SignUp forceRedirectUrl={redirectPath} signInUrl={signInUrl} />
+        </div>
         <div className="flex flex-wrap justify-center gap-2 text-sm">
           <a href="/readiness" className="btn-subtle">
             Check readiness
           </a>
-          <a href="/sign-in" className="btn-subtle">
+          <a href={signInUrl} className="btn-subtle">
             I already have access
           </a>
         </div>

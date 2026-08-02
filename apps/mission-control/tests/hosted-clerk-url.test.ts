@@ -8,7 +8,7 @@ const rootLayoutSource = readFileSync(
   "utf8"
 );
 
-describe("hosted Clerk URL handoff", () => {
+describe("Clerk redirect safety", () => {
   it("builds an absolute redirect back to the active application host", () => {
     const appOrigin = applicationOrigin({
       host: "app.pinavia.io",
@@ -55,9 +55,20 @@ describe("hosted Clerk URL handoff", () => {
     expect(safeAppRedirectPath("https://evil.example/steal", "/dashboard/ceo")).toBe("/dashboard/ceo");
   });
 
-  it("keeps the Clerk session provider without restoring build-heavy client widgets", () => {
+  it("keeps the Clerk session provider and renders embedded, redirect-bound authentication", () => {
     expect(rootLayoutSource).toContain('import { ClerkProvider } from "@clerk/nextjs"');
     expect(rootLayoutSource).toContain("<ClerkProvider");
-    expect(rootLayoutSource).not.toMatch(/\b(?:SignedIn|SignedOut|SignInButton|UserButton|OrganizationSwitcher)\b/);
+    const signInSource = readFileSync(
+      fileURLToPath(new URL("../app/sign-in/[[...sign-in]]/page.tsx", import.meta.url)),
+      "utf8"
+    );
+    const signUpSource = readFileSync(
+      fileURLToPath(new URL("../app/sign-up/[[...sign-up]]/page.tsx", import.meta.url)),
+      "utf8"
+    );
+    expect(signInSource).toContain('import { SignIn } from "@clerk/nextjs"');
+    expect(signInSource).toContain("forceRedirectUrl={redirectPath}");
+    expect(signUpSource).toContain('import { SignUp } from "@clerk/nextjs"');
+    expect(signUpSource).toContain("forceRedirectUrl={redirectPath}");
   });
 });

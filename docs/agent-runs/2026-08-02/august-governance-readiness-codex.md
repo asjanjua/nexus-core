@@ -154,3 +154,12 @@ Reconcile the August governance milestone against remote-tip code and live read-
 - **Deployed SHA:** `eaa48006c9e26088dbc54810366048445fc8d9b9`, live on Render.
 - **Blockers:** The browser control session disconnected while reopening the existing authenticated staff tab after the deployment. This prevents reading the newly surfaced API reason in this checkpoint; it does not constitute an application failure or authorization change. The database remains the authority before any retry.
 - **Next exact action:** Reconnect to the existing staff session, confirm the zero-row state in Neon, then retry the single already-authorised 30-day no-pack invitation once and classify the displayed safe result without exposing its bearer URL.
+
+### 2026-08-02T22:38:00+05:00 — Clerk production sign-in loop replaced with embedded flow
+
+- **Completed:** Replaced the app's extra hosted-account handoff pages with Clerk's supported embedded Next.js `SignIn` and `SignUp` components. Both bind a validated first-party return path through `forceRedirectUrl`, so the application no longer depends on Clerk account-portal default redirect settings to reach the governed workspace.
+- **Verification:** Production Clerk environment metadata still reports account-portal defaults to the marketing origin, matching the observed loop. Node 24 standalone TypeScript passed; focused Clerk redirect/CSP tests passed (2 files / 23 tests); a full production build passed, with only pre-existing lint warnings.
+- **Pushed SHA:** Pending this coherent authentication-fix commit.
+- **Deployed SHA:** Still `eaa48006c9e26088dbc54810366048445fc8d9b9` until this commit reaches Render.
+- **Blockers:** No invitation has been issued. The staff sign-in and controlled second-identity redemption must be re-run after this change deploys; no test email, bearer URL, or account token is recorded here.
+- **Next exact action:** Publish and verify the embedded Clerk auth screen on `app.pinavia.io`, sign in as the approved staff account, confirm the no-row state, and then continue the single authorised invitation workflow.
