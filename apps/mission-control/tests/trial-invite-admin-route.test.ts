@@ -66,21 +66,28 @@ describe("trial invite admin API contract", () => {
   });
 
   it("returns an issued invite inside the same envelope", async () => {
-    const response = await POST(
-      new Request("https://app.pinavia.io/api/admin/trial-invites", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ email: "prospect@example.com", trialDays: 30 }),
-      })
-    );
-    const body = await response.json();
+    const priorAppUrl = process.env.NEXT_PUBLIC_APP_URL;
+    process.env.NEXT_PUBLIC_APP_URL = "https://app.pinavia.co";
+    try {
+      const response = await POST(
+        new Request("https://app.pinavia.io/api/admin/trial-invites", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ email: "prospect@example.com", trialDays: 30 }),
+        })
+      );
+      const body = await response.json();
 
-    expect(response.status).toBe(200);
-    expect(body).toMatchObject({
-      ok: true,
-      data: { invite, emailSent: false },
-    });
-    expect(typeof body.data.inviteCode).toBe("string");
-    expect(body.data.acceptUrl).toContain("/invite/accept?code=");
+      expect(response.status).toBe(200);
+      expect(body).toMatchObject({
+        ok: true,
+        data: { invite, emailSent: false },
+      });
+      expect(typeof body.data.inviteCode).toBe("string");
+      expect(body.data.acceptUrl).toMatch(/^https:\/\/app\.pinavia\.io\/invite\/accept\?code=/);
+    } finally {
+      if (priorAppUrl === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
+      else process.env.NEXT_PUBLIC_APP_URL = priorAppUrl;
+    }
   });
 });

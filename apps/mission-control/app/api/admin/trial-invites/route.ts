@@ -147,7 +147,10 @@ export async function DELETE(request: Request) {
 
 /** Absolute redeem-page URL carrying the single-use invite code. */
 function buildAcceptUrl(request: Request, inviteCode: string): string {
-  const configured = process.env.NEXT_PUBLIC_APP_URL?.trim().replace(/\/$/, "");
-  const origin = configured || new URL(request.url).origin;
+  // The recipient must return to the exact host where the operator issued the
+  // invite. A stale deployment variable must never send a live `.io` invite to
+  // a retired host during a domain cutover. Next preserves the request origin
+  // here, including behind Render's proxy.
+  const origin = new URL(request.url).origin;
   return `${origin}/invite/accept?code=${encodeURIComponent(inviteCode)}`;
 }

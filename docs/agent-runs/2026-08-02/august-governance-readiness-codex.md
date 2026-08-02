@@ -163,3 +163,12 @@ Reconcile the August governance milestone against remote-tip code and live read-
 - **Deployed SHA:** Still `eaa48006c9e26088dbc54810366048445fc8d9b9` until this commit reaches Render.
 - **Blockers:** No invitation has been issued. The staff sign-in and controlled second-identity redemption must be re-run after this change deploys; no test email, bearer URL, or account token is recorded here.
 - **Next exact action:** Publish and verify the embedded Clerk auth screen on `app.pinavia.io`, sign in as the approved staff account, confirm the no-row state, and then continue the single authorised invitation workflow.
+
+### 2026-08-02T23:20:00+05:00 — live invite-origin recovery
+
+- **Completed:** Confirmed the staff-gated Pinavia Control centre and invite portal work with the approved staff Clerk identity. Production `trial_invites` was initially empty. Controlled issue attempts established that the record is correctly a 30-day no-demo trial but the bearer URL was constructed against the retired `.co` origin. Each invalid, unredeemed attempt was immediately marked revoked; no invite was redeemed and no demo workspace was seeded.
+- **Verification:** The active Render deployment is `81359ec` and `/api/health` returns `ok` with database, vectors, originals storage, and DeepSeek routing healthy. A fresh-cache Render deployment still produced the retired origin, so the route now builds its one-time link from the incoming request origin rather than a stale `NEXT_PUBLIC_APP_URL`. The focused admin-route regression test passes with a deliberately stale environment value and asserts the `.io` request origin wins; standalone TypeScript and `git diff --check` pass.
+- **Pushed SHA:** Pending the normal commit and Render deployment of this origin-safety correction.
+- **Deployed SHA:** `81359ecdf8502118e0a573981825879d1e747047` is live before this correction.
+- **Blockers:** The final controlled invite must not be issued until this code is live and its generated host is verified as `https://app.pinavia.io`. A separate Clerk identity redemption and non-staff denial remain pending thereafter. No Quorum proof or commercial SOW may be claimed without Decision B or Decision A respectively.
+- **Next exact action:** Commit and publish the tested origin correction, wait for Render to deploy it, verify only the generated host (never the bearer URL), then continue the bounded second-identity redemption smoke.
