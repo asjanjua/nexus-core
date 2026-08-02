@@ -181,3 +181,10 @@ Reconcile the August governance milestone against remote-tip code and live read-
 - **Deployed SHA:** `48a2e69`, live on Render.
 - **Blockers:** Separate controlled Clerk identity sign-in/redemption and a non-staff `/admin` denial remain required to close the invitation proof. The existing Chrome context retains the staff session, so that final step requires an isolated/alternate Clerk session rather than accidentally redeeming with staff authority.
 - **Next exact action:** Redeem the active one-time invite with the approved non-staff identity in an isolated Clerk session; verify trial entitlement, expiry, redemption audit, and `/admin` denial; then revoke any unused test artefact only if it remains unredeemed.
+
+### 2026-08-03T02:29:00+05:00 — separate-identity handoff prepared
+
+- **Completed:** Published `9b62220`, adding a Clerk `SignOutButton` to the authenticated navigation. Render deployed it, and the previously active staff session was signed out through the application, not by clearing browser state. The approved email's Clerk sign-up form is open in the clean signed-out session.
+- **Verification:** The staff-only `/admin` control was reachable before sign-out; after it, the application returned to the embedded `/sign-in` form. The exact controlled invite remains unredeemed and its bearer link is not recorded here.
+- **Blocker:** The production Clerk form currently supports email/password and Google, not Microsoft. A password must be entered or chosen by the email account owner for `ali.janjua@live.com`; it must not be invented, logged, or supplied by an operator.
+- **Next exact action:** Owner enters/sets the password in the already open Clerk form and confirms completion. Continue immediately with the active invite redemption, entitlement/audit verification, and non-staff admin-denial check.
