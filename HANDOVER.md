@@ -4,6 +4,15 @@
 
 ---
 
+## 2026-08-02 — Production Staff Allowlist Is Live; Mutable Smoke Still Pending
+
+- Render service `srv-d8bv48jtqb8s73a95gg0` is now live on `1252263ca521c460a99fb27898019ccc402048ec` (deploy `dep-d9nmt87qj5pc73f81uc0`, 2026-08-02 21:24 +05:00). This is the exact remote `main` SHA that passed the full local release gate and the canonical public eight-check smoke.
+- Under explicit owner authorization, Render now contains the non-secret `PINAVIA_ADMIN_PRINCIPALS` allowlist for the confirmed staff Clerk user `user_3GAQ0sQcikQviKCCDyMIse51oEY`. No other principal was added.
+- Do not overstate this as a completed trial-invite release: migration `0038_trial_invites.sql` is present in source but has not yet been confirmed in production; the browser bridge could not access the existing signed-in application tab for a read-only staff-page check; and no authorised second identity exists yet for genuine invite/redeem/reviewer acceptance smoke.
+- Next production proof: use an authorised read-only Neon session to verify migration `0038`, then obtain a named controlled second identity and explicit permission immediately before issuing one live trial invite or reviewer-seat invite. Do not use an existing customer identity or guess one.
+
+---
+
 ## 2026-08-02 — Nightly Backup Is Blocked on Missing GitHub Repository Secrets
 
 - Remote `main` CI and CodeQL for `1252263` are green, and the public `https://app.pinavia.io` canonical smoke passed all 8 checks. Its exact deployed SHA remains unverified because the public response exposes no release marker.

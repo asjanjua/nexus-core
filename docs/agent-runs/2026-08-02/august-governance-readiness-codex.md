@@ -73,3 +73,12 @@ Reconcile the August governance milestone against remote-tip code and live read-
 - **Deployed SHA:** Not independently verified; no deployment has been requested or initiated.
 - **Blockers:** External proof still requires an authorized staff principal plus a controlled second identity for trial-invite/reviewer mutation, and named/authorized board-cycle participants and source pack for Quorum. These cannot be truthfully completed from repository or public-health evidence.
 - **Next exact action:** Commit this final ledger checkpoint, then wait for explicit remote-publication or controlled-production-workflow authorization.
+
+### 2026-08-02T21:24:00+05:00 — authorized staff allowlist deployed
+
+- **Completed:** With the operator's explicit authorization, configured Render's non-secret `PINAVIA_ADMIN_PRINCIPALS` value to the sole known Pinavia staff Clerk principal, `user_3GAQ0sQcikQviKCCDyMIse51oEY`, and selected Render's **Save, rebuild, and deploy** action. This intentionally changes only the staff allowlist; no customer, organisation, or test principal was added.
+- **Verification:** Render service `srv-d8bv48jtqb8s73a95gg0` recorded deploy `dep-d9nmt87qj5pc73f81uc0` as **live** at 2026-08-02 21:24 +05:00 for commit `1252263ca521c460a99fb27898019ccc402048ec`. The canonical public domain had already passed all eight smoke checks. The browser automation bridge could not claim the already-open `app.pinavia.io` signed-in tab, so an authenticated `/admin/invites` page result is not claimed.
+- **Pushed SHA:** No branch commit containing this checkpoint has been pushed.
+- **Deployed SHA:** `1252263ca521c460a99fb27898019ccc402048ec`, verified from the Render event history.
+- **Blockers:** Production migration `0038` remains unconfirmed, and a real invite/reviewer round trip still needs an explicitly authorised second test identity. Nightly backup remains blocked on missing GitHub repository secrets.
+- **Next exact action:** Confirm migration `0038` through an authorised read-only Neon session, then obtain an authorised controlled second identity before issuing any live trial invite or reviewer-seat invitation.
