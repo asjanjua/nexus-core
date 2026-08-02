@@ -74,6 +74,14 @@ describe("pilot paperwork authz", () => {
     await GET(new Request("http://localhost/api/pilot/paperwork"));
     expect(mockRequireScope).toHaveBeenCalledWith(expect.any(Request), "read:admin");
   });
+
+  it("does not invent a commercial term in generated paperwork", async () => {
+    const { GET } = await import("@/app/api/pilot/paperwork/route");
+    const response = await GET(new Request("http://localhost/api/pilot/paperwork"));
+    const body = await response.json();
+
+    expect(body.data.sow.pilotDuration).toBe("[Set in signed SOW]");
+  });
 });
 
 describe("settings workspace authz", () => {

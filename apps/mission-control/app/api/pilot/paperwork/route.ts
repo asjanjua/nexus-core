@@ -60,7 +60,10 @@ export async function GET(request: Request) {
       },
       governancePosture: profile.governancePosture,
       selectedWorkflow: profile.selectedWorkflow ?? selectedWorkflow?.name ?? "[Select workflow]",
-      pilotDuration: "90 days",
+      // Commercial duration is a signed-SOW decision. Do not imply that every
+      // workspace's staff-issued product trial (configured per invite) is a
+      // 90-day paid engagement.
+      pilotDuration: "[Set in signed SOW]",
       startDate: "[TBD — set at kickoff]",
     },
 

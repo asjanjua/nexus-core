@@ -22,6 +22,11 @@
 - The current Quorum runtime is an authenticated governance review, not a board portal: it reviews processed workspace evidence, decisions, and actions; returns evidence-cited completeness findings, decision/action gaps, a human approval packet, and caveats; and writes started/completed audit events. `tests/quorum-governance-review.test.ts` and `tests/board-governance-workflow.test.ts` passed 15/15 under Node 24.
 - `docs/QUORUM_BOARD_GOVERNANCE_WORKFLOW.md` now contains the exact authorised controlled-proof procedure. `docs/BRIEFING_DECK_RED_TEAM.md` no longer inaccurately calls Quorum a delta-only stub. Do not claim board-pack generation, minutes, signatures, filing, or statutory readiness: those are not current runtime behavior.
 
+## 2026-08-02 — Pilot Paperwork No Longer Invents a Commercial Term
+
+- `GET /api/pilot/paperwork` now returns `[Set in signed SOW]` for the pilot duration instead of a hard-coded 90-day commercial commitment. The generated package must be completed by the named parties before it is signable.
+- The staff-issued trial-invite flow has a per-invite duration and defaults to 30 days; `docs/PILOT_BILLING_TRIGGERS.md` no longer makes an unsupported universal 14-day trial promise. Focused paperwork and invite tests passed 24/24 and TypeScript passed under Node 24.
+
 ---
 
 ## 2026-08-02 — Nightly Backup Is Blocked on Missing GitHub Repository Secrets

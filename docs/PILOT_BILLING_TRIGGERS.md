@@ -25,7 +25,7 @@ The triggers exist so:
 
 | Status | Meaning | Ingestion | Dashboard | Billing |
 |---|---|---|---|---|
-| `trial` | 14-day free access, no credit card | Enabled | Full access | Not billed |
+| `trial` | Time-bound access. Staff-issued trial invites currently default to 30 days, but the operator sets each invite's duration. | Enabled | Full access | Not billed |
 | `pilot` | Signed 90-day pilot, actively paying | Enabled | Full access | Monthly invoice |
 | `active` | Ongoing subscription post-pilot | Enabled | Full access | Monthly/annual invoice |
 | `suspended` | Payment failed or lapsed | Disabled | Read-only | Invoice pending |
@@ -70,9 +70,12 @@ A workspace is moved from `pilot` to `active` when:
 
 ## 5. Trial Expiry and Suspension Logic
 
-**Trial expiry (day 14):**
-- Banner in the app shows countdown from day 10
-- On day 14: access restricted to read-only (no new uploads or recommendations)
+**Trial expiry (at the individual trial end date):**
+- The staff-issued invite flow records a duration per invite (30 days by default)
+  and returns the resulting expiry at redemption. Do not promise a fixed
+  14-day product trial in a proposal or public statement.
+- Trial-expiry enforcement and customer-facing countdown copy must be verified
+  in the controlled invite smoke before commercial use.
 - Email sent to sponsor with upgrade instructions (once email service is wired)
 - Evidence and settings preserved for 30 days before deletion
 

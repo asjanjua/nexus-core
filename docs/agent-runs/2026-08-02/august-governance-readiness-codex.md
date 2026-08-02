@@ -109,3 +109,12 @@ Reconcile the August governance milestone against remote-tip code and live read-
 - **Deployed SHA:** `1252263ca521c460a99fb27898019ccc402048ec` remains the verified Render deployment.
 - **Blockers:** A legitimate Quorum proof still requires the Decision B nomination: named governance lead, chair/director reviewer, authorised or clearly labelled synthetic pack, draft-material permission, retention/counsel rule, and board-cycle date. These are external authority facts and remain unknown.
 - **Next exact action:** Once Decision B is recorded, use the documented controlled-proof procedure and capture the named review outcome; do not substitute unit tests for that proof.
+
+### 2026-08-02T21:38:00+05:00 — pilot paperwork commercial-term integrity corrected
+
+- **Completed:** Removed the generated paperwork API's unsupported hard-coded `90 days` commercial term. It now requires `[Set in signed SOW]`. Reconciled the pilot billing trigger note with the staff-issued trial-invite implementation: duration is configured per invite and defaults to 30 days.
+- **Verification:** Focused `api-workspace-authz`, `trial-invites`, and `trial-invite-redeem-route` tests passed (3 files, 24 tests), including a new assertion that generated paperwork does not invent a term. Standalone TypeScript passed under Node `v24.14.1`; `git diff --check` passed.
+- **Pushed SHA:** Not pushed.
+- **Deployed SHA:** Existing live application remains `1252263ca521c460a99fb27898019ccc402048ec`; this package-integrity change is local only until explicitly published.
+- **Blockers:** A credible signed pilot package still needs real Decision A nomination, agreed term, named signatories, and controlled workflow evidence. These are not inferable from a strategy profile.
+- **Next exact action:** Capture Decision A from an actual sponsor/owner/reviewer and complete the resulting SOW; do not deploy or claim the local paperwork change until publication is authorised.
