@@ -195,3 +195,10 @@ Reconcile the August governance milestone against remote-tip code and live read-
 - **Code correction:** Published `f2f28b8` to force Clerk social providers into labeled block buttons on sign-in and sign-up; Microsoft was previously icon-only and easy to miss. Focused Clerk URL tests (6) and TypeScript pass.
 - **Blocker:** Microsoft login cannot become functional until a Microsoft Entra app registration exists and its client ID/secret are entered into Clerk's Production Microsoft connection. No secret was invented, copied into logs, or added to Render.
 - **Next exact action:** Owner either supplies an existing Entra client ID/secret or creates a directory/app registration, then configure Clerk's Production Microsoft connection and re-run the live button smoke.
+
+### 2026-08-03T04:00:00+05:00 — additive evidence upload release
+
+- **Completed:** Published `60ba5d1` to make onboarding and the main ingestion surface additive multi-document flows. Repeated picker opens and drag/drop now merge into one bounded batch, duplicate files are ignored, each queued file is listed, and individual files can be removed before ingestion. The existing sequential ingestion API remains unchanged.
+- **Verification:** Full repository checks passed: relay 6/6, dependency 5/5, Render blueprint 4/4, and mission-control Vitest 732/732. TypeScript and `git diff --check` passed. Render deployed `60ba5d1` live.
+- **Milestone boundary:** The upload improvement is product readiness work, not Decision A or Decision B evidence. The user has described sponsor setup and a first document, but no external buyer nomination, named separate reviewer, governed workflow, or Quorum authority has been recorded in the decision packet.
+- **Next exact action:** Verify the user's first evidence bundle and named sponsor/reviewer against Decision A fields; do not claim a governed pilot or Quorum proof until those external authority facts are captured.
