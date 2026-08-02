@@ -4,6 +4,15 @@
 
 ---
 
+## 2026-08-02 — Nightly Backup Is Blocked on Missing GitHub Repository Secrets
+
+- Remote `main` CI and CodeQL for `1252263` are green, and the public `https://app.pinavia.io` canonical smoke passed all 8 checks. Its exact deployed SHA remains unverified because the public response exposes no release marker.
+- The scheduled `nightly-backup` workflow is not operational: runs on 2026-07-31, 2026-08-01, and 2026-08-02 all failed at `pg_dump` with an empty `DATABASE_URL`. Read-only GitHub inspection shows `.github/workflows/nightly-backup.yml` correctly consumes `${{ secrets.NEON_DATABASE_URL }}`, while the repository currently has no configured repository secrets.
+- This is an external configuration blocker, not an application-code defect. Do not weaken the workflow into a passing no-op. An authorized owner must configure the direct non-pooled Neon URL plus the R2 account, backup credential, source-bucket, and backup-bucket secrets named in the workflow, then manually dispatch and verify a real dump, copy, retention, and size report.
+- Until that succeeds and a restore drill is logged, do not make a nightly-backup or paid-pilot recovery commitment.
+
+---
+
 ## 2026-07-29 — Nexus Room Portfolio Design Source
 
 - Figma page `29 Nexus Room Portfolio / 2026-07-29` (`212:2`) is the current design source for the Nexus room model: populated portfolio `213:2`, day-one portfolio `213:61`, template picker `214:2`, configuration `214:59`, activation review `214:114`, Finance Room detail `215:2`, and Product Room Portfolio `215:49`.
