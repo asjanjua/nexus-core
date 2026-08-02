@@ -91,3 +91,12 @@ Reconcile the August governance milestone against remote-tip code and live read-
 - **Deployed SHA:** Remains `1252263ca521c460a99fb27898019ccc402048ec` from Render event history.
 - **Blockers:** The only visible Neon console tab is at its login screen, not an authenticated console session, so production migration `0038` is still unverified. The controlled second identity and both external nominations remain absent. These cannot be substituted with an existing customer identity, a guessed contact, or synthetic authority.
 - **Next exact action:** After the owner authenticates Neon, run an authorised read-only migration check; then request a named, controlled second identity and per-action permission before any invite issuance or redemption.
+
+### 2026-08-02T21:33:00+05:00 — production migration 0038 confirmed
+
+- **Completed:** Owner authenticated the Neon console. On its `main` branch and `neondb` database, ran read-only schema queries only; no application records were read or changed.
+- **Verification:** `SELECT to_regclass('public.trial_invites') IS NOT NULL` returned `true`. A second `information_schema.columns` check returned `true` for presence of `invite_code_hash`, `status`, `expires_at`, and `redeemed_workspace_id`, matching the source migration's core invitation/redemption columns. This confirms migration `0038_trial_invites.sql` is applied to production.
+- **Pushed SHA:** Not pushed.
+- **Deployed SHA:** `1252263ca521c460a99fb27898019ccc402048ec` from Render event history.
+- **Blockers:** The application-session browser bridge timed out twice while attempting a read-only `/admin/invites` visit. More importantly, no authorised controlled second identity or disposable test email has been nominated, so invite issuance/redeem/audit/non-staff proof must not begin.
+- **Next exact action:** Obtain the controlled second identity and explicit per-action authorization, then issue exactly one trial invite and run the bounded redemption smoke without recording the bearer link.

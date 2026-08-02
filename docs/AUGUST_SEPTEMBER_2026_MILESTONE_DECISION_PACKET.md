@@ -109,8 +109,8 @@ restricted source material out of this packet and version control.
   smoke.
 - The Render `PINAVIA_ADMIN_PRINCIPALS` allowlist contains only the confirmed
   Pinavia staff Clerk principal and the redeploy is live.
-- Migration `0038_trial_invites.sql` is in source but has not been confirmed in
-  production; the visible Neon console session is not authenticated.
+- Neon production `main` confirms `public.trial_invites` with the migration's
+  required invitation, status, expiry, and redeemed-workspace columns.
 - No controlled second identity, partner nomination, authorised source bundle,
   or Quorum board pack has been supplied. Therefore no invite, redemption,
   board-cycle, or commercial proof is claimed.

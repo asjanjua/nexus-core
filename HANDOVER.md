@@ -8,8 +8,9 @@
 
 - Render service `srv-d8bv48jtqb8s73a95gg0` is now live on `1252263ca521c460a99fb27898019ccc402048ec` (deploy `dep-d9nmt87qj5pc73f81uc0`, 2026-08-02 21:24 +05:00). This is the exact remote `main` SHA that passed the full local release gate and the canonical public eight-check smoke.
 - Under explicit owner authorization, Render now contains the non-secret `PINAVIA_ADMIN_PRINCIPALS` allowlist for the confirmed staff Clerk user `user_3GAQ0sQcikQviKCCDyMIse51oEY`. No other principal was added.
-- Do not overstate this as a completed trial-invite release: migration `0038_trial_invites.sql` is present in source but has not yet been confirmed in production; the browser bridge could not access the existing signed-in application tab for a read-only staff-page check; and no authorised second identity exists yet for genuine invite/redeem/reviewer acceptance smoke.
-- Next production proof: use an authorised read-only Neon session to verify migration `0038`, then obtain a named controlled second identity and explicit permission immediately before issuing one live trial invite or reviewer-seat invite. Do not use an existing customer identity or guess one.
+- Neon production `main` now confirms `public.trial_invites` and required columns `invite_code_hash`, `status`, `expires_at`, and `redeemed_workspace_id`; this is production evidence that migration `0038_trial_invites.sql` is applied.
+- Do not overstate this as a completed trial-invite release: the browser bridge timed out trying to reach the existing signed-in `/admin/invites` page, and no authorised second identity exists yet for genuine invite/redeem/reviewer acceptance smoke.
+- Next production proof: obtain a named controlled second identity and explicit permission immediately before issuing one live trial invite, then verify redeem, workspace trial state, audit events, and non-staff denial. Do not use an existing customer identity or guess one.
 
 ## 2026-08-02 — August–September Decision Packet Is Ready for Real Nominations
 
