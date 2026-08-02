@@ -17,6 +17,11 @@
 - `docs/AUGUST_SEPTEMBER_2026_MILESTONE_DECISION_PACKET.md` is the decision-ready source for the 2026-08-05 NexusAI pilot and Quorum design-partner nominations. It encodes the required named roles, authority/synthetic-pack confirmation, proof acceptance, and the rule that a commercial SOW is not signable before evidence exists.
 - The packet records the actual live staff-gate/deployment state and deliberately does not invent any buyer, separate reviewer, board participant, source bundle, retention rule, or board-cycle date. Capture those only from explicit external decisions.
 
+## 2026-08-02 — Quorum Controlled-Proof Boundary Reconciled
+
+- The current Quorum runtime is an authenticated governance review, not a board portal: it reviews processed workspace evidence, decisions, and actions; returns evidence-cited completeness findings, decision/action gaps, a human approval packet, and caveats; and writes started/completed audit events. `tests/quorum-governance-review.test.ts` and `tests/board-governance-workflow.test.ts` passed 15/15 under Node 24.
+- `docs/QUORUM_BOARD_GOVERNANCE_WORKFLOW.md` now contains the exact authorised controlled-proof procedure. `docs/BRIEFING_DECK_RED_TEAM.md` no longer inaccurately calls Quorum a delta-only stub. Do not claim board-pack generation, minutes, signatures, filing, or statutory readiness: those are not current runtime behavior.
+
 ---
 
 ## 2026-08-02 — Nightly Backup Is Blocked on Missing GitHub Repository Secrets

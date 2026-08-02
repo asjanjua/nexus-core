@@ -355,6 +355,39 @@ The first code expansion after the Figma pass should be:
 3. Minutes/action register workflow.
 4. Jurisdiction pack registry with Pakistan-first source metadata.
 
+## Controlled Board-Cycle Proof — Current Runtime
+
+The current runtime supports a deliberately bounded proof, not a board-portal
+replacement. It may be used only after the design-partner nomination in
+`docs/AUGUST_SEPTEMBER_2026_MILESTONE_DECISION_PACKET.md` is complete.
+
+1. Record the named governance lead, accountable chair/director reviewer,
+   controlled board-cycle date, retention rule, and explicit authority to
+   prepare draft material.
+2. Ingest only the approved or clearly labelled synthetic board-pack sources
+   into the nominated workspace. Assign the document departments needed for
+   the review checklist: `Board Notice`/`Notice`, `Agenda`/`Board Pack`,
+   `Attendance`/`Quorum`, `Conflicts Register`/`Conflicts`, `Minutes`, `Board
+   Resolution`/`Resolutions`/`Decisions`, and `Management Accounts`/`Financial
+   Statements`.
+3. Capture the relevant decisions and their actions in the same workspace.
+4. As an authorised workspace user with `read:evidence`, run the Settings
+   **Run governance review** action or `POST
+   /api/agents/native-skills/quorum-governance-review`. The route derives the
+   workspace from the authenticated session; callers cannot supply a tenant.
+5. Record the returned evidence-cited governance findings, decision gaps,
+   human approval packet, and board-pack caveats. Verify the audit events
+   `native_skill.quorum_governance_review.started` and
+   `native_skill.quorum_governance_review.completed`.
+6. The nominated human reviewer must accept, reject, or request changes. Keep
+   all output explicitly draft. Do not sign, send, file, or claim statutory
+   compliance from the output.
+
+The runtime correctly produces `recordReady: false` when critical quorum or
+conflict evidence is missing, or when decision/action gaps remain. A passing
+technical test is not board-cycle proof: the controlled proof requires the
+authorised pack, named human reviewer, and their recorded review outcome.
+
 ## Open Questions
 
 - Confirm whether Quorum first targets Pakistan private companies, Pakistan listed companies, NBFCs, or consulting-led board advisory packs.

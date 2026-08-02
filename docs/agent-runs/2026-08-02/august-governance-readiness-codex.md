@@ -100,3 +100,12 @@ Reconcile the August governance milestone against remote-tip code and live read-
 - **Deployed SHA:** `1252263ca521c460a99fb27898019ccc402048ec` from Render event history.
 - **Blockers:** The application-session browser bridge timed out twice while attempting a read-only `/admin/invites` visit. More importantly, no authorised controlled second identity or disposable test email has been nominated, so invite issuance/redeem/audit/non-staff proof must not begin.
 - **Next exact action:** Obtain the controlled second identity and explicit per-action authorization, then issue exactly one trial invite and run the bounded redemption smoke without recording the bearer link.
+
+### 2026-08-02T21:36:00+05:00 — Quorum controlled-proof path reconciled
+
+- **Completed:** Verified the current Quorum runtime and corrected its truthful public-claim documentation. The executable governance review is an authenticated, workspace-scoped evidence/decision/action review with completion audit events; it is not a full board-portal lifecycle.
+- **Verification:** `tests/quorum-governance-review.test.ts` and `tests/board-governance-workflow.test.ts` passed (2 files, 15 tests) with Node `v24.14.1`. `git diff --check` passed for the documentation change.
+- **Pushed SHA:** Not pushed.
+- **Deployed SHA:** `1252263ca521c460a99fb27898019ccc402048ec` remains the verified Render deployment.
+- **Blockers:** A legitimate Quorum proof still requires the Decision B nomination: named governance lead, chair/director reviewer, authorised or clearly labelled synthetic pack, draft-material permission, retention/counsel rule, and board-cycle date. These are external authority facts and remain unknown.
+- **Next exact action:** Once Decision B is recorded, use the documented controlled-proof procedure and capture the named review outcome; do not substitute unit tests for that proof.
