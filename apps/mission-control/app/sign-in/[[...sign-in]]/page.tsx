@@ -27,7 +27,11 @@ export default async function SignInPage({
           </p>
         </div>
         <div className="flex justify-center">
-          <SignIn forceRedirectUrl={redirectPath} signUpUrl={signUpUrl} />
+          <SignIn
+            forceRedirectUrl={redirectPath}
+            signUpUrl={signUpUrl}
+            appearance={{ layout: { socialButtonsVariant: "blockButton", socialButtonsPlacement: "top" } }}
+          />
         </div>
         <div className="flex flex-wrap justify-center gap-2 text-sm">
           <a href={redirectPath} className="btn-subtle">
