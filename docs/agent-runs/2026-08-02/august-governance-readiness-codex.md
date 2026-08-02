@@ -188,3 +188,10 @@ Reconcile the August governance milestone against remote-tip code and live read-
 - **Verification:** The staff-only `/admin` control was reachable before sign-out; after it, the application returned to the embedded `/sign-in` form. The exact controlled invite remains unredeemed and its bearer link is not recorded here.
 - **Blocker:** The production Clerk form currently supports email/password and Google, not Microsoft. A password must be entered or chosen by the email account owner for `ali.janjua@live.com`; it must not be invented, logged, or supplied by an operator.
 - **Next exact action:** Owner enters/sets the password in the already open Clerk form and confirms completion. Continue immediately with the active invite redemption, entitlement/audit verification, and non-staff admin-denial check.
+
+### 2026-08-03T02:42:00+05:00 — Microsoft OAuth failure classified
+
+- **Completed:** Reproduced the live Microsoft button from both the embedded sign-in path and Clerk production environment. The provider is enabled in Clerk's public auth configuration (`oauth_microsoft`), but Entra returns `AADSTS900144` because the OAuth request has no `client_id`. The signed-in Azure portal has no app registrations and reports that this personal account has no directory for creating one.
+- **Code correction:** Published `f2f28b8` to force Clerk social providers into labeled block buttons on sign-in and sign-up; Microsoft was previously icon-only and easy to miss. Focused Clerk URL tests (6) and TypeScript pass.
+- **Blocker:** Microsoft login cannot become functional until a Microsoft Entra app registration exists and its client ID/secret are entered into Clerk's Production Microsoft connection. No secret was invented, copied into logs, or added to Render.
+- **Next exact action:** Owner either supplies an existing Entra client ID/secret or creates a directory/app registration, then configure Clerk's Production Microsoft connection and re-run the live button smoke.
