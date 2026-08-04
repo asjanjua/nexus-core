@@ -29,7 +29,15 @@ const DISALLOW = [
   "/ingestion",
   "/workflows",
   "/workspace",
+  // Product room hubs and their arcs. Each is gated with requireWorkspaceId,
+  // so a crawler following one reaches only a sign-in redirect while still
+  // consuming rate-limited budget. This list has fallen behind four times as
+  // new rooms shipped — tests/robots-coverage.test.ts now fails the build if
+  // it happens again.
   "/meridian",
+  "/vantage",
+  "/nucleus",
+  "/governance",
   "/settings",
   "/export",
   "/board",
