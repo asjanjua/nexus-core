@@ -41,6 +41,9 @@ const PUBLIC_ROUTES = new Set([
   "/workspace",
   "/diagnostic",
   "/solutions",
+  // Deliberately crawlable and high priority in the sitemap: pricing is the
+  // page buyers search for by name.
+  "/pricing",
   "/research",
   "/pro-waitlist",
   "/readiness",

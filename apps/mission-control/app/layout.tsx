@@ -89,6 +89,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     pathname === "/workspace" ||
     pathname === "/diagnostic" ||
     pathname === "/solutions" ||
+    pathname === "/pricing" ||
     pathname === "/research" ||
     // Lead capture, advertised in sitemap.ts. It must render the public shell
     // or Google indexes a page that shows visitors a signed-out app frame
