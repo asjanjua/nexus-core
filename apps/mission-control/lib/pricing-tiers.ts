@@ -102,6 +102,33 @@ export function tierForHeadcount(headcount: number): PricingTier {
   );
 }
 
+/**
+ * Where a tier's button should send someone who is not signed in.
+ *
+ * Self-serve tiers carry the choice through sign-up so it survives the detour:
+ * a buyer who picked Growth on the pricing page should not have to find the
+ * billing tab and pick it again. Enterprise goes to the lead form instead,
+ * because there is no self-serve price to check out against.
+ *
+ * The intent is a QUERY PARAMETER, not a purchase. Settings surfaces a button;
+ * nobody is dropped onto a payment page by a link they followed from a public
+ * site, which would be an unpleasant surprise from a governance product.
+ */
+export function ctaHref(tier: PricingTier): string {
+  if (tier.quoteRequired) return tier.cta.href;
+  const destination = `/settings?checkout=${tier.planKey}`;
+  return `/sign-up?redirect_url=${encodeURIComponent(destination)}`;
+}
+
+/** Plan key from a `?checkout=` value, or null if it is not a self-serve plan. */
+export function checkoutIntentFromParam(value: string | null | undefined): "pro" | "business" | null {
+  if (!value) return null;
+  const match = PRICING_TIERS.find((t) => !t.quoteRequired && t.planKey === value.trim());
+  // Narrowed by the quoteRequired filter above; enterprise can never arrive
+  // here, so a crafted ?checkout=enterprise does not open a checkout.
+  return (match?.planKey as "pro" | "business") ?? null;
+}
+
 /** Monthly cost per person, for comparing bands honestly. Null when quoted. */
 export function perSeatUsd(tier: PricingTier, headcount: number): number | null {
   if (tier.quoteRequired) return null;

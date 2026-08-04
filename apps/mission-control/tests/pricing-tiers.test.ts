@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { PRICING_TIERS, perSeatUsd, tierForHeadcount } from "@/lib/pricing-tiers";
+import {
+  PRICING_TIERS,
+  checkoutIntentFromParam,
+  ctaHref,
+  perSeatUsd,
+  tierForHeadcount,
+} from "@/lib/pricing-tiers";
+import { safeAppRedirectPath } from "@/lib/auth/hosted-clerk-url";
 
 describe("pricing bands", () => {
   it("covers every company size with exactly one tier", () => {
@@ -63,6 +70,41 @@ describe("pricing bands", () => {
     const valid = new Set(["free", "pro", "business", "enterprise"]);
     for (const tier of PRICING_TIERS) expect(valid.has(tier.planKey)).toBe(true);
     expect(new Set(PRICING_TIERS.map((t) => t.planKey)).size).toBe(PRICING_TIERS.length);
+  });
+
+  it("carries a self-serve choice through sign-up", () => {
+    // The leak this closes: a buyer picks Growth, signs up, lands on the
+    // Workspace tab with no sign their choice survived, and gives up.
+    for (const tier of PRICING_TIERS.filter((t) => !t.quoteRequired)) {
+      const href = ctaHref(tier);
+      expect(href.startsWith("/sign-up?redirect_url=")).toBe(true);
+      const destination = decodeURIComponent(href.split("redirect_url=")[1]);
+      expect(destination).toBe(`/settings?checkout=${tier.planKey}`);
+      // The redirect has to survive the auth layer's own validation, or the
+      // buyer silently lands on /onboarding instead.
+      expect(safeAppRedirectPath(destination, "/onboarding")).toBe(destination);
+    }
+  });
+
+  it("sends Enterprise to the lead form, not to a checkout", () => {
+    // There is no self-serve price to check out against, so offering one would
+    // bill a figure the sales conversation has not agreed.
+    const enterprise = PRICING_TIERS.find((t) => t.quoteRequired)!;
+    expect(ctaHref(enterprise)).toBe(enterprise.cta.href);
+    expect(ctaHref(enterprise)).not.toContain("checkout=");
+  });
+
+  it("accepts only self-serve plans as a checkout intent", () => {
+    expect(checkoutIntentFromParam("pro")).toBe("pro");
+    expect(checkoutIntentFromParam("business")).toBe("business");
+    // A crafted ?checkout=enterprise must not open a checkout for a plan that
+    // is quote-only, and neither must anything else.
+    expect(checkoutIntentFromParam("enterprise")).toBeNull();
+    expect(checkoutIntentFromParam("free")).toBeNull();
+    expect(checkoutIntentFromParam("")).toBeNull();
+    expect(checkoutIntentFromParam(null)).toBeNull();
+    expect(checkoutIntentFromParam("PRO")).toBeNull();
+    expect(checkoutIntentFromParam("pro; drop")).toBeNull();
   });
 
   it("computes per-seat cost, which exposes the step at the boundary", () => {

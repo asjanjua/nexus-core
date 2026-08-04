@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PRICING_TIERS } from "@/lib/pricing-tiers";
+import { PRICING_TIERS, ctaHref } from "@/lib/pricing-tiers";
 import { ENGAGEMENT_WAIVER, waiverStatus } from "@/lib/diagnostic-offer";
 
 export const metadata: Metadata = {
@@ -60,7 +60,7 @@ export default function PricingPage() {
             <p className="mt-4 text-sm font-medium text-nexus-sky">{tier.seatRangeLabel}</p>
             <p className="mt-3 flex-1 text-xs leading-5 text-white/55">{tier.positioning}</p>
             <Link
-              href={tier.cta.href}
+              href={ctaHref(tier)}
               className={`mt-6 inline-flex justify-center rounded-lg px-4 py-2 text-sm ${
                 tier.key === "growth" ? "btn-primary" : "btn-subtle"
               }`}

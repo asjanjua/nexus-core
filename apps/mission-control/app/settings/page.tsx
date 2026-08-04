@@ -10,6 +10,7 @@ import { PageShell } from "@/components/page-shell";
 import { MetaChip } from "@/components/ui/nexus-primitives";
 import { HelpLabel } from "@/components/ui/help-dialog";
 import {
+import { PRICING_TIERS, checkoutIntentFromParam } from "@/lib/pricing-tiers";
   briefLanguageModeForArchetype,
   getAllSectors,
   getArchetypeEvidenceExpectation,
@@ -454,12 +455,18 @@ function FeatureRow({ label, enabled, requiredPlan }: { label: string; enabled: 
   );
 }
 
+/** Published tier for a plan key, so button copy cannot drift from /pricing. */
+function tierFor(planKey: "pro" | "business") {
+  return PRICING_TIERS.find((t) => t.planKey === planKey)!;
+}
+
 function PlanTab({ workspaceId }: { workspaceId: string }) {
   const [data, setData] = useState<PlanSummaryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [upgrading, setUpgrading] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
   const [billingBanner, setBillingBanner] = useState<"success" | "cancelled" | null>(null);
+  const [checkoutIntent, setCheckoutIntent] = useState<"pro" | "business" | null>(null);
 
   useEffect(() => {
     // Read billing result from URL query param (Stripe redirects here after checkout)
@@ -472,6 +479,17 @@ function PlanTab({ workspaceId }: { workspaceId: string }) {
         const clean = new URL(window.location.href);
         clean.searchParams.delete("billing");
         clean.searchParams.delete("plan");
+        window.history.replaceState({}, "", clean.toString());
+      }
+
+      // Plan chosen on /pricing before sign-up. Surfaced as a button, never
+      // acted on automatically: nobody should land on a payment page because
+      // they followed a link from a public site.
+      const intent = checkoutIntentFromParam(params.get("checkout"));
+      if (intent) {
+        setCheckoutIntent(intent);
+        const clean = new URL(window.location.href);
+        clean.searchParams.delete("checkout");
         window.history.replaceState({}, "", clean.toString());
       }
     }
@@ -545,6 +563,29 @@ function PlanTab({ workspaceId }: { workspaceId: string }) {
         </div>
       )}
 
+      {/* Carried from /pricing through sign-up. Shown only while the workspace
+          is not already on that plan, so it cannot invite a pointless payment. */}
+      {checkoutIntent && data && data.plan !== checkoutIntent && (
+        <div className="rounded-lg border border-nexus-accent/40 bg-nexus-accent/10 px-4 py-3">
+          <p className="text-sm font-medium text-nexus-accent">
+            You chose {tierFor(checkoutIntent).label} on the pricing page.
+          </p>
+          <p className="mt-1 text-xs leading-5 text-white/60">
+            {tierFor(checkoutIntent).priceLabel} per month, {tierFor(checkoutIntent).seatRangeLabel}.
+            Nothing is charged until you complete checkout with Stripe.
+          </p>
+          <button
+            onClick={() => handleUpgrade(checkoutIntent)}
+            disabled={upgrading !== null}
+            className="badge badge-green hover:opacity-80 transition-opacity text-xs mt-3 disabled:opacity-50"
+          >
+            {upgrading === checkoutIntent
+              ? "Redirecting..."
+              : `Continue to checkout — ${tierFor(checkoutIntent).priceLabel}/mo`}
+          </button>
+        </div>
+      )}
+
       {/* Plan header */}
       <section className="panel space-y-3">
         <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -568,7 +609,7 @@ function PlanTab({ workspaceId }: { workspaceId: string }) {
                 disabled={upgrading !== null}
                 className="badge badge-green hover:opacity-80 transition-opacity text-xs disabled:opacity-50"
               >
-                {upgrading === "pro" ? "Redirecting..." : "Upgrade to Pro — $499/mo"}
+                {upgrading === "pro" ? "Redirecting..." : `Upgrade to ${tierFor("pro").label} — ${tierFor("pro").priceLabel}/mo`}
               </button>
             )}
             {data.plan === "pro" && (
@@ -577,7 +618,7 @@ function PlanTab({ workspaceId }: { workspaceId: string }) {
                 disabled={upgrading !== null}
                 className="badge badge-green hover:opacity-80 transition-opacity text-xs disabled:opacity-50"
               >
-                {upgrading === "business" ? "Redirecting..." : "Upgrade to Business — $2,500/mo"}
+                {upgrading === "business" ? "Redirecting..." : `Upgrade to ${tierFor("business").label} — ${tierFor("business").priceLabel}/mo`}
               </button>
             )}
             {data.plan === "business" && (
@@ -3520,6 +3561,20 @@ function DemoTab({ workspaceId }: { workspaceId: string }) {
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState<TabId>("workspace");
   const [workspaceId, setWorkspaceId] = useState<string | null>(null);
+
+  // A visitor arriving from /pricing carries ?checkout=<plan>. Open the plan
+  // tab for them rather than dropping them on Workspace with no sign that
+  // their choice survived sign-up.
+  //
+  // Done in an effect, not a lazy useState initialiser: reading window during
+  // render makes the server emit "workspace" and the client "plan", which is a
+  // hydration mismatch.
+  useEffect(() => {
+    const intent = checkoutIntentFromParam(
+      new URLSearchParams(window.location.search).get("checkout")
+    );
+    if (intent) setActiveTab("plan");
+  }, []);
 
   // Resolve the real workspace from the session/token rather than hardcoding.
   useEffect(() => {
