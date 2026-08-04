@@ -113,7 +113,7 @@ jobs:
       # finding should be the next -> postcss chain documented above.
       #
       # KNOWN GAP, tracked: the lockfile root entry records no `overrides` key
-      # even though package.json declares four. `npm ci` therefore reproduces
+      # even though package.json declares security overrides. `npm ci` therefore reproduces
       # whatever the lockfile already pins rather than re-applying the overrides,
       # so an override that has not yet been baked into the lockfile would be
       # silently ignored in CI while working locally. Re-run `npm install` and
@@ -122,11 +122,8 @@ jobs:
         if: always()
         run: npm audit --audit-level=high || true
 
-      # Production dependencies only. ESLint's tree contributes 9 high
-      # advisories (brace-expansion DoS, six nested copies) that never ship, so
-      # the unscoped report above overstates real exposure. This narrower view
-      # is the one to watch: it should stay at the documented postcss residual
-      # and nothing more.
+      # Production dependencies only. This narrower view is the one to watch:
+      # it should stay at the documented postcss residual and nothing more.
       - name: Report advisories in shipped dependencies (non-blocking)
         if: always()
         run: npm audit --omit=dev --audit-level=high || true
