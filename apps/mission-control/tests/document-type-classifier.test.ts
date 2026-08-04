@@ -13,6 +13,7 @@ import {
   type LicenseStatus,
 } from "@/lib/domain/regulatory-requirement-library";
 import { checklistForDealType, type DealType } from "@/lib/domain/dd-checklist-library";
+import { BOARD_PACK_REQUIREMENTS } from "@/lib/agents/quorum-governance-review";
 
 describe("documentTypesForFilename", () => {
   it("returns nothing for an unidentifiable filename", () => {
@@ -160,6 +161,7 @@ describe("vocabulary alignment with the requirement libraries", () => {
     ...(["fintech_ma", "generic_ma"] as DealType[]).flatMap((d) =>
       checklistForDealType(d).flatMap((c) => c.items.flatMap((i) => i.evidenceTags))
     ),
+    ...BOARD_PACK_REQUIREMENTS.flatMap((r) => r.evidenceTags),
   ]);
 
   it("can produce every evidence tag the requirement packs ask for", () => {
@@ -215,6 +217,16 @@ describe("vocabulary alignment with the requirement libraries", () => {
       "Retention and earn-out terms.docx",
       "Org chart.pdf",
       "Penetration test results.pdf",
+      // Board pack vocabulary
+      "Notice of meeting 12 Mar.pdf",
+      "Board agenda Q1.docx",
+      "Board pack March.pdf",
+      "Attendance register.xlsx",
+      "Quorum confirmation.pdf",
+      "Conflicts of interest declaration.pdf",
+      "Minutes of the previous meeting.docx",
+      "Board resolution 04-2026.pdf",
+      "Decisions log.xlsx",
     ];
     const reached = new Set(documentTypesForPaths(samples));
     const missed = [...requirementTags].filter((tag) => !reached.has(tag)).sort();

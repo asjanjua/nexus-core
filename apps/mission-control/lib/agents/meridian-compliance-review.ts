@@ -21,6 +21,7 @@
 
 import type { EvidenceRecord } from "@/lib/contracts";
 import { extractSourceSpan } from "@/lib/agents/evidence-grid-review";
+import { matchesEvidenceTags } from "@/lib/domain/document-type-classifier";
 import {
   REGULATORS,
   requirementsFor,
@@ -114,9 +115,10 @@ function jurisdictionForLicenseType(licenseTypeKey: string): string {
 }
 
 function citeRequirement(item: RequirementItem, records: EvidenceRecord[], max: number): ComplianceCitation[] {
-  const tags = item.evidenceTags.map((tag) => tag.toLowerCase());
+  // Document type, not department. See matchesEvidenceTags for why the old
+  // comparison could never match.
   return records
-    .filter((record) => tags.includes((record.department ?? "").toLowerCase()))
+    .filter((record) => matchesEvidenceTags(record, item.evidenceTags))
     .sort((a, b) => b.extractionConfidence - a.extractionConfidence)
     .slice(0, max)
     .map((record) => ({

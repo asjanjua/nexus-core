@@ -24,6 +24,10 @@
  * the result, so a reviewer can correct a wrong type. Not built yet.
  */
 
+/** "Board agenda", "agenda - AGM", but not "team offsite agenda". */
+const GOVERNANCE_CONTEXT_AGENDA =
+  /\b(board|committee|agm|egm|directors|shareholders?)\b[^/\\]*\bagenda\b|\bagenda\b[^/\\]*\b(board|committee|agm|egm|directors|shareholders?)\b/i;
+
 /** Ordered specific-first: an "AML Audit Report" is an audit, not just a policy. */
 const PATTERNS: Array<{ type: string; match: RegExp }> = [
   // --- audits and assurance -------------------------------------------------
@@ -79,6 +83,31 @@ const PATTERNS: Array<{ type: string; match: RegExp }> = [
   { type: "Change of Control Requirements", match: /\bchange of control\b|\bcoc\b.*\b(clause|consent|provision)\b|\bassignment clause\b/i },
   { type: "Retention Terms", match: /\b(retention|earn[- ]?out|lock[- ]?up|non[- ]?compete|key (person|man))\b/i },
   { type: "Org Chart", match: /\borg(ani[sz]ation)?[- ]?chart\b|\bheadcount\b|\breporting lines?\b/i },
+
+  // --- board governance (Quorum) -------------------------------------------
+  // Ordered before the generic "Minutes" rule so "Board Notice of Meeting"
+  // types as a notice rather than only matching on the word "meeting".
+  { type: "Board Notice", match: /\bnotice of (meeting|agm|egm)\b|\bboard notice\b|\bmeeting notice\b/i },
+  { type: "Notice", match: /\bnotice of (meeting|agm|egm)\b|\bmeeting notice\b/i },
+  // Agenda, attendance and resolution are ordinary office words. Requiring a
+  // governance context word keeps "Team offsite agenda.docx" from satisfying
+  // a board requirement, and an HR attendance sheet from satisfying QUORUM,
+  // which is a critical item. The cost is that a bare "Agenda.docx" goes
+  // untyped — understating, which is the direction we accept everywhere else.
+  { type: "Agenda", match: GOVERNANCE_CONTEXT_AGENDA },
+  { type: "Board Pack", match: /\bboard (pack|papers?|book)\b/i },
+  // "Attendance register" is the normal board filename, so it must match; an
+  // HR attendance sheet must not, because it would satisfy QUORUM, a critical
+  // item. Excluding the staff-side words is more accurate than demanding a
+  // governance word the real file often lacks.
+  { type: "Attendance", match: /^(?!.*\b(staff|employee|team|payroll|class|student)\b).*(\battendance\b|\bregister of members\b)/i },
+  { type: "Quorum", match: /\bquorum\b/i },
+  { type: "Conflicts Register", match: /\bconflicts? (of interest )?(register|declaration|disclosure)\b/i },
+  { type: "Conflicts", match: /\bconflicts? of interest\b/i },
+  { type: "Minutes", match: /\bminutes\b/i },
+  { type: "Board Resolution", match: /\b(board|circular|written) resolution\b|\bresolution no\b/i },
+  { type: "Resolutions", match: /\b(board|committee|shareholder|special|ordinary) resolutions?\b|\bresolutions? (log|register|record)\b|\bresolution no\b/i },
+  { type: "Decisions", match: /\bdecisions? (log|register|record|paper)\b/i },
 
   // --- portfolio reporting (SECP packs) ------------------------------------
   { type: "Portfolio at Risk Report", match: /\b(par|portfolio at risk|delinquen\w*|npl|arrears)\b/i },
@@ -186,6 +215,28 @@ export function documentTypesForDocuments(
   docs: Array<{ path?: string | null; text?: string | null }>
 ): string[] {
   return [...new Set(docs.flatMap((d) => classifyDocument(d).map((m) => m.type)))];
+}
+
+/**
+ * Does this record satisfy any of a content pack's evidence tags?
+ *
+ * USE THIS RATHER THAN WRITING THE COMPARISON BY HAND. Four separate native
+ * engines independently wrote `tags.includes(record.department)`, and all four
+ * were wrong the same way: department values are broad functions ("Finance",
+ * "Executive / Strategy") while evidence tags are document types ("Cap Table",
+ * "Conflicts Register"). The vocabularies share no values, so every one of
+ * those engines silently reported zero coverage. Having one predicate is the
+ * only reason a fifth engine will not repeat it.
+ */
+export function matchesEvidenceTags(
+  record: { sourcePath?: string | null; text?: string | null },
+  evidenceTags: string[]
+): boolean {
+  if (evidenceTags.length === 0) return false;
+  const wanted = new Set(evidenceTags.map((t) => t.toLowerCase()));
+  return classifyDocument({ path: record.sourcePath, text: record.text }).some((m) =>
+    wanted.has(m.type.toLowerCase())
+  );
 }
 
 /** Every type this classifier can produce — used to assert vocabulary alignment. */

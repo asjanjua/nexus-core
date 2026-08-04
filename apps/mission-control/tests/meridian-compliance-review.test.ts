@@ -8,12 +8,26 @@ import {
 const NOW = "2026-07-06T00:00:00.000Z";
 const LICENSE = "secp_nbfc_investment_finance";
 
-function evidence(patch: Partial<EvidenceRecord> & { id: string; department: string }): EvidenceRecord {
+/**
+ * `docType` drives the FILENAME, because that is what citation matches on.
+ *
+ * These fixtures previously set `department` to a document-type value, which
+ * ingestion never produces — real department values are "Executive / Strategy",
+ * "Finance" and so on. The tests therefore passed while the engine could never
+ * cite a real document. Naming the file after the document type is both
+ * correct and what a real workspace looks like.
+ */
+function evidence(
+  patch: Partial<EvidenceRecord> & { id: string; docType: string }
+): EvidenceRecord {
+  const { docType, ...rest } = patch;
   return {
+    // A plausible functional department. Citation must not depend on it.
+    department: "Risk & Compliance",
     tenantId: "tenant-a",
     workspaceId: "submission-a",
     sourceType: "document",
-    sourcePath: `/submission/${patch.id}.pdf`,
+    sourcePath: `/submission/${docType}.pdf`,
     sourceUri: `https://vault.local/${patch.id}`,
     sourceTimestamp: NOW,
     ingestedAt: NOW,
@@ -23,22 +37,22 @@ function evidence(patch: Partial<EvidenceRecord> & { id: string; department: str
     ingestionStatus: "processed",
     freshnessHours: 3,
     text: "Regulatory submission evidence.",
-    ...patch,
+    ...rest,
   };
 }
 
 describe("meridian compliance review engine", () => {
-  it("cites governed evidence to a requirement via department tag", () => {
+  it("cites governed evidence to a requirement via document type", () => {
     const result = reviewMeridianCompliance({
       reviewId: "sub-1",
       licenseTypeKey: LICENSE,
       status: "aspirational",
-      records: [evidence({ id: "cap", department: "Capital Adequacy Evidence", text: "Paid-up capital exceeds the category threshold." })],
+      records: [evidence({ id: "cap", docType: "Capital Adequacy Evidence", text: "Paid-up capital exceeds the category threshold." })],
     });
 
     const capital = result.requirementCoverage.find((row) => row.itemId === "secp-if-01");
     expect(capital?.covered).toBe(true);
-    expect(capital?.citations[0].sourcePath).toBe("/submission/cap.pdf");
+    expect(capital?.citations[0].sourcePath).toBe("/submission/Capital Adequacy Evidence.pdf");
     expect(result.jurisdiction).toBe("Pakistan");
   });
 
@@ -74,7 +88,7 @@ describe("meridian compliance review engine", () => {
       reviewId: "sub-5",
       licenseTypeKey: LICENSE,
       status: "aspirational",
-      records: [evidence({ id: "cap", department: "Capital Adequacy Evidence", ingestionStatus: "pending_approval", text: "Capital draft." })],
+      records: [evidence({ id: "cap", docType: "Capital Adequacy Evidence", ingestionStatus: "pending_approval", text: "Capital draft." })],
     });
 
     expect(result.requirementCoverage.find((row) => row.itemId === "secp-if-01")?.covered).toBe(false);

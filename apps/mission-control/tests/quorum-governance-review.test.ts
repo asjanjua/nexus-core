@@ -7,12 +7,26 @@ import {
 
 const NOW = "2026-07-06T00:00:00.000Z";
 
-function evidence(patch: Partial<EvidenceRecord> & { id: string; department: string }): EvidenceRecord {
+/**
+ * `docType` drives the FILENAME, because that is what citation matches on.
+ *
+ * These fixtures previously set `department` to a document-type value, which
+ * ingestion never produces — real department values are "Executive / Strategy",
+ * "Finance" and so on. The tests therefore passed while the engine could never
+ * cite a real document. Naming the file after the document type is both
+ * correct and what a real workspace looks like.
+ */
+function evidence(
+  patch: Partial<EvidenceRecord> & { id: string; docType: string }
+): EvidenceRecord {
+  const { docType, ...rest } = patch;
   return {
+    // A plausible functional department. Citation must not depend on it.
+    department: "Executive / Strategy",
     tenantId: "tenant-a",
     workspaceId: "board-a",
     sourceType: "document",
-    sourcePath: `/board/${patch.id}.pdf`,
+    sourcePath: `/board/${docType}.pdf`,
     sourceUri: `https://vault.local/${patch.id}`,
     sourceTimestamp: NOW,
     ingestedAt: NOW,
@@ -22,7 +36,7 @@ function evidence(patch: Partial<EvidenceRecord> & { id: string; department: str
     ingestionStatus: "processed",
     freshnessHours: 3,
     text: "Board pack content.",
-    ...patch,
+    ...rest,
   };
 }
 
@@ -58,7 +72,7 @@ describe("quorum governance review engine", () => {
   it("cites board-pack evidence to governance requirements", () => {
     const result = reviewQuorumGovernance({
       reviewId: "board-1",
-      records: [evidence({ id: "quorum-doc", department: "Quorum", text: "Quorum confirmed, 6 of 7 directors present." })],
+      records: [evidence({ id: "quorum-doc", docType: "Quorum", text: "Quorum confirmed, 6 of 7 directors present." })],
       decisions: [],
       actions: [],
       now: NOW,
@@ -66,7 +80,7 @@ describe("quorum governance review engine", () => {
 
     const quorum = result.governanceFindings.find((f) => f.requirementId === "quorum");
     expect(quorum?.covered).toBe(true);
-    expect(quorum?.citations[0].sourcePath).toBe("/board/quorum-doc.pdf");
+    expect(quorum?.citations[0].sourcePath).toBe("/board/Quorum.pdf");
   });
 
   it("marks the record not ready and caveats missing critical requirements", () => {

@@ -20,6 +20,7 @@
 
 import type { Action, Decision, EvidenceRecord } from "@/lib/contracts";
 import { extractSourceSpan } from "@/lib/agents/evidence-grid-review";
+import { matchesEvidenceTags } from "@/lib/domain/document-type-classifier";
 import type { DDSeverity } from "@/lib/domain/dd-checklist-library";
 import { quorumGovernanceBoundaries } from "@/lib/board-governance-workflow";
 
@@ -34,9 +35,12 @@ type BoardPackRequirement = {
   severity: DDSeverity;
 };
 
-// Board-pack completeness checklist. Tags match the `department` label a deal
-// or board workspace applies to uploads (same field as ingestion/retrieval).
-const BOARD_PACK_REQUIREMENTS: BoardPackRequirement[] = [
+// Board-pack completeness checklist. `evidenceTags` are DOCUMENT TYPES,
+// resolved by lib/domain/document-type-classifier — not the `department`
+// label, which shares no values with them. Exported so the classifier test can
+// assert every tag here is actually producible; a tag with no classifier rule
+// is a requirement no board could ever satisfy.
+export const BOARD_PACK_REQUIREMENTS: BoardPackRequirement[] = [
   { id: "notice", label: "Meeting notice issued with required lead time", evidenceTags: ["Board Notice", "Notice"], severity: "high" },
   { id: "agenda", label: "Agenda circulated", evidenceTags: ["Agenda", "Board Pack"], severity: "high" },
   { id: "quorum", label: "Quorum and attendance confirmed", evidenceTags: ["Attendance", "Quorum"], severity: "critical" },
@@ -111,9 +115,12 @@ const DEFAULTS: Required<QuorumGovernanceOptions> = {
 };
 
 function citeRequirement(requirement: BoardPackRequirement, records: EvidenceRecord[], max: number): GovernanceCitation[] {
-  const tags = requirement.evidenceTags.map((tag) => tag.toLowerCase());
+  // Matches the requirement's DOCUMENT TYPES against the type derived from
+  // each record. Previously compared evidenceTags to record.department, a
+  // vocabulary with no values in common, so nothing was ever cited and every
+  // board pack reported as incomplete. See matchesEvidenceTags.
   return records
-    .filter((record) => tags.includes((record.department ?? "").toLowerCase()))
+    .filter((record) => matchesEvidenceTags(record, requirement.evidenceTags))
     .sort((a, b) => b.extractionConfidence - a.extractionConfidence)
     .slice(0, max)
     .map((record) => ({
