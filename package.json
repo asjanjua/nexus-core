@@ -7,12 +7,19 @@
     "apps/*"
   ],
   "overrides": {
+    "brace-expansion": "5.0.9",
     "esbuild": "^0.25.12",
-    "postcss": "^8.5.15",
+    "fast-uri": "3.1.5",
+    "ip-address": "10.4.0",
+    "minimatch@3.1.5": {
+      "brace-expansion": "1.1.18"
+    },
+    "postcss": "8.5.25",
     "next": {
-      "postcss": "^8.5.15",
+      "postcss": "8.5.25",
       "sharp": "0.35.3"
-    }
+    },
+    "sharp": "0.35.3"
   },
   "scripts": {
     "dev": "npm run dev -w @nexus/mission-control",

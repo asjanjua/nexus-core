@@ -103,11 +103,14 @@ jobs:
       # pinned postcss — recheck on the next Next.js upgrade and raise this gate
       # to --audit-level=high once the log is clean.
       #
-      # RESOLVED 2026-07-29: sharp is no longer an exception. It previously
+      # RESOLVED: sharp is no longer an accepted exception. It previously
       # appeared as 0.34.5 (GHSA-f88m-g3jw-g9cj, libvips CVEs) via next's
-      # optional dependency. The `next.sharp: 0.35.3` override in package.json
-      # took effect and the lockfile now resolves a single sharp@0.35.3 with no
-      # nested copy. Verified against package-lock.json, not assumed.
+      # optional dependency. The lockfile now resolves sharp@0.35.3, and the
+      # full audit no longer reports the sharp advisory.
+      #
+      # RESOLVED: the dev-only brace-expansion, fast-uri, and ip-address
+      # advisories were patched in the lockfile. The remaining full-audit
+      # finding should be the next -> postcss chain documented above.
       #
       # KNOWN GAP, tracked: the lockfile root entry records no `overrides` key
       # even though package.json declares four. `npm ci` therefore reproduces
@@ -122,8 +125,8 @@ jobs:
       # Production dependencies only. ESLint's tree contributes 9 high
       # advisories (brace-expansion DoS, six nested copies) that never ship, so
       # the unscoped report above overstates real exposure. This narrower view
-      # is the one to watch: it should stay at the documented sharp/postcss
-      # residuals and nothing more.
+      # is the one to watch: it should stay at the documented postcss residual
+      # and nothing more.
       - name: Report advisories in shipped dependencies (non-blocking)
         if: always()
         run: npm audit --omit=dev --audit-level=high || true
