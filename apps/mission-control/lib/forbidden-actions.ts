@@ -86,6 +86,45 @@ export const BOUNDARIES: Record<GovernedProduct, Boundary> = {
   },
 };
 
+/**
+ * Elements of the trust layer a white-label firm may never remove from a
+ * client view. Requests to suppress any of these are `conceal_trust_mechanics`.
+ *
+ * Lives here rather than in the client-release route because the reviewer
+ * console renders this same list as the "trust contract" the firm is agreeing
+ * to. A screen showing a hand-copied list would eventually promise something
+ * different from what the route enforces, and the gap would favour the firm.
+ */
+export const PROTECTED_TRUST_ELEMENTS = [
+  "provenance",
+  "caveats",
+  "reviewer",
+  "audit",
+  "consequence",
+  "status_colours",
+] as const;
+
+/**
+ * Is this suppression request aimed at a protected element? Takes an arbitrary
+ * string, so callers do not have to widen the const tuple at each call site.
+ */
+export function isProtectedTrustElement(value: string): boolean {
+  return (PROTECTED_TRUST_ELEMENTS as readonly string[]).includes(value.trim().toLowerCase());
+}
+
+/** Human-readable statement of what each protected element guarantees. */
+export const PROTECTED_TRUST_ELEMENT_LABELS: Record<
+  (typeof PROTECTED_TRUST_ELEMENTS)[number],
+  string
+> = {
+  provenance: "Where every figure and claim came from",
+  caveats: "Limitations that travel with the work",
+  reviewer: "Who reviewed it, by name",
+  audit: "That the work is auditable",
+  consequence: "What acting on it means",
+  status_colours: "What a status actually signifies",
+};
+
 /** Thrown when a caller attempts a forbidden action. Carries the audit event. */
 export class ForbiddenActionError extends Error {
   readonly product: GovernedProduct;

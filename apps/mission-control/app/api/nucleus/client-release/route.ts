@@ -34,6 +34,7 @@ import { ok, fail } from "@/lib/api";
 import { requireScope } from "@/lib/api-auth";
 import { repository } from "@/lib/data/repository";
 import { guardForbiddenAction } from "@/lib/api-forbidden";
+import { isProtectedTrustElement } from "@/lib/forbidden-actions";
 
 const bodySchema = z.object({
   action: z.string().min(1).max(60),
@@ -58,15 +59,6 @@ const bodySchema = z.object({
   suppress: z.array(z.string().min(1).max(60)).default([]),
 });
 
-/** Elements of the trust layer a firm may never remove from a client view. */
-const PROTECTED_TRUST_ELEMENTS = [
-  "provenance",
-  "caveats",
-  "reviewer",
-  "audit",
-  "consequence",
-  "status_colours",
-];
 
 export async function POST(request: Request) {
   const { ctx, error } = await requireScope(request, "write");
@@ -102,9 +94,7 @@ export async function POST(request: Request) {
 
   // fixed-trust-layer. Asking to hide provenance, caveats, reviewer state, or
   // the audit label is the concealment action itself, not a display option.
-  const forbiddenSuppression = suppress.filter((item) =>
-    PROTECTED_TRUST_ELEMENTS.includes(item.toLowerCase())
-  );
+  const forbiddenSuppression = suppress.filter(isProtectedTrustElement);
   if (forbiddenSuppression.length > 0) {
     return (
       (await guardForbiddenAction({
