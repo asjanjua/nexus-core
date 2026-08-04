@@ -4,7 +4,7 @@ import { Pool } from "pg";
 import { verifyPassword } from "@/lib/auth";
 import { store } from "@/lib/data/store";
 import { evidenceSourceTypeSchema } from "@/lib/contracts";
-import type { Action, ActionInput, ActionStatus, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, DispatchJob, DispatchJobInput, DispatchJobStatus, Entity, EntityInput, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, KnowledgeLink, KnowledgeNote, KnowledgeNoteInput, KnowledgeSearchResult, KnowledgeSyncEvent, LearningSignal, LearningSignalInput, LearningSignalSummary, MeridianScope, MeridianScopeInput, PromptRegistryEntry, ReadinessSubmission, PilotOutcome, ProWaitlistEntry, Recommendation, ReviewerSeat, TrialInvite, RecommendationStatus, Role, StrategyProfile, StrategyProfileInput, SynthesisSchedule, SynthesisScheduleInput, SynthesisScheduleStatus, WorkflowTwin, WorkflowTwinInput, WorkflowTwinRun, WorkflowTwinRunInput, WorkflowTwinRunStatus, WorkflowTwinStatus, WorkflowTwinType, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
+import type { Action, ActionInput, ActionStatus, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, DispatchJob, DispatchJobInput, DispatchJobStatus, Entity, EntityInput, EntityRelationship, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, KnowledgeLink, KnowledgeNote, KnowledgeNoteInput, KnowledgeSearchResult, KnowledgeSyncEvent, LearningSignal, LearningSignalInput, LearningSignalSummary, MeridianScope, MeridianScopeInput, PromptRegistryEntry, ReadinessSubmission, PilotOutcome, ProWaitlistEntry, Recommendation, ReviewerSeat, TrialInvite, RecommendationStatus, Role, StrategyProfile, StrategyProfileInput, SynthesisSchedule, SynthesisScheduleInput, SynthesisScheduleStatus, WorkflowTwin, WorkflowTwinInput, WorkflowTwinRun, WorkflowTwinRunInput, WorkflowTwinRunStatus, WorkflowTwinStatus, WorkflowTwinType, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
 import { assertDbConfigured, isDbRequired } from "@/lib/data/db-policy";
 
 // In-memory idempotency cache for Stripe events (fallback when DB is unavailable).
@@ -26,6 +26,7 @@ import {
   connectors,
   decisions,
   entities,
+  entityRelationships,
   evalRuns,
   evidenceEntityLinks,
   evidenceRecords,
@@ -761,6 +762,84 @@ export const repository = {
       });
     }
     return saved;
+  },
+
+  /**
+   * Record that two entities co-occurred in one piece of evidence (migration 0041).
+   * Canonicalizes order (source < target) so the pair is reinforced, not duplicated,
+   * as more evidence connects the same two entities — occurrence_count increments and
+   * evidence_refs accumulates (deduped) instead of a new row per sighting.
+   *
+   * No in-memory store fallback (same precedent as getStrategyProfile/upsertStrategyProfile):
+   * this is DB-only. A no-op when the DB is unavailable and not required is acceptable here —
+   * it only degrades graph-traversal retrieval to its existing vector/keyword fallback.
+   */
+  async recordEntityCoOccurrence(
+    workspaceId: string,
+    entityIdA: string,
+    entityIdB: string,
+    evidenceId: string,
+    relationType = "co_occurs"
+  ): Promise<void> {
+    if (entityIdA === entityIdB) return;
+    const [sourceEntityId, targetEntityId] = entityIdA < entityIdB ? [entityIdA, entityIdB] : [entityIdB, entityIdA];
+    await runDb(async (db) => {
+      await db
+        .insert(entityRelationships)
+        .values({
+          id: `erel-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+          workspaceId,
+          sourceEntityId,
+          targetEntityId,
+          relationType,
+          evidenceRefs: [evidenceId],
+          occurrenceCount: 1
+        })
+        .onConflictDoUpdate({
+          target: [
+            entityRelationships.workspaceId,
+            entityRelationships.sourceEntityId,
+            entityRelationships.targetEntityId,
+            entityRelationships.relationType
+          ],
+          set: {
+            occurrenceCount: sql`${entityRelationships.occurrenceCount} + 1`,
+            evidenceRefs: sql`(
+              SELECT COALESCE(jsonb_agg(DISTINCT elem), '[]'::jsonb)
+              FROM jsonb_array_elements(${entityRelationships.evidenceRefs} || jsonb_build_array(${evidenceId}::text)) AS elem
+            )`,
+            updatedAt: new Date()
+          }
+        });
+      return true;
+    });
+  },
+
+  /** One-hop neighbors of an entity, ranked by how often the pair co-occurs. */
+  async listEntityRelationships(workspaceId: string, entityId: string, limit = 25): Promise<EntityRelationship[]> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(entityRelationships)
+        .where(
+          sql`${entityRelationships.workspaceId} = ${workspaceId}
+            AND (${entityRelationships.sourceEntityId} = ${entityId} OR ${entityRelationships.targetEntityId} = ${entityId})`
+        )
+        .orderBy(desc(entityRelationships.occurrenceCount))
+        .limit(limit)
+    );
+    if (!rows) return [];
+    return rows.map((r) => ({
+      id: r.id,
+      workspaceId: r.workspaceId,
+      sourceEntityId: r.sourceEntityId,
+      targetEntityId: r.targetEntityId,
+      relationType: r.relationType,
+      evidenceRefs: Array.isArray(r.evidenceRefs) ? r.evidenceRefs : [],
+      occurrenceCount: r.occurrenceCount,
+      createdAt: r.createdAt.toISOString(),
+      updatedAt: r.updatedAt.toISOString()
+    }));
   },
 
   async listKnowledgeNotes(

@@ -1,4 +1,4 @@
-import type { EntityInput, EntityType, EvidenceRecord } from "@/lib/contracts";
+import type { Entity, EntityInput, EntityType, EvidenceRecord } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
 
 type EntityCandidate = {
@@ -140,10 +140,45 @@ export function extractEntityCandidates(record: EvidenceRecord): EntityInput[] {
   }));
 }
 
+/**
+ * Entity types worth connecting in the relationship graph. Excludes "amount" and
+ * "date", which are attributes of a document rather than things that relate to
+ * other things, and "unknown" (extractor uncertainty, not a real edge signal).
+ */
+const RELATIONSHIP_ELIGIBLE_TYPES = new Set<EntityType>([
+  "person", "organization", "project", "risk", "kpi", "system", "process", "location", "product"
+]);
+
+/** Cap entities considered per document before pairing: 8 entities -> at most 28 pairs. */
+const MAX_ENTITIES_FOR_RELATIONSHIPS = 8;
+
+async function recordCoOccurrences(record: EvidenceRecord, saved: Entity[]): Promise<void> {
+  const eligible = saved
+    .filter((entity) => RELATIONSHIP_ELIGIBLE_TYPES.has(entity.type))
+    .sort((a, b) => b.confidence - a.confidence)
+    .slice(0, MAX_ENTITIES_FOR_RELATIONSHIPS);
+
+  const pairs: Array<[Entity, Entity]> = [];
+  for (let i = 0; i < eligible.length; i++) {
+    for (let j = i + 1; j < eligible.length; j++) {
+      pairs.push([eligible[i], eligible[j]]);
+    }
+  }
+  if (!pairs.length) return;
+
+  await Promise.all(
+    pairs.map(([a, b]) => repository.recordEntityCoOccurrence(record.workspaceId, a.id, b.id, record.id))
+  );
+}
+
 export async function extractAndStoreEntitiesForEvidence(record: EvidenceRecord): Promise<number> {
   if (record.ingestionStatus !== "processed") return 0;
   const candidates = extractEntityCandidates(record);
   if (!candidates.length) return 0;
   const saved = await repository.upsertEntities(candidates, "entity_extractor");
+  // Best-effort: entities extracted from the same document co-occur, which is a real
+  // (if coarse) relationship signal. Never let a relationship-recording failure block
+  // entity extraction, which is the part callers actually depend on.
+  await recordCoOccurrences(record, saved).catch(() => {});
   return saved.length;
 }

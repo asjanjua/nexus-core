@@ -19,7 +19,7 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
   const workspaceId = await requireWorkspaceId(`/entities/${id}`);
   const memory = await getEntityMemory(workspaceId, id);
   if (!memory) return notFound();
-  const { entity, evidence, recommendations, decisions, actions, timeline } = memory;
+  const { entity, evidence, recommendations, decisions, actions, timeline, relatedEntities } = memory;
 
   return (
     <PageShell
@@ -52,6 +52,29 @@ export default async function EntityDetailPage({ params }: { params: Promise<{ i
               <p className="text-2xl font-semibold text-white">{actions.length}</p>
               <p className="text-white/45">Actions</p>
             </div>
+          </div>
+          <div>
+            <p className="panel-title">Related entities</p>
+            <p className="mt-1 text-xs text-white/40">
+              Things this entity has actually appeared alongside in evidence — not a guess, a count.
+            </p>
+            <ul className="mt-3 space-y-2">
+              {relatedEntities.length ? (
+                relatedEntities.map((rel) => (
+                  <li key={rel.entity.id} className="rounded-xl border border-white/10 bg-black/20 p-2.5">
+                    <Link href={`/entities/${rel.entity.id}`} className="flex items-center justify-between gap-2 text-sm text-white hover:text-nexus-accent">
+                      <span className="truncate">{rel.entity.name}</span>
+                      <span className="shrink-0 rounded-full bg-white/10 px-2 py-0.5 text-xs text-white/50">
+                        {rel.occurrenceCount}×
+                      </span>
+                    </Link>
+                    <p className="mt-0.5 text-xs text-white/35">{rel.entity.type}</p>
+                  </li>
+                ))
+              ) : (
+                <li className="text-sm text-white/50">No connected entities yet.</li>
+              )}
+            </ul>
           </div>
           <Link href="/entities" className="btn-subtle inline-flex">Back to Company Memory</Link>
         </aside>

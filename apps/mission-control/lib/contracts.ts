@@ -246,6 +246,24 @@ export const entityInputSchema = z.object({
 });
 export type EntityInput = z.infer<typeof entityInputSchema>;
 
+/**
+ * A graph edge between two entities. source/targetEntityId are canonicalized
+ * (source < target) so a pair is stored once and reinforced, not duplicated,
+ * as more evidence connects the same two entities. See migration 0041.
+ */
+export const entityRelationshipSchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  sourceEntityId: z.string(),
+  targetEntityId: z.string(),
+  relationType: z.string(),
+  evidenceRefs: z.array(z.string()).default([]),
+  occurrenceCount: z.number().int().positive(),
+  createdAt: z.string(),
+  updatedAt: z.string()
+});
+export type EntityRelationship = z.infer<typeof entityRelationshipSchema>;
+
 export const dashboardCardSchema = z.object({
   id: z.string(),
   role: z.string(),

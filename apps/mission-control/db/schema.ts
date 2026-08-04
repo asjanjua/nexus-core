@@ -184,6 +184,25 @@ export const evidenceEntityLinks = pgTable("evidence_entity_links", {
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
 });
 
+/**
+ * Entity relationships (migration 0041) — graph edges between entities.
+ * source_entity_id is always the lexicographically smaller id (canonicalized in
+ * repository.recordEntityCoOccurrence) so a pair is never stored in both directions.
+ * Reinforced, not duplicated: seeing the same pair again increments occurrence_count
+ * and appends to evidence_refs instead of inserting a new row.
+ */
+export const entityRelationships = pgTable("entity_relationships", {
+  id: text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull(),
+  sourceEntityId: text("source_entity_id").notNull().references(() => entities.id, { onDelete: "cascade" }),
+  targetEntityId: text("target_entity_id").notNull().references(() => entities.id, { onDelete: "cascade" }),
+  relationType: varchar("relation_type", { length: 32 }).notNull().default("co_occurs"),
+  evidenceRefs: jsonb("evidence_refs").$type<string[]>().default([]).notNull(),
+  occurrenceCount: integer("occurrence_count").notNull().default(1),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+});
+
 export const knowledgeNotes = pgTable("knowledge_notes", {
   id: text("id").primaryKey(),
   workspaceId: text("workspace_id").notNull(),

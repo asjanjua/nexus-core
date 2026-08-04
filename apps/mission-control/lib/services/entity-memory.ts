@@ -10,6 +10,12 @@ export type EntityTimelineItem = {
   meta?: string;
 };
 
+export type RelatedEntity = {
+  entity: Entity;
+  relationType: string;
+  occurrenceCount: number;
+};
+
 export type EntityMemory = {
   entity: Entity;
   evidence: EvidenceRecord[];
@@ -17,6 +23,8 @@ export type EntityMemory = {
   recommendations: Recommendation[];
   actions: Action[];
   timeline: EntityTimelineItem[];
+  /** One-hop neighbors in the entity relationship graph (migration 0041), ranked by co-occurrence strength. */
+  relatedEntities: RelatedEntity[];
 };
 
 function includesName(value: string | undefined | null, name: string): boolean {
@@ -37,12 +45,23 @@ export async function getEntityMemory(workspaceId: string, entityId: string): Pr
   const entity = entities.find((item) => item.id === entityId);
   if (!entity) return null;
 
-  const [workspaceEvidence, allDecisions, allRecommendations, allActions] = await Promise.all([
+  const [workspaceEvidence, allDecisions, allRecommendations, allActions, relationships] = await Promise.all([
     repository.getEvidenceForWorkspace(workspaceId),
     repository.listDecisions(workspaceId),
     repository.getRecommendations(workspaceId),
-    repository.listActions(workspaceId)
+    repository.listActions(workspaceId),
+    repository.listEntityRelationships(workspaceId, entity.id)
   ]);
+
+  const entityById = new Map(entities.map((item) => [item.id, item]));
+  const relatedEntities: RelatedEntity[] = relationships
+    .map((rel) => {
+      const neighborId = rel.sourceEntityId === entity.id ? rel.targetEntityId : rel.sourceEntityId;
+      const neighbor = entityById.get(neighborId);
+      if (!neighbor) return null;
+      return { entity: neighbor, relationType: rel.relationType, occurrenceCount: rel.occurrenceCount };
+    })
+    .filter((item): item is RelatedEntity => item !== null);
 
   const evidence = workspaceEvidence
     .filter((record) => entity.evidenceRefs.includes(record.id) || includesName(record.text, entity.name))
@@ -111,5 +130,5 @@ export async function getEntityMemory(workspaceId: string, entityId: string): Pr
     }))
   ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
 
-  return { entity, evidence, decisions, recommendations, actions, timeline };
+  return { entity, evidence, decisions, recommendations, actions, timeline, relatedEntities };
 }

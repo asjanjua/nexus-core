@@ -105,6 +105,7 @@ const arcSections: NavSection[] = [
       { href: "/export/weekly-brief", label: "Weekly Brief" },
       { href: "/export/one-pager", label: "One-Pager" },
       { href: "/pilot-kit", label: "Pilot Kit" },
+      { href: "/governance/trace", label: "Governance Trace" },
     ],
   },
 ];

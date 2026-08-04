@@ -1,7 +1,16 @@
 /**
  * Evidence retrieval + LLM synthesis for the Ask panel.
  *
- * Retrieval strategy (two-tier):
+ * Retrieval strategy (three-tier):
+ *
+ *   Tier 0 — Graph traversal (when the query names an entity Nexus knows):
+ *     Similarity search retrieves evidence that *looks like* the question. It
+ *     cannot answer "what connects to X" — the multi-hop case knowledge graphs
+ *     exist for. If the query names an entity, this tier walks one hop through
+ *     entity_relationships (migration 0041, built from real co-occurrence in
+ *     evidence, not a guess) and returns the evidence tied to that entity and
+ *     its neighbors. Falls through to Tier 1 if no entity is named or the
+ *     traversal turns up nothing.
  *
  *   Tier 1 — Vector search (when NEXUS_VECTOR_SEARCH=enabled):
  *     Embeds the query via OpenAI text-embedding-3-small and runs an HNSW
@@ -18,7 +27,7 @@
  * Falls back to a bullet summary when ANTHROPIC_API_KEY is absent (dev / demo).
  */
 
-import type { AskResponse, ConversationMessage, EvidenceRecord, KnowledgeNote } from "@/lib/contracts";
+import type { AskResponse, ConversationMessage, Entity, EvidenceRecord, KnowledgeNote } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
 import { ask } from "@/lib/services/llm";
 import { generateEmbedding, isVectorSearchEnabled } from "@/lib/services/embeddings";
@@ -68,10 +77,66 @@ function keywordScore(query: string, text: string): number {
   return matches / terms.length;
 }
 
+// ---------------------------------------------------------------------------
+// Graph traversal (Tier 0) — multi-hop retrieval via entity_relationships
+// ---------------------------------------------------------------------------
+
+/** Minimum entity name length to match against free-text queries — avoids noisy short-name hits. */
+const MIN_ENTITY_NAME_LENGTH = 3;
+/** Max entities to seed traversal from, and max one-hop neighbors pulled per seed. */
+const MAX_SEED_ENTITIES = 5;
+const MAX_NEIGHBORS_PER_SEED = 6;
+
 /**
- * Attempt vector search first; fall back to keyword ranking.
- * The two-tier approach means semantic retrieval is always additive:
- * turning NEXUS_VECTOR_SEARCH off reverts silently to keyword mode.
+ * If the query names an entity Nexus already knows, walk one hop through
+ * entity_relationships and return the evidence tied to that entity and its
+ * neighbors — the multi-hop case similarity search cannot do. Returns []
+ * (not an error) when no entity is named or the traversal finds nothing,
+ * so callers fall through to vector/keyword ranking unchanged.
+ */
+async function graphTraversalEvidence(
+  query: string,
+  workspaceId: string,
+  candidates: EvidenceRecord[]
+): Promise<EvidenceRecord[]> {
+  const lowerQuery = query.toLowerCase();
+  const allEntities = await repository.listEntities(workspaceId, { limit: 250 });
+  const seeds = allEntities
+    .filter((entity) => entity.name.length >= MIN_ENTITY_NAME_LENGTH && lowerQuery.includes(entity.name.toLowerCase()))
+    .slice(0, MAX_SEED_ENTITIES);
+  if (!seeds.length) return [];
+
+  const entityById = new Map(allEntities.map((entity) => [entity.id, entity]));
+  const seedIds = new Set(seeds.map((seed) => seed.id));
+  const relationshipLists = await Promise.all(
+    seeds.map((seed) => repository.listEntityRelationships(workspaceId, seed.id, MAX_NEIGHBORS_PER_SEED))
+  );
+
+  const relevantEntities = new Map<string, Entity>(seeds.map((seed) => [seed.id, seed]));
+  for (const relationships of relationshipLists) {
+    for (const rel of relationships) {
+      const neighborId = seedIds.has(rel.sourceEntityId) ? rel.targetEntityId : rel.sourceEntityId;
+      const neighbor = entityById.get(neighborId);
+      if (neighbor) relevantEntities.set(neighbor.id, neighbor);
+    }
+  }
+
+  const evidenceIds = new Set<string>();
+  for (const entity of relevantEntities.values()) {
+    for (const id of entity.evidenceRefs) evidenceIds.add(id);
+  }
+  if (!evidenceIds.size) return [];
+
+  return candidates
+    .filter((record) => evidenceIds.has(record.id))
+    .sort((a, b) => b.extractionConfidence - a.extractionConfidence)
+    .slice(0, 6);
+}
+
+/**
+ * Attempt graph traversal first, then vector search, then keyword ranking.
+ * Each tier is additive: turning NEXUS_VECTOR_SEARCH off or having no entity
+ * graph yet reverts silently to the next tier down.
  */
 async function rankEvidence(
   query: string,
@@ -116,6 +181,20 @@ async function rankEvidence(
   }
 
   if (!candidates.length) return { records: [], deniedCount };
+
+  // --- Tier 0: Graph traversal -------------------------------------------------
+  const graphResults = await graphTraversalEvidence(query, workspaceId, candidates).catch(() => []);
+  if (graphResults.length > 0) {
+    await repository
+      .pushAudit({
+        workspaceId,
+        type: "ask_graph_traversal_used",
+        actor: options.agentKey ?? "ask",
+        payload: { query, evidenceCount: graphResults.length }
+      })
+      .catch(() => {});
+    return { records: graphResults, deniedCount };
+  }
 
   // --- Tier 1: Vector search -------------------------------------------------
   if (isVectorSearchEnabled()) {
