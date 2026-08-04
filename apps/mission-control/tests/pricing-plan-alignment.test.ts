@@ -56,7 +56,7 @@ describe("published pricing matches plan definitions", () => {
   it("leaves the free plan out of the published tiers", () => {
     // Free exists in the product but is not sold, so it must not appear on the
     // pricing page by accident through a shared key.
-    expect(PRICING_TIERS.some((t) => t.planKey === "free")).toBe(false);
+    expect(PRICING_TIERS.map((t) => String(t.planKey))).not.toContain("free");
     expect(PLAN_FALLBACKS.free.priceCents).toBe(0);
   });
 

@@ -9,8 +9,8 @@ import { useState, useEffect } from "react";
 import { PageShell } from "@/components/page-shell";
 import { MetaChip } from "@/components/ui/nexus-primitives";
 import { HelpLabel } from "@/components/ui/help-dialog";
-import {
 import { PRICING_TIERS, checkoutIntentFromParam } from "@/lib/pricing-tiers";
+import {
   briefLanguageModeForArchetype,
   getAllSectors,
   getArchetypeEvidenceExpectation,
