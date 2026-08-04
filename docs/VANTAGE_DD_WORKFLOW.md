@@ -13,6 +13,7 @@ This is product planning, not investment, legal, accounting, or regulatory advic
 - DD checklist library: `apps/mission-control/lib/domain/dd-checklist-library.ts`
 - Figma exploration: `10 Pivot Workflow Builds V0.1`, node `82:3` — https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=82-3
 - Cross-vertical input/action Figma board: `11 Vertical Input Action Screens V0.2`, node `87:3` — https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=87-3
+- Full Vantage workflow build: `32 Vantage Full Workflow / 2026-07-29`, node `230:2` — https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=230-2. Twelve editable 1440x900 desktop frames, design-only until their route, deal data model, permissions, audit events, and tests are implemented and verified.
 
 ## Product Boundary
 
@@ -64,12 +65,24 @@ When a new Vantage screen is added, add its guidance and test coverage in the sa
 |---|---|---|---|
 | Deal Room Setup | Dealroom | `/vantage/dealroom` | Capture deal type, target profile, buyer thesis, workstream owners, diligence deadline, and data-room scope. |
 | Data Room Index | Dealroom | `/vantage/data-room` | Organize uploaded and connected materials by workstream, sensitivity, source, and review status. |
+| Workstream Plan | Dealroom | `/vantage/workstreams` | Make each diligence workstream scannable with accountable owner, reviewer, key question, due date, dependency, and escalation state. |
 | Checklist Coverage | Coverage | `/vantage/coverage` | Map checklist items to evidence across financial, regulatory, legal, technology, data, and people workstreams. |
 | Evidence Depth | Coverage | `/vantage/evidence-depth` | Surface document age, source quality, unresolved questions, and decision-usefulness. |
+| Question Tracker | Coverage | `/vantage/questions` | Turn missing or ambiguous evidence into linked, owner-named questions with response and escalation history. |
 | Red Flag Workbench | Redflags | `/vantage/red-flags` | Route issues to quantify, request, escalate, or park. |
 | Advisor Judgment Log | Redflags | `/vantage/judgment-log` | Record materiality, mitigation, caveats, and human recommendation posture. |
+| Mitigation & Conditions | Redflags | `/vantage/mitigations` | Make proposed mitigations and conditions inspectable through owner, evidence, deadline, dependency, and IC visibility. |
 | IC Memo Builder | Memo | `/vantage/ic-memo` | Draft IC sections from coverage, red flags, citations, advisor notes, and caveats. |
 | Decision Handoff | Memo | `/vantage/decision-handoff` | Package memo, unresolved items, approval questions, source index, and next steps. |
+| Deal Archive | Memo | `/vantage/archive` | Retain the deal scope, evidence, questions, flags, judgments, memo versions, decision handoff, retention and access record. |
+
+## Usability Rules For The Full Screen Set
+
+- Keep the four lifecycle arcs visible in the left navigation, but put operational work into compact queues with owner, date, status, and direct next action rather than deep nested views.
+- Show coverage and evidence depth separately. A document match is not a conclusion that the evidence is decision-useful.
+- Keep questions, red flags, advisor judgement, and mitigations as separate objects. This avoids turning an incomplete data room into an undifferentiated risk list.
+- Preserve the buyer thesis, deadline, workstream owner, and IC relevance in each downstream screen so users do not lose deal context while moving through the workflow.
+- On memo and handoff screens, show open items and the named decision authority next to the primary action. Never provide an approve/reject/investable CTA.
 
 ## Current Executable Slice
 

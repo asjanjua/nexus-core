@@ -3,6 +3,7 @@
 ## 2026-07-29 — Nexus Room Portfolio (Design)
 
 - Added Figma page `29 Nexus Room Portfolio / 2026-07-29` with the Nexus day-one Room Portfolio, first-run state, governed Add Room flow, Finance Room detail, and product-room discovery layer.
+- Expanded the set with individually titled screens for Executive Command, Operating, Growth, Technology and Data, Risk, People, Quorum Board, Meridian Submission, Vantage Deal, and Nucleus Engagement rooms, plus staged/dual-hat management and custom-room configuration.
 - Locked the policy that every workspace sees the complete curated portfolio from day one. Only administrators may activate rooms, and activation requires owner, evidence scope or explicit empty-state reason, draft-only agent boundary, human-authority acknowledgement, and audit event.
 - Extended the Pinavia Code-to-Visual Tree with the room activation branch (`216:2`). Quorum, Meridian, Vantage, and Nucleus are discoverable in the portfolio but retain their separate vertical workflow and refusal boundaries.
 - This is a design and documentation pass. No `/rooms` route, durable room entity, dynamic navigation, or activation workflow is represented as live.

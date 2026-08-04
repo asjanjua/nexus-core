@@ -4,6 +4,30 @@
 
 ---
 
+## 2026-08-04 — Governance Trace and Entity Relationships
+
+- Added entity relationship graph edges (migration `0041_entity_relationships.sql`): entities that co-occur in evidence get connected via `entity_relationships` with canonicalized pairs (`source < target`), reinforcement on re-sighting (increment `occurrence_count`, deduped `evidence_refs` append), and per-direction indexes for one-hop traversal.
+- Extended `db/schema.ts` with the `entityRelationships` Drizzle table, `lib/contracts.ts` with `EntityRelationship`/`entityRelationshipSchema`, and `lib/data/repository.ts` with `recordEntityCoOccurrence` (upsert with `ON CONFLICT DO UPDATE`) and `listEntityRelationships` (one-hop neighbors ranked by occurrence count).
+- `lib/services/entity-extraction.ts` now records co-occurrence pairs post-extraction (best-effort, never blocks entity extraction). `lib/services/entity-memory.ts` exposes `relatedEntities` on entity detail pages so the UI shows things an entity actually appeared alongside in evidence, not a guess.
+- `lib/services/retrieval.ts` gains a Tier 0 graph-traversal step: when a query names a known entity, walks one-hop through `entity_relationships` and returns evidence tied to that entity and its neighbors — the multi-hop case similarity search cannot do. Falls through silently to Tier 1 (vector) / Tier 2 (keyword) if no entity is named or traversal finds nothing.
+- New read-only `lib/services/governance-trace.ts` assembles the agent graph Nexus already runs (evidence → agent output → governance check → decision → action, plus the parallel evidence → recommendation chain) as a `KnowledgeGraph` from existing tables — no new writes.
+- New `GET /api/governance/trace` (scoped `read:dashboard`) serves the trace with role/days/limit query params. New `/governance/trace` page renders it via `GovernanceTraceGraph` (SVG columnar graph + summary panel + legend) and is registered in `side-nav.tsx` under the Execute arc.
+- Auth guard applied: `/governance/trace` page now calls `requireWorkspaceId` before render so unauthenticated visitors are redirected. The API route already had `requireScope(request, "read:dashboard")`.
+- Verification: `PATH=/opt/homebrew/opt/node@24/bin:$PATH` — TypeScript clean, 99 Vitest files / 729 tests passed, production build (179 routes) succeeded. Both new routes (`/governance/trace`, `/api/governance/trace`) appear as dynamic (`ƒ`) routes.
+- Warnings: `recordCoOccurrences` and `graphTraversalEvidence` silently swallow all errors by design (best-effort / fall-through) — no observability if the relationship graph is silently broken. `MIN_ENTITY_NAME_LENGTH = 3` in graph traversal narrowly includes short-but-significant entity names (SBP, FBR, PSX). Watch both in production.
+- Next action: run migration 0041 on the pilot database, complete signed-in smoke on `/governance/trace` with a controlled workspace that has agent outputs/decisions, and add at least one observability event for relationship-recording failures.
+
+---
+
+## 2026-08-02 — Pinavia Family PRD Set
+
+- Added `docs/prd/` with a family master PRD, product PRDs for NexusAI, Quorum, Meridian, Vantage, and Nucleus, plus a conflict report.
+- The PRD set uses the founder-directed 30-day launch reset: pilot-proof demo 2026-08-16, public launch 2026-09-01, and 2026-09-15 pilot-signing target pending founder confirmation by 2026-08-05.
+- The documents distinguish deployed public/product routes from the still-required signed-in mutable smoke and preserve the one-core/no-autonomous-action boundaries.
+- Documentation-only change; `git diff --check -- docs/prd` passed. Next action: founder confirms pilot signing date and first design partner; Engineering completes a controlled reviewer-bound signed-in workflow smoke.
+
+---
+
 ## 2026-08-02 — Production Staff Allowlist Is Live; Mutable Smoke Still Pending
 
 - Render service `srv-d8bv48jtqb8s73a95gg0` is now live on `1252263ca521c460a99fb27898019ccc402048ec` (deploy `dep-d9nmt87qj5pc73f81uc0`, 2026-08-02 21:24 +05:00). This is the exact remote `main` SHA that passed the full local release gate and the canonical public eight-check smoke.

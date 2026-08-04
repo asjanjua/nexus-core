@@ -89,6 +89,23 @@ The lanes are not separate products. They are separate routes through the same p
 5. **Paperwork follows the chosen workflow.**
    SOWs, onboarding checklists, success scorecards, and billing triggers should reference the chosen first workflow, named sponsor, reviewer, evidence bundle, governance boundary, and shadow ROI metric.
 
+## Room Portfolio Policy
+
+Every workspace sees the full curated Nexus room portfolio from day one. This
+shows the operating model early without forcing broad setup or granting a new
+capability. The Executive Room is mandatory. Leadership rooms are visible as
+active, dual-hat, staged, available, needs-setup, or custom; a workspace
+administrator activates a room only after confirming its owner, evidence scope
+or explicit empty-state reason, default agent boundary, and human-authority
+acknowledgement.
+
+Product rooms are visible in the same portfolio, but they remain distinct
+vertical workflows. Quorum owns board governance; Meridian owns regulatory
+execution; Vantage owns deal diligence; Nucleus owns advisory delivery. A room
+activation handoff cannot collapse those lifecycle and authority boundaries into
+a generic C-suite dashboard. The detailed operating contract and Figma source
+are in `docs/NEXUS_ROOM_PORTFOLIO_ACTIVATION.md`.
+
 ## Lane-Specific Product Strategy
 
 ### Evaluator / SME

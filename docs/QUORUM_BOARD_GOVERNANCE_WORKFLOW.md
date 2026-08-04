@@ -9,7 +9,7 @@ This note turns Quorum from a board-intelligence screen into a board-governance 
 
 Quorum should help directors, company secretaries, CEOs, sponsors, and advisors run a clean board process from source evidence to board decision record.
 
-The current six-screen Figma build is useful for a concept review, but it is not enough for a full board workflow. The next version needs to show how a real board meeting is configured, convened, checked for quorum, documented, approved, signed, and filed into an auditable governance record.
+The complete 17-screen desktop Figma build now covers the intended board lifecycle: configure the governing rules, convene and run the meeting, capture human decisions, and preserve an auditable governance record. It remains a design baseline until each candidate route has its domain model, permissions, audit events, tests, and production verification.
 
 Current design/code refs:
 
@@ -17,6 +17,7 @@ Current design/code refs:
 - Current app surface: `/board`
 - Quorum concept Figma V0.1: https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=78-3
 - Quorum governance workflow Figma V0.2: https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=80-3
+- Full Quorum screen build: 17 editable 1440x900 frames, `Quorum 07` through `Quorum 23`, on the V0.2 board above. Record-stage terminology was reconciled on 2026-07-29 as **Minutes Workspace**, **Chair Authentication**, and **Governance Record**.
 - Cross-vertical input/action Figma board: https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=87-3
 
 ## Pakistan-First Source Pack

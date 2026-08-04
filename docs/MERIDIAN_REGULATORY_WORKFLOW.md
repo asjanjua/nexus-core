@@ -13,6 +13,7 @@ This is product planning, not legal or regulatory advice. Requirement content mu
 - Requirement library: `apps/mission-control/lib/domain/regulatory-requirement-library.ts`
 - Figma exploration: `10 Pivot Workflow Builds V0.1`, node `82:3` — https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=82-3
 - Cross-vertical input/action Figma board: `11 Vertical Input Action Screens V0.2`, node `87:3` — https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=87-3
+- Full Meridian workflow build: `31 Meridian Full Workflow / 2026-07-29`, node `226:2` — https://www.figma.com/design/NcQ8F5a0hczwGwZua2gfun?node-id=226-2. Twelve editable 1440x900 desktop frames, design-only until the route and governance contract are implemented and verified.
 
 ## Product Boundary
 
@@ -66,10 +67,14 @@ When a new Meridian screen is added, add its guidance and test coverage in the s
 | License Profile | Scope | `/meridian/license-profile` | Capture applicant/license-holder details, ownership posture, directors/sponsors, activities, and current license state. |
 | Requirement Library | Evidence | `/meridian/requirements` | Show the selected requirement set with severity, applicability, and evidence tags. |
 | Evidence Coverage | Evidence | `/meridian/evidence-coverage` | Map evidence to each requirement and separate matched, missing, stale, and low-confidence evidence. |
+| Evidence Request Desk | Evidence | `/meridian/evidence-requests` | Issue owner-named evidence requests with due dates, sensitivity, requirement links, and escalation state. |
 | Gap Triage | Gap | `/meridian/gaps` | Prioritize gaps, assign owners, request missing documents, and capture reviewer notes. |
 | Caveat Register | Gap | `/meridian/caveats` | Track legal, regulatory, evidence-quality, and management-confirmation caveats. |
+| Reviewer Workspace | Gap | `/meridian/review` | Give qualified reviewers a source-linked queue of claims, caveats, requested dispositions, and durable rationale. |
 | Submission Memo | Filing | `/meridian/submission-memo` | Draft requirement summary, evidence narrative, unresolved caveats, attestations, and reviewer sign-off. |
 | Filing Pack | Filing | `/meridian/filing-pack` | Assemble memo, requirement matrix, evidence index, caveats, and approval state. |
+| Human Filing Handoff | Filing | `/meridian/filing-handoff` | Confirm the authorized filer, external channel, final review, submission receipt, and audit record without automating the filing act. |
+| Pack Archive | Filing | `/meridian/archive` | Retain versions, evidence index, reviewer history, filing receipt, caveats, access control, and next review date. |
 
 ## Next Implementation Slice
 
