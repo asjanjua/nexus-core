@@ -12,6 +12,8 @@
  * that I was right to.
  */
 
+import { useRouter } from "next/navigation";
+import { useTrustDrawer } from "@/lib/trust-drawer-context";
 import { useEffect, useMemo, useState } from "react";
 
 type TraceNode = { id: string; label: string; type: string };
@@ -106,7 +108,45 @@ function layout(graph: TraceGraph) {
   return { pos, width, height };
 }
 
+/**
+ * Where a node leads when clicked.
+ *
+ * Node ids are `type:realRecordId`, so most resolve to something a reviewer
+ * can actually open. Evidence opens the Trust Drawer in place — the design
+ * system's signature pattern, and the "evidence in one click" rule. Records
+ * that live on their own page route there instead.
+ *
+ * Returns null for node types with no destination (governance checks, agent
+ * outputs). Those stay inert rather than looking clickable and doing nothing,
+ * which is worse than being plainly static.
+ */
+type NodeTarget =
+  | { kind: "evidence"; evidenceId: string; hint: string }
+  | { kind: "route"; href: string; hint: string };
+
+function nodeTarget(node: TraceNode): NodeTarget | null {
+  const [prefix, ...rest] = node.id.split(":");
+  const recordId = rest.join(":");
+  if (!recordId) return null;
+
+  switch (prefix) {
+    case "evidence":
+      return { kind: "evidence", evidenceId: recordId, hint: "Opens the source in the Trust Drawer." };
+    case "decision":
+      return { kind: "route", href: "/decisions", hint: "Opens the decision record." };
+    case "action":
+      return { kind: "route", href: "/decisions", hint: "Opens the action on its decision." };
+    case "recommendation":
+      return { kind: "route", href: "/recommendations", hint: "Opens the recommendation." };
+    default:
+      // output:, check: — no standalone surface to open yet.
+      return null;
+  }
+}
+
 export function GovernanceTraceGraph() {
+  const router = useRouter();
+  const { openDrawer } = useTrustDrawer();
   const [graph, setGraph] = useState<TraceGraph | null>(null);
   const [role, setRole] = useState("");
   const [days, setDays] = useState(7);
@@ -155,6 +195,22 @@ export function GovernanceTraceGraph() {
       decisions: nodes.filter((n) => n.type === "decision").length,
     };
   }, [graph]);
+
+  /** Evidence opens in place; everything else routes to its own surface. */
+  function openNode(node: TraceNode, target: NodeTarget) {
+    if (target.kind === "evidence") {
+      openDrawer({
+        title: node.label,
+        // A trace node has no aggregate confidence of its own. The drawer
+        // hides the confidence header rather than fabricating a number —
+        // honouring its no-fabrication rule instead of inventing a score.
+        overallConfidence: null,
+        sources: [{ id: target.evidenceId }],
+      });
+      return;
+    }
+    router.push(target.href);
+  }
 
   return (
     <section className="space-y-4">
@@ -245,10 +301,69 @@ export function GovernanceTraceGraph() {
                 const point = pos.get(node.id);
                 if (!point) return null;
                 const style = NODE_STYLE[node.type] ?? { fill: "#94a3b8", stroke: "rgba(148,163,184,0.35)", ring: node.type };
+                const target = nodeTarget(node);
+                const interactive = target !== null;
+
                 return (
-                  <g key={node.id}>
-                    <circle cx={point.x} cy={point.y} r={10} fill={style.fill} fillOpacity="0.88" stroke={style.stroke} strokeWidth="7" />
-                    <text x={point.x} y={point.y - 16} textAnchor="middle" fill="rgba(255,255,255,0.75)" fontSize="10" fontFamily="Inter, system-ui, sans-serif">
+                  <g
+                    key={node.id}
+                    // Evidence must be reachable in one click (pre-ship
+                    // checklist). Nodes that resolve to a real record are
+                    // focusable buttons; the rest stay inert rather than
+                    // pretending to be actionable.
+                    role={interactive ? "button" : undefined}
+                    tabIndex={interactive ? 0 : undefined}
+                    aria-label={
+                      interactive
+                        ? `${TYPE_LABEL[node.type] ?? node.type}: ${node.label}. ${target.hint}`
+                        : undefined
+                    }
+                    className={interactive ? "cursor-pointer focus:outline-none" : undefined}
+                    onClick={interactive ? () => openNode(node, target) : undefined}
+                    onKeyDown={
+                      interactive
+                        ? (e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              openNode(node, target);
+                            }
+                          }
+                        : undefined
+                    }
+                  >
+                    {/* Larger transparent hit area — a 10px circle is below the
+                        comfortable click/tap target size. */}
+                    {interactive && <circle cx={point.x} cy={point.y} r={20} fill="transparent" />}
+                    {interactive && (
+                      <circle
+                        cx={point.x}
+                        cy={point.y}
+                        r={16}
+                        fill="none"
+                        stroke={style.fill}
+                        strokeOpacity="0"
+                        strokeWidth="2"
+                        className="transition-[stroke-opacity] duration-150 group-hover:stroke-opacity-100"
+                      />
+                    )}
+                    <circle
+                      cx={point.x}
+                      cy={point.y}
+                      r={10}
+                      fill={style.fill}
+                      fillOpacity="0.88"
+                      stroke={style.stroke}
+                      strokeWidth="7"
+                    />
+                    <text
+                      x={point.x}
+                      y={point.y - 16}
+                      textAnchor="middle"
+                      fill={interactive ? "rgba(255,255,255,0.92)" : "rgba(255,255,255,0.75)"}
+                      fontSize="10"
+                      fontFamily="Inter, system-ui, sans-serif"
+                      style={interactive ? { textDecoration: "underline", textDecorationStyle: "dotted" } : undefined}
+                    >
                       {node.label.length > 22 ? `${node.label.slice(0, 21)}…` : node.label}
                     </text>
                   </g>
