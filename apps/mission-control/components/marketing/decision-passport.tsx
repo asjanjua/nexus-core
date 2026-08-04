@@ -68,7 +68,9 @@ const STAGES: Stage[] = [
     key: "caveat",
     label: "Caveat",
     field: "Confidence",
-    value: "82% · agent-network channel unevidenced; flagged, not guessed",
+    // Band, not a percentage. The trust contract forbids a bare number as the
+    // primary signal, and this is the most public surface we have.
+    value: "Limited · agent-network channel unevidenced; flagged, not guessed",
     short: "Caveat preserved",
     artifact: "Risk note",
     tone: "text-nexus-warn",

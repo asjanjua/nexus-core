@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ConfidenceBadge } from "@/components/ui/trust-drawer-trigger";
 import { HelpLabel } from "@/components/ui/help-dialog";
 import { AiPanel, GuidedActionCard, InfoHint, SkeletonLines } from "@/components/ui/nexus-primitives";
+import { bandMeta } from "@/lib/confidence-bands";
 
 type AskResult = {
   answer: string;
@@ -387,7 +388,10 @@ export function AskPanel({
                     result.evidenceRefs.length > 0
                       ? `\n\nEvidence: ${result.evidenceRefs.join(", ")}`
                       : "",
-                    `\nConfidence: ${Math.round(result.confidence * 100)}% · via Ask`,
+                    // Band first, percentage as detail. This string is carried
+                    // into a decision rationale, so it must not present a bare
+                    // number as the trust signal.
+                    `\nConfidence: ${bandMeta(result.confidence).label} (${Math.round(result.confidence * 100)}%) · via Ask`,
                   ].join("")
                 )}`}
                 className="btn-primary inline-flex items-center text-sm"

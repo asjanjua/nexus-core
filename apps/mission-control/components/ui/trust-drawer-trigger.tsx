@@ -10,6 +10,7 @@
 import { useTrustDrawer, type TrustDrawerEntity, type TrustDrawerSource } from "@/lib/trust-drawer-context";
 import { TONE_SOFT, type Tone } from "@/components/ui/nexus-primitives";
 import type { EvidenceRecord } from "@/lib/contracts";
+import { bandMeta } from "@/lib/confidence-bands";
 
 function confidenceTone(pct: number): Tone {
   if (pct >= 70) return "accent";
@@ -18,9 +19,14 @@ function confidenceTone(pct: number): Tone {
 }
 
 /**
- * Pill badge — the canonical "confidence X%" marker used throughout the
- * product. Clicking it opens the Trust Drawer scoped to this answer's
- * sources and entities.
+ * Pill badge — the canonical trust marker used throughout the product.
+ * Clicking it opens the Trust Drawer scoped to this answer's sources.
+ *
+ * The BAND is the signal; the percentage is secondary detail in the tooltip.
+ * Required by docs/VERTICAL_PRODUCT_TRUST_AND_FAILURE_CONTRACT.md — a bare
+ * percentage invites "82% means probably right", which is not what the number
+ * measures. Most surfaces inherit their trust rendering from this component,
+ * so this is the single place the rule is enforced.
  */
 export function ConfidenceBadge({
   confidence,
@@ -28,25 +34,37 @@ export function ConfidenceBadge({
   sources,
   entities,
   records,
+  humanReviewed,
+  blocked,
 }: {
   confidence: number;
   title: string;
   sources: TrustDrawerSource[];
   entities?: TrustDrawerEntity[];
   records?: EvidenceRecord[];
+  /** A named reviewer approved this. Required to reach the Verified band. */
+  humanReviewed?: boolean;
+  /** A control, permission, or missing reviewer prevents progress. */
+  blocked?: boolean;
 }) {
   const { openDrawer } = useTrustDrawer();
   const pct = Math.round(confidence * 100);
-  const tone = confidenceTone(pct);
+  const meta = bandMeta(confidence, { humanReviewed, blocked });
 
   return (
     <button
       type="button"
       onClick={() => openDrawer({ title, overallConfidence: confidence, sources, entities, records })}
-      className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium transition hover:brightness-110 ${TONE_SOFT[tone]}`}
-      title="Open Trust Drawer"
+      className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-xs font-medium transition hover:brightness-110 ${meta.bg} ${meta.tone}`}
+      // Percentage and the band's negative claim live here: available on
+      // demand, never presented as the headline.
+      title={`${meta.label} · ${pct}% · ${meta.meaning} Not a claim that ${meta.notAClaimThat} Open Trust Drawer.`}
     >
-      confidence {pct}%
+      {/* Non-colour signal, so the band never depends on colour alone. */}
+      <span aria-hidden className="text-[10px]">
+        {meta.glyph}
+      </span>
+      {meta.label}
       <span aria-hidden className="text-[10px] opacity-60">
         ›
       </span>
