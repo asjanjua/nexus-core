@@ -4,10 +4,10 @@
  * importing Clerk's client package into the production build graph.
  */
 
-export function LogoutButton() {
+export function LogoutButton({ label = "Account", className = "btn-subtle" }: { label?: string; className?: string }) {
   return (
-    <a href="/sign-in" className="btn-subtle">
-      Account
+    <a href="/sign-in" className={className}>
+      {label}
     </a>
   );
 }
