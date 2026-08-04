@@ -4,6 +4,19 @@
 
 ---
 
+## 2026-08-04 — Pricing Checkout and CI Repair
+
+- Latest pushed application head is `6bcc970` (`fix: restore settings imports and pricing test typecheck`) on `origin/main`. It repairs the broken `app/settings/page.tsx` import introduced by the pricing/checkout work and fixes the pricing alignment test so TypeScript can prove the paid tiers exclude the internal free plan.
+- Local release gate is green after clearing generated `.next/types/* 2.ts` conflict files: build-boundary checks passed, TypeScript passed, Vitest passed with 115 files / 901 tests, and the Next production build passed with 195 routes.
+- `npm ci --ignore-scripts` passes locally. Local audit remains at the documented residual only: `next` and nested `postcss` (1 high, 1 moderate, no criticals). Do not use `npm audit fix --force`; it proposes an unsafe Next major/downgrade path.
+- The public app health endpoint remains healthy at `https://app.pinavia.io/api/health` with database, vector search, originals storage, and DeepSeek checks OK. This proves the currently deployed app is alive, not that `6bcc970` is the deployed SHA.
+- GitHub CodeQL for the prior failing checkout head passed. CI for `763e22a` failed because `npm ci` saw a package/lock mismatch and Node 22 TypeScript hit the malformed settings import. `6bcc970` was pushed specifically to close those two blockers; confirm the new GitHub CI/CodeQL run before treating the latest head as CI-green.
+- The working tree is clean except for untracked `transcript.md`, a local podcast transcript artefact intentionally left out of the repair commit.
+- Repository relocation status: the original repo at `/Users/alijanjua/Documents/Playground/pinavia/nexus-core` is still the source of truth. The interrupted `/Users/alijanjua/Developer/pinavia/nexus-core` copy has an incomplete Git state and must not be used until deleted/re-copied or repaired.
+- Next action: watch CI for `6bcc970`; once green, confirm Render deployed that exact SHA or manually trigger deploy, then run public domain smoke and any required signed-in pricing/checkout smoke.
+
+---
+
 ## 2026-08-04 — Governance Trace and Entity Relationships
 
 - Added entity relationship graph edges (migration `0041_entity_relationships.sql`): entities that co-occur in evidence get connected via `entity_relationships` with canonicalized pairs (`source < target`), reinforcement on re-sighting (increment `occurrence_count`, deduped `evidence_refs` append), and per-direction indexes for one-hop traversal.

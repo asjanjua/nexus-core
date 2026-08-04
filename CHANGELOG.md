@@ -1,5 +1,14 @@
 # Changelog
 
+## 2026-08-04 — Pricing Checkout and CI Repair
+
+- Added the `/pricing` buyer path and checkout wiring through the latest application series ending at `763e22a`, then repaired the follow-up CI blockers in `6bcc970`.
+- Fixed a malformed Settings import caused by the pricing tier import being inserted inside the sector-library import block.
+- Adjusted the pricing alignment regression test so TypeScript no longer flags the intentional "free plan is not sold" assertion as an impossible literal comparison.
+- Local release gate passed after removing generated `.next/types/* 2.ts` conflict copies: TypeScript, 115 Vitest files / 901 tests, and a 195-route production build all passed.
+- Current dependency audit posture remains intentionally narrow: no critical advisories, with only the documented `next -> postcss` residual visible locally (`1 high`, `1 moderate`). Dev-only `brace-expansion`, `fast-uri`, and `ip-address` were already patched, and `sharp` remains at `0.35.3`.
+- Deployment note: `https://app.pinavia.io/api/health` is healthy, but the exact Render SHA for `6bcc970` is not yet confirmed in this entry. Treat this as code/local-gate ready until GitHub CI and Render SHA confirmation complete.
+
 ## 2026-07-29 — Nexus Room Portfolio (Design)
 
 - Added Figma page `29 Nexus Room Portfolio / 2026-07-29` with the Nexus day-one Room Portfolio, first-run state, governed Add Room flow, Finance Room detail, and product-room discovery layer.
@@ -1466,16 +1475,16 @@ This release completes the Phase 7D U2 governance blocker for the current V1.1 p
 
 ## 0.13.4 — Dependency Security Cleanup (2026-05-31)
 
-This release clears the open GitHub Dependabot alert for PostCSS.
+Historical note, superseded by the 2026-08-04 audit posture. At the time this release attempted to clear the open GitHub Dependabot alert for PostCSS; current `next@15.5.21` again carries a nested `next/node_modules/postcss@8.4.31`, so the live mitigation is the documented accepted residual plus a planned Next upgrade.
 
 **Security**
-- Fixed Dependabot alert #5: PostCSS XSS via unescaped `</style>` in CSS stringify output.
-- Corrected the npm override so Next.js resolves to the patched root `postcss@8.5.15`.
+- Attempted to fix Dependabot alert #5: PostCSS XSS via unescaped `</style>` in CSS stringify output.
+- Corrected the npm override for the patched root PostCSS copy.
 - Removed the duplicate workspace-level override and regenerated `package-lock.json` from a clean install.
-- Confirmed the vulnerable nested `next/node_modules/postcss@8.4.31` copy is gone.
+- Superseded: the vulnerable nested `next/node_modules/postcss@8.4.31` copy is currently present through Next and is tracked as the remaining residual.
 
 **Verification**
-- `npm audit --json` reports 0 vulnerabilities.
+- Superseded: current local audit reports only `next` and nested `postcss` (1 high, 1 moderate, no criticals).
 - `npx tsc --noEmit` passed.
 - `npm run test` passed: 13 test files, 51 tests.
 - `npm run build` passed.

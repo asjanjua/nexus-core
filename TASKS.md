@@ -5,7 +5,7 @@
 > For the visual finish-line map, see `docs/DEVELOPMENT_FINISH_LINE_VISUAL.md`.
 > For the markdown estate review, see `docs/MARKDOWN_ESTATE_REVIEW_2026-06-25.md`.
 > For typed runtime/state/effect safety rules, see `docs/ENGINEERING_GUARDRAILS.md`.
-> Last reviewed and tightened: 2026-07-26.
+> Last reviewed and tightened: 2026-08-04.
 
 ---
 
@@ -17,6 +17,14 @@
 C-suite teams across fintech, professional services, technology, physical businesses, and
 digital-native companies in GCC, Pakistan, and emerging markets.
 **Stack:** Next.js 15, TypeScript, Clerk, Postgres/Drizzle/pgvector, R2, Render, LLM provider routing.
+
+## 2026-08-04 — Current Release Repair Status
+
+- [x] Repair latest pricing/settings CI blockers — commit `6bcc970` fixes the malformed Settings import and the pricing test type-narrowing issue.
+- [x] Re-run local release gate — build boundaries, TypeScript, 115 Vitest files / 901 tests, and 195-route production build passed under Node 24.
+- [x] Confirm install/audit floor locally — `npm ci --ignore-scripts` passes; local audit is limited to the documented `next -> postcss` residual (`1 high`, `1 moderate`, no criticals).
+- [~] Confirm latest pushed head in GitHub CI and Render — `6bcc970` is pushed, but CI/CodeQL completion and exact Render deployed SHA still need confirmation before calling the latest head production-cleared.
+- [ ] Clean up repository relocation attempt — keep `/Users/alijanjua/Documents/Playground/pinavia/nexus-core` as source of truth for now; remove or fully recopy the interrupted `/Users/alijanjua/Developer/pinavia/nexus-core` copy before anyone works from it.
 
 ## 2026-07-29 — Nexus Room Portfolio Design-to-Code
 
@@ -403,8 +411,8 @@ What is built locally for v0.13.2:
 - Passport policy and contract tests added.
 
 What is built locally for v0.13.4:
-- Dependabot alert #5 fixed: vulnerable `next/node_modules/postcss@8.4.31` removed.
-- `npm audit --json` reports 0 vulnerabilities.
+- Historical note superseded by the 2026-08-04 audit posture: `next@15.5.21` currently carries nested `next/node_modules/postcss@8.4.31`, and the correct mitigation is a planned/tested Next upgrade rather than `npm audit fix --force`.
+- Current local audit reports only the documented `next -> postcss` residual (1 high, 1 moderate, no criticals); dev-only `brace-expansion`, `fast-uri`, and `ip-address` are patched, and `sharp` resolves to `0.35.3`.
 
 What is built at v0.13.1:
 - Public `/readiness` AI-Native Readiness Assessment with seven-dimension scoring, no login required.
