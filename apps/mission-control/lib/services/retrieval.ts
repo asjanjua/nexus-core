@@ -27,7 +27,7 @@
  * Falls back to a bullet summary when ANTHROPIC_API_KEY is absent (dev / demo).
  */
 
-import type { AskResponse, ConversationMessage, Entity, EvidenceRecord, KnowledgeNote } from "@/lib/contracts";
+import type { AskResponse, ConversationMessage, Entity, EvidenceRecord, KnowledgeNote, RetrievalMethod } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
 import { ask } from "@/lib/services/llm";
 import { generateEmbedding, isVectorSearchEnabled } from "@/lib/services/embeddings";
@@ -201,14 +201,17 @@ async function rankEvidence(
   }
 
   // --- Tier 0: Graph traversal -------------------------------------------------
-  const graphResults = await graphTraversalEvidence(query, workspaceId, candidates).catch(() => []);
-  if (graphResults.length > 0) {
+  const graphResults = await graphTraversalEvidence(query, workspaceId, candidates).catch(() => ({
+    records: [],
+    entities: [],
+  }));
+  if (graphResults.records.length > 0) {
     await repository
       .pushAudit({
         workspaceId,
         type: "ask_graph_traversal_used",
         actor: options.agentKey ?? "ask",
-        payload: { query, evidenceCount: graphResults.length }
+        payload: { query, evidenceCount: graphResults.records.length }
       })
       .catch(() => {});
     return {

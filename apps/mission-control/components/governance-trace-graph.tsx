@@ -315,7 +315,7 @@ export function GovernanceTraceGraph() {
                     tabIndex={interactive ? 0 : undefined}
                     aria-label={
                       interactive
-                        ? `${TYPE_LABEL[node.type] ?? node.type}: ${node.label}. ${target.hint}`
+                        ? `${LEGEND_LABEL[node.type] ?? node.type}: ${node.label}. ${target.hint}`
                         : undefined
                     }
                     className={interactive ? "cursor-pointer focus:outline-none" : undefined}
