@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { ENGAGEMENT, ENGAGEMENT_WAIVER, waiverStatus } from "@/lib/diagnostic-offer";
+import {
+  ENGAGEMENT,
+  ENGAGEMENT_WAIVER,
+  waiverClaimsSavingHonestly,
+  waiverStatus,
+} from "@/lib/diagnostic-offer";
 
 const END = ENGAGEMENT_WAIVER.endsAt;
 const at = (iso: string) => waiverStatus(new Date(iso));
@@ -42,14 +47,24 @@ describe("engagement fee waiver", () => {
     expect(waiverStatus(new Date("not a date")).active).toBe(false);
   });
 
-  it("publishes no struck-through list price to claim a saving against", () => {
-    // ENGAGEMENT.fee has never been set, so there is no number that was ever
-    // charged. Advertising a discount against one would be a misleading-price
-    // claim, and a poor look for a governance product.
-    expect(ENGAGEMENT.fee).toBeNull();
-    const copy = `${ENGAGEMENT_WAIVER.headline} ${ENGAGEMENT_WAIVER.terms}`;
-    expect(copy).not.toMatch(/\b(was|normally|save|discount|instead of|rrp)\b/i);
-    expect(copy).not.toMatch(/\$|USD|AED|PKR/);
+  it("claims a saving only against a fee that is actually published", () => {
+    // The rule, not the current values: copy may say "normally" or "waived"
+    // only while ENGAGEMENT.fee exists. Striking through a number nobody was
+    // ever asked to pay is a misleading-price claim, and the one thing a
+    // governance product cannot afford on its own pricing page. If the fee is
+    // ever set back to null without the copy changing, this fails.
+    expect(waiverClaimsSavingHonestly()).toBe(true);
+  });
+
+  it("shows the same figure in the copy as the fee that will be charged", () => {
+    // A mismatch means the page strikes through one number and bills another.
+    expect(ENGAGEMENT.fee).not.toBeNull();
+    expect(ENGAGEMENT_WAIVER.terms).toContain(ENGAGEMENT.fee!.amount);
+  });
+
+  it("says what happens the day after the window closes", () => {
+    // "Free until November" without "then what" is the gap buyers distrust.
+    expect(ENGAGEMENT_WAIVER.terms).toMatch(/from 5 November/i);
   });
 
   it("promises no card capture and no automatic conversion", () => {

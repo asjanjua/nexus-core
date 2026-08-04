@@ -161,9 +161,22 @@ export default function DiagnosticPage() {
               {/* During the launch window the fee panel becomes the offer. It
                   reverts on its own when waiverStatus() goes inactive, so no
                   page edit is needed on the closing date. */}
-              <p className={LABEL}>{waiver.active ? "Fee" : ENGAGEMENT.fee ? "Fee" : "Scope"}</p>
+              <p className={LABEL}>{ENGAGEMENT.fee ? "Fee" : "Scope"}</p>
               <p className="mt-2 text-2xl font-semibold">
-                {waiver.active ? "Waived" : ENGAGEMENT.fee ? ENGAGEMENT.fee.amount : "Fixed"}
+                {waiver.active && ENGAGEMENT.fee ? (
+                  <>
+                    {/* The struck-through figure is the fee genuinely charged
+                        from the day after the window closes. */}
+                    <span className="text-nexus-muted line-through decoration-nexus-muted/60">
+                      {ENGAGEMENT.fee.amount}
+                    </span>{" "}
+                    <span className="text-nexus-accent">Waived</span>
+                  </>
+                ) : ENGAGEMENT.fee ? (
+                  ENGAGEMENT.fee.amount
+                ) : (
+                  "Fixed"
+                )}
               </p>
               <p className="mt-3 text-sm leading-relaxed text-nexus-muted">
                 {waiver.active

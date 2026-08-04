@@ -31,8 +31,8 @@ export const FEE: { amount: string; basis: string; note: string } | null = null;
  * clause level, and if both rungs share one label the lower figure anchors the
  * higher one out of existence.
  *
- * `fee` is null until the commercial figure is confirmed; the rung renders on
- * scope and timeline alone until then.
+ * `fee` is now set. It is also the figure the launch waiver strikes through,
+ * so the two must be changed together — see ENGAGEMENT_WAIVER below.
  */
 export const ENGAGEMENT: {
   name: string;
@@ -42,7 +42,20 @@ export const ENGAGEMENT: {
   name: "Evidence-Tested Readiness Review",
   summary:
     "Where the self-serve assessment reports what your team believes, this engagement tests it. Two weeks, partner-delivered: three decisions traced end to end, retrieval timed against your real data, and your AI use mapped to the instruments that bind you at clause level.",
-  fee: null,
+  /**
+   * Published so the waiver has something real to be measured against. Until
+   * this was set there was no number that had ever been charged, and a
+   * struck-through figure would have been a fabricated saving.
+   *
+   * Priced as a qualification step rather than a revenue line, consistent with
+   * the note above FEE. It is deliberately low against two weeks of partner
+   * time; the return is a scoped SOW, not the fee itself.
+   */
+  fee: {
+    amount: "$4,500",
+    basis:
+      "Fixed fee, all inclusive. One engagement covers the review regardless of how many entities sit inside the group, and there are no expenses on top.",
+  },
 };
 
 /**
@@ -59,19 +72,32 @@ export const ENGAGEMENT: {
  * a self-inflicted wound. When the window closes the offer simply ends, and
  * anyone already inside it stays inside it.
  *
- * NO STRUCK-THROUGH ANCHOR. `ENGAGEMENT.fee` is still null, so there is no
- * published list price. Claiming a saving against a number that was never
- * charged is a misleading-pricing problem in the GCC and Pakistan alike, and
- * would be a strange look for this product. The copy states the waiver plainly
- * and claims no discount.
+ * THE ANCHOR MUST BE REAL. The waiver shows `ENGAGEMENT.fee` struck through,
+ * which is only honest because that is the fee actually charged once the
+ * window closes. Striking through a number nobody was ever asked to pay is a
+ * misleading-price problem in the GCC and Pakistan alike, so the test suite
+ * refuses any saving claim while `ENGAGEMENT.fee` is null.
  */
 export const ENGAGEMENT_WAIVER = {
   /** Inclusive. Engagements confirmed on or before this date pay no fee. */
   endsAt: "2026-11-04",
-  headline: "No engagement fee before 4 November 2026",
+  headline: "Engagement fee waived before 4 November 2026",
   terms:
-    "The Evidence-Tested Readiness Review carries no fee for engagements confirmed on or before 4 November 2026. No card is taken and nothing converts to a paid subscription afterwards. Software plans are separate and priced by team size.",
+    "The Evidence-Tested Readiness Review is normally $4,500 as a fixed, all-inclusive fee. It is waived entirely for engagements confirmed on or before 4 November 2026, and charged at $4,500 from 5 November. No card is taken and nothing converts to a paid subscription afterwards. Software plans are separate and priced by team size.",
 } as const;
+
+/**
+ * Guard for the copy above: a saving may only be claimed while there is a
+ * published fee to claim it against. Called by the test suite rather than at
+ * runtime, because the failure it catches is an editing mistake, not a
+ * user-triggered state.
+ */
+export function waiverClaimsSavingHonestly(): boolean {
+  const claimsSaving = /\b(normally|waived|instead of|save)\b/i.test(
+    `${ENGAGEMENT_WAIVER.headline} ${ENGAGEMENT_WAIVER.terms}`
+  );
+  return !claimsSaving || ENGAGEMENT.fee !== null;
+}
 
 export type WaiverStatus = {
   active: boolean;
