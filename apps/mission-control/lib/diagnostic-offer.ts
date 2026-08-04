@@ -47,12 +47,19 @@ export const ENGAGEMENT: {
    * this was set there was no number that had ever been charged, and a
    * struck-through figure would have been a fabricated saving.
    *
-   * Priced as a qualification step rather than a revenue line, consistent with
-   * the note above FEE. It is deliberately low against two weeks of partner
-   * time; the return is a scoped SOW, not the fee itself.
+   * Benchmarked August 2026. Comparable fixed-fee AI governance readiness
+   * assessments run $8,000 to $12,000 over two to three weeks, and independent
+   * partner-level time in the GCC bills at $300 to $500 an hour. $9,500 sits
+   * inside that band and under the $10,000 mark that often triggers a second
+   * approval signature.
+   *
+   * Set for the GCC, which is the market where price reads as a capability
+   * signal. Pakistan is handled by negotiated discretion against this anchor
+   * rather than by publishing a second number, because one public page cannot
+   * carry two prices without inviting arbitrage.
    */
   fee: {
-    amount: "$4,500",
+    amount: "$9,500",
     basis:
       "Fixed fee, all inclusive. One engagement covers the review regardless of how many entities sit inside the group, and there are no expenses on top.",
   },
@@ -83,7 +90,7 @@ export const ENGAGEMENT_WAIVER = {
   endsAt: "2026-11-04",
   headline: "Engagement fee waived before 4 November 2026",
   terms:
-    "The Evidence-Tested Readiness Review is normally $4,500 as a fixed, all-inclusive fee. It is waived entirely for engagements confirmed on or before 4 November 2026, and charged at $4,500 from 5 November. No card is taken and nothing converts to a paid subscription afterwards. Software plans are separate and priced by team size.",
+    "The Evidence-Tested Readiness Review is normally $9,500 as a fixed, all-inclusive fee. It is waived entirely for engagements confirmed on or before 4 November 2026, and charged at $9,500 from 5 November. No card is taken and nothing converts to a paid subscription afterwards. Software plans are separate and priced by team size.",
 } as const;
 
 /**

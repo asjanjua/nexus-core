@@ -107,7 +107,7 @@ export default function PricingPage() {
         <p className="panel-title">Which band am I in?</p>
         <p className="mt-2 text-xs leading-5 text-white/60">
           Count the people who will have a login. At exactly ten people you are on Starter. At
-          eleven you move to Growth. Above fifty, Enterprise pricing starts at $1,199 a month and is
+          eleven you move to Growth. Above fifty, Enterprise pricing starts at $2,500 a month and is
           set after a conversation about deployment, residency, and review obligations.
         </p>
         <Link href="/start-pilot" className="btn-primary mt-4 inline-flex text-sm" prefetch={false}>

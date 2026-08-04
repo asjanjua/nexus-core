@@ -12,7 +12,7 @@
  * favour of the customer: at exactly ten people you are on the lower price.
  *
  * The 51+ figure is a STARTING price, not the price. Enterprise is quoted
- * after a conversation, so the page must not imply 1,199 is the whole answer.
+ * after a conversation, so the page must not imply 2,500 is the whole answer.
  */
 
 export type PricingTier = {
@@ -69,10 +69,17 @@ export const PRICING_TIERS: PricingTier[] = [
     label: "Enterprise",
     minSeats: 51,
     maxSeats: null,
-    monthlyUsd: 1199,
+    /**
+     * Benchmarked August 2026 against the closest comparable: Vanta charges
+     * $25,000 to $55,000 a year for 50 to 200 employees. $2,500 a month is
+     * $30,000 a year, at the lower end of that band. The previous $1,199 floor
+     * was $14,388 a year, which sat in Vanta's UNDER-fifty pricing while this
+     * tier sells to the segment above it.
+     */
+    monthlyUsd: 2500,
     quoteRequired: true,
     seatRangeLabel: "51 people and above",
-    priceLabel: "From $1,199",
+    priceLabel: "From $2,500",
     positioning:
       "Regulated deployments with their own data residency, review, and audit obligations. Scoped on a call.",
     cta: { label: "Book a call", href: "/start-pilot" },

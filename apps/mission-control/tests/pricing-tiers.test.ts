@@ -33,7 +33,7 @@ describe("pricing bands", () => {
   it("places the documented boundaries correctly", () => {
     expect(tierForHeadcount(1).monthlyUsd).toBe(49);
     expect(tierForHeadcount(50).monthlyUsd).toBe(499);
-    expect(tierForHeadcount(51).monthlyUsd).toBe(1199);
+    expect(tierForHeadcount(51).monthlyUsd).toBe(2500);
     expect(tierForHeadcount(5000).key).toBe("enterprise");
   });
 
