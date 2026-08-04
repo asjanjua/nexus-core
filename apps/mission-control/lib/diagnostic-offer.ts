@@ -45,6 +45,60 @@ export const ENGAGEMENT: {
   fee: null,
 };
 
+/**
+ * Launch window: the engagement fee is waived for work that starts before
+ * `endsAt`.
+ *
+ * DATE-DRIVEN ON PURPOSE. An offer written as page copy is still on the site
+ * in December claiming to be free. `waiverStatus()` decides, so the block
+ * disappears on its own when the window closes.
+ *
+ * NO CARD CAPTURE, NO AUTO-CONVERSION. This honours the warning above FEE: a
+ * waived fee that later starts charging on a condition the customer triggered
+ * is a negative-option arrangement, and for a firm selling governance that is
+ * a self-inflicted wound. When the window closes the offer simply ends, and
+ * anyone already inside it stays inside it.
+ *
+ * NO STRUCK-THROUGH ANCHOR. `ENGAGEMENT.fee` is still null, so there is no
+ * published list price. Claiming a saving against a number that was never
+ * charged is a misleading-pricing problem in the GCC and Pakistan alike, and
+ * would be a strange look for this product. The copy states the waiver plainly
+ * and claims no discount.
+ */
+export const ENGAGEMENT_WAIVER = {
+  /** Inclusive. Engagements confirmed on or before this date pay no fee. */
+  endsAt: "2026-11-04",
+  headline: "No engagement fee before 4 November 2026",
+  terms:
+    "The Evidence-Tested Readiness Review carries no fee for engagements confirmed on or before 4 November 2026. No card is taken and nothing converts to a paid subscription afterwards. Software plans are separate and priced by team size.",
+} as const;
+
+export type WaiverStatus = {
+  active: boolean;
+  endsAt: string;
+  /** Whole days left, 0 on the final day. Null once the window has closed. */
+  daysRemaining: number | null;
+};
+
+const MS_PER_DAY = 86_400_000;
+
+/**
+ * Is the waiver live? Compares whole UTC days so a visitor on the closing date
+ * still sees the offer regardless of their clock's time of day.
+ */
+export function waiverStatus(now: Date = new Date()): WaiverStatus {
+  const end = Date.parse(`${ENGAGEMENT_WAIVER.endsAt}T23:59:59.999Z`);
+  const current = now.getTime();
+  if (!Number.isFinite(current) || current > end) {
+    return { active: false, endsAt: ENGAGEMENT_WAIVER.endsAt, daysRemaining: null };
+  }
+  return {
+    active: true,
+    endsAt: ENGAGEMENT_WAIVER.endsAt,
+    daysRemaining: Math.max(0, Math.floor((end - current) / MS_PER_DAY)),
+  };
+}
+
 /** What the self-serve readiness assessment returns. Automated, same day. */
 export const SELF_SERVE_OUTPUT = [
   {

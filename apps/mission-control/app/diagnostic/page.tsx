@@ -7,6 +7,8 @@ import {
   DELIVERABLES,
   DIMENSIONS,
   ENGAGEMENT,
+  ENGAGEMENT_WAIVER,
+  waiverStatus,
   EXCLUSIONS,
   FEE,
   SELF_SERVE_OUTPUT,
@@ -38,6 +40,7 @@ const PANEL = "rounded-lg border border-nexus-border bg-nexus-panel p-6";
 const LABEL = "text-xs font-semibold uppercase tracking-wider text-nexus-muted";
 
 export default function DiagnosticPage() {
+  const waiver = waiverStatus();
   const selfServeLabel = FEE ? `Scored (${FEE.amount})` : "Self-assessment";
 
   return (
@@ -155,14 +158,19 @@ export default function DiagnosticPage() {
               <p className="mt-3 text-sm leading-relaxed text-nexus-muted">{TIMELINE.detail}</p>
             </div>
             <div className={PANEL}>
-              <p className={LABEL}>{ENGAGEMENT.fee ? "Fee" : "Scope"}</p>
+              {/* During the launch window the fee panel becomes the offer. It
+                  reverts on its own when waiverStatus() goes inactive, so no
+                  page edit is needed on the closing date. */}
+              <p className={LABEL}>{waiver.active ? "Fee" : ENGAGEMENT.fee ? "Fee" : "Scope"}</p>
               <p className="mt-2 text-2xl font-semibold">
-                {ENGAGEMENT.fee ? ENGAGEMENT.fee.amount : "Fixed"}
+                {waiver.active ? "Waived" : ENGAGEMENT.fee ? ENGAGEMENT.fee.amount : "Fixed"}
               </p>
               <p className="mt-3 text-sm leading-relaxed text-nexus-muted">
-                {ENGAGEMENT.fee
-                  ? ENGAGEMENT.fee.basis
-                  : "Seven dimensions, three traced decisions, one consolidated evidence request. Scope is agreed in the first two days and does not move after that."}
+                {waiver.active
+                  ? ENGAGEMENT_WAIVER.terms
+                  : ENGAGEMENT.fee
+                    ? ENGAGEMENT.fee.basis
+                    : "Seven dimensions, three traced decisions, one consolidated evidence request. Scope is agreed in the first two days and does not move after that."}
               </p>
             </div>
           </div>

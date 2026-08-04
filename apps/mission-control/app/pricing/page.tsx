@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { PRICING_TIERS } from "@/lib/pricing-tiers";
+import { ENGAGEMENT_WAIVER, waiverStatus } from "@/lib/diagnostic-offer";
 
 export const metadata: Metadata = {
   title: "Pricing | Pinavia",
@@ -18,6 +19,8 @@ export const metadata: Metadata = {
  * the first page a buyer reads.
  */
 export default function PricingPage() {
+  const waiver = waiverStatus();
+
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-16">
       <header className="max-w-2xl">
@@ -30,6 +33,18 @@ export default function PricingPage() {
           and the boundaries that stop the system acting on your behalf. Those are not an upgrade.
         </p>
       </header>
+
+      {/* Renders only while the window is open; waiverStatus() closes it on
+          the date without anyone editing this page. */}
+      {waiver.active && (
+        <section className="mt-8 rounded-lg border border-nexus-accent/30 bg-nexus-accent/5 px-4 py-3">
+          <p className="text-sm font-medium text-nexus-accent">{ENGAGEMENT_WAIVER.headline}</p>
+          <p className="mt-1 text-xs leading-5 text-white/60">{ENGAGEMENT_WAIVER.terms}</p>
+          <Link href="/diagnostic" className="mt-2 inline-flex text-xs text-nexus-sky hover:underline">
+            What the review covers
+          </Link>
+        </section>
+      )}
 
       <section className="mt-12 grid gap-4 lg:grid-cols-3">
         {PRICING_TIERS.map((tier) => (
