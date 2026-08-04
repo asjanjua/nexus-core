@@ -89,20 +89,32 @@ jobs:
       # Soft signal: surface high/moderate advisories without failing the build,
       # so they are visible in the log for triage but do not block a pilot ship.
       #
-      # This gate stays at "critical" rather than "high" because of two accepted
-      # exceptions, both pinned inside next@15.5.21 and not reachable from here:
+      # This gate stays at "critical" rather than "high" because of ONE accepted
+      # exception pinned inside next@15.5.21 and not reachable from here:
       #
-      #   sharp   0.34.5  (GHSA-f88m-g3jw-g9cj, libvips CVEs) — optional dep of
-      #           next, reachable only via the Image Optimization API. This app
-      #           imports next/image nowhere and configures no remotePatterns.
       #   postcss 8.4.31  (GHSA-r28c-9q8g-f849, sourcemap path traversal) —
-      #           next pins this exact version; the root postcss override does
-      #           not reach it. Build-time only, not a request-path dependency.
+      #           next declares this as an EXACT dependency, not a range, and
+      #           the override does not displace it: the lockfile still carries
+      #           node_modules/next/node_modules/postcss@8.4.31 alongside the
+      #           hoisted 8.5.23. Build-time only, never on the request path.
       #
-      # Neither is fixable from this repo: `npm audit fix --force` resolves them
-      # by installing next@9.3.3. Both clear when next ships a release that bumps
-      # its pinned postcss and sharp — recheck on the next Next.js upgrade and
-      # raise this gate to --audit-level=high once the log is clean.
+      # Not fixable from this repo: `npm audit fix --force` "resolves" it by
+      # installing next@9.3.3. It clears when next ships a release bumping its
+      # pinned postcss — recheck on the next Next.js upgrade and raise this gate
+      # to --audit-level=high once the log is clean.
+      #
+      # RESOLVED 2026-07-29: sharp is no longer an exception. It previously
+      # appeared as 0.34.5 (GHSA-f88m-g3jw-g9cj, libvips CVEs) via next's
+      # optional dependency. The `next.sharp: 0.35.3` override in package.json
+      # took effect and the lockfile now resolves a single sharp@0.35.3 with no
+      # nested copy. Verified against package-lock.json, not assumed.
+      #
+      # KNOWN GAP, tracked: the lockfile root entry records no `overrides` key
+      # even though package.json declares four. `npm ci` therefore reproduces
+      # whatever the lockfile already pins rather than re-applying the overrides,
+      # so an override that has not yet been baked into the lockfile would be
+      # silently ignored in CI while working locally. Re-run `npm install` and
+      # commit the lockfile whenever an override changes.
       - name: Report high/moderate advisories (non-blocking)
         if: always()
         run: npm audit --audit-level=high || true
