@@ -7,13 +7,22 @@
  * set with a coverage gap map against ingested evidence. Same typed-content-
  * pack convention as sector-library.ts and dd-checklist-library.ts.
  *
- * IMPORTANT — regulatory accuracy caveat: the SECP license taxonomy and
- * requirement items below reflect a reasonable first-pass understanding of
- * NBFC Rules 2003 / NBFC Regulations 2008 categories, NOT a validated legal
- * review. SBP/SAMA/CBUAE sections are deliberately thin placeholders. Every
- * item here needs sign-off from someone with current regulatory expertise
- * before this is used in front of a real customer or submission — treat this
- * as the scaffolding the workflow needs, not a compliance authority.
+ * IMPORTANT — regulatory accuracy caveat: the SECP items reflect a reasonable
+ * first-pass understanding of NBFC Rules 2003 / NBFC Regulations 2008
+ * categories, and the SBP EMI and PSO/PSP items a first-pass understanding of
+ * the corresponding SBP instruments. NONE of it is a validated legal review.
+ * SAMA and CBUAE remain thin placeholders. Every item here needs sign-off from
+ * someone with current regulatory expertise before it is used in front of a
+ * real customer or submission — treat this as the scaffolding the workflow
+ * needs, not a compliance authority.
+ *
+ * CONVENTION, applies to every pack: requirement strings name the obligation
+ * and the instrument that carries it, never the figure. No capital amounts,
+ * ratios, wallet limits, cadences in days, or filing deadlines are restated
+ * here. Those change faster than this file will be maintained, and a stale
+ * threshold asserted confidently is more damaging than no threshold at all.
+ * `hasDedicatedRequirementPack()` reports which licences have a real pack;
+ * the UI labels the rest as generic.
  *
  * Entry priority per paperwork/pivots/regulatory-submissions/
  * Strategy_Regulatory_Submissions.md (corrected 2026-07-05): NBFIs under
@@ -297,6 +306,360 @@ const SECP_AMC: RequirementItem[] = [
   },
 ];
 
+/**
+ * SBP — Electronic Money Institution.
+ *
+ * Structured around the EMI Regulations' three-stage path: in-principle
+ * approval, then a pilot with a limited customer set, then commercial launch.
+ * That staging is the thing most applicants underestimate, so it is modelled
+ * as explicit requirements rather than folded into "business plan".
+ *
+ * DELIBERATE: no monetary thresholds, ratios, limits, or deadlines appear in
+ * any requirement string. They are the fastest part of a regulation to change
+ * and a stale number stated confidently is worse than no number. Each item
+ * points at the instrument that carries the current figure. Same convention as
+ * the SECP items ("per NBFC Regulations 2008 category threshold").
+ *
+ * Needs sign-off from someone with current SBP practice before customer use —
+ * see the regulatory-accuracy caveat at the top of this file.
+ */
+const SBP_EMI: RequirementItem[] = [
+  {
+    id: "sbp-emi-01",
+    requirement: "Paid-up capital evidence against the EMI Regulations threshold for the stage applied for",
+    evidenceTags: ["Capital Adequacy Evidence", "Financial Statements"],
+    severity: "critical",
+    appliesTo: ["existing", "aspirational"],
+    gapIndicator: "No audited evidence of paid-up capital at the threshold for the current stage",
+  },
+  {
+    id: "sbp-emi-02",
+    requirement: "Maintained capital held unimpaired and free of encumbrance, evidenced on an ongoing basis",
+    evidenceTags: ["Capital Adequacy Evidence"],
+    severity: "critical",
+    appliesTo: ["existing"],
+    // Distinct from sbp-emi-01: raising the capital once and keeping it
+    // unimpaired are different obligations and fail in different ways.
+    gapIndicator: "No current evidence that maintained capital remains unimpaired",
+  },
+  {
+    id: "sbp-emi-03",
+    requirement: "Sponsors', directors' and senior management fit-and-proper assessment records",
+    evidenceTags: ["Fit and Proper Certification"],
+    severity: "critical",
+    appliesTo: ["existing", "aspirational"],
+    gapIndicator: "Fit-and-proper record missing or out of date for a current sponsor, director or key officer",
+  },
+  {
+    id: "sbp-emi-04",
+    requirement: "Customer funds safeguarding arrangement: e-money float held in a designated account with a scheduled bank, segregated from institutional funds",
+    evidenceTags: ["Customer Funds Safeguarding"],
+    severity: "critical",
+    appliesTo: ["existing", "aspirational"],
+    // The defining EMI obligation. An EMI is not a bank; the float is not
+    // its money. Everything else can be remediated, this cannot.
+    gapIndicator: "No evidence of a segregated designated account, or no agreement with the holding bank",
+  },
+  {
+    id: "sbp-emi-05",
+    requirement: "Float reconciliation: outstanding e-money liability reconciled to the safeguarding account balance at the required frequency",
+    evidenceTags: ["Customer Funds Safeguarding", "Reconciliation Reports"],
+    severity: "critical",
+    appliesTo: ["existing"],
+    gapIndicator: "No reconciliation records, or an unexplained variance left unresolved in the last cycle",
+  },
+  {
+    id: "sbp-emi-06",
+    requirement: "Business plan with financial projections, target segments, and the distribution and agent model",
+    evidenceTags: ["Business Plan"],
+    severity: "high",
+    appliesTo: ["aspirational"],
+    gapIndicator: "No business plan, or projections not supported by stated assumptions",
+  },
+  {
+    id: "sbp-emi-07",
+    requirement: "In-principle approval correspondence from SBP for the licence applied for",
+    evidenceTags: ["Regulatory Correspondence", "Regulatory License"],
+    severity: "critical",
+    appliesTo: ["aspirational"],
+    gapIndicator: "No in-principle approval on file, or conditions attached to it not tracked",
+  },
+  {
+    id: "sbp-emi-08",
+    requirement: "Pilot operations plan and pilot exit report against SBP's stated conditions",
+    evidenceTags: ["Pilot Operations Report", "Regulatory Correspondence"],
+    severity: "critical",
+    appliesTo: ["aspirational"],
+    // Commercial launch is gated on the pilot. Applicants routinely plan for
+    // the licence and not for the stage that actually decides it.
+    gapIndicator: "No pilot plan, or pilot completed without a documented report against the approval conditions",
+  },
+  {
+    id: "sbp-emi-09",
+    requirement: "Commercial launch approval from SBP",
+    evidenceTags: ["Regulatory License", "Regulatory Correspondence"],
+    severity: "critical",
+    appliesTo: ["existing"],
+    gapIndicator: "Operating beyond pilot scope without evidence of commercial launch approval",
+  },
+  {
+    id: "sbp-emi-10",
+    requirement: "AML/CFT policy, customer due diligence procedures, and transaction monitoring rules",
+    evidenceTags: ["AML Policy", "Compliance Manual"],
+    severity: "critical",
+    appliesTo: ["existing", "aspirational"],
+    gapIndicator: "No AML/CFT policy, or policy not updated for the current AML/CFT regulations and guidance",
+  },
+  {
+    id: "sbp-emi-11",
+    requirement: "Independent AML/CFT audit at the required cadence",
+    evidenceTags: ["AML Audit"],
+    severity: "critical",
+    appliesTo: ["existing"],
+    gapIndicator: "No independent AML audit, or the most recent audit is older than the required cadence",
+  },
+  {
+    id: "sbp-emi-12",
+    requirement: "Customer and agent onboarding controls, including tiered wallet limits and the biometric or equivalent verification method used",
+    evidenceTags: ["Compliance Manual", "Customer Onboarding Controls"],
+    severity: "high",
+    appliesTo: ["existing", "aspirational"],
+    gapIndicator: "Onboarding controls or wallet tiering not documented against the current regulatory limits",
+  },
+  {
+    id: "sbp-emi-13",
+    requirement: "Information security policy and the most recent independent information systems audit",
+    evidenceTags: ["IT Risk Framework", "IS Audit Report"],
+    severity: "critical",
+    appliesTo: ["existing", "aspirational"],
+    gapIndicator: "No IS audit, or audit findings from the last review left unremediated",
+  },
+  {
+    id: "sbp-emi-14",
+    requirement: "Technology and payment systems readiness, including the interoperability and scheme connections relied on",
+    evidenceTags: ["Architecture Overview", "IT Risk Framework"],
+    severity: "high",
+    appliesTo: ["aspirational"],
+    gapIndicator: "No systems architecture or readiness evidence for the connections the business model depends on",
+  },
+  {
+    id: "sbp-emi-15",
+    requirement: "Data localisation and customer data protection arrangement, including where data is hosted and processed",
+    evidenceTags: ["Data Protection Compliance"],
+    severity: "critical",
+    appliesTo: ["existing", "aspirational"],
+    // Hosting location is a permissioning question in Pakistan, not just an
+    // engineering one, and offshore stacks are where applicants get caught.
+    gapIndicator: "Hosting and processing locations not documented, or offshore processing without evidenced approval",
+  },
+  {
+    id: "sbp-emi-16",
+    requirement: "Outsourcing and third-party arrangements register with the associated risk assessments",
+    evidenceTags: ["Material Contracts", "Vendor Risk Assessment"],
+    severity: "medium",
+    appliesTo: ["existing", "aspirational"],
+    gapIndicator: "Material outsourced function with no contract or no risk assessment on file",
+  },
+  {
+    id: "sbp-emi-17",
+    requirement: "Consumer protection framework: disclosure of charges, complaint handling procedure, and turnaround commitments",
+    evidenceTags: ["Client Protection Policy"],
+    severity: "high",
+    appliesTo: ["existing", "aspirational"],
+    gapIndicator: "No documented complaint procedure, or charges not disclosed in the required form",
+  },
+  {
+    id: "sbp-emi-18",
+    requirement: "Complaint volumes, resolution times, and unresolved case reporting for the current period",
+    evidenceTags: ["Client Protection Policy", "Complaint Reports"],
+    severity: "medium",
+    appliesTo: ["existing"],
+    gapIndicator: "No complaint reporting for the current period, or resolution times not evidenced",
+  },
+  {
+    id: "sbp-emi-19",
+    requirement: "Business continuity and disaster recovery plan with evidence of the most recent test",
+    evidenceTags: ["IT Risk Framework", "BCP DR Test Report"],
+    severity: "high",
+    appliesTo: ["existing", "aspirational"],
+    gapIndicator: "No BCP/DR plan, or no evidence the plan has been tested within the required period",
+  },
+  {
+    id: "sbp-emi-20",
+    requirement: "Security incident and fraud reporting to SBP for the current period",
+    evidenceTags: ["Security Incident History", "Regulatory Correspondence"],
+    severity: "high",
+    appliesTo: ["existing"],
+    gapIndicator: "A reportable incident with no evidence it was reported within the required window",
+  },
+  {
+    id: "sbp-emi-21",
+    requirement: "Periodic regulatory returns filed with SBP",
+    evidenceTags: ["Regulatory Returns"],
+    severity: "high",
+    appliesTo: ["existing"],
+    gapIndicator: "A required periodic return filed late or not at all in the last cycle",
+  },
+  {
+    id: "sbp-emi-22",
+    requirement: "Annual audited financial statements",
+    evidenceTags: ["Financial Statements"],
+    severity: "critical",
+    appliesTo: ["existing"],
+    gapIndicator: "Audited statements missing for the most recent financial year",
+  },
+];
+
+/**
+ * SBP — Payment System Operator / Payment Service Provider.
+ *
+ * Shares the licensing shape of the EMI path but not the float. A PSO/PSP
+ * that does not issue e-money holds no customer balances, so the safeguarding
+ * items are deliberately absent rather than reworded — a requirement that does
+ * not apply must not appear as a gap the applicant can never close.
+ *
+ * Same no-figures convention as SBP_EMI. Needs current-practice sign-off.
+ */
+const SBP_PSPO: RequirementItem[] = [
+  {
+    id: "sbp-pspo-01",
+    requirement: "Paid-up capital evidence against the PSO/PSP threshold for the authorisation sought",
+    evidenceTags: ["Capital Adequacy Evidence", "Financial Statements"],
+    severity: "critical",
+    appliesTo: ["existing", "aspirational"],
+    gapIndicator: "No audited evidence of paid-up capital at the applicable threshold",
+  },
+  {
+    id: "sbp-pspo-02",
+    requirement: "Sponsors', directors' and senior management fit-and-proper assessment records",
+    evidenceTags: ["Fit and Proper Certification"],
+    severity: "critical",
+    appliesTo: ["existing", "aspirational"],
+    gapIndicator: "Fit-and-proper record missing or out of date for a current sponsor, director or key officer",
+  },
+  {
+    id: "sbp-pspo-03",
+    requirement: "Business plan describing the payment services offered, the settlement model, and participant relationships",
+    evidenceTags: ["Business Plan"],
+    severity: "high",
+    appliesTo: ["aspirational"],
+    gapIndicator: "No business plan, or the settlement model not described in enough detail to assess",
+  },
+  {
+    id: "sbp-pspo-04",
+    requirement: "In-principle approval correspondence from SBP and the conditions attached to it",
+    evidenceTags: ["Regulatory Correspondence", "Regulatory License"],
+    severity: "critical",
+    appliesTo: ["aspirational"],
+    gapIndicator: "No in-principle approval on file, or attached conditions not tracked to closure",
+  },
+  {
+    id: "sbp-pspo-05",
+    requirement: "Certificate of authorisation from SBP, current and covering the services actually offered",
+    evidenceTags: ["Regulatory License"],
+    severity: "critical",
+    appliesTo: ["existing"],
+    // Scope creep past the authorised service list is a common finding.
+    gapIndicator: "Authorisation missing, expired, or narrower than the services being offered",
+  },
+  {
+    id: "sbp-pspo-06",
+    requirement: "Settlement and clearing arrangements, including the settlement bank and participant agreements",
+    evidenceTags: ["Material Contracts", "Settlement Arrangements"],
+    severity: "critical",
+    appliesTo: ["existing", "aspirational"],
+    gapIndicator: "No settlement bank agreement, or participant arrangements not documented",
+  },
+  {
+    id: "sbp-pspo-07",
+    requirement: "Merchant and participant onboarding and due diligence procedure",
+    evidenceTags: ["Compliance Manual", "Customer Onboarding Controls"],
+    severity: "high",
+    appliesTo: ["existing", "aspirational"],
+    gapIndicator: "No documented onboarding due diligence for merchants or participants",
+  },
+  {
+    id: "sbp-pspo-08",
+    requirement: "AML/CFT policy and transaction monitoring appropriate to the payment flows operated",
+    evidenceTags: ["AML Policy", "Compliance Manual"],
+    severity: "critical",
+    appliesTo: ["existing", "aspirational"],
+    gapIndicator: "No AML/CFT policy, or monitoring rules not mapped to the flows actually operated",
+  },
+  {
+    id: "sbp-pspo-09",
+    requirement: "Independent AML/CFT audit at the required cadence",
+    evidenceTags: ["AML Audit"],
+    severity: "high",
+    appliesTo: ["existing"],
+    gapIndicator: "No independent AML audit, or the most recent audit is older than the required cadence",
+  },
+  {
+    id: "sbp-pspo-10",
+    requirement: "Information security policy, PCI DSS or equivalent card-data standard where applicable, and the most recent systems audit",
+    evidenceTags: ["IT Risk Framework", "IS Audit Report"],
+    severity: "critical",
+    appliesTo: ["existing", "aspirational"],
+    gapIndicator: "No IS audit, or no current certification where card data is handled",
+  },
+  {
+    id: "sbp-pspo-11",
+    requirement: "Data localisation and customer data protection arrangement, including hosting and processing locations",
+    evidenceTags: ["Data Protection Compliance"],
+    severity: "critical",
+    appliesTo: ["existing", "aspirational"],
+    gapIndicator: "Hosting and processing locations not documented, or offshore processing without evidenced approval",
+  },
+  {
+    id: "sbp-pspo-12",
+    requirement: "Outsourcing and third-party technology arrangements register with risk assessments",
+    evidenceTags: ["Material Contracts", "Vendor Risk Assessment"],
+    severity: "medium",
+    appliesTo: ["existing", "aspirational"],
+    gapIndicator: "Material outsourced function with no contract or no risk assessment on file",
+  },
+  {
+    id: "sbp-pspo-13",
+    requirement: "Business continuity, disaster recovery, and service availability commitments with evidence of the most recent test",
+    evidenceTags: ["IT Risk Framework", "BCP DR Test Report"],
+    severity: "high",
+    appliesTo: ["existing", "aspirational"],
+    gapIndicator: "No BCP/DR plan, or no evidence the plan has been tested within the required period",
+  },
+  {
+    id: "sbp-pspo-14",
+    requirement: "Security incident, fraud, and service outage reporting to SBP for the current period",
+    evidenceTags: ["Security Incident History", "Regulatory Correspondence"],
+    severity: "high",
+    appliesTo: ["existing"],
+    gapIndicator: "A reportable incident or outage with no evidence it was reported within the required window",
+  },
+  {
+    id: "sbp-pspo-15",
+    requirement: "Consumer protection: charge disclosure, dispute and chargeback handling, and complaint turnaround",
+    evidenceTags: ["Client Protection Policy"],
+    severity: "high",
+    appliesTo: ["existing", "aspirational"],
+    gapIndicator: "No documented dispute or complaint procedure, or charges not disclosed in the required form",
+  },
+  {
+    id: "sbp-pspo-16",
+    requirement: "Periodic regulatory returns and transaction reporting filed with SBP",
+    evidenceTags: ["Regulatory Returns"],
+    severity: "high",
+    appliesTo: ["existing"],
+    gapIndicator: "A required periodic return or transaction report filed late or not at all in the last cycle",
+  },
+  {
+    id: "sbp-pspo-17",
+    requirement: "Annual audited financial statements",
+    evidenceTags: ["Financial Statements"],
+    severity: "critical",
+    appliesTo: ["existing"],
+    gapIndicator: "Audited statements missing for the most recent financial year",
+  },
+];
+
 // Thin, deliberately generic placeholders — expand with real requirements
 // before customer use. See regulatory-accuracy caveat at the top of this file.
 const GENERIC_PLACEHOLDER: RequirementItem[] = [
@@ -340,6 +703,8 @@ const REQUIREMENTS_BY_LICENSE_TYPE: Record<string, RequirementItem[]> = {
   secp_nbfc_microfinance: SECP_NBFC_MICROFINANCE,
   secp_modaraba: SECP_MODARABA,
   secp_amc: SECP_AMC,
+  sbp_emi: SBP_EMI,
+  sbp_pspo: SBP_PSPO,
 };
 
 /**

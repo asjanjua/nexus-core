@@ -33,6 +33,10 @@ import {
   type RequirementCoverageResult,
 } from "@/lib/domain/regulatory-requirement-library";
 import { librarySetsFor, selectionRationale } from "@/lib/meridian-requirement-selection";
+import {
+  documentTypesForFilename,
+  documentTypesForPaths,
+} from "@/lib/domain/document-type-classifier";
 
 export async function GET(request: Request) {
   const auth = await resolveAuth(request);
@@ -65,22 +69,36 @@ export async function GET(request: Request) {
 
   const sets: LicenseStatus[] = librarySetsFor(scope.licenseStatus);
 
-  // Department tags on ingested evidence are the coverage input. Restricted
-  // records are excluded: a document the caller may not read cannot honestly
-  // be counted as evidence they hold.
+  // Document types derived from ingested filenames are the coverage input.
+  //
+  // NOT the `department` column. Ingestion assigns broad functional
+  // departments ("Risk & Compliance", "Finance") while requirements are
+  // expressed as document types ("AML Policy", "Capital Adequacy Evidence").
+  // The two vocabularies do not intersect at all, so matching on department
+  // reported every requirement as a gap no matter what had been ingested.
+  // See lib/domain/document-type-classifier.ts.
+  //
+  // Restricted records are excluded: a document the caller may not read cannot
+  // honestly be counted as evidence they hold.
   const evidence = await repository.getEvidenceForWorkspace(auth.workspaceId);
   const usable = evidence.filter((record) => record.sensitivity !== "restricted");
   const restrictedCount = evidence.length - usable.length;
-  const departmentTags = [
-    ...new Set(usable.map((record) => record.department).filter((d): d is string => Boolean(d))),
-  ];
+  const documentTypes = documentTypesForPaths(
+    usable.map((record) => record.sourcePath ?? record.sourceUri ?? null)
+  );
+  // Documents whose filename says nothing about what they are. They exist and
+  // are readable, but cannot support any requirement, so the screen must be
+  // able to say how many are in this state rather than letting them vanish.
+  const untypedCount = usable.filter(
+    (record) => documentTypesForFilename(record.sourcePath ?? record.sourceUri ?? null).length === 0
+  ).length;
 
   // Union across the applicable sets, de-duplicated by requirement id. An
   // applicant sees both sets (see librarySetsFor) and a requirement that
   // appears in both must not be double-counted in the percentage.
   const byId = new Map<string, RequirementCoverageResult>();
   for (const set of sets) {
-    for (const result of coverageForSubmission(scope.licenseTypeKey, set, departmentTags)) {
+    for (const result of coverageForSubmission(scope.licenseTypeKey, set, documentTypes)) {
       const existing = byId.get(result.itemId);
       // If it appears twice, covered in either context counts as covered.
       if (!existing || (!existing.covered && result.covered)) byId.set(result.itemId, result);
@@ -136,10 +154,16 @@ export async function GET(request: Request) {
       criticalGaps: gaps.filter((g) => g.severity === "critical").length,
       evidenceDocuments: usable.length,
       restrictedExcluded: restrictedCount,
+      // Readable, but the filename gives no clue what the document is, so it
+      // supports nothing. Surfaced because "rename your files" is a fix the
+      // user can actually action, unlike "ingest more evidence".
+      untypedDocuments: untypedCount,
     },
     boundary:
-      "Coverage means a document carrying the matching evidence tag exists. It " +
-      "is not a finding that the requirement is satisfied; a qualified reviewer " +
-      "makes that judgement.",
+      "Coverage means a document of the matching type exists, identified from " +
+      "its filename. It is not a finding that the requirement is satisfied; a " +
+      "qualified reviewer makes that judgement. A document whose filename does " +
+      "not say what it is will not be counted, so coverage understates rather " +
+      "than overstates.",
   });
 }

@@ -45,6 +45,7 @@ type Payload = {
     criticalGaps: number;
     evidenceDocuments: number;
     restrictedExcluded: number;
+    untypedDocuments: number;
   };
   boundary?: string;
 };
@@ -174,6 +175,16 @@ export function MeridianCoverageWorkbench() {
       <section className="panel border-nexus-warn/30">
         <p className="panel-title text-nexus-warn">What this number does not mean</p>
         <p className="mt-2 text-xs leading-5 text-white/60">{data.boundary ?? BOUNDARY_FALLBACK}</p>
+        {t.untypedDocuments > 0 && (
+          <p className="mt-2 text-xs leading-5 text-nexus-warn">
+            {t.untypedDocuments} of {t.evidenceDocuments} readable document
+            {t.evidenceDocuments === 1 ? "" : "s"} could not be identified from
+            {t.untypedDocuments === 1 ? " its" : " their"} filename, so
+            {t.untypedDocuments === 1 ? " it counts" : " they count"} towards nothing. Renaming
+            {t.untypedDocuments === 1 ? " it" : " them"} to say what the document is will raise
+            coverage without adding any new evidence.
+          </p>
+        )}
         {data.selection?.rationale && (
           <p className="mt-2 text-xs leading-5 text-white/45">{data.selection.rationale}</p>
         )}

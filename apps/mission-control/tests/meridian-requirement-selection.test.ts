@@ -93,6 +93,22 @@ describe("coverage union across sets", () => {
 });
 
 describe("requirement library integrity", () => {
+  /** Every requirement in every pack reachable from the picker, de-duplicated. */
+  function allItems() {
+    const byId = new Map<string, ReturnType<typeof requirementsFor>[number]>();
+    for (const regulator of REGULATORS) {
+      for (const type of regulator.licenseTypes) {
+        // Generic-backed licences would otherwise contribute the same four
+        // placeholder ids repeatedly and break the uniqueness assertion.
+        if (!hasDedicatedRequirementPack(type.key)) continue;
+        for (const set of ["aspirational", "existing"] as LicenseStatus[]) {
+          for (const item of requirementsFor(type.key, set)) byId.set(item.id, item);
+        }
+      }
+    }
+    return [...byId.values()];
+  }
+
   it("gives every licence type at least one requirement in at least one set", () => {
     // A licence in the picker with no requirements would show a user an empty
     // coverage screen that looks like a clean bill of health.
@@ -107,18 +123,62 @@ describe("requirement library integrity", () => {
   });
 
   it("records exactly which licences still use the generic fallback", () => {
-    // Pinned deliberately. When a real SBP EMI pack lands this test fails and
-    // whoever adds it must move the key out of this list — which is the point.
-    // Until then the UI must label these as generic (GENERIC_PACK_NOTICE).
+    // Pinned deliberately. When a real pack lands this test fails and whoever
+    // adds it must move the key out of this list — which is the point. Until
+    // then the UI must label these as generic (GENERIC_PACK_NOTICE).
     const generic = REGULATORS.flatMap((r) =>
       r.licenseTypes.filter((t) => !hasDedicatedRequirementPack(t.key)).map((t) => t.key)
     ).sort();
-    expect(generic).toEqual([
-      "cbuae_sva_ppi",
-      "sama_payment_services",
-      "sbp_emi",
-      "sbp_pspo",
-    ]);
+    expect(generic).toEqual(["cbuae_sva_ppi", "sama_payment_services"]);
+  });
+
+  it("states no monetary or percentage thresholds in any requirement", () => {
+    // The convention documented at the top of the library: name the obligation
+    // and the instrument, never the figure. A stale threshold asserted
+    // confidently is worse than no threshold. Years ("NBFC Regulations 2008")
+    // identify an instrument and are allowed; amounts are not.
+    const forbidden = /\b(PKR|SAR|AED|USD|Rs\.?|million|billion|crore|lakh)\b|%/i;
+    for (const item of allItems()) {
+      expect(forbidden.test(item.requirement), `${item.id}: ${item.requirement}`).toBe(false);
+      expect(forbidden.test(item.gapIndicator), `${item.id}: ${item.gapIndicator}`).toBe(false);
+    }
+  });
+
+  it("shares no requirement id between two packs", () => {
+    // Coverage de-duplicates by itemId. Two packs reusing an id would silently
+    // merge two different obligations into one row. Within a pack an id
+    // repeating across sets is expected and correct, so this checks only
+    // cross-pack collisions.
+    const owner = new Map<string, string>();
+    for (const regulator of REGULATORS) {
+      for (const type of regulator.licenseTypes) {
+        if (!hasDedicatedRequirementPack(type.key)) continue;
+        const ids = new Set(
+          (["aspirational", "existing"] as LicenseStatus[])
+            .flatMap((s) => requirementsFor(type.key, s))
+            .map((i) => i.id)
+        );
+        for (const id of ids) {
+          const existing = owner.get(id);
+          expect(existing, `${id} is in both ${existing} and ${type.key}`).toBeUndefined();
+          owner.set(id, type.key);
+        }
+      }
+    }
+  });
+
+  it("puts float safeguarding on EMI and not on PSO/PSP", () => {
+    // A PSO/PSP that issues no e-money holds no customer float. The absence is
+    // deliberate: a requirement that cannot apply must not show as a gap the
+    // applicant can never close.
+    const tagsFor = (key: string) =>
+      new Set(
+        (["aspirational", "existing"] as LicenseStatus[])
+          .flatMap((s) => requirementsFor(key, s))
+          .flatMap((i) => i.evidenceTags)
+      );
+    expect(tagsFor("sbp_emi").has("Customer Funds Safeguarding")).toBe(true);
+    expect(tagsFor("sbp_pspo").has("Customer Funds Safeguarding")).toBe(false);
   });
 
   it("gives every requirement at least one evidence tag", () => {
