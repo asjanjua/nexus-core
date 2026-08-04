@@ -31,9 +31,15 @@ export function invalidateBudgetCache(workspaceId: string): void {
 
 // ---------------------------------------------------------------------------
 // Plan definitions (static fallback when DB unavailable)
+//
+// priceCents and maxTeam MUST agree with PRICING_TIERS in lib/pricing-tiers.ts,
+// which is what /pricing publishes. tests/pricing-plan-alignment.test.ts fails
+// the build if they drift. They already had, badly: the page advertised $49
+// for up to 10 people while this file charged $499 and capped the workspace at
+// one seat.
 // ---------------------------------------------------------------------------
 
-const PLAN_FALLBACKS: Record<string, PlanDefinition> = {
+export const PLAN_FALLBACKS: Record<string, PlanDefinition> = {
   free: {
     planKey: "free", label: "Free", priceCents: 0,
     monthlyTokens: 500_000, maxRoles: 1, maxEvidence: 50, maxTeam: 1,
@@ -44,8 +50,8 @@ const PLAN_FALLBACKS: Record<string, PlanDefinition> = {
     apiAccess: false, watermark: true, stripePriceId: null,
   },
   pro: {
-    planKey: "pro", label: "Pro", priceCents: 49900,
-    monthlyTokens: 5_000_000, maxRoles: 5, maxEvidence: 1000, maxTeam: 1,
+    planKey: "pro", label: "Starter", priceCents: 4_900,
+    monthlyTokens: 5_000_000, maxRoles: 5, maxEvidence: 1000, maxTeam: 10,
     maxConnectors: 0, maxApiKeys: 3, askDailyLimit: null,
     scheduledSynthesis: true, synthesisMaxCadence: "weekly",
     emailDelivery: false, slackDelivery: false, exportsEnabled: true,
@@ -53,8 +59,8 @@ const PLAN_FALLBACKS: Record<string, PlanDefinition> = {
     apiAccess: true, watermark: false, stripePriceId: null,
   },
   business: {
-    planKey: "business", label: "Business", priceCents: 250000,
-    monthlyTokens: 25_000_000, maxRoles: 10, maxEvidence: 5000, maxTeam: 5,
+    planKey: "business", label: "Growth", priceCents: 49_900,
+    monthlyTokens: 25_000_000, maxRoles: 10, maxEvidence: 5000, maxTeam: 50,
     maxConnectors: 3, maxApiKeys: 10, askDailyLimit: null,
     scheduledSynthesis: true, synthesisMaxCadence: "daily",
     emailDelivery: true, slackDelivery: false, exportsEnabled: true,
