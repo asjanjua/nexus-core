@@ -60,9 +60,19 @@ describe("requirementsFor", () => {
   });
 
   it("falls back to the generic placeholder for a license type not yet built out", () => {
+    // sbp_emi used to be the example here; it has a real pack now. Uses an
+    // unknown key so this stays meaningful as the remaining packs get built,
+    // rather than needing an edit each time.
+    const items = requirementsFor("no_such_license_type", "aspirational");
+    expect(items.length).toBeGreaterThan(0);
+    expect(items.every((i) => i.id.startsWith("generic-"))).toBe(true);
+  });
+
+  it("returns the dedicated pack, not the placeholder, for a built-out license type", () => {
     const items = requirementsFor("sbp_emi", "aspirational");
     expect(items.length).toBeGreaterThan(0);
-    expect(items.some((i) => i.id.startsWith("generic-"))).toBe(true);
+    expect(items.some((i) => i.id.startsWith("generic-"))).toBe(false);
+    expect(items.every((i) => i.id.startsWith("sbp-emi-"))).toBe(true);
   });
 
   it("every requirement item has a non-empty gap indicator and at least one evidence tag", () => {
@@ -77,7 +87,11 @@ describe("requirementsFor", () => {
 });
 
 describe("coverageForSubmission / gapsForSubmission", () => {
-  it("marks an item covered when a matching department tag is present", () => {
+  // NOTE the third argument is a list of DOCUMENT TYPES, not departments.
+  // Calling it a "department tag" is what led the coverage route to pass the
+  // evidence department column here, which shares no values with these tags
+  // and made every requirement report as a gap. See document-type-classifier.
+  it("marks an item covered when a matching document type is present", () => {
     const results = coverageForSubmission("secp_nbfc_microfinance", "existing", ["AML Policy"]);
     const amlItem = results.find((r) => r.itemId === "secp-mf-03");
     expect(amlItem?.covered).toBe(true);

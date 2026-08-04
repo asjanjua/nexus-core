@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  classifyDocument,
+  documentTypesForDocuments,
   documentTypesForFilename,
   documentTypesForPaths,
   knownDocumentTypes,
@@ -10,6 +12,7 @@ import {
   requirementsFor,
   type LicenseStatus,
 } from "@/lib/domain/regulatory-requirement-library";
+import { checklistForDealType, type DealType } from "@/lib/domain/dd-checklist-library";
 
 describe("documentTypesForFilename", () => {
   it("returns nothing for an unidentifiable filename", () => {
@@ -76,20 +79,88 @@ describe("documentTypesForFilename", () => {
   });
 });
 
+describe("classifyDocument content signal", () => {
+  const ANNEX = "/deal/Project Falcon - Annex 4.pdf";
+
+  it("types an opaquely named file from its opening lines", () => {
+    // The real data room case: the filename is a code name, the document
+    // states what it is in its own first sentence.
+    const matches = classifyDocument({
+      path: ANNEX,
+      text: "AML Policy\n\nThis policy sets out the firm's approach to customer due diligence.",
+    });
+    expect(matches.map((m) => m.type)).toContain("AML Policy");
+    expect(matches.find((m) => m.type === "AML Policy")?.signal).toBe("content");
+  });
+
+  it("does not type a document from a passing mention", () => {
+    // The failure that would make coverage overstate: an AML policy that
+    // references capital must not be typed as capital adequacy evidence.
+    const body =
+      "AML Policy\n\n" +
+      "This policy sets out customer due diligence. ".repeat(20) +
+      "It should be read alongside the paid-up capital position where relevant.";
+    const types = classifyDocument({ path: ANNEX, text: body }).map((m) => m.type);
+    expect(types).toContain("AML Policy");
+    expect(types).not.toContain("Capital Adequacy Evidence");
+  });
+
+  it("types on recurrence when the phrase is not in the opening", () => {
+    const filler = "General narrative about the transaction background. ".repeat(20);
+    const matches = classifyDocument({
+      path: ANNEX,
+      text: `${filler} cap table ... ${filler} cap table ... ${filler} cap table ...`,
+    });
+    expect(matches.map((m) => m.type)).toContain("Cap Table");
+  });
+
+  it("prefers the filename signal when both fire", () => {
+    // A type must never be reported as merely inferred when the author named
+    // the file — the reviewer prompt should only appear where it is warranted.
+    const matches = classifyDocument({
+      path: "/deal/AML Policy.pdf",
+      text: "AML Policy. This policy sets out customer due diligence.",
+    });
+    expect(matches.find((m) => m.type === "AML Policy")?.signal).toBe("filename");
+    expect(matches.filter((m) => m.type === "AML Policy")).toHaveLength(1);
+  });
+
+  it("returns nothing for an opaque name and uninformative text", () => {
+    expect(
+      classifyDocument({ path: ANNEX, text: "Please find the attached materials. Regards." })
+    ).toEqual([]);
+    expect(classifyDocument({ path: ANNEX })).toEqual([]);
+    expect(classifyDocument({})).toEqual([]);
+  });
+
+  it("de-duplicates types across a set of documents", () => {
+    const types = documentTypesForDocuments([
+      { path: "/a/AML Policy.pdf" },
+      { path: ANNEX, text: "AML Policy\n\nCustomer due diligence approach." },
+      { path: "/c/scan.pdf", text: "nothing useful" },
+    ]);
+    expect(types.filter((t) => t === "AML Policy")).toHaveLength(1);
+  });
+});
+
 describe("vocabulary alignment with the requirement libraries", () => {
-  // The bug this module was written to fix: coverage matched requirement tags
-  // against a vocabulary that shared no values with them, so nothing could
-  // ever be covered. This test makes that class of mismatch impossible to
-  // reintroduce silently.
-  const requirementTags = new Set(
-    REGULATORS.flatMap((r) => r.licenseTypes)
+  // The bug this module was written to fix, in both places it occurred:
+  // Meridian coverage and the Vantage diligence engine each matched content-
+  // pack tags against a vocabulary that shared no values with them, so nothing
+  // could ever be covered. This makes that mismatch impossible to reintroduce
+  // silently in either library.
+  const requirementTags = new Set([
+    ...REGULATORS.flatMap((r) => r.licenseTypes)
       .filter((t) => hasDedicatedRequirementPack(t.key))
       .flatMap((t) =>
         (["aspirational", "existing"] as LicenseStatus[]).flatMap((s) =>
           requirementsFor(t.key, s).flatMap((i) => i.evidenceTags)
         )
-      )
-  );
+      ),
+    ...(["fintech_ma", "generic_ma"] as DealType[]).flatMap((d) =>
+      checklistForDealType(d).flatMap((c) => c.items.flatMap((i) => i.evidenceTags))
+    ),
+  ]);
 
   it("can produce every evidence tag the requirement packs ask for", () => {
     const producible = new Set(knownDocumentTypes());
@@ -132,6 +203,18 @@ describe("vocabulary alignment with the requirement libraries", () => {
       "Portfolio at risk report.xlsx",
       "Lease portfolio report.xlsx",
       "Fund performance factsheet.pdf",
+      // DD checklist vocabulary
+      "Cap table.xlsx",
+      "Management accounts.xlsx",
+      "Cash flow forecast.xlsx",
+      "Revenue analysis by cohort.xlsx",
+      "Unit economics.xlsx",
+      "Litigation register.xlsx",
+      "IP assignment register.pdf",
+      "Change of control clause summary.docx",
+      "Retention and earn-out terms.docx",
+      "Org chart.pdf",
+      "Penetration test results.pdf",
     ];
     const reached = new Set(documentTypesForPaths(samples));
     const missed = [...requirementTags].filter((tag) => !reached.has(tag)).sort();

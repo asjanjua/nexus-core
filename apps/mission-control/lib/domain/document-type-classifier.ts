@@ -76,6 +76,9 @@ const PATTERNS: Array<{ type: string; match: RegExp }> = [
   { type: "Cap Table", match: /\bcap(itali[sz]ation)? table\b|\bshareholding\b|\bshare register\b/i },
   { type: "Litigation Register", match: /\b(litigation|dispute|court case|arbitration)\b.*\b(register|log|schedule|summary)\b|\blitigation\b/i },
   { type: "IP Ownership", match: /\b(intellectual property|\bip\b)\b.*\b(assignment|ownership|register|schedule)\b|trademark|patent/i },
+  { type: "Change of Control Requirements", match: /\bchange of control\b|\bcoc\b.*\b(clause|consent|provision)\b|\bassignment clause\b/i },
+  { type: "Retention Terms", match: /\b(retention|earn[- ]?out|lock[- ]?up|non[- ]?compete|key (person|man))\b/i },
+  { type: "Org Chart", match: /\borg(ani[sz]ation)?[- ]?chart\b|\bheadcount\b|\breporting lines?\b/i },
 
   // --- portfolio reporting (SECP packs) ------------------------------------
   { type: "Portfolio at Risk Report", match: /\b(par|portfolio at risk|delinquen\w*|npl|arrears)\b/i },
@@ -99,6 +102,90 @@ export function documentTypesForFilename(path: string | null | undefined): strin
 /** Distinct document types across a set of ingested file paths. */
 export function documentTypesForPaths(paths: Array<string | null | undefined>): string[] {
   return [...new Set(paths.flatMap(documentTypesForFilename))];
+}
+
+// ---------------------------------------------------------------------------
+// Content signal
+// ---------------------------------------------------------------------------
+
+/**
+ * Real data rooms are full of "Project Falcon - Annex 4.pdf". Filename alone
+ * leaves those permanently untyped, which understates coverage and, on a
+ * client's own files, makes the screen look broken rather than careful.
+ *
+ * The content signal reads the document itself, but is deliberately stricter
+ * than the filename rule, because prose mentions things it is not about: an
+ * AML policy that references the capital requirement must not be typed as
+ * capital adequacy evidence. A content match therefore counts only when it
+ * looks like what the document IS rather than something it mentions:
+ *
+ *   - the match falls in the TITLE REGION, the opening stretch where a
+ *     document states what it is; or
+ *   - the pattern recurs at least MIN_RECURRENCE times, which a passing
+ *     reference does not do.
+ *
+ * Still deterministic, still no LLM, in keeping with the native engines.
+ */
+const TITLE_REGION_CHARS = 300;
+const MIN_RECURRENCE = 3;
+
+export type DocumentTypeSignal = "filename" | "content";
+
+export type DocumentTypeMatch = {
+  type: string;
+  /**
+   * How the type was established. `filename` means the author named the file;
+   * `content` means it was inferred from the text. Callers should surface the
+   * difference rather than flatten it — an inferred type is weaker evidence
+   * and a reviewer may want to overrule it.
+   */
+  signal: DocumentTypeSignal;
+};
+
+function contentTypes(text: string): string[] {
+  const head = text.slice(0, TITLE_REGION_CHARS);
+  return PATTERNS.filter((p) => {
+    if (p.match.test(head)) return true;
+    // `match` carries no /g, so build a counting copy rather than mutating
+    // shared state via lastIndex.
+    const global = new RegExp(p.match.source, p.match.flags.includes("g") ? p.match.flags : p.match.flags + "g");
+    let count = 0;
+    while (global.exec(text) !== null) {
+      count += 1;
+      if (count >= MIN_RECURRENCE) return true;
+    }
+    return false;
+  }).map((p) => p.type);
+}
+
+/**
+ * Types for one document from both signals. Filename wins where both fire, so
+ * a type is never reported as merely inferred when the author named it.
+ */
+export function classifyDocument(input: {
+  path?: string | null;
+  text?: string | null;
+}): DocumentTypeMatch[] {
+  const fromName = documentTypesForFilename(input.path);
+  const named = new Set(fromName);
+  const matches: DocumentTypeMatch[] = fromName.map((type) => ({ type, signal: "filename" }));
+
+  if (input.text && input.text.trim()) {
+    for (const type of contentTypes(input.text)) {
+      if (!named.has(type)) {
+        named.add(type);
+        matches.push({ type, signal: "content" });
+      }
+    }
+  }
+  return matches;
+}
+
+/** Distinct types across a set of documents, from both signals. */
+export function documentTypesForDocuments(
+  docs: Array<{ path?: string | null; text?: string | null }>
+): string[] {
+  return [...new Set(docs.flatMap((d) => classifyDocument(d).map((m) => m.type)))];
 }
 
 /** Every type this classifier can produce — used to assert vocabulary alignment. */

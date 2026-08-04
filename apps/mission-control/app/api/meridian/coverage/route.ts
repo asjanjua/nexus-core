@@ -33,10 +33,7 @@ import {
   type RequirementCoverageResult,
 } from "@/lib/domain/regulatory-requirement-library";
 import { librarySetsFor, selectionRationale } from "@/lib/meridian-requirement-selection";
-import {
-  documentTypesForFilename,
-  documentTypesForPaths,
-} from "@/lib/domain/document-type-classifier";
+import { classifyDocument } from "@/lib/domain/document-type-classifier";
 
 export async function GET(request: Request) {
   const auth = await resolveAuth(request);
@@ -83,14 +80,23 @@ export async function GET(request: Request) {
   const evidence = await repository.getEvidenceForWorkspace(auth.workspaceId);
   const usable = evidence.filter((record) => record.sensitivity !== "restricted");
   const restrictedCount = evidence.length - usable.length;
-  const documentTypes = documentTypesForPaths(
-    usable.map((record) => record.sourcePath ?? record.sourceUri ?? null)
-  );
-  // Documents whose filename says nothing about what they are. They exist and
-  // are readable, but cannot support any requirement, so the screen must be
-  // able to say how many are in this state rather than letting them vanish.
-  const untypedCount = usable.filter(
-    (record) => documentTypesForFilename(record.sourcePath ?? record.sourceUri ?? null).length === 0
+  const classified = usable.map((record) => ({
+    record,
+    matches: classifyDocument({
+      path: record.sourcePath ?? record.sourceUri ?? null,
+      text: record.text,
+    }),
+  }));
+  const documentTypes = [...new Set(classified.flatMap((c) => c.matches.map((m) => m.type)))];
+  // Documents nothing could identify — neither the filename nor the text says
+  // what they are. They exist and are readable but support no requirement, so
+  // the screen must be able to say how many rather than letting them vanish.
+  const untypedCount = classified.filter((c) => c.matches.length === 0).length;
+  // Typed only from their contents. Weaker than an author-named file, and a
+  // reviewer may disagree, so the count is reported separately rather than
+  // folded into coverage as if it were the same quality of signal.
+  const inferredCount = classified.filter(
+    (c) => c.matches.length > 0 && c.matches.every((m) => m.signal === "content")
   ).length;
 
   // Union across the applicable sets, de-duplicated by requirement id. An
@@ -158,12 +164,14 @@ export async function GET(request: Request) {
       // supports nothing. Surfaced because "rename your files" is a fix the
       // user can actually action, unlike "ingest more evidence".
       untypedDocuments: untypedCount,
+      inferredDocuments: inferredCount,
     },
     boundary:
       "Coverage means a document of the matching type exists, identified from " +
-      "its filename. It is not a finding that the requirement is satisfied; a " +
-      "qualified reviewer makes that judgement. A document whose filename does " +
-      "not say what it is will not be counted, so coverage understates rather " +
-      "than overstates.",
+      "its filename or, where the filename is uninformative, from what the " +
+      "document says it is. It is not a finding that the requirement is " +
+      "satisfied; a qualified reviewer makes that judgement. Documents that " +
+      "neither signal can identify are not counted, so coverage understates " +
+      "rather than overstates.",
   });
 }

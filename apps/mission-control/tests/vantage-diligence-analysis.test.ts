@@ -8,12 +8,28 @@ import { checklistForDealType } from "@/lib/domain/dd-checklist-library";
 
 const NOW = "2026-07-06T00:00:00.000Z";
 
-function evidence(patch: Partial<EvidenceRecord> & { id: string; department: string }): EvidenceRecord {
+/**
+ * `docType` drives the FILENAME, because that is what coverage matches on.
+ *
+ * These fixtures previously set the `department` field to "Financial
+ * Statements" and let the filename be arbitrary. That encoded the bug the
+ * engine had: real department values are things like "Finance", never
+ * "Financial Statements", so genuine evidence could never be cited while the
+ * fixtures always were — the tests passed precisely because they were wrong.
+ * Naming the file after the document type is what a real data room looks like.
+ */
+function evidence(
+  patch: Partial<EvidenceRecord> & { id: string; docType: string }
+): EvidenceRecord {
+  const { docType, ...rest } = patch;
   return {
     tenantId: "tenant-a",
     workspaceId: "deal-a",
     sourceType: "finance_export",
-    sourcePath: `/deal/${patch.id}.pdf`,
+    // Department is deliberately a plausible functional value, not the
+    // document type — coverage must not depend on it.
+    department: "Finance",
+    sourcePath: `/deal/${docType}.pdf`,
     sourceUri: `https://vault.local/${patch.id}`,
     sourceTimestamp: NOW,
     ingestedAt: NOW,
@@ -23,7 +39,7 @@ function evidence(patch: Partial<EvidenceRecord> & { id: string; department: str
     ingestionStatus: "processed",
     freshnessHours: 3,
     text: "Placeholder deal evidence.",
-    ...patch,
+    ...rest,
   };
 }
 
@@ -33,17 +49,39 @@ describe("vantage diligence analysis engine", () => {
       reviewId: "deal-1",
       dealType: "fintech_ma",
       records: [
-        evidence({ id: "fin-stmt", department: "Financial Statements", text: "Audited statements: revenue 12.4M in FY24." }),
+        evidence({ id: "fin-stmt", docType: "Financial Statements", text: "Audited statements: revenue 12.4M in FY24." }),
       ],
     });
 
     const covered = result.coverage.find((row) => row.itemId === "fin-01");
     expect(covered?.covered).toBe(true);
-    expect(covered?.citations[0].sourcePath).toBe("/deal/fin-stmt.pdf");
+    expect(covered?.citations[0].sourcePath).toBe("/deal/Financial Statements.pdf");
     // Every checklist item is represented in coverage.
     const totalItems = checklistForDealType("fintech_ma").reduce((n, cat) => n + cat.items.length, 0);
     expect(result.coverage).toHaveLength(totalItems);
     expect(result.summary.covered).toBe(1);
+  });
+
+  it("does not cite a document because of its department", () => {
+    // The regression. A record whose department happens to read like a
+    // checklist tag, but whose filename says nothing, must not be cited.
+    // Before the fix the engine compared evidenceTags to department, so this
+    // was the ONLY thing that could ever produce a citation.
+    const result = analyzeVantageDiligence({
+      reviewId: "deal-regression",
+      dealType: "fintech_ma",
+      records: [
+        evidence({
+          id: "mislabelled",
+          docType: "scan_0042",
+          department: "Financial Statements",
+          text: "Audited revenue 12.4M.",
+        }),
+      ],
+    });
+
+    expect(result.coverage.find((row) => row.itemId === "fin-01")?.covered).toBe(false);
+    expect(result.summary.covered).toBe(0);
   });
 
   it("raises a red flag for every uncovered critical or high item with its indicator", () => {
@@ -73,8 +111,8 @@ describe("vantage diligence analysis engine", () => {
       reviewId: "deal-4",
       dealType: "fintech_ma",
       records: [
-        evidence({ id: "fin-stmt", department: "Financial Statements", text: "Audited revenue was 12.4M with 38% margin." }),
-        evidence({ id: "mgmt", department: "Management Accounts", text: "Narrative summary with no figures provided here." }),
+        evidence({ id: "fin-stmt", docType: "Financial Statements", text: "Audited revenue was 12.4M with 38% margin." }),
+        evidence({ id: "mgmt", docType: "Management Accounts", text: "Narrative summary with no figures provided here." }),
       ],
     });
 
@@ -89,7 +127,7 @@ describe("vantage diligence analysis engine", () => {
       reviewId: "deal-5",
       dealType: "fintech_ma",
       records: [
-        evidence({ id: "pending", department: "Financial Statements", ingestionStatus: "quarantined", text: "Revenue 9M." }),
+        evidence({ id: "pending", docType: "Financial Statements", ingestionStatus: "quarantined", text: "Revenue 9M." }),
       ],
     });
 
@@ -100,7 +138,7 @@ describe("vantage diligence analysis engine", () => {
     const result = analyzeVantageDiligence({
       reviewId: "deal-6",
       dealType: "fintech_ma",
-      records: [evidence({ id: "fin-stmt", department: "Financial Statements", text: "Revenue 12.4M audited." })],
+      records: [evidence({ id: "fin-stmt", docType: "Financial Statements", text: "Revenue 12.4M audited." })],
     });
 
     const keys = result.icMemoSections.map((s) => s.key);

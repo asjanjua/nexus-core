@@ -748,9 +748,10 @@ export type RequirementCoverageResult = {
 export function coverageForSubmission(
   licenseTypeKey: string,
   status: LicenseStatus,
-  ingestedDepartmentTags: string[]
+  /** Document types present in the workspace — NOT department values. */
+  ingestedDocumentTypes: string[]
 ): RequirementCoverageResult[] {
-  const tagSet = new Set(ingestedDepartmentTags.map((t) => t.toLowerCase()));
+  const tagSet = new Set(ingestedDocumentTypes.map((t) => t.toLowerCase()));
   const items = requirementsFor(licenseTypeKey, status);
   return items.map((item) => ({
     itemId: item.id,
@@ -764,10 +765,11 @@ export function coverageForSubmission(
 export function gapsForSubmission(
   licenseTypeKey: string,
   status: LicenseStatus,
-  ingestedDepartmentTags: string[]
+  /** Document types present in the workspace — NOT department values. */
+  ingestedDocumentTypes: string[]
 ): RequirementCoverageResult[] {
   const severityOrder: Record<RequirementSeverity, number> = { critical: 0, high: 1, medium: 2 };
-  return coverageForSubmission(licenseTypeKey, status, ingestedDepartmentTags)
+  return coverageForSubmission(licenseTypeKey, status, ingestedDocumentTypes)
     .filter((r) => !r.covered)
     .sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
 }

@@ -13,13 +13,16 @@
  *     findings and gaps, so a reviewer edits rather than starts from scratch.
  *
  * Pure and deterministic like the other native engines: no I/O, no LLM, no
- * wall-clock reads. Coverage uses the library's trustworthy tag-match (evidence
- * department vs. item evidenceTags), not semantic inference, so the gap map
- * reflects what is actually in the data room.
+ * wall-clock reads. Coverage matches the document type derived from each
+ * record's filename against the item's evidenceTags, not semantic inference,
+ * so the gap map reflects what is actually in the data room. A file whose name
+ * does not say what it is will not be cited, so coverage understates rather
+ * than overstates — the safe direction for a diligence gap map.
  */
 
 import type { EvidenceRecord } from "@/lib/contracts";
 import { extractSourceSpan } from "@/lib/agents/evidence-grid-review";
+import { classifyDocument } from "@/lib/domain/document-type-classifier";
 import {
   checklistForDealType,
   IC_MEMO_TEMPLATE,
@@ -110,11 +113,21 @@ const SEVERITY_ORDER: Record<DDSeverity, number> = { critical: 0, high: 1, mediu
 const FINANCIAL_CATEGORY_KEY = "financial";
 
 function citeItem(item: DDChecklistItem, records: EvidenceRecord[], opts: Required<VantageDiligenceOptions>): DiligenceCitation[] {
-  const tags = item.evidenceTags.map((tag) => tag.toLowerCase());
-  const matched = records.filter((record) => {
-    const dept = (record.department ?? "").toLowerCase();
-    return tags.includes(dept);
-  });
+  const tags = new Set(item.evidenceTags.map((tag) => tag.toLowerCase()));
+  // Matches the checklist's DOCUMENT TYPES against document types derived from
+  // each record's filename.
+  //
+  // This previously compared evidenceTags to record.department. Ingestion
+  // assigns broad functional departments ("Finance", "Technology") while the
+  // checklist asks for document types ("Cap Table", "Penetration Test
+  // Results"). The two vocabularies share no values, so nothing was ever
+  // cited: every review returned 0% coverage and raised every critical and
+  // high item as a red flag. See lib/domain/document-type-classifier.ts.
+  const matched = records.filter((record) =>
+    classifyDocument({ path: record.sourcePath, text: record.text }).some((m) =>
+      tags.has(m.type.toLowerCase())
+    )
+  );
   return matched
     .sort((a, b) => b.extractionConfidence - a.extractionConfidence)
     .slice(0, opts.maxCitationsPerItem)

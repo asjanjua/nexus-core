@@ -279,18 +279,24 @@ export type DDCoverageResult = {
 };
 
 /**
- * Compares ingested evidence department tags for a deal workspace against
- * every checklist item's evidenceTags. An item is "covered" if at least one
- * of its evidenceTags matches a department tag actually present in the
- * evidence set. This is deliberately simple (tag match, not semantic
- * matching) so the gap map is trustworthy: it tells you what evidence is
- * present, not whether the AI inferred coverage from unrelated documents.
+ * Compares the document types present in a deal workspace against every
+ * checklist item's evidenceTags. An item is "covered" if at least one of its
+ * evidenceTags matches a document type actually present. Deliberately simple
+ * (tag match, not semantic matching) so the gap map is trustworthy: it tells
+ * you what evidence is present, not whether the AI inferred coverage from
+ * unrelated documents.
+ *
+ * The argument is DOCUMENT TYPES from lib/domain/document-type-classifier.ts,
+ * NOT the evidence `department` column. The parameter was previously named
+ * ingestedDepartmentTags, and that name is exactly what led the live Vantage
+ * matcher to pass departments here — a vocabulary that shares no values with
+ * evidenceTags, so nothing could ever be covered.
  */
 export function coverageForDeal(
   dealType: DealType,
-  ingestedDepartmentTags: string[]
+  ingestedDocumentTypes: string[]
 ): DDCoverageResult[] {
-  const tagSet = new Set(ingestedDepartmentTags.map((t) => t.toLowerCase()));
+  const tagSet = new Set(ingestedDocumentTypes.map((t) => t.toLowerCase()));
   const categories = checklistForDealType(dealType);
   const results: DDCoverageResult[] = [];
 
@@ -310,9 +316,9 @@ export function coverageForDeal(
 }
 
 /** Convenience: just the gaps, most severe first — this is the "coverage gap map" feature. */
-export function gapsForDeal(dealType: DealType, ingestedDepartmentTags: string[]): DDCoverageResult[] {
+export function gapsForDeal(dealType: DealType, ingestedDocumentTypes: string[]): DDCoverageResult[] {
   const severityOrder: Record<DDSeverity, number> = { critical: 0, high: 1, medium: 2, low: 3 };
-  return coverageForDeal(dealType, ingestedDepartmentTags)
+  return coverageForDeal(dealType, ingestedDocumentTypes)
     .filter((r) => !r.covered)
     .sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
 }

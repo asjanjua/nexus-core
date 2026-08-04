@@ -46,6 +46,7 @@ type Payload = {
     evidenceDocuments: number;
     restrictedExcluded: number;
     untypedDocuments: number;
+    inferredDocuments: number;
   };
   boundary?: string;
 };
@@ -183,6 +184,14 @@ export function MeridianCoverageWorkbench() {
             {t.untypedDocuments === 1 ? " it counts" : " they count"} towards nothing. Renaming
             {t.untypedDocuments === 1 ? " it" : " them"} to say what the document is will raise
             coverage without adding any new evidence.
+          </p>
+        )}
+        {t.inferredDocuments > 0 && (
+          <p className="mt-2 text-xs leading-5 text-white/45">
+            {t.inferredDocuments} document{t.inferredDocuments === 1 ? " was" : "s were"} identified
+            from {t.inferredDocuments === 1 ? "its" : "their"} contents rather than
+            {t.inferredDocuments === 1 ? " its" : " their"} filename. That is a weaker signal than
+            an author-named file and is worth a reviewer glance.
           </p>
         )}
         {data.selection?.rationale && (
