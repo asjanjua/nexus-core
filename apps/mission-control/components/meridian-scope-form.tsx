@@ -19,8 +19,30 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import type { MeridianLicenseStatus, MeridianScope } from "@/lib/contracts";
 import { GuidedActionCard, InfoHint, SkeletonLines } from "@/components/ui/nexus-primitives";
+import { REGULATORS } from "@/lib/domain/regulatory-requirement-library";
 
 type ScreenKey = "scope" | "license-profile";
+
+/**
+ * Flattened library picker. Selecting an entry fills jurisdiction, regulator,
+ * and licence type AND sets licenseTypeKey, which is what selects the
+ * requirement pack downstream.
+ *
+ * The three text fields stay editable on purpose. The library covers four
+ * regulators; a scope for a regulator it does not cover must still be
+ * recordable. Editing the licence type by hand clears the key rather than
+ * leaving a label and a key that disagree — Meridian then says it cannot pick
+ * a pack, which is honest, instead of showing another regulator's obligations.
+ */
+const LIBRARY_OPTIONS = REGULATORS.flatMap((r) =>
+  r.licenseTypes.map((t) => ({
+    key: t.key,
+    label: `${r.label} — ${t.label}`,
+    jurisdiction: r.jurisdiction,
+    regulator: r.label,
+    licenseType: t.label,
+  }))
+);
 
 const LICENSE_STATUS: Array<{ value: MeridianLicenseStatus; label: string; hint: string }> = [
   { value: "not_licensed", label: "Not licensed", hint: "No permission held in this jurisdiction yet." },
@@ -34,6 +56,8 @@ type FormState = {
   jurisdiction: string;
   regulator: string;
   licenseType: string;
+  /** Library key. Null when the licence was typed by hand. */
+  licenseTypeKey: string | null;
   licenseStatus: MeridianLicenseStatus;
   filingObjective: string;
   deadline: string;
@@ -48,6 +72,7 @@ const EMPTY: FormState = {
   jurisdiction: "",
   regulator: "",
   licenseType: "",
+  licenseTypeKey: null,
   licenseStatus: "applicant",
   filingObjective: "",
   deadline: "",
@@ -63,6 +88,7 @@ function fromScope(s: MeridianScope): FormState {
     jurisdiction: s.jurisdiction,
     regulator: s.regulator,
     licenseType: s.licenseType,
+    licenseTypeKey: s.licenseTypeKey ?? null,
     licenseStatus: s.licenseStatus,
     filingObjective: s.filingObjective,
     deadline: s.deadline ?? "",
@@ -118,6 +144,7 @@ export function MeridianScopeForm({ screen }: { screen: ScreenKey }) {
         body: JSON.stringify({
           ...form,
           // Empty strings are absent values, not empty regulatory facts.
+          licenseTypeKey: form.licenseTypeKey || null,
           deadline: form.deadline || null,
           reviewerName: form.reviewerName || null,
           applicantName: form.applicantName || null,
@@ -180,6 +207,44 @@ export function MeridianScopeForm({ screen }: { screen: ScreenKey }) {
         <section className="panel space-y-4">
           <p className="panel-title">Regulatory scope</p>
 
+          <div>
+            <label className="label" htmlFor="libraryPick">
+              Licence from requirement library{" "}
+              <InfoHint text="Picking here is what lets Meridian select a requirement pack and compute evidence coverage. Typing the licence by hand still records the scope, but coverage stays unavailable until a library licence is selected." />
+            </label>
+            <select
+              id="libraryPick"
+              className="input"
+              value={form.licenseTypeKey ?? ""}
+              onChange={(e) => {
+                const picked = LIBRARY_OPTIONS.find((o) => o.key === e.target.value);
+                if (!picked) {
+                  setForm((f) => ({ ...f, licenseTypeKey: null }));
+                  return;
+                }
+                setForm((f) => ({
+                  ...f,
+                  licenseTypeKey: picked.key,
+                  jurisdiction: picked.jurisdiction,
+                  regulator: picked.regulator,
+                  licenseType: picked.licenseType,
+                }));
+              }}
+            >
+              <option value="">Not in the library — enter manually below</option>
+              {LIBRARY_OPTIONS.map((o) => (
+                <option key={o.key} value={o.key}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+            <p className="mt-1 text-xs leading-5 text-white/40">
+              {form.licenseTypeKey
+                ? "Requirement coverage is available for this licence."
+                : "Without a library licence, Meridian records the scope but cannot show requirement coverage."}
+            </p>
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="label" htmlFor="jurisdiction">
@@ -219,7 +284,12 @@ export function MeridianScopeForm({ screen }: { screen: ScreenKey }) {
                 required
                 maxLength={120}
                 value={form.licenseType}
-                onChange={(e) => set("licenseType", e.target.value)}
+                onChange={(e) =>
+                  // Editing the label by hand breaks its link to the pack.
+                  // Better to lose coverage than to point a key at a different
+                  // licence than the one written on the screen.
+                  setForm((f) => ({ ...f, licenseType: e.target.value, licenseTypeKey: null }))
+                }
                 placeholder="Electronic Money Institution"
               />
             </div>

@@ -487,6 +487,7 @@ function mapMeridianScopeRow(row: typeof meridianScope.$inferSelect): MeridianSc
     jurisdiction: row.jurisdiction,
     regulator: row.regulator,
     licenseType: row.licenseType,
+    licenseTypeKey: row.licenseTypeKey ?? null,
     // Widened at the DB boundary: the column is varchar, the contract is an
     // enum. Parsing happens in the API layer, which is where a bad value must
     // be rejected rather than silently coerced.
@@ -4655,6 +4656,7 @@ export const repository = {
       jurisdiction: input.data.jurisdiction,
       regulator: input.data.regulator,
       licenseType: input.data.licenseType,
+      licenseTypeKey: input.data.licenseTypeKey ?? null,
       licenseStatus: input.data.licenseStatus,
       filingObjective: input.data.filingObjective,
       deadline: input.data.deadline ?? null,

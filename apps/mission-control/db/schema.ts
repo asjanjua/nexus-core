@@ -681,6 +681,8 @@ export const meridianScope = pgTable("meridian_scope", {
   jurisdiction:        varchar("jurisdiction", { length: 80 }).notNull(),
   regulator:           varchar("regulator", { length: 120 }).notNull(),
   licenseType:         varchar("license_type", { length: 120 }).notNull(),
+  /** Stable requirement-library key (migration 0042). NULL for pre-0042 rows. */
+  licenseTypeKey:      varchar("license_type_key", { length: 80 }),
   licenseStatus:       varchar("license_status", { length: 40 }).notNull(),
   filingObjective:     text("filing_objective").notNull(),
   deadline:            date("deadline"),

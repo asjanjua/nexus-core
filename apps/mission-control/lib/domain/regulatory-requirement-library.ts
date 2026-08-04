@@ -348,6 +348,19 @@ const REQUIREMENTS_BY_LICENSE_TYPE: Record<string, RequirementItem[]> = {
  * Falls back to the generic placeholder set for any license type not yet
  * built out (currently: everything under SBP/SAMA/CBUAE).
  */
+/**
+ * Whether a licence type has a purpose-built requirement pack, or falls back
+ * to the generic set.
+ *
+ * This is exported so the UI can SAY SO. Showing an SBP EMI applicant four
+ * generic items under the heading "requirement library" would be the exact
+ * overclaim this product exists to prevent. Callers must label a generic pack
+ * as generic.
+ */
+export function hasDedicatedRequirementPack(licenseTypeKey: string): boolean {
+  return licenseTypeKey in REQUIREMENTS_BY_LICENSE_TYPE;
+}
+
 export function requirementsFor(
   licenseTypeKey: string,
   status: LicenseStatus

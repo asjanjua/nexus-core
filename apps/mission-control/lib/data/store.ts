@@ -1104,6 +1104,7 @@ export const store = {
     const scope: MeridianScope = {
       ...input.data,
       deadline: input.data.deadline ?? null,
+      licenseTypeKey: input.data.licenseTypeKey ?? null,
       reviewerName: input.data.reviewerName ?? null,
       applicantName: input.data.applicantName ?? null,
       ownershipPosture: input.data.ownershipPosture ?? null,

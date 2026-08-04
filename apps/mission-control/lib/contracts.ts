@@ -1191,6 +1191,13 @@ export const meridianScopeSchema = z.object({
   jurisdiction: z.string().min(1).max(80),
   regulator: z.string().min(1).max(120),
   licenseType: z.string().min(1).max(120),
+  /**
+   * Stable key from the requirement library (e.g. "sbp_emi"). Nullable because
+   * scopes saved before migration 0042 have none; the Evidence arc treats a
+   * missing key as "pack not selectable" and asks the user to re-pick rather
+   * than guessing and showing the wrong regulator's obligations.
+   */
+  licenseTypeKey: z.string().max(80).nullable().optional(),
   licenseStatus: meridianLicenseStatusSchema,
   filingObjective: z.string().min(1),
   /** ISO date (YYYY-MM-DD) or null. Regulator deadline drives the hub KPI. */
