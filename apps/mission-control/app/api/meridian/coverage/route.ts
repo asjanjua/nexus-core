@@ -137,6 +137,9 @@ export async function GET(request: Request) {
       licenseTypeKey: scope.licenseTypeKey,
       licenseStatus: scope.licenseStatus,
       deadline: scope.deadline ?? null,
+      // The filing-pack screen needs to know whether a qualified reviewer has
+      // been named, because routing the pack to a person is the whole handoff.
+      reviewerName: scope.reviewerName ?? null,
     },
     selection: {
       sets,
