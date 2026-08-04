@@ -98,13 +98,13 @@ async function graphTraversalEvidence(
   query: string,
   workspaceId: string,
   candidates: EvidenceRecord[]
-): Promise<EvidenceRecord[]> {
+): Promise<{ records: EvidenceRecord[]; entities: Entity[] }> {
   const lowerQuery = query.toLowerCase();
   const allEntities = await repository.listEntities(workspaceId, { limit: 250 });
   const seeds = allEntities
     .filter((entity) => entity.name.length >= MIN_ENTITY_NAME_LENGTH && lowerQuery.includes(entity.name.toLowerCase()))
     .slice(0, MAX_SEED_ENTITIES);
-  if (!seeds.length) return [];
+  if (!seeds.length) return { records: [], entities: [] };
 
   const entityById = new Map(allEntities.map((entity) => [entity.id, entity]));
   const seedIds = new Set(seeds.map((seed) => seed.id));
@@ -125,12 +125,17 @@ async function graphTraversalEvidence(
   for (const entity of relevantEntities.values()) {
     for (const id of entity.evidenceRefs) evidenceIds.add(id);
   }
-  if (!evidenceIds.size) return [];
+  if (!evidenceIds.size) return { records: [], entities: [] };
 
-  return candidates
+  const records = candidates
     .filter((record) => evidenceIds.has(record.id))
     .sort((a, b) => b.extractionConfidence - a.extractionConfidence)
     .slice(0, 6);
+
+  // The entities that produced this evidence are the answer to "why did this
+  // surface?". Returning them lets the Trust Drawer show the connection rather
+  // than making the user take the traversal on faith.
+  return { records, entities: [...relevantEntities.values()] };
 }
 
 /**
@@ -142,7 +147,14 @@ async function rankEvidence(
   query: string,
   workspaceId: string,
   options: { department?: string; agentKey?: string } = {}
-): Promise<{ records: EvidenceRecord[]; deniedCount: number }> {
+): Promise<{
+  records: EvidenceRecord[];
+  deniedCount: number;
+  /** Which tier actually produced the records. See RetrievalMethod. */
+  retrievalMethod: RetrievalMethod;
+  /** Entities that drove a graph traversal. Empty for other tiers. */
+  matchedEntities: Entity[];
+}> {
   const all = await repository.getEvidenceForWorkspace(workspaceId);
   const processed = all.filter(
     (item) =>
@@ -155,7 +167,11 @@ async function rankEvidence(
   let deniedCount = 0;
   if (options.agentKey) {
     const passport = await repository.getActiveAgentControlProfile(workspaceId, options.agentKey);
-    if (!passport) return { records: [], deniedCount: processed.length };
+    // Passport denied everything: no tier ran. Calling this "keyword" would
+    // misreport how the (empty) answer was reached.
+    if (!passport) {
+      return { records: [], deniedCount: processed.length, retrievalMethod: "none", matchedEntities: [] };
+    }
     const governed = filterEvidenceByPassport(processed, passport);
     candidates = governed.allowed;
     deniedCount = governed.denied.length;
@@ -180,7 +196,9 @@ async function rankEvidence(
     }
   }
 
-  if (!candidates.length) return { records: [], deniedCount };
+  if (!candidates.length) {
+    return { records: [], deniedCount, retrievalMethod: "none", matchedEntities: [] };
+  }
 
   // --- Tier 0: Graph traversal -------------------------------------------------
   const graphResults = await graphTraversalEvidence(query, workspaceId, candidates).catch(() => []);
@@ -193,7 +211,12 @@ async function rankEvidence(
         payload: { query, evidenceCount: graphResults.length }
       })
       .catch(() => {});
-    return { records: graphResults, deniedCount };
+    return {
+      records: graphResults.records,
+      deniedCount,
+      retrievalMethod: "graph",
+      matchedEntities: graphResults.entities,
+    };
   }
 
   // --- Tier 1: Vector search -------------------------------------------------
@@ -202,7 +225,9 @@ async function rankEvidence(
     if (queryVec) {
       const candidateIds = candidates.map((item) => item.id);
       const vectorResults = await repository.searchEvidenceByVector(workspaceId, queryVec, 6, candidateIds);
-      if (vectorResults.length > 0) return { records: vectorResults, deniedCount };
+      if (vectorResults.length > 0) {
+        return { records: vectorResults, deniedCount, retrievalMethod: "vector", matchedEntities: [] };
+      }
       // No results from vector path (empty workspace or all embeddings NULL) —
       // fall through to keyword ranking rather than returning empty.
     }
@@ -220,7 +245,7 @@ async function rankEvidence(
     .sort((a, b) => b.score - a.score)
     .slice(0, 6)
     .map((r) => r.item);
-  return { records, deniedCount };
+  return { records, deniedCount, retrievalMethod: "keyword", matchedEntities: [] };
 }
 
 // ---------------------------------------------------------------------------
@@ -280,6 +305,14 @@ export async function answerWithEvidence(
     options.agentKey ? repository.getActiveAgentControlProfile(workspaceId, options.agentKey) : Promise.resolve(null)
   ]);
   const results = ranked.records;
+  // Echoed to the client so the Trust Drawer can answer "why did this surface?"
+  // rather than asking the reader to take the traversal on faith.
+  const matchedEntities = ranked.matchedEntities.map((entity) => ({
+    id: entity.id,
+    name: entity.name,
+    type: entity.type,
+    confidence: entity.confidence,
+  }));
   const noteResults = await repository.searchKnowledge(workspaceId, query, 4).catch(() => []);
   const notes = noteResults.map((result) => result.note).filter((note) => note.sensitivity !== "restricted");
 
@@ -292,6 +325,8 @@ export async function answerWithEvidence(
       refusalReason: "agent_passport_missing",
       evidenceRefs: [],
       noteRefs: [],
+      retrievalMethod: ranked.retrievalMethod,
+      matchedEntities,
       agentKey: options.agentKey
     };
   }
@@ -305,6 +340,8 @@ export async function answerWithEvidence(
       refusalReason: "agent_not_active",
       evidenceRefs: [],
       noteRefs: [],
+      retrievalMethod: ranked.retrievalMethod,
+      matchedEntities,
       agentKey: options.agentKey
     };
   }
@@ -318,6 +355,8 @@ export async function answerWithEvidence(
       refusalReason: "passport_denied_evidence",
       evidenceRefs: [],
       noteRefs: notes.map((note) => note.id),
+      retrievalMethod: ranked.retrievalMethod,
+      matchedEntities,
       agentKey: options.agentKey
     };
   }
@@ -334,6 +373,8 @@ export async function answerWithEvidence(
       refusalReason: "insufficient_evidence",
       evidenceRefs: [],
       noteRefs: [],
+      retrievalMethod: ranked.retrievalMethod,
+      matchedEntities,
       agentKey: options.agentKey
     };
   }
@@ -353,6 +394,8 @@ export async function answerWithEvidence(
       refusalReason: "low_confidence_evidence",
       evidenceRefs: results.map((r) => r.id),
       noteRefs: notes.map((note) => note.id),
+      retrievalMethod: ranked.retrievalMethod,
+      matchedEntities,
       agentKey: options.agentKey
     };
   }
@@ -397,6 +440,8 @@ export async function answerWithEvidence(
         refusalReason: gate.reason,
         evidenceRefs: results.map((r) => r.id),
         noteRefs: notes.map((note) => note.id),
+        retrievalMethod: ranked.retrievalMethod,
+        matchedEntities,
         agentKey: options.agentKey,
         escalationRequired: true,
         escalationReason: gate.reason
@@ -433,6 +478,8 @@ export async function answerWithEvidence(
         refusalReason: "red_team_violation",
         evidenceRefs: results.map((r) => r.id),
         noteRefs: notes.map((note) => note.id),
+        retrievalMethod: ranked.retrievalMethod,
+        matchedEntities,
         agentKey: options.agentKey,
         escalationRequired: true,
         escalationReason: "red_team_violation"
@@ -460,6 +507,8 @@ export async function answerWithEvidence(
         refusalReason: "approval_threshold",
         evidenceRefs: results.map((r) => r.id),
         noteRefs: notes.map((note) => note.id),
+        retrievalMethod: ranked.retrievalMethod,
+        matchedEntities,
         agentKey: options.agentKey,
         escalationRequired: true,
         escalationReason: "approval_threshold"
@@ -473,6 +522,8 @@ export async function answerWithEvidence(
       refused: false,
       evidenceRefs: results.map((r) => r.id),
       noteRefs: notes.map((note) => note.id),
+      retrievalMethod: ranked.retrievalMethod,
+      matchedEntities,
       agentKey: options.agentKey,
       escalationRequired: gate.escalationRequired,
       escalationReason: gate.escalationRequired ? gate.reason : undefined
@@ -495,6 +546,8 @@ export async function answerWithEvidence(
       refused: false,
       evidenceRefs: results.map((r) => r.id),
       noteRefs: notes.map((note) => note.id),
+      retrievalMethod: ranked.retrievalMethod,
+      matchedEntities,
       agentKey: options.agentKey
     };
   }

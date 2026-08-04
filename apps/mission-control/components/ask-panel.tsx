@@ -6,6 +6,10 @@ import { ConfidenceBadge } from "@/components/ui/trust-drawer-trigger";
 import { HelpLabel } from "@/components/ui/help-dialog";
 import { AiPanel, GuidedActionCard, InfoHint, SkeletonLines } from "@/components/ui/nexus-primitives";
 import { bandMeta } from "@/lib/confidence-bands";
+import { ProvenanceStrip } from "@/components/ui/provenance-strip";
+import type { RetrievalMethod } from "@/lib/contracts";
+
+type AskMatchedEntity = { id: string; name: string; type: string; confidence: number };
 
 type AskResult = {
   answer: string;
@@ -17,6 +21,10 @@ type AskResult = {
   agentKey?: string;
   escalationRequired?: boolean;
   escalationReason?: string;
+  /** Which retrieval tier produced the evidence. Optional for older payloads. */
+  retrievalMethod?: RetrievalMethod;
+  /** Entities that drove a graph traversal. Empty for other tiers. */
+  matchedEntities?: AskMatchedEntity[];
 };
 
 type ConversationMessage = {
@@ -344,11 +352,32 @@ export function AskPanel({
             </p>
           )}
 
+          {/* Provenance before the badges: where this came from, then how much
+              to believe it. Contract-mandated strip, shared with every other
+              generated artefact. */}
+          <ProvenanceStrip
+            authorship="ai-assisted"
+            sourceCount={result.evidenceRefs.length}
+            freshnessHours={result.freshnessHours}
+            retrievalMethod={result.retrievalMethod}
+            className="border-t border-white/10 pt-3"
+          />
+
+          {result.retrievalMethod === "graph" && (result.matchedEntities?.length ?? 0) > 0 && (
+            <p className="text-xs leading-5 text-nexus-sky">
+              Surfaced through {result.matchedEntities!.map((e) => e.name).join(", ")} and connected
+              records, not a text match. Open the Trust Drawer to see the connection.
+            </p>
+          )}
+
           <div className="flex flex-wrap items-center gap-2">
             <ConfidenceBadge
               confidence={result.confidence}
               title={query}
               sources={result.evidenceRefs.map((id) => ({ id }))}
+              // Closes the long-standing gap where Ask never populated the
+              // drawer's Linked entities block, even though it renders one.
+              entities={result.matchedEntities}
             />
             <span className="badge">
               <HelpLabel

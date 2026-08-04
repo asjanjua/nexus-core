@@ -716,6 +716,30 @@ export const askRequestSchema = z.object({
   agentKey: z.string().min(1).max(120).optional()
 });
 
+/**
+ * How the evidence behind an answer was actually found.
+ *
+ * Surfaced to the user because silently swapping retrieval paths undercuts the
+ * one thing this product sells. "graph" is a materially different claim from
+ * "keyword": it means the evidence surfaced through a relationship, not a
+ * string match, and a reviewer is entitled to know which.
+ *
+ * `none` is not a tier. It means no tier ran — the access passport denied
+ * every record, or there were no candidates. Reporting that as "keyword" would
+ * be a lie in exactly the surface that sells honesty.
+ */
+export const retrievalMethodSchema = z.enum(["graph", "vector", "keyword", "none"]);
+export type RetrievalMethod = z.infer<typeof retrievalMethodSchema>;
+
+/** Entity that drove a graph traversal, echoed so the UI can explain the hop. */
+export const askMatchedEntitySchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+  confidence: z.number().min(0).max(1),
+});
+export type AskMatchedEntity = z.infer<typeof askMatchedEntitySchema>;
+
 export const askResponseSchema = z.object({
   answer: z.string(),
   confidence: z.number().min(0).max(1),
@@ -726,7 +750,11 @@ export const askResponseSchema = z.object({
   noteRefs: z.array(z.string()).default([]),
   agentKey: z.string().optional(),
   escalationRequired: z.boolean().optional(),
-  escalationReason: z.string().optional()
+  escalationReason: z.string().optional(),
+  // Defaulted rather than required so existing persisted payloads and older
+  // callers keep parsing. "none" is the honest default for an unknown path.
+  retrievalMethod: retrievalMethodSchema.default("none"),
+  matchedEntities: z.array(askMatchedEntitySchema).default([])
 });
 
 export const apiEnvelopeSchema = <T extends z.ZodTypeAny>(dataSchema: T) =>
