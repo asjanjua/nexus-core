@@ -4,6 +4,7 @@ import { fail, ok } from "@/lib/api";
 import { evidenceSourceTypeSchema, sensitivitySchema } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
 import { contentTypeForUpload, ingestEvidence, MAX_UPLOAD_BYTES } from "@/lib/services/ingestion";
+import { checkEvidenceLimit } from "@/lib/billing/budget";
 import { extractTextFromBuffer } from "@/lib/services/extract";
 import { isOriginalStorageEnabled, storeOriginalFile } from "@/lib/services/object-storage";
 import { requireScope } from "@/lib/api-auth";
@@ -101,6 +102,22 @@ export async function POST(request: Request) {
   const callerSensitivity = asOptionalString(form.get("sensitivity"));
   const effectiveSensitivity = (callerSensitivity ?? fileCls.sensitivity) as
     | "public" | "internal" | "confidential" | "restricted";
+
+  // Checked HERE as well as inside ingestEvidence, and specifically before the
+  // R2 write below. The chokepoint in ingestEvidence is the guarantee — it
+  // covers all thirteen ingest paths — but by the time it fires this route has
+  // already stored the original, leaving an orphaned object nobody will ever
+  // reference. This early check exists to avoid that write and to answer with
+  // a 402 instead of an exception.
+  const ceiling = await checkEvidenceLimit(workspaceId);
+  if (!ceiling.allowed) {
+    return fail(
+      `evidence_limit_reached: this workspace holds ${ceiling.used} of ${ceiling.limit} documents included in its plan` +
+        (ceiling.requiredPlan ? `. ${ceiling.requiredPlan} raises the ceiling.` : ".") +
+        " The file was not stored, so nothing has been lost.",
+      402
+    );
+  }
 
   const buf = Buffer.from(await file.arrayBuffer());
   const hash = `sha256:${crypto.createHash("sha256").update(buf).digest("hex")}`;

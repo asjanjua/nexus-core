@@ -4,6 +4,7 @@ import { repository } from "@/lib/data/repository";
 import { generateEmbedding, isVectorSearchEnabled } from "@/lib/services/embeddings";
 import { extractAndStoreEntitiesForEvidence } from "@/lib/services/entity-extraction";
 import { captureHandledError } from "@/lib/observability/sentry";
+import { checkEvidenceLimit } from "@/lib/billing/budget";
 
 export const MAX_UPLOAD_BYTES = 50 * 1024 * 1024; // 50 MB hard cap
 
@@ -97,7 +98,49 @@ export function computeFreshnessHours(sourceTimestamp: string): number {
   return Math.max(0, Math.floor(diffMs / 3_600_000));
 }
 
+/**
+ * Raised when a workspace is already at the evidence ceiling its plan sells.
+ *
+ * A typed error rather than a null return, because every one of the thirteen
+ * call sites currently assumes `ingestEvidence` either produces a record or
+ * throws. Returning null would compile and then be ignored, and evidence would
+ * silently vanish — the worst possible outcome for a product whose entire
+ * claim is that nothing goes missing.
+ */
+export class EvidenceLimitReachedError extends Error {
+  readonly used: number;
+  readonly limit: number;
+  readonly requiredPlan?: string;
+
+  constructor(result: { used: number; limit: number; requiredPlan?: string }) {
+    super(
+      `Evidence limit reached: ${result.used} of ${result.limit} on the current plan` +
+        (result.requiredPlan ? `. ${result.requiredPlan} raises this ceiling.` : ".")
+    );
+    this.name = "EvidenceLimitReachedError";
+    this.used = result.used;
+    this.limit = result.limit;
+    this.requiredPlan = result.requiredPlan;
+  }
+}
+
 export async function ingestEvidence(input: IngestionInput): Promise<EvidenceRecord> {
+  // ENFORCED HERE, NOT IN THE ROUTES. Thirteen call sites reach this function,
+  // and a check copied into each of them is a check that will be missing from
+  // the fourteenth. The same reasoning produced matchesEvidenceTags after four
+  // engines independently wrote the same wrong comparison.
+  //
+  // BEFORE the record is built, so a rejected ingest leaves nothing behind: no
+  // half-written row, no embedding job, no audit entry implying it worked.
+  //
+  // REFUSED RATHER THAN TRUNCATED. The caller still holds the file, so a clear
+  // refusal costs them a retry after upgrading; accepting and dropping would
+  // cost them evidence they believe is in the system. checkEvidenceLimit fails
+  // OPEN on error, so a billing outage degrades to letting work through rather
+  // than blocking a paying customer's pilot.
+  const limit = await checkEvidenceLimit(input.workspaceId);
+  if (!limit.allowed) throw new EvidenceLimitReachedError(limit);
+
   const hasProvenance = Boolean(
     input.sourcePath && input.hash && input.sourceTimestamp
   );

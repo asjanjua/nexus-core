@@ -147,10 +147,13 @@ export async function canUseFeature(
 export type LimitCheckResult = { allowed: boolean; used: number; limit: number; requiredPlan?: string };
 
 /**
- * NOT CURRENTLY CALLED ANYWHERE. Left in place and corrected rather than
- * deleted, because the evidence ceiling is sold on /pricing and wiring the
- * check is a product decision, not a code cleanup. Until something calls it,
- * `maxEvidence` is decorative in exactly the way `maxTeam` was.
+ * Enforced at the single ingestion chokepoint, `ingestEvidence`, which every
+ * connector, upload, demo seed and Slack adapter routes through.
+ *
+ * FAILS OPEN, deliberately. If the billing lookup throws, work is allowed
+ * through rather than blocked. A billing outage that silently halts a paying
+ * customer's pilot is a far worse failure than a workspace briefly exceeding a
+ * ceiling we can reconcile later.
  */
 export async function checkEvidenceLimit(workspaceId: string): Promise<LimitCheckResult> {
   try {
