@@ -18,6 +18,24 @@ C-suite teams across fintech, professional services, technology, physical busine
 digital-native companies in GCC, Pakistan, and emerging markets.
 **Stack:** Next.js 15, TypeScript, Clerk, Postgres/Drizzle/pgvector, R2, Render, LLM provider routing.
 
+## 2026-08-05 — Evidence Classification Cache and Enforced Ceiling
+
+Ledger: `docs/agent-runs/2026-08-05/evidence-classification-cache-and-ceiling-claude.md`.
+Status: `locally verified`, `committed but unpushed` at `94bb983`.
+
+- [x] Cache document classification at ingest — migration 0044 adds `document_types`, `document_types_source`, `document_types_version` to `evidence_records`; written in `ingestEvidence`, read in `toEvidenceRecord`.
+- [x] Make the cache self-invalidating — `CLASSIFIER_VERSION` is a fingerprint of the classifier's pattern table and thresholds, not a manual constant, so a requirement-pack change cannot leave coverage answering from retired rules. Stale rows are reclassified in place; correctness never depends on a backfill.
+- [x] Add `POST /api/evidence/reclassify` — batched refresh through the real classifier, so no second implementation of the patterns can drift from the first.
+- [x] Link `/evidence/review` into navigation — it was built with no nav entry and was unreachable. Now under Connect as "Untyped Evidence".
+- [x] Enforce the evidence ceiling sold on `/pricing` — at `ingestEvidence`, the single chokepoint all thirteen ingest paths reach. Refuses before writing, fails open on billing error, and the upload route re-checks before the R2 write so a refusal leaves no orphaned object.
+- [x] Verify migration 0044 against real Postgres — PGlite, 41/44 applied (3 pgvector-only skips), 11 assertions including idempotency and the 2147483647 fingerprint bound.
+- [ ] Push `48b07f2`, `8b87a4a`, `26f77f1`, `94bb983` — `blocked on user`; this environment holds no Git credentials.
+- [ ] Run migrations 0043 and 0044 against production — `migration pending`.
+- [ ] Re-smoke `/evidence/review` and `/meridian` against the deployed SHA after the push.
+- [ ] Enforce `maxTeam` — cannot use the ingest chokepoint; membership is granted through Clerk, so this needs a webhook on `organizationMembership.created`. Counting is already correct in the plan summary.
+- [ ] Reconcile `matchesEvidenceTags` with reviewer overrides — pre-existing: the four native engines disagree with the Meridian coverage API about any document a human has retyped.
+- [ ] Design pass on cold-start rooms — `/meridian` on an unpopulated workspace renders a correct empty state that is indistinguishable from a broken page.
+
 ## 2026-08-04 — Current Release Repair Status
 
 - [x] Repair latest pricing/settings CI blockers — commit `6bcc970` fixes the malformed Settings import and the pricing test type-narrowing issue.

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-08-05 — Evidence Ceiling Enforced, Classification Cached
+
+- The document limit each plan advertises is now enforced. A workspace at its ceiling is refused at upload with a message naming its current count and the plan that raises it; the file is never stored, so nothing is lost and a retry after upgrading succeeds. Workspaces on unlimited or negotiated ceilings are unaffected. If the billing lookup itself fails, ingestion is allowed through rather than blocked.
+- Documents are now identified once when they arrive rather than re-examined on every request. Meridian coverage, the review queue, and the four specialist engines return substantially faster on large data rooms; on a 2,000-document set the per-request classification cost falls from seconds to milliseconds. Results are unchanged.
+- Adding a document type to a requirement pack automatically invalidates previously identified documents, so coverage cannot answer from superseded rules.
+- The document review queue is now reachable from the sidebar, under Connect as "Untyped Evidence". It was previously built but had no navigation entry.
+- Status: not yet deployed. These behaviours are locally verified and awaiting push, migration, and production smoke.
+
 ## 2026-08-04 — Pricing Checkout and CI Repair
 
 - Added the `/pricing` buyer path and checkout wiring through the latest application series ending at `763e22a`, then repaired the follow-up CI blockers in `6bcc970`.
