@@ -6,10 +6,8 @@ import {
   type AgentOutput,
   type AgentOutputInput,
   type AgentControlProfile,
-  type AgentScope,
   type ConversationMessage,
   type Decision,
-  type DecisionStatus,
   type Entity,
   type EntityInput,
   type EvidenceRecord,
@@ -27,7 +25,6 @@ import {
   type RecommendationStatus,
   type ReviewerSeat,
   type TrialInvite,
-  type Role,
   type Sensitivity,
   type StrategyProfile,
   type SynthesisSchedule,
@@ -581,7 +578,7 @@ export const store = {
       .filter((output) => !input.agentId || output.agentId === input.agentId)
       .filter((output) => input.department === undefined || (output.department ?? null) === (input.department ?? null))
       .filter((output) => !sinceTime || new Date(output.createdAt).getTime() >= sinceTime)
-      .filter((output) => !input.actionType || input.actionType === "agent_output_created")
+      .filter((_output) => !input.actionType || input.actionType === "agent_output_created")
       .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
       .slice(0, input.limit ?? 50);
   },

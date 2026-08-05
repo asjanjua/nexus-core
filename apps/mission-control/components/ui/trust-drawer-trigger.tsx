@@ -8,15 +8,9 @@
  */
 
 import { useTrustDrawer, type TrustDrawerEntity, type TrustDrawerSource } from "@/lib/trust-drawer-context";
-import { TONE_SOFT, type Tone } from "@/components/ui/nexus-primitives";
+import { TONE_SOFT } from "@/components/ui/nexus-primitives";
 import type { EvidenceRecord } from "@/lib/contracts";
 import { bandMeta } from "@/lib/confidence-bands";
-
-function confidenceTone(pct: number): Tone {
-  if (pct >= 70) return "accent";
-  if (pct >= 40) return "warn";
-  return "danger";
-}
 
 /**
  * Pill badge — the canonical trust marker used throughout the product.

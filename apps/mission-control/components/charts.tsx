@@ -41,19 +41,6 @@ function polarToXY(cx: number, cy: number, r: number, angleDeg: number) {
   };
 }
 
-function describeArc(
-  cx: number,
-  cy: number,
-  r: number,
-  startDeg: number,
-  endDeg: number
-): string {
-  const s = polarToXY(cx, cy, r, startDeg);
-  const e = polarToXY(cx, cy, r, endDeg);
-  const largeArc = endDeg - startDeg > 180 ? 1 : 0;
-  return `M ${s.x} ${s.y} A ${r} ${r} 0 ${largeArc} 1 ${e.x} ${e.y}`;
-}
-
 function donutSegmentPath(
   cx: number,
   cy: number,

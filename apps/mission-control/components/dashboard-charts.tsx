@@ -10,7 +10,7 @@
  * CTO:    Data Quality Gauge | Ingestion Status Donut | Source Type Bars
  */
 
-import type { EvidenceRecord, Recommendation, Decision, Role } from "@/lib/contracts";
+import type { EvidenceRecord, Role } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
 import {
   C,

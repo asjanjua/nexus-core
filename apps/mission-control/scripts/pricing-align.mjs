@@ -23,15 +23,11 @@
  * silent skip here is exactly how the mismatch survived in the first place.
  */
 
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { loadEnvFiles } from "./load-env.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const REPO = join(ROOT, "..", "..");
-
-const envFiles = loadEnvFiles();
 
 /** Parse the published tiers out of the TS source without a build step. */
 function publishedTiers() {

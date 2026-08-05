@@ -15,7 +15,7 @@
  */
 
 import { useState } from "react";
-import { MetaChip, type Tone } from "@/components/ui/nexus-primitives";
+import { MetaChip } from "@/components/ui/nexus-primitives";
 
 export interface ConsequencePreviewProps {
   open: boolean;
@@ -51,7 +51,6 @@ export function ConsequencePreview({
   if (!open) return null;
 
   const isApprove = decision === "approved";
-  const tone: Tone = isApprove ? "accent" : "danger";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">

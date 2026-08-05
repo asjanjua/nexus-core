@@ -24,6 +24,7 @@ export function HelpDialog({
   useEffect(() => {
     if (!open) return;
     const previous = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const triggerEl = triggerRef.current;
     okRef.current?.focus();
 
     function onKeyDown(event: KeyboardEvent) {
@@ -36,7 +37,7 @@ export function HelpDialog({
     document.addEventListener("keydown", onKeyDown);
     return () => {
       document.removeEventListener("keydown", onKeyDown);
-      const fallback = triggerRef.current ?? previous;
+      const fallback = triggerEl ?? previous;
       fallback?.focus();
     };
   }, [open]);

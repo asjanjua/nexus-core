@@ -13,7 +13,7 @@ const ALL_PROVIDERS = [
 ];
 
 export default function PolicySettingsPage() {
-  const [settings, setSettings] = useState<Record<string, unknown> | null>(null);
+  const [_settings, setSettings] = useState<Record<string, unknown> | null>(null);
   const [allowedProviders, setAllowedProviders] = useState<string[]>(["anthropic", "deepseek", "openai_compatible"]);
   const [localOnly, setLocalOnly] = useState(false);
   const [loading, setLoading] = useState(true);

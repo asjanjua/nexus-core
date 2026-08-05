@@ -20,7 +20,7 @@ import { repository } from "@/lib/data/repository";
 import { ask } from "@/lib/services/llm";
 import { captureHandledError } from "@/lib/observability/sentry";
 import { buildCompanyContext } from "@/lib/domain/sector-library";
-import type { EvidenceRecord, Recommendation } from "@/lib/contracts";
+import type { EvidenceRecord } from "@/lib/contracts";
 
 // ---------------------------------------------------------------------------
 // Types

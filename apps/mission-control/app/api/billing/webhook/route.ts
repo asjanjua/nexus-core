@@ -19,7 +19,6 @@
 import { fail, ok } from "@/lib/api";
 import {
   verifyWebhookSignature,
-  getSubscription,
   planFromPriceId,
   PLAN_TOKEN_LIMITS,
   type StripeEvent,

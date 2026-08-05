@@ -326,7 +326,6 @@ export function KnowledgeWorkspace() {
     void refreshSync();
     void fetchFacets();
     void fetchWorkflows();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {

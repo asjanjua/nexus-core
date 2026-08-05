@@ -1,4 +1,4 @@
-import { ok, fail } from "@/lib/api";
+import { ok } from "@/lib/api";
 import { requireScope } from "@/lib/api-auth";
 import { repository } from "@/lib/data/repository";
 

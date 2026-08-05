@@ -32,6 +32,20 @@ export default [
   {
     rules: {
       /**
+       * Underscore-prefixed variables and parameters are intentionally unused
+       * (callback signatures, destructuring, future-state fields). Suppress
+       * the warning — the prefix IS the signal.
+       */
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
+
+      /**
        * Warn, not error.
        *
        * The plain `<a href="/sign-in">` elements this flags are deliberate, not

@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { getAllSectors, getSector } from "@/lib/domain/sector-library";
-import { labelForRole, ROLE_REGISTRY } from "@/lib/domain/role-registry";
+import { ROLE_REGISTRY } from "@/lib/domain/role-registry";
 import { roleStatesFromSuggestions, suggestRolesForProfile, type SuggestedRole } from "@/lib/services/role-suggestion";
 import type { DetectedProfile, FocusMapping } from "@/lib/services/company-detection";
 import type { SuggestedDocument } from "@/lib/services/company-classification";
@@ -623,22 +623,16 @@ const DOC_ICONS: Record<string, string> = {
 
 function Step3({
   detected,
-  workspaceId,
   onConfirmed,
   onBack,
 }: {
   detected: DetectedProfile;
-  workspaceId: string;
   onConfirmed: (profile: DetectedProfile) => void;
   onBack: () => void;
 }) {
-  const [profile, setProfile] = useState<DetectedProfile>({ ...detected });
+  const [profile] = useState<DetectedProfile>({ ...detected });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  function update(field: keyof DetectedProfile, value: unknown) {
-    setProfile((p) => ({ ...p, [field]: value }));
-  }
 
   async function handleConfirm() {
     setSaving(true);
@@ -860,7 +854,6 @@ function Step3({
 
 function Step4({
   profile,
-  workspaceId,
   strategyProfile,
   onProfileUpdated,
   onStrategyProfileUpdated,
@@ -868,7 +861,6 @@ function Step4({
   onBack,
 }: {
   profile: DetectedProfile;
-  workspaceId: string;
   strategyProfile: WizardStrategyProfile | null;
   onProfileUpdated: (profile: DetectedProfile) => void;
   onStrategyProfileUpdated: (profile: WizardStrategyProfile) => void;
@@ -2209,7 +2201,6 @@ export function OnboardingWizard({ workspaceId, displayName, isAuthenticated }: 
         {step === 3 && (
           <Step3
             detected={profile}
-            workspaceId={workspaceId}
             onConfirmed={(p) => { setDetectedProfile(p); setStep(4); }}
             onBack={() => setStep(2)}
           />
@@ -2218,7 +2209,6 @@ export function OnboardingWizard({ workspaceId, displayName, isAuthenticated }: 
         {step === 4 && (
           <Step4
             profile={profile}
-            workspaceId={workspaceId}
             strategyProfile={strategyProfile}
             onProfileUpdated={(p) => setDetectedProfile(p)}
             onStrategyProfileUpdated={(p) => setStrategyProfile(p)}
