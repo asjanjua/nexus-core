@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { PageShell } from "@/components/page-shell";
 import { repository } from "@/lib/data/repository";
+import { requireWorkspaceId } from "@/lib/safe-auth";
 import { EvidenceDeleteButton } from "@/components/evidence-delete-button";
 
 function fileName(path: string): string {
@@ -9,8 +10,22 @@ function fileName(path: string): string {
 
 export default async function EvidenceDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+
+  // This page renders the full extracted text of a customer's document and
+  // had NEITHER of these checks. The middleware runs Clerk but deliberately
+  // does not gate — authorization lives in route handlers — and
+  // getEvidenceById takes no workspace, so any visitor with an id could read
+  // another tenant's regulatory or deal documents.
+  //
+  // Ids are `ev-<timestamp>-<8 hex>`: guessable given a timestamp, and they
+  // travel through citations, URLs and logs, so treating them as secret was
+  // never sound. The sibling API routes already scoped correctly; only the
+  // page was missed.
+  const workspaceId = await requireWorkspaceId(`/evidence/${id}`);
   const row = await repository.getEvidenceById(id);
-  if (!row) return notFound();
+  // notFound rather than a 403, so the page does not confirm that an id exists
+  // in some other workspace.
+  if (!row || row.workspaceId !== workspaceId) return notFound();
 
   return (
     <PageShell title={`Evidence ${row.id}`} description="Inspect the source, confidence, freshness, and extracted text behind a NexusAI insight.">
