@@ -103,6 +103,21 @@ export function tierForHeadcount(headcount: number): PricingTier {
 }
 
 /**
+ * Is there a Stripe key to check out against?
+ *
+ * Read here rather than importing lib/billing/stripe, which pulls in the
+ * repository just to look at one environment variable. Same reason the plan
+ * constants live in plan-catalog: a marketing page should not drag a runtime
+ * graph behind it.
+ *
+ * Server-side only. Do not call from a client component; the value would be
+ * undefined and every buyer would see the fallback.
+ */
+export function selfServeCheckoutAvailable(): boolean {
+  return Boolean(process.env.STRIPE_SECRET_KEY?.trim());
+}
+
+/**
  * Where a tier's button should send someone who is not signed in.
  *
  * Self-serve tiers carry the choice through sign-up so it survives the detour:
@@ -114,8 +129,12 @@ export function tierForHeadcount(headcount: number): PricingTier {
  * nobody is dropped onto a payment page by a link they followed from a public
  * site, which would be an unpleasant surprise from a governance product.
  */
-export function ctaHref(tier: PricingTier): string {
+export function ctaHref(tier: PricingTier, selfServeAvailable = true): string {
   if (tier.quoteRequired) return tier.cta.href;
+  // Until Stripe is configured there is no checkout to send anyone to. Routing
+  // a ready buyer into a flow that dead-ends loses them; the lead form keeps
+  // them. Flips back automatically the moment the keys are set.
+  if (!selfServeAvailable) return `/start-pilot?plan=${tier.key}`;
   const destination = `/settings?checkout=${tier.planKey}`;
   return `/sign-up?redirect_url=${encodeURIComponent(destination)}`;
 }

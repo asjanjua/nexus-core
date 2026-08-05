@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { PRICING_TIERS, ctaHref } from "@/lib/pricing-tiers";
+import { PRICING_TIERS, ctaHref, selfServeCheckoutAvailable } from "@/lib/pricing-tiers";
 import { ENGAGEMENT_WAIVER, waiverStatus } from "@/lib/diagnostic-offer";
 
 export const metadata: Metadata = {
@@ -20,6 +20,8 @@ export const metadata: Metadata = {
  */
 export default function PricingPage() {
   const waiver = waiverStatus();
+  // Server-side: is there a Stripe key to check out against at all?
+  const selfServe = selfServeCheckoutAvailable();
 
   return (
     <main className="mx-auto w-full max-w-5xl px-6 py-16">
@@ -46,6 +48,17 @@ export default function PricingPage() {
         </section>
       )}
 
+      {/* Honest about the gap rather than letting a buyer find it at checkout. */}
+      {!selfServe && (
+        <section className="mt-8 rounded-lg border border-white/10 bg-white/[0.03] px-4 py-3">
+          <p className="text-sm font-medium text-white/80">Card payment is not switched on yet</p>
+          <p className="mt-1 text-xs leading-5 text-white/55">
+            These prices are final. Until self-serve checkout is live we set your plan up directly,
+            which takes a short conversation.
+          </p>
+        </section>
+      )}
+
       <section className="mt-12 grid gap-4 lg:grid-cols-3">
         {PRICING_TIERS.map((tier) => (
           <div
@@ -60,13 +73,13 @@ export default function PricingPage() {
             <p className="mt-4 text-sm font-medium text-nexus-sky">{tier.seatRangeLabel}</p>
             <p className="mt-3 flex-1 text-xs leading-5 text-white/55">{tier.positioning}</p>
             <Link
-              href={ctaHref(tier)}
+              href={ctaHref(tier, selfServe)}
               className={`mt-6 inline-flex justify-center rounded-lg px-4 py-2 text-sm ${
                 tier.key === "growth" ? "btn-primary" : "btn-subtle"
               }`}
               prefetch={false}
             >
-              {tier.cta.label}
+              {tier.quoteRequired || selfServe ? tier.cta.label : "Talk to us"}
             </Link>
           </div>
         ))}

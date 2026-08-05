@@ -467,6 +467,7 @@ function PlanTab({ workspaceId }: { workspaceId: string }) {
   const [portalLoading, setPortalLoading] = useState(false);
   const [billingBanner, setBillingBanner] = useState<"success" | "cancelled" | null>(null);
   const [checkoutIntent, setCheckoutIntent] = useState<"pro" | "business" | null>(null);
+  const [checkoutError, setCheckoutError] = useState<"unavailable" | "failed" | null>(null);
 
   useEffect(() => {
     // Read billing result from URL query param (Stripe redirects here after checkout)
@@ -512,11 +513,19 @@ function PlanTab({ workspaceId }: { workspaceId: string }) {
       const json = await res.json() as { ok: boolean; data?: { url: string }; error?: string };
       if (json.ok && json.data?.url) {
         window.location.href = json.data.url;
-      } else {
-        console.error("Checkout error:", json.error);
-        setUpgrading(null);
+        return;
       }
+      // The button used to spin and silently reset on failure, logging to a
+      // console nobody is watching. A buyer who clicks upgrade and sees
+      // nothing happen assumes the product is broken and does not try again.
+      setCheckoutError(
+        json.error === "stripe_not_configured" || json.error === "stripe_price_not_configured"
+          ? "unavailable"
+          : "failed"
+      );
+      setUpgrading(null);
     } catch {
+      setCheckoutError("failed");
       setUpgrading(null);
     }
   }
@@ -560,6 +569,32 @@ function PlanTab({ workspaceId }: { workspaceId: string }) {
       {billingBanner === "cancelled" && (
         <div className="rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-white/60">
           Checkout was cancelled. Your plan has not changed.
+        </div>
+      )}
+
+      {/* Card payment is not switched on yet. Saying so and offering the
+          alternative keeps a ready buyer, where a spinner that resets loses
+          them. Distinguishes "not available yet" from "something went wrong",
+          because those need different things from the reader. */}
+      {checkoutError === "unavailable" && (
+        <div className="rounded-lg border border-nexus-warn/30 bg-nexus-warn/10 px-4 py-3">
+          <p className="text-sm font-medium text-nexus-warn">Card payment is not live yet</p>
+          <p className="mt-1 text-xs leading-5 text-white/60">
+            Published pricing is final and your plan can be set up directly in the meantime. Nothing
+            has been charged.
+          </p>
+          <a
+            href="/start-pilot?interest=upgrade"
+            className="badge badge-green hover:opacity-80 transition-opacity text-xs mt-3 inline-flex"
+          >
+            Arrange it with us
+          </a>
+        </div>
+      )}
+      {checkoutError === "failed" && (
+        <div className="rounded-lg border border-nexus-danger/30 bg-nexus-danger/10 px-4 py-3 text-sm text-nexus-danger">
+          Checkout could not start. Nothing has been charged. Please try again, or contact us if it
+          keeps happening.
         </div>
       )}
 

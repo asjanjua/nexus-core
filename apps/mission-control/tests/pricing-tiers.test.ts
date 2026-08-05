@@ -3,7 +3,10 @@ import {
   PRICING_TIERS,
   checkoutIntentFromParam,
   ctaHref,
+  nextTierUp,
   perSeatUsd,
+  planLabel,
+  selfServeCheckoutAvailable,
   tierForHeadcount,
 } from "@/lib/pricing-tiers";
 import { safeAppRedirectPath } from "@/lib/auth/hosted-clerk-url";
@@ -86,6 +89,34 @@ describe("pricing bands", () => {
     }
   });
 
+  it("routes to the lead form while Stripe is switched off", () => {
+    // Stripe is paused until real credentials exist. Sending a ready buyer
+    // into a checkout that 503s loses them; the lead form keeps them, and this
+    // flips back on its own the moment the keys are set.
+    for (const tier of PRICING_TIERS.filter((t) => !t.quoteRequired)) {
+      const href = ctaHref(tier, false);
+      expect(href).toBe(`/start-pilot?plan=${tier.key}`);
+      // Decoded, because the self-serve href encodes the query string and a
+      // raw "checkout=" check would pass vacuously against it.
+      expect(decodeURIComponent(href)).not.toContain("checkout=");
+      expect(href).not.toContain("sign-up");
+    }
+  });
+
+  it("defaults to the self-serve path when availability is not stated", () => {
+    // The default must be the working path, so forgetting the argument cannot
+    // silently disable checkout everywhere.
+    const starter = PRICING_TIERS[0];
+    expect(ctaHref(starter)).toBe(ctaHref(starter, true));
+    expect(decodeURIComponent(ctaHref(starter))).toContain("checkout=pro");
+  });
+
+  it("leaves Enterprise on the lead form either way", () => {
+    const enterprise = PRICING_TIERS.find((t) => t.quoteRequired)!;
+    expect(ctaHref(enterprise, true)).toBe(enterprise.cta.href);
+    expect(ctaHref(enterprise, false)).toBe(enterprise.cta.href);
+  });
+
   it("sends Enterprise to the lead form, not to a checkout", () => {
     // There is no self-serve price to check out against, so offering one would
     // bill a figure the sales conversation has not agreed.
@@ -105,6 +136,32 @@ describe("pricing bands", () => {
     expect(checkoutIntentFromParam(null)).toBeNull();
     expect(checkoutIntentFromParam("PRO")).toBeNull();
     expect(checkoutIntentFromParam("pro; drop")).toBeNull();
+  });
+
+  it("reports checkout availability from the Stripe key alone", () => {
+    const original = process.env.STRIPE_SECRET_KEY;
+    try {
+      delete process.env.STRIPE_SECRET_KEY;
+      expect(selfServeCheckoutAvailable()).toBe(false);
+      // A blank or whitespace value is not a key. Render env vars are easy to
+      // set to an empty string by accident.
+      process.env.STRIPE_SECRET_KEY = "   ";
+      expect(selfServeCheckoutAvailable()).toBe(false);
+      process.env.STRIPE_SECRET_KEY = "sk_live_x";
+      expect(selfServeCheckoutAvailable()).toBe(true);
+    } finally {
+      if (original === undefined) delete process.env.STRIPE_SECRET_KEY;
+      else process.env.STRIPE_SECRET_KEY = original;
+    }
+  });
+
+  it("names plans and the next tier up from the published list", () => {
+    expect(planLabel("pro")).toBe("Starter");
+    expect(planLabel("business")).toBe("Growth");
+    expect(nextTierUp("free")?.label).toBe("Starter");
+    expect(nextTierUp("pro")?.label).toBe("Growth");
+    expect(nextTierUp("business")?.label).toBe("Enterprise");
+    expect(nextTierUp("enterprise")).toBeNull();
   });
 
   it("computes per-seat cost, which exposes the step at the boundary", () => {
