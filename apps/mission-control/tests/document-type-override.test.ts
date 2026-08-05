@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   knownDocumentTypes,
   resolveDocumentTypes,
+  weakContentHints,
 } from "@/lib/domain/document-type-classifier";
 
 /**
@@ -125,5 +126,36 @@ describe("override vocabulary", () => {
     const known = knownDocumentTypes();
     expect([...known].sort()).toEqual(known);
     expect(new Set(known).size).toBe(known.length);
+  });
+});
+
+describe("scan limit", () => {
+  const filler = "Neutral narrative text about the transaction. ".repeat(600); // ~28kB
+
+  it("ignores a type mentioned beyond the scan limit", () => {
+    // Deliberate. A type named only on page forty describes something the
+    // document REFERS TO, not what it IS. Scanning the whole body cost 4.8s
+    // for a 2,000-document data room in the coverage API and 14s in the review
+    // queue, on every request, for signal that was mostly noise.
+    const late = `${filler} See the cap table appended separately.`;
+    expect(resolveDocumentTypes({ sourcePath: "/d/annex.pdf", text: late }).types).toEqual([]);
+    expect(weakContentHints(late)).toEqual([]);
+  });
+
+  it("still finds a type stated near the top of a long document", () => {
+    // The cap must not break the normal case: real documents say what they are
+    // early.
+    const early = `Cap Table\n\nShareholding as at 30 June.\n${filler}`;
+    expect(resolveDocumentTypes({ sourcePath: "/d/annex.pdf", text: early }).types).toContain(
+      "Cap Table"
+    );
+  });
+
+  it("accepts a precomputed strong set instead of recomputing it", () => {
+    // The review queue already knows the resolved types; recomputing them
+    // inside weakContentHints doubled the cost of every row.
+    const text = `${"filler ".repeat(50)} cap table mentioned once`;
+    expect(weakContentHints(text, ["Cap Table"])).not.toContain("Cap Table");
+    expect(weakContentHints(text, [])).toContain("Cap Table");
   });
 });

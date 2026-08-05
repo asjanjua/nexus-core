@@ -158,6 +158,22 @@ export function documentTypesForPaths(paths: Array<string | null | undefined>): 
 const TITLE_REGION_CHARS = 300;
 const MIN_RECURRENCE = 3;
 
+/**
+ * How much of a document is scanned for type signals.
+ *
+ * Roughly the first ten pages. Beyond that the cost is real and the signal is
+ * not: a type mentioned only on page forty is describing something the
+ * document refers to, not what the document IS. Capping makes the classifier
+ * understate rather than overstate, which is the direction this whole feature
+ * errs in.
+ *
+ * Measured before it was added. Fifty-kilobyte documents cost ~2.5ms each to
+ * classify, so a two-thousand-document data room spent 4.8 seconds inside the
+ * coverage API and 14 seconds building the review queue — on every request,
+ * because none of this is cached.
+ */
+const SCAN_LIMIT_CHARS = 20_000;
+
 export type DocumentTypeSignal = "filename" | "content";
 
 export type DocumentTypeMatch = {
@@ -172,14 +188,15 @@ export type DocumentTypeMatch = {
 };
 
 function contentTypes(text: string): string[] {
-  const head = text.slice(0, TITLE_REGION_CHARS);
+  const scan = text.length > SCAN_LIMIT_CHARS ? text.slice(0, SCAN_LIMIT_CHARS) : text;
+  const head = scan.slice(0, TITLE_REGION_CHARS);
   return PATTERNS.filter((p) => {
     if (p.match.test(head)) return true;
     // `match` carries no /g, so build a counting copy rather than mutating
     // shared state via lastIndex.
     const global = new RegExp(p.match.source, p.match.flags.includes("g") ? p.match.flags : p.match.flags + "g");
     let count = 0;
-    while (global.exec(text) !== null) {
+    while (global.exec(scan) !== null) {
       count += 1;
       if (count >= MIN_RECURRENCE) return true;
     }
@@ -229,10 +246,19 @@ export function documentTypesForDocuments(
  * bar for automatic application; surfacing it as a one-click confirmation is
  * different from acting on it.
  */
-export function weakContentHints(text: string | null | undefined): string[] {
+export function weakContentHints(
+  text: string | null | undefined,
+  /**
+   * Types already applied, when the caller has them. Passing these avoids
+   * recomputing contentTypes, which was doubling the cost of every review
+   * queue row for no benefit.
+   */
+  alreadyStrong?: Iterable<string>
+): string[] {
   if (!text || !text.trim()) return [];
-  const strong = new Set(contentTypes(text));
-  return PATTERNS.filter((p) => !strong.has(p.type) && p.match.test(text)).map((p) => p.type);
+  const scan = text.length > SCAN_LIMIT_CHARS ? text.slice(0, SCAN_LIMIT_CHARS) : text;
+  const strong = new Set(alreadyStrong ?? contentTypes(text));
+  return PATTERNS.filter((p) => !strong.has(p.type) && p.match.test(scan)).map((p) => p.type);
 }
 
 // ---------------------------------------------------------------------------

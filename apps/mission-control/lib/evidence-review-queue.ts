@@ -63,7 +63,10 @@ export function buildReviewQueue(
       // score zero and the ordering alphabetical.
       //
       // Content matches too weak to auto-apply are the real remaining clue.
-      const hint = weakContentHints(c.text)[0] ?? null;
+      // Passes the types already resolved so weakContentHints does not
+      // recompute contentTypes — that recomputation was doubling the cost of
+      // every row.
+      const hint = weakContentHints(c.text, c.resolved.types)[0] ?? null;
 
       // Counted against the filename hint, which is the only evidence we have
       // about what this document might be.
