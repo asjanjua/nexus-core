@@ -4468,6 +4468,27 @@ export const repository = {
     return rows.length ? mapReviewerSeatRow(rows[0]) : null;
   },
 
+  /**
+   * Real seat and role counts for a workspace.
+   *
+   * The plan summary previously reported `team: { used: 1 }` and
+   * `roles: { used: 0 }` as hardcoded literals with a "TBD" comment. Those are
+   * the numbers the pricing page sells against — Starter is "1 to 10 people" —
+   * so the usage panel was showing a figure that had no relationship to the
+   * workspace.
+   *
+   * Members are DISTINCT userIds in `roles`, not row count: one person holding
+   * two roles is one seat. Returns zeros rather than throwing when the DB is
+   * unavailable, matching how the rest of the plan summary degrades.
+   */
+  async countWorkspaceSeats(workspaceId: string): Promise<{ members: number; roles: number }> {
+    const rows = await runDb((db) =>
+      db.select({ userId: roles.userId }).from(roles).where(eq(roles.workspaceId, workspaceId))
+    );
+    if (rows === null) return { members: 0, roles: 0 };
+    return { members: new Set(rows.map((r) => r.userId)).size, roles: rows.length };
+  },
+
   async listReviewerSeats(workspaceId: string): Promise<ReviewerSeat[]> {
     const rows = await runDb((db) =>
       db.select().from(reviewerSeats).where(eq(reviewerSeats.workspaceId, workspaceId))

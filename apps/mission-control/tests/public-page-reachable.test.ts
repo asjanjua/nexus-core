@@ -35,6 +35,32 @@ describe("commercially load-bearing pages are reachable", () => {
     }
   });
 
+  it("renders the footer on every public page except the two with their own", () => {
+    // The footer lived inside app/page.tsx, so it appeared on the landing page
+    // and the product brief only. Anyone arriving from search on /pricing had
+    // no route to the terms, privacy notice, or data-processing page.
+    const shell = layout.slice(layout.indexOf("if (isPublicShell)"));
+    expect(shell).toContain("<PublicFooter />");
+    // Excluded rather than duplicated.
+    expect(shell).toMatch(/!isHome && pathname !== "\/product-brief"/);
+  });
+
+  it("keeps the legal and trust pages in the footer", () => {
+    // Regulated buyers' procurement asks for these by name, and a privacy
+    // notice has to be reachable to do its job at all.
+    const footer = readFileSync(join(ROOT, "components/public-footer.tsx"), "utf8");
+    for (const path of ["/privacy", "/terms", "/security", "/data-processing", "/acceptable-use"]) {
+      expect(footer, `${path} missing from the footer`).toContain(`href: "${path}"`);
+    }
+  });
+
+  it("does not render two footers on the landing page", () => {
+    // page.tsx renders PublicFooter itself; the shell must skip home.
+    const home = readFileSync(join(ROOT, "app/page.tsx"), "utf8");
+    expect(home.match(/<PublicFooter \/>/g) ?? []).toHaveLength(1);
+    expect(layout).toContain("!isHome");
+  });
+
   it("renders the family shell on pricing, not a product shell", () => {
     // isFamilyEntry drives the brand mark and subtitle. A pricing page badged
     // as a single product would imply the price covers only that product.

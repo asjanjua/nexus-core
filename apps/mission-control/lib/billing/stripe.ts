@@ -20,7 +20,7 @@
 
 import type { BillingPlan } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
-import { PLAN_FALLBACKS } from "@/lib/billing/budget";
+import { PLAN_FALLBACKS } from "@/lib/billing/plan-catalog";
 
 // ---------------------------------------------------------------------------
 // Config
@@ -54,7 +54,6 @@ export async function priceIdForPlan(plan: BillingPlan): Promise<string | null> 
   return process.env.STRIPE_PRICE_BUSINESS?.trim() ?? null;
 }
 
-/** Monthly token limit per plan (mirrors plan_definitions seed). */
 /**
  * Monthly token limit per plan.
  *
@@ -64,7 +63,8 @@ export async function priceIdForPlan(plan: BillingPlan): Promise<string | null> 
  * same failure shape as the published-vs-charged price bug: two constants
  * describing one fact.
  *
- * budget.ts does not import this module, so there is no cycle.
+ * Read from plan-catalog, which has no runtime dependencies, so this module
+ * does not inherit the repository and Sentry graph just to read four numbers.
  */
 export const PLAN_TOKEN_LIMITS: Record<BillingPlan, number> = {
   free: PLAN_FALLBACKS.free.monthlyTokens,

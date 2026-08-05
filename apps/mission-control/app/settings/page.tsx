@@ -2369,6 +2369,20 @@ function AgentGovernanceTab() {
         when does it escalate, and who is accountable. Every edit creates a new version.
       </div>
 
+      {/* This tab shows raw engine output for operators inspecting a run. The
+          engines compute internal summary fields that read like verdicts, and
+          rendering those as verdicts would breach the product boundaries the
+          rest of the app enforces. They are shown neutrally and labelled. */}
+      <div className="panel border-nexus-warn/30 text-xs leading-5 text-white/60">
+        <p className="text-xs font-medium text-nexus-warn">Engine output, not conclusions</p>
+        <p className="mt-1">
+          Fields below labelled &ldquo;engine signal&rdquo; are internal values from a native skill
+          run, shown for inspection. They are not a recommendation to proceed with a deal, a finding
+          that a board record is fit to finalise, or a determination of compliance. Those judgements
+          stay with the named advisor, chair, or reviewer.
+        </p>
+      </div>
+
       {catalog && (
         <section className="panel space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
@@ -2665,8 +2679,14 @@ function AgentGovernanceTab() {
                     {vantageResult.deniedByPassport > 0 ? ` · ${vantageResult.deniedByPassport} denied by passport` : ""}
                   </p>
                 </div>
-                <span className={`badge ${vantageResult.summary.recommendation === "proceed" ? "badge-green" : "badge-muted"}`}>
-                  {vantageResult.summary.recommendation.replaceAll("_", " ")}
+                {/* NEVER green, never presented as a verdict. This is the
+                    engine's internal field, shown here only so an operator can
+                    inspect a run. A green "proceed" badge beside deal evidence
+                    is Vantage marking a deal investable, which is a forbidden
+                    action — see BOUNDARIES.vantage. The product screens
+                    deliberately do not render this field at all. */}
+                <span className="badge badge-muted" title="Internal engine field. Not an investment recommendation.">
+                  engine signal: {vantageResult.summary.recommendation.replaceAll("_", " ")}
                 </span>
               </div>
 
@@ -2729,8 +2749,13 @@ function AgentGovernanceTab() {
                     {quorumResult.deniedByPassport > 0 ? ` · ${quorumResult.deniedByPassport} denied by passport` : ""}
                   </p>
                 </div>
-                <span className={`badge ${quorumResult.summary.recordReady ? "badge-green" : "badge-muted"}`}>
-                  {quorumResult.summary.recordReady ? "record ready" : "not ready"}
+                {/* Same rule as the Vantage badge above. "record ready" in
+                    green is Quorum declaring a board record fit to finalise,
+                    which the chair and secretary decide. Shown neutrally as
+                    the engine field it is. */}
+                <span className="badge badge-muted" title="Internal engine field. Not a finding that the record is fit to finalise.">
+                  engine signal:{" "}
+                  {quorumResult.summary.recordReady ? "no critical gaps" : "gaps outstanding"}
                 </span>
               </div>
 

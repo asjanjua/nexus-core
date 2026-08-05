@@ -32,51 +32,13 @@ export function invalidateBudgetCache(workspaceId: string): void {
 // ---------------------------------------------------------------------------
 // Plan definitions (static fallback when DB unavailable)
 //
-// priceCents and maxTeam MUST agree with PRICING_TIERS in lib/pricing-tiers.ts,
-// which is what /pricing publishes. tests/pricing-plan-alignment.test.ts fails
-// the build if they drift. They already had, badly: the page advertised $49
-// for up to 10 people while this file charged $499 and capped the workspace at
-// one seat.
+// Moved to plan-catalog.ts so modules needing only the constants do not pull
+// in this file's repository and Sentry imports. Re-exported here because
+// existing callers import it from budget.
 // ---------------------------------------------------------------------------
 
-export const PLAN_FALLBACKS: Record<string, PlanDefinition> = {
-  free: {
-    planKey: "free", label: "Free", priceCents: 0,
-    monthlyTokens: 500_000, maxRoles: 1, maxEvidence: 50, maxTeam: 1,
-    maxConnectors: 0, maxApiKeys: 0, askDailyLimit: 10,
-    scheduledSynthesis: false, synthesisMaxCadence: null,
-    emailDelivery: false, slackDelivery: false, exportsEnabled: false,
-    decisionExtraction: false, customPassports: false, dataResidency: false,
-    apiAccess: false, watermark: true, stripePriceId: null,
-  },
-  pro: {
-    planKey: "pro", label: "Starter", priceCents: 4_900,
-    monthlyTokens: 5_000_000, maxRoles: 5, maxEvidence: 1000, maxTeam: 10,
-    maxConnectors: 0, maxApiKeys: 3, askDailyLimit: null,
-    scheduledSynthesis: true, synthesisMaxCadence: "weekly",
-    emailDelivery: false, slackDelivery: false, exportsEnabled: true,
-    decisionExtraction: false, customPassports: false, dataResidency: false,
-    apiAccess: true, watermark: false, stripePriceId: null,
-  },
-  business: {
-    planKey: "business", label: "Growth", priceCents: 49_900,
-    monthlyTokens: 25_000_000, maxRoles: 10, maxEvidence: 5000, maxTeam: 50,
-    maxConnectors: 3, maxApiKeys: 10, askDailyLimit: null,
-    scheduledSynthesis: true, synthesisMaxCadence: "daily",
-    emailDelivery: true, slackDelivery: false, exportsEnabled: true,
-    decisionExtraction: true, customPassports: true, dataResidency: false,
-    apiAccess: true, watermark: false, stripePriceId: null,
-  },
-  enterprise: {
-    planKey: "enterprise", label: "Enterprise", priceCents: 0,
-    monthlyTokens: 0, maxRoles: -1, maxEvidence: -1, maxTeam: -1,
-    maxConnectors: -1, maxApiKeys: -1, askDailyLimit: null,
-    scheduledSynthesis: true, synthesisMaxCadence: "daily",
-    emailDelivery: true, slackDelivery: true, exportsEnabled: true,
-    decisionExtraction: true, customPassports: true, dataResidency: true,
-    apiAccess: true, watermark: false, stripePriceId: null,
-  },
-};
+export { PLAN_FALLBACKS } from "@/lib/billing/plan-catalog";
+import { PLAN_FALLBACKS } from "@/lib/billing/plan-catalog";
 
 // ---------------------------------------------------------------------------
 // Core budget check
@@ -219,9 +181,10 @@ export async function getWorkspacePlanSummary(workspaceId: string): Promise<Work
   const used = ws?.monthlyTokenUsed ?? 0;
   const unlimited = limit === 0;
 
-  const [evidence, apiKeys] = await Promise.all([
+  const [evidence, apiKeys, seats] = await Promise.all([
     repository.getEvidenceForWorkspace(workspaceId).catch(() => []),
     repository.listAgentKeys(workspaceId).catch(() => []),
+    repository.countWorkspaceSeats(workspaceId).catch(() => ({ members: 0, roles: 0 })),
   ]);
 
   return {
@@ -235,9 +198,14 @@ export async function getWorkspacePlanSummary(workspaceId: string): Promise<Work
       resetAt: ws?.tokenResetAt ?? new Date().toISOString(),
     },
     limits: {
-      roles:   { used: 0, limit: planDef.maxRoles },       // active role count TBD
+      // Real counts. These were hardcoded 0 and 1 with a "TBD" comment, which
+      // meant the seat figure the pricing page sells against ("1 to 10
+      // people") bore no relation to the workspace. Counting them is also the
+      // prerequisite for enforcing them, which is still a product decision:
+      // nothing currently stops a Starter workspace adding fifty people.
+      roles:   { used: seats.roles, limit: planDef.maxRoles },
       evidence: { used: evidence.length, limit: planDef.maxEvidence },
-      team:    { used: 1, limit: planDef.maxTeam },         // team count TBD
+      team:    { used: seats.members, limit: planDef.maxTeam },
       apiKeys: { used: apiKeys.length, limit: planDef.maxApiKeys },
       askDailyLimit: planDef.askDailyLimit,
     },

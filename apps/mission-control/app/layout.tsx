@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { PwaRegister } from "@/components/pwa-register";
+import { PublicFooter } from "@/components/public-footer";
 import { Analytics } from "@/components/analytics";
 import { SideNav } from "@/components/side-nav";
 import { TrialBanner } from "@/components/trial-banner";
@@ -155,6 +156,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             </div>
           </header>
           {children}
+          {/* The footer used to live inside app/page.tsx, so it appeared on the
+              landing page and the product brief only. Anyone arriving from
+              search on /pricing, /diagnostic or /solutions had no route to the
+              terms, privacy notice, or data-processing page — documents a
+              regulated buyer's procurement asks for by name.
+
+              Those two pages still render it themselves, so they are excluded
+              here rather than being given a second one. */}
+          {!isHome && pathname !== "/product-brief" && <PublicFooter />}
           </ClerkProvider>
         </body>
       </html>

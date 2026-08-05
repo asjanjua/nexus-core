@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { PinaviaLockup } from "@/components/ui/pinavia-mark";
+import { PublicFooter } from "@/components/public-footer";
 import { DecisionPassport } from "@/components/marketing/decision-passport";
 
 // Marketing accents (nexus-design-system level 2). These exist ONLY on
@@ -245,69 +245,6 @@ const overlapPoints = [
   "Both care about verified context, source traceability, and model-agnostic infrastructure.",
   "Both reject the idea that a generic chat window is enough for enterprise AI.",
 ];
-
-const footerLinks: Array<{ heading: string; items: Array<{ label: string; href: string }> }> = [
-  {
-    heading: "Product",
-    items: [
-      { label: "Solutions", href: "/solutions" },
-      { label: "Research", href: "/research" },
-      { label: "NexusAI", href: "/workspace" },
-      { label: "Quorum", href: "/board" },
-      { label: "Meridian", href: "/meridian" },
-      { label: "Vantage", href: "/vantage" },
-      { label: "Nucleus", href: "/nucleus" },
-    ],
-  },
-  {
-    heading: "Trust",
-    items: [
-      { label: "Security", href: "/security" },
-      { label: "Data processing", href: "/data-processing" },
-      { label: "Acceptable use", href: "/acceptable-use" },
-    ],
-  },
-  {
-    heading: "Legal",
-    items: [
-      { label: "Privacy", href: "/privacy" },
-      { label: "Terms", href: "/terms" },
-    ],
-  },
-  {
-    heading: "Get started",
-    items: [
-      { label: "Start pilot", href: "/start-pilot" },
-      { label: "Readiness check", href: "/readiness" },
-      { label: "Product brief", href: "/product-brief" },
-      { label: "Contact", href: "mailto:hello@pinavia.io" },
-    ],
-  },
-];
-
-function ExternalOrInternalLink({
-  href,
-  children,
-  className,
-}: {
-  href: string;
-  children: React.ReactNode;
-  className?: string;
-}) {
-  if (href.startsWith("/")) {
-    return (
-      <Link href={href} className={className} prefetch={false}>
-        {children}
-      </Link>
-    );
-  }
-
-  return (
-    <a href={href} className={className}>
-      {children}
-    </a>
-  );
-}
 
 function DemoPathStrip() {
   return (
@@ -859,51 +796,6 @@ function ProductFamilySection() {
   );
 }
 
-function Footer() {
-  return (
-    <footer className="border-t border-white/10 bg-black/20">
-      <div className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-[1.4fr_repeat(4,1fr)]">
-          <div className="space-y-3">
-            <PinaviaLockup descriptor="" />
-            <p className="max-w-xs text-xs leading-5 text-white/45">
-              Governed AI for executive teams, boards, regulated workflows, diligence teams, and
-              advisory firms.
-            </p>
-          </div>
-
-          {footerLinks.map((group) => (
-            <div key={group.heading}>
-              <p className="text-xs uppercase text-white/35">{group.heading}</p>
-              <ul className="mt-3 space-y-2">
-                {group.items.map((item) => (
-                  <li key={item.label}>
-                    <ExternalOrInternalLink
-                      href={item.href}
-                      className="rounded text-sm text-white/55 transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-nexus-accent"
-                    >
-                      {item.label}
-                    </ExternalOrInternalLink>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-10 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-6">
-          <p className="text-xs text-white/35">
-            Copyright {new Date().getFullYear()} Pinavia. All rights reserved.
-          </p>
-          <p className="text-xs text-white/35">
-            Evidence-first by design. Humans approve anything that leaves the system.
-          </p>
-        </div>
-      </div>
-    </footer>
-  );
-}
-
 export default function HomePage() {
   return (
     <main className="relative min-h-screen overflow-hidden">
@@ -990,7 +882,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <Footer />
+      <PublicFooter />
     </main>
   );
 }
