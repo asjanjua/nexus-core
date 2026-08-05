@@ -5,6 +5,16 @@ services:
     plan: free
     region: oregon
     rootDir: .
+    # NOTE: db:migrate runs at BUILD time, so the database is migrated before
+    # the new code serves anything, and stays migrated even if the deploy never
+    # promotes. Every migration must therefore leave the CURRENTLY DEPLOYED
+    # release working — expand and contract as separate deploys. See
+    # docs/ENGINEERING_GUARDRAILS.md §9 for the rule and the 2026-08-05 case
+    # where the database ran a release ahead of the application.
+    #
+    # preDeployCommand would be the correct home for this, but it requires a
+    # paid instance type and this service is on `plan: free`. Revisit when the
+    # plan changes.
     buildCommand: npm ci --include=dev && npm run build && npm run db:migrate
     startCommand: npm run start -w @nexus/mission-control -- -p $PORT
     autoDeploy: true

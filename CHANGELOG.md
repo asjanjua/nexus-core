@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-08-06 — db:check Error Handling + Test Coverage
+
+- `scripts/db-check.mjs` no longer silently reports "no migrations table" on connection/auth/timeout errors. The `migrationState` catch block now checks `error.code === "42P01"` (undefined_table) specifically and re-throws all other errors, so the caller reports the real failure with `ok: false`.
+- `tests/db-check.test.ts` — new PGlite-backed test suite exercising all four migration states (no table, partially applied, fully applied, database ahead of checkout) plus a connection-failure guard. 5 tests, in-memory Postgres, no external database needed.
+- `db:check` ahead-of-code error path now explicitly tells operators "Do not run db:migrate — the database is already ahead" rather than only saying "confirm which commit is deployed."
+- `@electric-sql/pglite` added as a devDependency of `@nexus/mission-control`.
+- Agent run doc `docs/agent-runs/2026-08-05/migration-promotion-ordering-claude.md` updated: status → `completed`, AC checked, review checkpoint added.
+
+## 2026-08-05 — Migration Ordering Guardrail
+
+- `render.yaml` now carries an explicit comment at `buildCommand` documenting that migrations run at build time, before the new code serves anything, and stay applied even if the deploy never promotes. Points at `docs/ENGINEERING_GUARDRAILS.md` §9.
+- `docs/ENGINEERING_GUARDRAILS.md` §9 codifies the expand-and-contract migration rule: every migration must leave the currently deployed release working, with per-operation guidance (nullable columns, multi-deploy drops, three-step renames).
+- `scripts/db-check.mjs` now reports migration state in both directions: `pending` (files on disk not yet applied) and `appliedNotOnDisk` (migrations applied here but absent from this checkout — the database-ahead-of-code case). Exits non-zero on either.
+- Observed 2026-08-05: production database was a release ahead of the deployed application (migrations 0043/0044 recorded while the live site served pre-0044 code). Nothing broke only because the new columns were nullable. This guardrail ensures that pattern is design, not luck.
+
 ## 2026-08-05 — Evidence Ceiling Enforced, Classification Cached
 
 - The document limit each plan advertises is now enforced. A workspace at its ceiling is refused at upload with a message naming its current count and the plan that raises it; the file is never stored, so nothing is lost and a retry after upgrading succeeds. Workspaces on unlimited or negotiated ceilings are unaffected. If the billing lookup itself fails, ingestion is allowed through rather than blocked.

@@ -232,3 +232,46 @@ In an iCloud/File Provider checkout, a normal-looking dependency file may be onl
 - serializing multi-agent repair through a stale-aware lock;
 - symlinking root `node_modules` to the hydrated external tree;
 - keeping Vitest cache data under `~/.cache/nexus-core/` rather than `apps/mission-control/node_modules/.vite`.
+
+## 9. Migrations Run Before Promotion: Every Migration Must Be Backward Compatible
+
+`render.yaml` runs `npm run db:migrate` inside `buildCommand`. Migrations
+therefore reach the production database **before** the new code serves a single
+request, and they stay applied even if the deploy never promotes.
+
+This is not hypothetical. Observed 2026-08-05: migrations 0043 and 0044 were
+recorded in `_nexus_migrations` while `https://pinavia.io` was still serving a
+build that predated both — `/evidence/review` returned 404 and `/api/health`
+carried no `build` field. A local `npm run db:migrate` printed `skip` for every
+file, which is the runner correctly reporting that the ids were already
+present. The database was a release ahead of the application, and nothing was
+broken only because the new columns were nullable and the old code ignored
+them. That was luck, not design.
+
+**The rule.** A migration must leave the CURRENTLY DEPLOYED release working. At
+the moment a migration lands, the code that will use it may not be running, and
+may never run if the deploy fails. Write every schema change so both the old
+and the new release are correct against it.
+
+Practically, this means expand and contract as two separate deploys:
+
+- Adding a column: nullable, or with a default. Never `NOT NULL` without a
+  default in the same migration that introduces it.
+- Removing a column: ship the code that stops reading it first, then drop it in
+  a later release. Never in the same one.
+- Renaming: add the new name, backfill, migrate readers, drop the old name.
+  Three steps, never one.
+- Changing a type or tightening a constraint: only after every running release
+  already satisfies it.
+- Adding a table or index: safe. These are additive by nature.
+
+**Verify the pairing, do not assume it.** `_nexus_migrations` records that a
+migration ran, not that the schema matches the running code. `/api/health`
+reports `build.commitShort`; compare it against the commit whose migrations you
+expect to be applied before treating a deploy as complete.
+
+**Why the ordering is not simply moved.** Render's `preDeployCommand` runs after
+build and before promotion, which is strictly better, but it requires a paid
+instance type and `render.yaml` currently pins `plan: free`. Until that plan
+changes, the ordering above is a constraint to design around, not a bug to
+route past.

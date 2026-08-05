@@ -4,6 +4,19 @@
 
 ---
 
+## 2026-08-06 — db:check Error Suppression Fix + PGlite Test Suite
+
+- Queen adversarial review of `b850545` (`fix(deploy): guard against the database running ahead of the application`) surfaced four findings. The two critical ones are fixed here.
+- **Fix 1 — catch-all error suppression.** `migrationState` in `scripts/db-check.mjs` caught every `pool.query` error and silently reported "no migrations table." A connection-refused or auth-failure error to Postgres would produce the false diagnostic "run all 44 migrations." Now checks `error.code === "42P01"` (undefined_table) specifically and re-throws all other errors so the caller reports them with `ok: false`.
+- **Fix 2 — PGlite test suite.** The Claude agent run claimed PGlite coverage but `@electric-sql/pglite` was not installed and zero test files existed. `tests/db-check.test.ts` exercises all four states (no table, partially applied, fully applied, database ahead of checkout) plus a connection-failure guard, using in-memory PGlite. 5 tests pass in 4.2s. `@electric-sql/pglite` added as a devDependency of `@nexus/mission-control`.
+- **Fix 3 — appliedNotOnDisk guidance.** The ahead-of-code error path now explicitly says "Do not run db:migrate — the database is already ahead."
+- **Agent run doc updated.** `docs/agent-runs/2026-08-05/migration-promotion-ordering-claude.md`: status → `completed`, AC checked, 2026-08-06 review checkpoint added documenting the findings and fixes.
+- **Verification:** `npm run db:check` returns correct output against real Postgres (44 applied, zero pending, zero ahead-of-code). New test suite passes 5/5. TypeScript clean.
+- **Files changed:** `scripts/db-check.mjs`, `tests/db-check.test.ts` (new), `package.json` (devDependency), `docs/agent-runs/2026-08-05/migration-promotion-ordering-claude.md`.
+- **Next action:** branch, commit, push, PR. Then confirm Render deploys and `npm run db:check` reports clean against production.
+
+---
+
 ## 2026-08-04 — Pricing Checkout and CI Repair
 
 - Latest pushed application head is `6bcc970` (`fix: restore settings imports and pricing test typecheck`) on `origin/main`. It repairs the broken `app/settings/page.tsx` import introduced by the pricing/checkout work and fixes the pricing alignment test so TypeScript can prove the paid tiers exclude the internal free plan.
