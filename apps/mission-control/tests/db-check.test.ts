@@ -204,7 +204,6 @@ describe("migrationState", () => {
     );
 
     const allFiles = await allMigrationFiles();
-    const lastReal = allFiles[allFiles.length - 1];
 
     // Apply all real migrations plus two that don't exist on disk.
     const aheadOfCheckout = [
