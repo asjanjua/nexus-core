@@ -23,11 +23,56 @@
  * silent skip here is exactly how the mismatch survived in the first place.
  */
 
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const REPO = join(ROOT, "..", "..");
+
+/**
+ * Load the same .env files the app uses.
+ *
+ * Node does not read these on its own, so the first version of this script
+ * reported UNCHECKED even on a machine where DATABASE_URL was sitting in
+ * .env.local. A check that says "cannot check" when the credentials are right
+ * there is a check nobody runs twice.
+ *
+ * Later files do not overwrite earlier ones, and a real environment variable
+ * always wins, so `DATABASE_URL=... npm run pricing:align` still works.
+ */
+function loadEnvFiles() {
+  const files = [
+    join(ROOT, ".env.production.local"),
+    join(ROOT, ".env.development.local"),
+    join(ROOT, ".env.local"),
+    join(REPO, ".env.local"),
+  ];
+  const loaded = [];
+  for (const file of files) {
+    if (!existsSync(file)) continue;
+    loaded.push(file.replace(REPO + "/", ""));
+    for (const raw of readFileSync(file, "utf8").split("\n")) {
+      const line = raw.trim();
+      if (!line || line.startsWith("#")) continue;
+      const eq = line.indexOf("=");
+      if (eq < 1) continue;
+      const key = line.slice(0, eq).trim();
+      if (process.env[key] !== undefined) continue;
+      let value = line.slice(eq + 1).trim();
+      if (
+        (value.startsWith('"') && value.endsWith('"')) ||
+        (value.startsWith("'") && value.endsWith("'"))
+      ) {
+        value = value.slice(1, -1);
+      }
+      process.env[key] = value;
+    }
+  }
+  return loaded;
+}
+
+const envFiles = loadEnvFiles();
 
 /** Parse the published tiers out of the TS source without a build step. */
 function publishedTiers() {
@@ -62,6 +107,8 @@ if (tiers.length === 0) {
   process.exit(2);
 }
 
+console.log(envFiles.length ? `Loaded env from: ${envFiles.join(", ")}` : "No .env files found");
+console.log("");
 console.log("Published tiers");
 for (const t of tiers) {
   console.log(
@@ -79,12 +126,18 @@ const dbUrl = process.env.DATABASE_URL?.trim();
 if (!dbUrl) {
   record("UNCHECKED", "plan_definitions", "DATABASE_URL not set");
 } else {
+  let pool;
   try {
-    const { neon } = await import("@neondatabase/serverless");
-    const sql = neon(dbUrl);
-    const rows = await sql`
-      SELECT plan_key, label, price_cents, max_team FROM plan_definitions
-    `;
+    // `pg` with the repo's own URL normaliser, matching scripts/db-check.mjs.
+    // The first version reached for @neondatabase/serverless, which this
+    // project does not install, so the check failed on a machine that could
+    // have answered the question.
+    const { Pool } = await import("pg");
+    const { normalizeDatabaseUrl } = await import("./db-url.mjs");
+    pool = new Pool({ connectionString: normalizeDatabaseUrl(dbUrl), max: 1 });
+    const { rows } = await pool.query(
+      "SELECT plan_key, label, price_cents, max_team FROM plan_definitions"
+    );
     if (rows.length === 0) {
       // Empty is SAFE: the code falls back to PLAN_FALLBACKS, which CI checks.
       record("OK", "plan_definitions", "no rows; PLAN_FALLBACKS applies and CI covers it");
@@ -117,7 +170,15 @@ if (!dbUrl) {
       }
     }
   } catch (err) {
-    record("UNCHECKED", "plan_definitions", `query failed: ${err.message}`);
+    // A missing table is a definitive answer, not a failure to look: the
+    // migration has not run, so no row can override PLAN_FALLBACKS.
+    if (/relation .*plan_definitions.* does not exist/i.test(err.message)) {
+      record("OK", "plan_definitions", "table absent; PLAN_FALLBACKS applies and CI covers it");
+    } else {
+      record("UNCHECKED", "plan_definitions", `query failed: ${err.message}`);
+    }
+  } finally {
+    await pool?.end().catch(() => {});
   }
 }
 
@@ -127,7 +188,15 @@ if (!dbUrl) {
 
 const stripeKey = process.env.STRIPE_SECRET_KEY?.trim();
 if (!stripeKey) {
-  record("UNCHECKED", "stripe", "STRIPE_SECRET_KEY not set");
+  // Stripe keys live in the hosting environment, not in the local .env files,
+  // so this is expected on a laptop. It still fails: the check is only
+  // meaningful where the keys are, which is the deployed environment.
+  record(
+    "UNCHECKED",
+    "stripe",
+    "STRIPE_SECRET_KEY not set. Run this in the deployed environment, or " +
+      "export the key for one command."
+  );
 } else {
   for (const t of tiers.filter((x) => !x.quoteRequired)) {
     const envName = t.planKey === "pro" ? "STRIPE_PRICE_PRO" : "STRIPE_PRICE_BUSINESS";

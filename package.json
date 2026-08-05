@@ -44,7 +44,8 @@
     "commit:check": "node scripts/preflight-commit.mjs",
     "verify:release": "node scripts/verify-build.mjs",
     "hooks:install": "git config core.hooksPath .githooks",
-    "check:env": "node scripts/check-env.mjs"
+    "check:env": "node scripts/check-env.mjs",
+    "pricing:align": "npm run pricing:align -w @nexus/mission-control --"
   },
   "engines": {
     "node": ">=22.12.0 <23 || >=24 <25"
