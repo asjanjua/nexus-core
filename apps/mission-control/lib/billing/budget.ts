@@ -39,6 +39,7 @@ export function invalidateBudgetCache(workspaceId: string): void {
 
 export { PLAN_FALLBACKS } from "@/lib/billing/plan-catalog";
 import { PLAN_FALLBACKS } from "@/lib/billing/plan-catalog";
+import { nextTierUp } from "@/lib/pricing-tiers";
 
 // ---------------------------------------------------------------------------
 // Core budget check
@@ -145,18 +146,40 @@ export async function canUseFeature(
 
 export type LimitCheckResult = { allowed: boolean; used: number; limit: number; requiredPlan?: string };
 
+/**
+ * NOT CURRENTLY CALLED ANYWHERE. Left in place and corrected rather than
+ * deleted, because the evidence ceiling is sold on /pricing and wiring the
+ * check is a product decision, not a code cleanup. Until something calls it,
+ * `maxEvidence` is decorative in exactly the way `maxTeam` was.
+ */
 export async function checkEvidenceLimit(workspaceId: string): Promise<LimitCheckResult> {
   try {
+    // Consults the DB plan definition first, matching the other three plan
+    // lookups in this file. Reading only PLAN_FALLBACKS meant a workspace on a
+    // negotiated Enterprise ceiling would be measured against the hardcoded
+    // default instead of the contract.
     const [ws, evidence] = await Promise.all([
       repository.getWorkspaceBillingState(workspaceId),
       repository.getEvidenceForWorkspace(workspaceId),
     ]);
     const planKey = (ws?.plan ?? "free") as BillingPlan;
-    const planDef = PLAN_FALLBACKS[planKey] ?? PLAN_FALLBACKS.free;
+    const planDef =
+      (await repository.getPlanDefinition(planKey).catch(() => null)) ??
+      PLAN_FALLBACKS[planKey] ??
+      PLAN_FALLBACKS.free;
     const limit = planDef.maxEvidence;
     const used = evidence.length;
     if (limit === -1) return { allowed: true, used, limit };
-    return { allowed: used < limit, used, limit, requiredPlan: used >= limit ? "pro" : undefined };
+    // The upgrade prompt must name a plan the customer is not already on.
+    // This said "pro" unconditionally, so a Starter customer at their ceiling
+    // was told to upgrade to Starter.
+    const upgrade = used >= limit ? nextTierUp(planKey) : null;
+    return {
+      allowed: used < limit,
+      used,
+      limit,
+      requiredPlan: upgrade?.label,
+    };
   } catch (error) {
     captureHandledError(error, {
       route: "lib/billing/budget.checkEvidenceLimit",

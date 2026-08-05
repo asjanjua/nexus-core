@@ -9,7 +9,7 @@ import { useState, useEffect } from "react";
 import { PageShell } from "@/components/page-shell";
 import { MetaChip } from "@/components/ui/nexus-primitives";
 import { HelpLabel } from "@/components/ui/help-dialog";
-import { PRICING_TIERS, checkoutIntentFromParam } from "@/lib/pricing-tiers";
+import { PRICING_TIERS, checkoutIntentFromParam, planLabel } from "@/lib/pricing-tiers";
 import {
   briefLanguageModeForArchetype,
   getAllSectors,
@@ -707,14 +707,14 @@ function PlanTab({ workspaceId }: { workspaceId: string }) {
             Features
           </HelpLabel>
         </p>
-        <FeatureRow label="Scheduled synthesis" enabled={features.scheduledSynthesis} requiredPlan="Pro" />
-        <FeatureRow label="Email delivery" enabled={features.emailDelivery} requiredPlan="Business" />
-        <FeatureRow label="Slack delivery" enabled={features.slackDelivery} requiredPlan="Enterprise" />
-        <FeatureRow label="Exports (CSV, PDF, Word)" enabled={features.exports} requiredPlan="Pro" />
-        <FeatureRow label="AI decision extraction" enabled={features.decisionExtraction} requiredPlan="Business" />
-        <FeatureRow label="Custom agent passports" enabled={features.customPassports} requiredPlan="Business" />
-        <FeatureRow label="Data residency / local-only" enabled={features.dataResidency} requiredPlan="Enterprise" />
-        <FeatureRow label="API access" enabled={features.apiAccess} requiredPlan="Pro" />
+        <FeatureRow label="Scheduled synthesis" enabled={features.scheduledSynthesis} requiredPlan={planLabel("pro")} />
+        <FeatureRow label="Email delivery" enabled={features.emailDelivery} requiredPlan={planLabel("business")} />
+        <FeatureRow label="Slack delivery" enabled={features.slackDelivery} requiredPlan={planLabel("enterprise")} />
+        <FeatureRow label="Exports (CSV, PDF, Word)" enabled={features.exports} requiredPlan={planLabel("pro")} />
+        <FeatureRow label="AI decision extraction" enabled={features.decisionExtraction} requiredPlan={planLabel("business")} />
+        <FeatureRow label="Custom agent passports" enabled={features.customPassports} requiredPlan={planLabel("business")} />
+        <FeatureRow label="Data residency / local-only" enabled={features.dataResidency} requiredPlan={planLabel("enterprise")} />
+        <FeatureRow label="API access" enabled={features.apiAccess} requiredPlan={planLabel("pro")} />
       </section>
 
       <p className="text-xs text-white/30">

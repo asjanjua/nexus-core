@@ -129,6 +129,32 @@ export function checkoutIntentFromParam(value: string | null | undefined): "pro"
   return (match?.planKey as "pro" | "business") ?? null;
 }
 
+/**
+ * Published label for a plan key, so UI never hardcodes a plan name.
+ *
+ * The settings paywall rows said "Requires Pro" and "Requires Business" long
+ * after those tiers were renamed Starter and Growth, telling customers to buy
+ * something that no longer exists.
+ */
+export function planLabel(planKey: string): string {
+  return PRICING_TIERS.find((t) => t.planKey === planKey)?.label ?? planKey;
+}
+
+/**
+ * The next tier up from a plan, or null at the top.
+ *
+ * An upgrade prompt has to name a plan the customer is not already on.
+ * checkEvidenceLimit hardcoded "pro", so a Starter customer who hit their
+ * evidence ceiling was told to upgrade to the plan they were already paying
+ * for.
+ */
+export function nextTierUp(planKey: string): PricingTier | null {
+  if (planKey === "free") return PRICING_TIERS[0] ?? null;
+  const index = PRICING_TIERS.findIndex((t) => t.planKey === planKey);
+  if (index === -1) return PRICING_TIERS[0] ?? null;
+  return PRICING_TIERS[index + 1] ?? null;
+}
+
 /** Monthly cost per person, for comparing bands honestly. Null when quoted. */
 export function perSeatUsd(tier: PricingTier, headcount: number): number | null {
   if (tier.quoteRequired) return null;
