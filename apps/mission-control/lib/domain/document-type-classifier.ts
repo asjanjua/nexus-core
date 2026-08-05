@@ -217,6 +217,61 @@ export function documentTypesForDocuments(
   return [...new Set(docs.flatMap((d) => classifyDocument(d).map((m) => m.type)))];
 }
 
+// ---------------------------------------------------------------------------
+// Reviewer overrides
+// ---------------------------------------------------------------------------
+
+export type DocumentTypeOverride = {
+  /** The reviewer's complete answer. Empty means "supports nothing". */
+  types: string[];
+  setBy: string;
+  note?: string | null;
+};
+
+export type ResolvedDocumentTypes = {
+  types: string[];
+  /**
+   * `reviewer` means a human decided. `filename` and `content` are inferences.
+   * `none` means nothing identified it. Surfaced so a screen can distinguish a
+   * confirmed answer from a guess rather than flattening them.
+   */
+  source: DocumentTypeSignal | "reviewer" | "none";
+  /** True when a human has looked, whatever they concluded. */
+  reviewed: boolean;
+};
+
+/**
+ * Final document types for a record, reviewer first.
+ *
+ * PRECEDENCE IS TOTAL, NOT ADDITIVE. An override replaces the derived types
+ * rather than merging with them, because the main thing a reviewer needs to do
+ * is REMOVE a wrong type. A merge would make a mistaken inference permanent:
+ * the reviewer could add the right answer but never delete the wrong one, and
+ * the requirement it falsely satisfied would stay satisfied.
+ *
+ * An empty override is therefore meaningful and is honoured. "A human opened
+ * this and it supports nothing" is a real finding, and it must not silently
+ * fall back to the guess the human just rejected.
+ */
+export function resolveDocumentTypes(
+  record: { sourcePath?: string | null; text?: string | null },
+  override?: DocumentTypeOverride | null
+): ResolvedDocumentTypes {
+  if (override) {
+    return { types: [...override.types], source: "reviewer", reviewed: true };
+  }
+  // Takes `sourcePath` because that is the field name on EvidenceRecord, and
+  // maps it explicitly. Passing the record straight through silently dropped
+  // the filename — classifyDocument reads `path`, so every document fell back
+  // to content matching and named files stopped being recognised.
+  const matches = classifyDocument({ path: record.sourcePath, text: record.text });
+  if (matches.length === 0) return { types: [], source: "none", reviewed: false };
+  // Filename beats content when both fired; classifyDocument already orders
+  // filename matches first.
+  const source = matches.some((m) => m.signal === "filename") ? "filename" : "content";
+  return { types: matches.map((m) => m.type), source, reviewed: false };
+}
+
 /**
  * Does this record satisfy any of a content pack's evidence tags?
  *

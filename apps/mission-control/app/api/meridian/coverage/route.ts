@@ -10,10 +10,12 @@
  *   requirement library      what that licence demands (domain-reviewed)
  *   evidence_records         what the workspace has actually ingested
  *
- * The match is on evidence DEPARTMENT TAGS, the same mechanism ingestion and
- * retrieval already use, rather than a new bespoke matcher. Reusing it means a
- * document that counts as HR evidence for Ask also counts as HR evidence for a
- * requirement, which is the behaviour a compliance analyst would expect.
+ * The match is on DOCUMENT TYPE, resolved per record as: a reviewer's
+ * override if one exists, otherwise the filename, otherwise what the document
+ * says it is. Explicitly NOT the `department` column — that vocabulary
+ * ("Finance", "Risk & Compliance") shares no values with requirement tags
+ * ("AML Policy", "Capital Adequacy Evidence"), and comparing them reported
+ * every requirement as a gap regardless of what had been ingested.
  *
  * BOUNDARY. Coverage means "a document carrying the right tag exists". It does
  * NOT mean the requirement is satisfied — that is a judgement only a qualified
@@ -33,7 +35,7 @@ import {
   type RequirementCoverageResult,
 } from "@/lib/domain/regulatory-requirement-library";
 import { librarySetsFor, selectionRationale } from "@/lib/meridian-requirement-selection";
-import { classifyDocument } from "@/lib/domain/document-type-classifier";
+import { resolveDocumentTypes } from "@/lib/domain/document-type-classifier";
 
 export async function GET(request: Request) {
   const auth = await resolveAuth(request);
@@ -80,23 +82,37 @@ export async function GET(request: Request) {
   const evidence = await repository.getEvidenceForWorkspace(auth.workspaceId);
   const usable = evidence.filter((record) => record.sensitivity !== "restricted");
   const restrictedCount = evidence.length - usable.length;
+  // Reviewer overrides win over anything the classifier inferred. Fetched once
+  // for the workspace rather than per record; an empty map when the DB is
+  // unavailable, so coverage degrades to classifier output rather than failing.
+  const overrides = await repository
+    .getEvidenceTypeOverrides(auth.workspaceId)
+    .catch(() => new Map());
+
   const classified = usable.map((record) => ({
     record,
-    matches: classifyDocument({
-      path: record.sourcePath ?? record.sourceUri ?? null,
-      text: record.text,
-    }),
+    resolved: resolveDocumentTypes(
+      { sourcePath: record.sourcePath ?? record.sourceUri ?? null, text: record.text },
+      overrides.get(record.id) ?? null
+    ),
   }));
-  const documentTypes = [...new Set(classified.flatMap((c) => c.matches.map((m) => m.type)))];
-  // Documents nothing could identify — neither the filename nor the text says
-  // what they are. They exist and are readable but support no requirement, so
-  // the screen must be able to say how many rather than letting them vanish.
-  const untypedCount = classified.filter((c) => c.matches.length === 0).length;
-  // Typed only from their contents. Weaker than an author-named file, and a
-  // reviewer may disagree, so the count is reported separately rather than
-  // folded into coverage as if it were the same quality of signal.
-  const inferredCount = classified.filter(
-    (c) => c.matches.length > 0 && c.matches.every((m) => m.signal === "content")
+  const documentTypes = [...new Set(classified.flatMap((c) => c.resolved.types))];
+  // Documents nothing could identify, and which no reviewer has looked at.
+  // They exist and are readable but support no requirement, so the screen must
+  // say how many rather than letting them vanish.
+  const untypedCount = classified.filter(
+    (c) => c.resolved.types.length === 0 && !c.resolved.reviewed
+  ).length;
+  // Typed only from their contents. Weaker than an author-named file, so
+  // reported separately rather than folded in as the same quality of signal.
+  const inferredCount = classified.filter((c) => c.resolved.source === "content").length;
+  // A human has confirmed these, so they are the strongest signal on the page
+  // and worth distinguishing from a lucky filename match.
+  const reviewedCount = classified.filter((c) => c.resolved.reviewed).length;
+  // A reviewer opened it and concluded it supports nothing. Not a gap in the
+  // product — a closed question, and it must not be counted as unread.
+  const reviewedEmptyCount = classified.filter(
+    (c) => c.resolved.reviewed && c.resolved.types.length === 0
   ).length;
 
   // Union across the applicable sets, de-duplicated by requirement id. An
@@ -168,11 +184,13 @@ export async function GET(request: Request) {
       // user can actually action, unlike "ingest more evidence".
       untypedDocuments: untypedCount,
       inferredDocuments: inferredCount,
+      reviewedDocuments: reviewedCount,
+      reviewedAsUnusable: reviewedEmptyCount,
     },
     boundary:
       "Coverage means a document of the matching type exists, identified from " +
-      "its filename or, where the filename is uninformative, from what the " +
-      "document says it is. It is not a finding that the requirement is " +
+      "a reviewer's confirmation where one exists, otherwise its filename or " +
+      "what the document says it is. It is not a finding that the requirement is " +
       "satisfied; a qualified reviewer makes that judgement. Documents that " +
       "neither signal can identify are not counted, so coverage understates " +
       "rather than overstates.",

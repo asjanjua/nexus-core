@@ -762,3 +762,20 @@ export const emailSuppressions = pgTable("email_suppressions", {
   createdAt:   timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt:   timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+/**
+ * Reviewer-set document types that replace the classifier output for one
+ * evidence record. See migration 0043 for why this is a table rather than a
+ * column: the override is a human judgement on a provenance product, so it has
+ * to name who decided and stay reversible.
+ */
+export const evidenceTypeOverrides = pgTable("evidence_type_overrides", {
+  evidenceId:  text("evidence_id").primaryKey(),
+  workspaceId: text("workspace_id").notNull(),
+  /** Complete answer, not an addition. Empty means "supports nothing". */
+  types:       jsonb("types").$type<string[]>().notNull().default([]),
+  setBy:       text("set_by").notNull(),
+  note:        text("note"),
+  createdAt:   timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:   timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});

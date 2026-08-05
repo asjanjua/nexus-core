@@ -1,4 +1,5 @@
 import { and, desc, eq, gt, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
+import type { DocumentTypeOverride } from "@/lib/domain/document-type-classifier";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { verifyPassword } from "@/lib/auth";
@@ -38,6 +39,7 @@ import {
   promptRegistry,
   recommendations,
   roles,
+  evidenceTypeOverrides,
   synthesisSchedules,
   tenants,
   users,
@@ -4487,6 +4489,91 @@ export const repository = {
     );
     if (rows === null) return { members: 0, roles: 0 };
     return { members: new Set(rows.map((r) => r.userId)).size, roles: rows.length };
+  },
+
+  /**
+   * Reviewer document-type overrides for a workspace, keyed by evidence id.
+   *
+   * Returned as a Map because coverage resolves every record in one pass and a
+   * per-record query would be a lookup per document. Empty map when the DB is
+   * unavailable, so coverage degrades to classifier output rather than failing.
+   */
+  async getEvidenceTypeOverrides(workspaceId: string): Promise<Map<string, DocumentTypeOverride>> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(evidenceTypeOverrides)
+        .where(eq(evidenceTypeOverrides.workspaceId, workspaceId))
+    );
+    if (rows === null) return new Map();
+    return new Map(
+      rows.map((row) => [
+        row.evidenceId,
+        { types: row.types ?? [], setBy: row.setBy, note: row.note ?? null },
+      ])
+    );
+  },
+
+  /**
+   * Record a reviewer's document types for one evidence record.
+   *
+   * Upsert on evidence_id: a reviewer correcting their own earlier correction
+   * replaces it rather than accumulating rows, and `set_by` always names the
+   * most recent decider.
+   */
+  async setEvidenceTypeOverride(input: {
+    workspaceId: string;
+    evidenceId: string;
+    types: string[];
+    setBy: string;
+    note?: string | null;
+  }): Promise<boolean> {
+    const now = new Date();
+    const rows = await runDb((db) =>
+      db
+        .insert(evidenceTypeOverrides)
+        .values({
+          evidenceId: input.evidenceId,
+          workspaceId: input.workspaceId,
+          types: input.types,
+          setBy: input.setBy,
+          note: input.note ?? null,
+          createdAt: now,
+          updatedAt: now,
+        })
+        .onConflictDoUpdate({
+          target: evidenceTypeOverrides.evidenceId,
+          set: {
+            types: input.types,
+            setBy: input.setBy,
+            note: input.note ?? null,
+            updatedAt: now,
+          },
+        })
+        .returning()
+    );
+    return rows !== null && rows.length > 0;
+  },
+
+  /**
+   * Remove an override so the record falls back to classifier output.
+   *
+   * Scoped by workspace as well as id: an evidence id from another tenant must
+   * not be clearable even if it is guessed.
+   */
+  async clearEvidenceTypeOverride(workspaceId: string, evidenceId: string): Promise<boolean> {
+    const rows = await runDb((db) =>
+      db
+        .delete(evidenceTypeOverrides)
+        .where(
+          and(
+            eq(evidenceTypeOverrides.evidenceId, evidenceId),
+            eq(evidenceTypeOverrides.workspaceId, workspaceId)
+          )
+        )
+        .returning()
+    );
+    return rows !== null && rows.length > 0;
   },
 
   async listReviewerSeats(workspaceId: string): Promise<ReviewerSeat[]> {
