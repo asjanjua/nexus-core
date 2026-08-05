@@ -115,6 +115,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       pathname === "/diagnostic" ||
       pathname === "/solutions" ||
       pathname === "/research" ||
+      pathname === "/pricing" ||
       pathname.startsWith("/readiness");
     const shellName = isFamilyEntry ? "Pinavia" : product.name;
     const shellSubtitle = isFamilyEntry ? "AI governance and execution" : product.subtitle;
@@ -142,6 +143,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 </a>
                 <a href="/readiness" className="hidden rounded-lg px-3 py-2 text-sm text-white/60 transition hover:bg-white/[0.06] hover:text-white sm:inline-flex">
                   Readiness
+                </a>
+                {/* Pricing was reachable only by typing the URL. A buyer who
+                    cannot find the price assumes it is expensive and leaves. */}
+                <a href="/pricing" className="hidden rounded-lg px-3 py-2 text-sm text-white/60 transition hover:bg-white/[0.06] hover:text-white sm:inline-flex">
+                  Pricing
                 </a>
                 <a href="/start-pilot" className="btn-primary text-sm">Start pilot</a>
                 <a href="/sign-in" className="hidden rounded-lg px-3 py-2 text-sm text-white/60 transition hover:bg-white/[0.06] hover:text-white sm:inline-flex">Sign in</a>
