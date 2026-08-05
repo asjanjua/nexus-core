@@ -621,9 +621,13 @@ function PlanTab({ workspaceId }: { workspaceId: string }) {
                 {upgrading === "business" ? "Redirecting..." : `Upgrade to ${tierFor("business").label} — ${tierFor("business").priceLabel}/mo`}
               </button>
             )}
+            {/* Was mailto:hello@nexusai.io while the site runs on pinavia.io,
+                so enquiries went to a mailbox that may not exist. Routed to
+                the same lead form the pricing page uses, which is tracked and
+                cannot silently swallow a buyer. */}
             {data.plan === "business" && (
               <a
-                href="mailto:hello@nexusai.io?subject=NexusAI%20Enterprise%20Enquiry"
+                href="/start-pilot?interest=enterprise"
                 className="badge badge-green hover:opacity-80 transition-opacity text-xs"
               >
                 Talk to us about Enterprise
@@ -714,8 +718,15 @@ function PlanTab({ workspaceId }: { workspaceId: string }) {
       </section>
 
       <p className="text-xs text-white/30">
-        For Enterprise pricing or custom arrangements, contact{" "}
-        <a href="mailto:hello@nexusai.io" className="underline">hello@nexusai.io</a>.
+        For Enterprise pricing or custom arrangements,{" "}
+        <a href="/start-pilot?interest=enterprise" className="underline">
+          start a conversation
+        </a>
+        . Published plans are on the{" "}
+        <a href="/pricing" className="underline">
+          pricing page
+        </a>
+        .
       </p>
     </div>
   );
