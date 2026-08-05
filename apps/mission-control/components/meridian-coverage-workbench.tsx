@@ -183,7 +183,13 @@ export function MeridianCoverageWorkbench() {
             {t.untypedDocuments === 1 ? " its" : " their"} filename, so
             {t.untypedDocuments === 1 ? " it counts" : " they count"} towards nothing. Renaming
             {t.untypedDocuments === 1 ? " it" : " them"} to say what the document is will raise
-            coverage without adding any new evidence.
+            coverage without adding any new evidence.{" "}
+            {/* Linked from the count rather than the nav: the queue only means
+                anything to someone already looking at this number. */}
+            <Link href="/evidence/review" className="underline hover:text-white">
+              Review them
+            </Link>
+            .
           </p>
         )}
         {t.inferredDocuments > 0 && (
