@@ -5,6 +5,22 @@ import { Pool } from "pg";
 import { normalizeDatabaseUrl } from "./db-url.mjs";
 import { loadEnvFiles } from "./load-env.mjs";
 
+/**
+ * db:check — migration health check for the NexusAI database.
+ *
+ * Answers two questions that `db:migrate` cannot:
+ *   1. Are there migration files on disk that haven't been applied?
+ *      (the ordinary "forgot to migrate" case)
+ *   2. Are there migrations in the database that don't exist in this checkout?
+ *      (the database-ahead-of-code case — Render runs migrations at build time,
+ *      before the new code serves anything)
+ *
+ * Exits non-zero if either direction drifts. A clean run means the database
+ * and this checkout agree on which migrations have been applied.
+ *
+ * Called by: `npm run db:check`, CI/CD gates, deploy runbooks.
+ */
+
 // Node does not read .env files; without this the script fails with
 // "DATABASE_URL is required" on a machine where it is sitting in .env.local.
 const envFiles = loadEnvFiles();
@@ -79,6 +95,9 @@ try {
     console.error(`\n${migrations.pending.length} migration(s) not applied to this database:`);
     for (const f of migrations.pending) console.error(`  ${f}`);
     console.error("Run `npm run db:migrate`.");
+    // Set exitCode rather than calling process.exit() so both pending AND
+    // appliedNotOnDisk can be reported in a single run. The process exits
+    // naturally when the script completes.
     process.exitCode = 1;
   }
   if (migrations.appliedNotOnDisk.length) {
@@ -95,6 +114,9 @@ try {
     process.exitCode = 1;
   }
 } catch (error) {
+  // Unhandled error (connection failure, auth, timeout, readdir on a missing
+  // migrations directory, etc.). Report it and exit immediately — we can't
+  // produce a meaningful migration state.
   console.error(
     JSON.stringify(
       { ok: false, error: error instanceof Error ? error.message : "db_check_failed" },
@@ -104,5 +126,7 @@ try {
   );
   process.exit(1);
 } finally {
+  // Always close the pool, even if the query or migrationState threw.
+  // Without this, the Node process hangs waiting for the idle connection.
   await pool.end();
 }
