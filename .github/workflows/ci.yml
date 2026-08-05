@@ -39,7 +39,9 @@ jobs:
           node-version: ${{ matrix.node }}
 
       - name: Install
-        run: npm ci
+        run: |
+          ls -la package-lock.json || echo "LOCKFILE MISSING"
+          npm ci
 
       - name: Build boundary checks
         run: npm run check:boundaries
@@ -78,7 +80,9 @@ jobs:
           node-version: 24
 
       - name: Install
-        run: npm ci
+        run: |
+          ls -la package-lock.json || echo "LOCKFILE MISSING"
+          npm ci
 
       # Hard gate: any critical advisory fails the build.
       - name: Block critical advisories
