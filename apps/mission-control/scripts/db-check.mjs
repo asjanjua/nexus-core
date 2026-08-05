@@ -1,5 +1,11 @@
 import { Pool } from "pg";
 import { normalizeDatabaseUrl } from "./db-url.mjs";
+import { loadEnvFiles } from "./load-env.mjs";
+
+// Node does not read .env files; without this the script fails with
+// "DATABASE_URL is required" on a machine where it is sitting in .env.local.
+const envFiles = loadEnvFiles();
+if (envFiles.length) console.log(`[db:check] env from: ${envFiles.join(", ")}`);
 
 const dbUrl = process.env.DATABASE_URL;
 

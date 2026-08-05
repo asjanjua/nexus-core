@@ -26,51 +26,10 @@
 import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { loadEnvFiles } from "./load-env.mjs";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const REPO = join(ROOT, "..", "..");
-
-/**
- * Load the same .env files the app uses.
- *
- * Node does not read these on its own, so the first version of this script
- * reported UNCHECKED even on a machine where DATABASE_URL was sitting in
- * .env.local. A check that says "cannot check" when the credentials are right
- * there is a check nobody runs twice.
- *
- * Later files do not overwrite earlier ones, and a real environment variable
- * always wins, so `DATABASE_URL=... npm run pricing:align` still works.
- */
-function loadEnvFiles() {
-  const files = [
-    join(ROOT, ".env.production.local"),
-    join(ROOT, ".env.development.local"),
-    join(ROOT, ".env.local"),
-    join(REPO, ".env.local"),
-  ];
-  const loaded = [];
-  for (const file of files) {
-    if (!existsSync(file)) continue;
-    loaded.push(file.replace(REPO + "/", ""));
-    for (const raw of readFileSync(file, "utf8").split("\n")) {
-      const line = raw.trim();
-      if (!line || line.startsWith("#")) continue;
-      const eq = line.indexOf("=");
-      if (eq < 1) continue;
-      const key = line.slice(0, eq).trim();
-      if (process.env[key] !== undefined) continue;
-      let value = line.slice(eq + 1).trim();
-      if (
-        (value.startsWith('"') && value.endsWith('"')) ||
-        (value.startsWith("'") && value.endsWith("'"))
-      ) {
-        value = value.slice(1, -1);
-      }
-      process.env[key] = value;
-    }
-  }
-  return loaded;
-}
 
 const envFiles = loadEnvFiles();
 

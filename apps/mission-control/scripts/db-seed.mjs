@@ -1,6 +1,12 @@
 import { Pool } from "pg";
 import crypto from "node:crypto";
 import { normalizeDatabaseUrl } from "./db-url.mjs";
+import { loadEnvFiles } from "./load-env.mjs";
+
+// Node does not read .env files; without this the script fails with
+// "DATABASE_URL is required" on a machine where it is sitting in .env.local.
+const envFiles = loadEnvFiles();
+if (envFiles.length) console.log(`[db:seed] env from: ${envFiles.join(", ")}`);
 
 function requireDbUrl() {
   const dbUrl = process.env.DATABASE_URL;

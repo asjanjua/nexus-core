@@ -3,6 +3,12 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { Pool } from "pg";
 import { normalizeDatabaseUrl } from "./db-url.mjs";
+import { loadEnvFiles } from "./load-env.mjs";
+
+// Node does not read .env files; without this the script fails with
+// "DATABASE_URL is required" on a machine where it is sitting in .env.local.
+const envFiles = loadEnvFiles();
+if (envFiles.length) console.log(`[db:migrate] env from: ${envFiles.join(", ")}`);
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
