@@ -20,6 +20,7 @@
 
 import type { BillingPlan } from "@/lib/contracts";
 import { repository } from "@/lib/data/repository";
+import { PLAN_FALLBACKS } from "@/lib/billing/budget";
 
 // ---------------------------------------------------------------------------
 // Config
@@ -54,11 +55,22 @@ export async function priceIdForPlan(plan: BillingPlan): Promise<string | null> 
 }
 
 /** Monthly token limit per plan (mirrors plan_definitions seed). */
+/**
+ * Monthly token limit per plan.
+ *
+ * DERIVED, not restated. This value is written onto the workspace at checkout
+ * (`activatePlan`), so a copy that drifted from the plan definition would give
+ * a paying customer the wrong budget with nothing to catch it. That is the
+ * same failure shape as the published-vs-charged price bug: two constants
+ * describing one fact.
+ *
+ * budget.ts does not import this module, so there is no cycle.
+ */
 export const PLAN_TOKEN_LIMITS: Record<BillingPlan, number> = {
-  free:       500_000,
-  pro:        5_000_000,
-  business:   25_000_000,
-  enterprise: 0, // 0 = unlimited
+  free: PLAN_FALLBACKS.free.monthlyTokens,
+  pro: PLAN_FALLBACKS.pro.monthlyTokens,
+  business: PLAN_FALLBACKS.business.monthlyTokens,
+  enterprise: PLAN_FALLBACKS.enterprise.monthlyTokens, // 0 = unlimited
 };
 
 // ---------------------------------------------------------------------------
