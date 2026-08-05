@@ -32,7 +32,7 @@ Status: `locally verified`, `committed but unpushed` at `94bb983`.
 - [ ] Push `48b07f2`, `8b87a4a`, `26f77f1`, `94bb983` — `blocked on user`; this environment holds no Git credentials.
 - [ ] Run migrations 0043 and 0044 against production — `migration pending`.
 - [ ] Re-smoke `/evidence/review` and `/meridian` against the deployed SHA after the push.
-- [ ] Enforce `maxTeam` — cannot use the ingest chokepoint; membership is granted through Clerk, so this needs a webhook on `organizationMembership.created`. Counting is already correct in the plan summary.
+- [x] Enforce `maxTeam` — cannot use the ingest chokepoint; membership is granted through Clerk, so this needs a webhook on `organizationMembership.created`. Counting is already correct in the plan summary.
 - [ ] Reconcile `matchesEvidenceTags` with reviewer overrides — pre-existing: the four native engines disagree with the Meridian coverage API about any document a human has retyped.
 - [ ] Design pass on cold-start rooms — `/meridian` on an unpopulated workspace renders a correct empty state that is indistinguishable from a broken page.
 

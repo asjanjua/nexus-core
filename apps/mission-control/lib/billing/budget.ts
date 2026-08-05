@@ -193,6 +193,50 @@ export async function checkEvidenceLimit(workspaceId: string): Promise<LimitChec
   }
 }
 
+/**
+ * Check whether adding another team member would exceed the workspace's
+ * `maxTeam` plan limit.
+ *
+ * Called by the Clerk `organizationMembership.created` webhook. Like
+ * `checkEvidenceLimit`, it FAILS OPEN: if the billing lookup throws, the
+ * member is allowed through. A transient DB error that blocks a legitimate
+ * team member from joining is worse than a workspace briefly exceeding a
+ * ceiling we can detect and reconcile.
+ *
+ * Enterprise plans (maxTeam === -1) always pass.
+ */
+export async function checkTeamSeatLimit(workspaceId: string): Promise<LimitCheckResult> {
+  try {
+    const [ws, seats] = await Promise.all([
+      repository.getWorkspaceBillingState(workspaceId),
+      repository.countWorkspaceSeats(workspaceId),
+    ]);
+    const planKey = (ws?.plan ?? "free") as BillingPlan;
+    const planDef =
+      (await repository.getPlanDefinition(planKey).catch(() => null)) ??
+      PLAN_FALLBACKS[planKey] ??
+      PLAN_FALLBACKS.free;
+    const limit = planDef.maxTeam;
+    const used = seats.members;
+    // -1 = unlimited (Enterprise). Already at or over limit = blocked.
+    if (limit === -1) return { allowed: true, used, limit };
+    const upgrade = used >= limit ? nextTierUp(planKey) : null;
+    return {
+      allowed: used < limit,
+      used,
+      limit,
+      requiredPlan: upgrade?.label,
+    };
+  } catch (error) {
+    captureHandledError(error, {
+      route: "lib/billing/budget.checkTeamSeatLimit",
+      errorType: "team_limit_failed_open",
+      workspaceId,
+    });
+    return { allowed: true, used: 0, limit: -1 };
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Full plan summary (for Settings UI and API)
 // ---------------------------------------------------------------------------

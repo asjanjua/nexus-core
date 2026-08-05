@@ -8,10 +8,10 @@ export default defineConfig({
   cacheDir: path.join(localCacheRoot, "nexus-core", "vite-mission-control"),
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, ".")
-    }
+      "@": path.resolve(__dirname, "."),
+    },
   },
   test: {
-    environment: "node"
-  }
+    environment: "node",
+  },
 });

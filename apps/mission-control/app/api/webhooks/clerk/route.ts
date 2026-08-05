@@ -2,8 +2,9 @@
  * POST /api/webhooks/clerk
  *
  * Clerk webhook receiver. Handles:
- *   - organization.created  → provision workspace (belt-and-suspenders backup to onboarding)
- *   - organization.deleted  → mark workspace inactive (future)
+ *   - organization.created              → provision workspace
+ *   - organizationMembership.created    → enforce maxTeam seat limit
+ *   - organization.deleted              → mark workspace inactive (future)
  *
  * Security: Svix signature verification using CLERK_WEBHOOK_SECRET.
  * Set this in Clerk Dashboard → Webhooks → your endpoint → Signing Secret.
@@ -16,9 +17,11 @@ import crypto from "crypto";
 import { NextResponse } from "next/server";
 import { repository } from "@/lib/data/repository";
 import { isExplicitDevRuntime, timingSafeEqualString } from "@/lib/security";
+import { checkTeamSeatLimit } from "@/lib/billing/budget";
 
 export const runtime = "nodejs";
 
+/** Verify Svix webhook signature. Fails closed when CLERK_WEBHOOK_SECRET is unset. */
 function verifyWebhookSignature(
   rawBody: string,
   headers: Headers
@@ -58,6 +61,10 @@ function verifyWebhookSignature(
   return signatures.some((sig) => timingSafeEqualString(sig, computed));
 }
 
+// ---------------------------------------------------------------------------
+// Event type shapes (partial — only the fields we consume)
+// ---------------------------------------------------------------------------
+
 type ClerkOrgCreatedEvent = {
   type: "organization.created";
   data: {
@@ -66,6 +73,19 @@ type ClerkOrgCreatedEvent = {
     created_by: string;
   };
 };
+
+type ClerkMembershipCreatedEvent = {
+  type: "organizationMembership.created";
+  data: {
+    id: string;
+    organization: { id: string };
+    public_user_data: { user_id: string; identifier: string };
+  };
+};
+
+// ---------------------------------------------------------------------------
+// Handler
+// ---------------------------------------------------------------------------
 
 export async function POST(request: Request) {
   const rawBody = await request.text();
@@ -82,16 +102,47 @@ export async function POST(request: Request) {
   }
 
   const { type, data } = event as { type: string; data: Record<string, unknown> };
+  void data; // suppress unused warning for unhandled event types
+
+  // -- organization.created: provision workspace -------------------------
 
   if (type === "organization.created") {
     const { id, name, created_by } = (event as ClerkOrgCreatedEvent).data;
     await repository.provisionWorkspace({
       clerkOrgId: id,
       orgName: name,
-      ownerClerkUserId: created_by
+      ownerClerkUserId: created_by,
     });
+    return NextResponse.json({ received: true });
   }
 
-  void data; // suppress unused warning for other event types
+  // -- organizationMembership.created: enforce maxTeam -------------------
+
+  if (type === "organizationMembership.created") {
+    const { organization, public_user_data: _user } = (event as ClerkMembershipCreatedEvent).data;
+    const workspaceId = organization.id;
+
+    // workspaceId is the Clerk org ID — the workspace must already exist
+    // (provisioned by organization.created or onboarding).
+    const limitCheck = await checkTeamSeatLimit(workspaceId);
+
+    if (!limitCheck.allowed) {
+      return NextResponse.json(
+        {
+          error: "seat_limit_exceeded",
+          message: `Workspace ${workspaceId} is at its team seat limit ` +
+            `(${limitCheck.used}/${limitCheck.limit}). ` +
+            `Upgrade to ${limitCheck.requiredPlan ?? "a higher plan"} to add more members.`,
+          details: { used: limitCheck.used, limit: limitCheck.limit },
+        },
+        { status: 402 }
+      );
+    }
+
+    return NextResponse.json({ received: true });
+  }
+
+  // -- Unhandled event types: acknowledge to prevent Clerk retries --------
+
   return NextResponse.json({ received: true });
 }
