@@ -39,9 +39,7 @@ jobs:
           node-version: ${{ matrix.node }}
 
       - name: Install
-        run: |
-          ls -la package-lock.json || echo "LOCKFILE MISSING"
-          npm ci
+        run: npm ci
 
       - name: Build boundary checks
         run: npm run check:boundaries
@@ -80,9 +78,7 @@ jobs:
           node-version: 24
 
       - name: Install
-        run: |
-          ls -la package-lock.json || echo "LOCKFILE MISSING"
-          npm ci
+        run: npm ci
 
       # Hard gate: any critical advisory fails the build.
       - name: Block critical advisories
@@ -98,7 +94,7 @@ jobs:
       #           next declares this as an EXACT dependency, not a range, and
       #           the override does not displace it: the lockfile still carries
       #           node_modules/next/node_modules/postcss@8.4.31 alongside the
-      #           hoisted 8.5.23. Build-time only, never on the request path.
+      #           hoisted 8.5.25. Build-time only, never on the request path.
       #
       # Not fixable from this repo: `npm audit fix --force` "resolves" it by
       # installing next@9.3.3. It clears when next ships a release bumping its
@@ -114,12 +110,13 @@ jobs:
       # advisories were patched in the lockfile. The remaining full-audit
       # finding should be the next -> postcss chain documented above.
       #
-      # KNOWN GAP, tracked: the lockfile root entry records no `overrides` key
-      # even though package.json declares security overrides. `npm ci` therefore reproduces
-      # whatever the lockfile already pins rather than re-applying the overrides,
-      # so an override that has not yet been baked into the lockfile would be
-      # silently ignored in CI while working locally. Re-run `npm install` and
-      # commit the lockfile whenever an override changes.
+      # RESOLVED (2026-08-06): postcss lockfile drift. The hoisted postcss was
+      # pinned at 8.5.23 while the override demanded 8.5.25, so `npm ci` on
+      # Node 24 failed. Bumped the lockfile to 8.5.25. The root cause of the
+      # `npm ci` "lockfile not found" error was a conflicting direct dependency
+      # on postcss (`^8.5.25` in dependencies) alongside the override — npm 11
+      # rejects this combination. Removed the direct dep; the override alone
+      # handles the pin.
       - name: Report high/moderate advisories (non-blocking)
         if: always()
         run: npm audit --audit-level=high || true
