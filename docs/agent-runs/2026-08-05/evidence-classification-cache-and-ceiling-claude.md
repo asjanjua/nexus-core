@@ -137,3 +137,44 @@ Prompted by a report that the live page was not working.
 - **Next exact action:** `git push`, then `npm run db:migrate && npm run
   db:check`, then re-smoke `/evidence/review` and `/meridian` against the new
   deployed SHA.
+
+### 2026-08-05T23:40 — push discovered, deploy not yet serving
+
+- **Correction to the entry above.** `origin/main` advanced to `94bb983` at
+  23:34 while this slice was being documented: Ali pushed. The four code
+  commits are `pushed`, not `committed but unpushed`. The status recorded
+  minutes earlier was already stale when written, which is the ordinary hazard
+  of a retrospective ledger.
+- **Deployment is NOT yet serving them.** `/evidence/review` still returns 404
+  at 23:41 and the sidebar still lacks the "Untyped Evidence" entry, so Render
+  is answering from a build older than `26f77f1`. Status is `pushed / CI
+  pending` and `deployment pending`. It is not `deployed at 94bb983`.
+- **Cold start observed.** The first request at 23:39 hit a spun-down Render
+  instance and served the Render "Application loading" splash for roughly 50
+  seconds before the app answered. `render.yaml` pins `plan: free`, which
+  sleeps on idle. A prospect opening a demo link cold waits out that splash on
+  Render branding. Commercially this is the most serious finding of the
+  session; it is an infrastructure decision, not a code fix.
+- **`render.yaml` runs `npm run db:migrate` in `buildCommand`**, so migrations
+  0043 and 0044 apply automatically on the next successful deploy. No manual
+  migration step is required in production, though `npm run db:check`
+  afterwards is still worth running.
+
+### 2026-08-05T23:42 — `1e13227` deployed-commit reporting
+
+- **Completed:** `/api/health` now returns `build.commit`, `build.commitShort`,
+  and `build.branch` from Render's injected variables.
+- **Why it was worth interrupting for.** The previous checkpoint could not
+  distinguish "not pushed" from "pushed but not built" from "built but broken"
+  without inspecting page markup and inferring. Every future status in this
+  ledger can now cite a SHA read from the running process rather than assumed
+  from a dashboard.
+- **Verification:** tsc 0; 1035 tests / 129 files; boundaries clean; build 197
+  pages.
+- **Status:** `locally verified`, `committed but unpushed` at `1e13227`
+  (`857bc13` paperwork and `1e13227` both local).
+- **Next exact action:** push `857bc13` and `1e13227`; wait for the Render
+  build; then `curl https://pinavia.io/api/health` and confirm
+  `build.commitShort` matches, which is the first time this project can state
+  `deployed at <sha>` as evidence rather than assertion. Then re-check
+  `/evidence/review` and run `npm run db:check`.
