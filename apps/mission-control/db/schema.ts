@@ -164,6 +164,11 @@ export const evidenceRecords = pgTable("evidence_records", {
   ingestionStatus: ingestionStatusEnum("ingestion_status").notNull(),
   freshnessHours: integer("freshness_hours").notNull().default(0),
   body: text("body").notNull(),
+  // Cached classifier output; see migration 0044. Nullable means "not cached",
+  // which falls through to classifying live.
+  documentTypes: jsonb("document_types").$type<string[]>(),
+  documentTypesSource: varchar("document_types_source", { length: 16 }),
+  documentTypesVersion: integer("document_types_version"),
   embedding: vector("embedding")
 });
 

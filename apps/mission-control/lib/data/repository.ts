@@ -1,5 +1,6 @@
 import { and, desc, eq, gt, inArray, isNotNull, isNull, lt, ne, or, sql } from "drizzle-orm";
 import type { DocumentTypeOverride } from "@/lib/domain/document-type-classifier";
+import { CLASSIFIER_VERSION, classifyForStorage } from "@/lib/domain/document-type-classifier";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { verifyPassword } from "@/lib/auth";
@@ -233,7 +234,18 @@ function toEvidenceRecord(row: typeof evidenceRecords.$inferSelect): EvidenceRec
     freshnessHours: Math.round(
       (Date.now() - new Date(sourceTimestamp).getTime()) / (1000 * 60 * 60)
     ),
-    text: row.body
+    text: row.body,
+    // All three columns must be present for the cache to mean anything. A row
+    // with types but no version cannot be checked for staleness, so it is
+    // treated as absent and reclassified rather than trusted.
+    classification:
+      row.documentTypes && row.documentTypesSource && row.documentTypesVersion !== null
+        ? {
+            types: row.documentTypes,
+            source: row.documentTypesSource as "filename" | "content" | "none",
+            version: row.documentTypesVersion
+          }
+        : undefined
   };
 }
 
@@ -618,8 +630,21 @@ export const repository = {
   },
 
   async addEvidenceRecord(record: EvidenceRecord): Promise<EvidenceRecord> {
+    // Classify once, here, rather than on every read. Ingest is the only moment
+    // the text is guaranteed to be in hand and the only moment the cost is paid
+    // once instead of per request.
+    //
+    // Not conditional on the caller having supplied one: a caller-provided
+    // classification could carry any version, including a fabricated one, and
+    // this is the single point where the value can be guaranteed to match the
+    // rules that actually produced it.
+    const classification = classifyForStorage(record);
+    const withClassification: EvidenceRecord = { ...record, classification };
     const inserted = await runDb(async (db) => {
       await db.insert(evidenceRecords).values({
+        documentTypes: classification.types,
+        documentTypesSource: classification.source,
+        documentTypesVersion: classification.version,
         id: record.id,
         tenantId: record.tenantId,
         workspaceId: record.workspaceId,
@@ -638,8 +663,76 @@ export const repository = {
       });
       return true;
     });
-    if (!inserted) return store.addEvidenceRecord(record);
-    return record;
+    // The in-memory store gets the same classification, so the fallback path
+    // behaves identically rather than being quietly slower and differently
+    // shaped.
+    if (!inserted) return store.addEvidenceRecord(withClassification);
+    return withClassification;
+  },
+
+  /**
+   * Recompute the cached classification for rows the current rules have not
+   * seen — those ingested before migration 0044, or classified by rules that
+   * have since changed.
+   *
+   * PURELY A PERFORMANCE OPERATION. Readers already fall back to classifying
+   * live when the cache is missing or stale, so nothing is wrong until this
+   * runs; it is only slow. That is deliberate: a correctness guarantee that
+   * depends on somebody remembering to run a backfill is not a guarantee.
+   *
+   * Rows are fetched and written one workspace at a time rather than in a
+   * single sweeping UPDATE, because the classification has to be computed in
+   * TypeScript by the same code path that produced it at ingest. Reimplementing
+   * ~55 regexes in SQL, or in a standalone JS script, would drift from the real
+   * classifier and produce two answers to the same question.
+   */
+  async reclassifyStaleEvidence(
+    workspaceId: string,
+    limit = 500
+  ): Promise<{ examined: number; updated: number; hasMore: boolean } | null> {
+    return runDb(async (db) => {
+      const stale = await db
+        .select({
+          id: evidenceRecords.id,
+          sourcePath: evidenceRecords.sourcePath,
+          body: evidenceRecords.body
+        })
+        .from(evidenceRecords)
+        .where(
+          and(
+            eq(evidenceRecords.workspaceId, workspaceId),
+            or(
+              isNull(evidenceRecords.documentTypesVersion),
+              ne(evidenceRecords.documentTypesVersion, CLASSIFIER_VERSION)
+            )
+          )
+        )
+        .limit(limit + 1);
+
+      // Asked for one more than the batch so the caller learns whether another
+      // pass is needed without a second count query.
+      const hasMore = stale.length > limit;
+      const batch = hasMore ? stale.slice(0, limit) : stale;
+
+      let updated = 0;
+      for (const row of batch) {
+        const classification = classifyForStorage({ sourcePath: row.sourcePath, text: row.body });
+        await db
+          .update(evidenceRecords)
+          .set({
+            documentTypes: classification.types,
+            documentTypesSource: classification.source,
+            documentTypesVersion: classification.version
+          })
+          // Workspace re-asserted on the write. The ids came from a scoped
+          // read, but a cross-tenant update is not a mistake worth leaving
+          // one predicate away.
+          .where(and(eq(evidenceRecords.id, row.id), eq(evidenceRecords.workspaceId, workspaceId)));
+        updated += 1;
+      }
+
+      return { examined: batch.length, updated, hasMore };
+    });
   },
 
   async listEntities(

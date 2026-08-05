@@ -98,7 +98,20 @@ export const evidenceRecordSchema = z.object({
   extractionConfidence: z.number().min(0).max(1),
   ingestionStatus: ingestionStatusSchema,
   freshnessHours: z.number().int().nonnegative(),
-  text: z.string()
+  text: z.string(),
+  /**
+   * Cached document-type classification (migration 0044). Absent means it has
+   * not been computed for this record yet, not that the record has no types —
+   * readers fall through to classifying live. Carried on the record so the
+   * classifier's callers get the cache without any of them changing.
+   */
+  classification: z
+    .object({
+      types: z.array(z.string()),
+      source: z.enum(["filename", "content", "none"]),
+      version: z.number().int()
+    })
+    .optional()
 });
 export type EvidenceRecord = z.infer<typeof evidenceRecordSchema>;
 

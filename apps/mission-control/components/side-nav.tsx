@@ -77,6 +77,11 @@ const arcSections: NavSection[] = [
     items: [
       { href: "/sources", label: "Sources" },
       { href: "/ingestion", label: "Ingestion" },
+      // Belongs to Connect, not Decide: the question is "what IS this document",
+      // which is part of getting evidence in, not deciding anything with it.
+      // Deliberately not called "Review Queue" — /review already owns that name
+      // and means something else.
+      { href: "/evidence/review", label: "Untyped Evidence" },
       { href: "/settings/connectors", label: "Connectors" },
     ],
   },

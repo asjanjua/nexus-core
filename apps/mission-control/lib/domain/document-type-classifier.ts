@@ -20,8 +20,18 @@
  * where a fuzzy body-text match would over-report it, and over-reporting
  * coverage on a regulatory screen is the failure mode with real consequences.
  *
- * If this proves useful, the next step is classifying at ingest and storing
- * the result, so a reviewer can correct a wrong type. Not built yet.
+ * NOW CACHED AT INGEST. The classification is stored on the evidence row
+ * (migration 0044) and reused on read. This stays a pure function: the cache is
+ * an optimisation a caller may or may not have, never the source of truth.
+ *
+ * A stored classification can go stale, because the rules below change whenever
+ * a requirement pack introduces a document type. CLASSIFIER_VERSION is derived
+ * FROM THE PATTERN TABLE ITSELF rather than being a number someone must
+ * remember to bump — a manual constant fails silently and permanently, leaving
+ * workspaces matched against rules that no longer exist. A stored value
+ * carrying a different version is ignored and recomputed, so a deploy that
+ * changes the rules is self-correcting. The backfill script only exists to make
+ * that cheap again.
  */
 
 /** "Board agenda", "agenda - AGM", but not "team offsite agenda". */
@@ -298,11 +308,22 @@ export type ResolvedDocumentTypes = {
  * fall back to the guess the human just rejected.
  */
 export function resolveDocumentTypes(
-  record: { sourcePath?: string | null; text?: string | null },
+  record: {
+    sourcePath?: string | null;
+    text?: string | null;
+    /** Stored at ingest. Used only when its version matches the live rules. */
+    classification?: CachedClassification | null;
+  },
   override?: DocumentTypeOverride | null
 ): ResolvedDocumentTypes {
   if (override) {
     return { types: [...override.types], source: "reviewer", reviewed: true };
+  }
+  // The cache is checked AFTER the override, never before. An override is a
+  // human decision and outranks anything derived, fresh or stale.
+  if (cacheIsCurrent(record.classification)) {
+    const cached = record.classification!;
+    return { types: [...cached.types], source: cached.source, reviewed: false };
   }
   // Takes `sourcePath` because that is the field name on EvidenceRecord, and
   // maps it explicitly. Passing the record straight through silently dropped
@@ -328,14 +349,91 @@ export function resolveDocumentTypes(
  * only reason a fifth engine will not repeat it.
  */
 export function matchesEvidenceTags(
-  record: { sourcePath?: string | null; text?: string | null },
+  record: {
+    sourcePath?: string | null;
+    text?: string | null;
+    classification?: CachedClassification | null;
+  },
   evidenceTags: string[]
 ): boolean {
   if (evidenceTags.length === 0) return false;
   const wanted = new Set(evidenceTags.map((t) => t.toLowerCase()));
-  return classifyDocument({ path: record.sourcePath, text: record.text }).some((m) =>
-    wanted.has(m.type.toLowerCase())
-  );
+  // Uses the stored classification when it is current. The four native engines
+  // that call this each scan every record against every requirement, so this is
+  // where the cache earns most of its keep.
+  const types = cacheIsCurrent(record.classification)
+    ? record.classification!.types
+    : classifyDocument({ path: record.sourcePath, text: record.text }).map((m) => m.type);
+  return types.some((t) => wanted.has(t.toLowerCase()));
+}
+
+// ---------------------------------------------------------------------------
+// Cache versioning
+// ---------------------------------------------------------------------------
+
+/**
+ * Fingerprint of the rules that produced a stored classification.
+ *
+ * Derived from the pattern table so it CANNOT be forgotten. Add a type, tighten
+ * a regex, reorder the list, and the number changes on its own; every cached
+ * row written under the old rules is then ignored until it is recomputed.
+ *
+ * FNV-1a, kept as a positive 31-bit integer so it fits a Postgres INTEGER
+ * without a signed-overflow surprise. Collisions are theoretically possible and
+ * practically irrelevant: the cost of one would be a stale classification on
+ * documents nobody has re-ingested, which the backfill fixes and which errs
+ * toward under-reporting coverage — the direction this module already errs in.
+ */
+function fingerprint(): number {
+  let h = 0x811c9dc5;
+  for (const p of PATTERNS) {
+    for (const ch of `${p.type}|${p.match.source}|${p.match.flags}`) {
+      h ^= ch.charCodeAt(0);
+      h = Math.imul(h, 0x01000193) >>> 0;
+    }
+  }
+  // Also covers the thresholds, which change results without touching PATTERNS.
+  for (const n of [TITLE_REGION_CHARS, MIN_RECURRENCE, SCAN_LIMIT_CHARS]) {
+    h ^= n;
+    h = Math.imul(h, 0x01000193) >>> 0;
+  }
+  return h % 0x7fffffff;
+}
+
+export const CLASSIFIER_VERSION = fingerprint();
+
+/**
+ * A classification previously computed and stored against an evidence row.
+ *
+ * `version` is not optional. A cache entry that cannot say which rules produced
+ * it is unusable, and making the field optional would let a caller construct
+ * one by accident.
+ */
+export type CachedClassification = {
+  types: string[];
+  source: DocumentTypeSignal | "none";
+  version: number;
+};
+
+/** True when a cached classification was produced by the rules now in force. */
+export function cacheIsCurrent(cached?: CachedClassification | null): boolean {
+  return !!cached && cached.version === CLASSIFIER_VERSION;
+}
+
+/**
+ * Classify a record for storage. The shape written at ingest and by backfill.
+ */
+export function classifyForStorage(record: {
+  sourcePath?: string | null;
+  text?: string | null;
+}): CachedClassification {
+  const matches = classifyDocument({ path: record.sourcePath, text: record.text });
+  if (matches.length === 0) return { types: [], source: "none", version: CLASSIFIER_VERSION };
+  return {
+    types: matches.map((m) => m.type),
+    source: matches.some((m) => m.signal === "filename") ? "filename" : "content",
+    version: CLASSIFIER_VERSION
+  };
 }
 
 /** Every type this classifier can produce — used to assert vocabulary alignment. */
