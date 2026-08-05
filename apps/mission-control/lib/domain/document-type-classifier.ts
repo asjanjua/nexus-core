@@ -217,6 +217,24 @@ export function documentTypesForDocuments(
   return [...new Set(docs.flatMap((d) => classifyDocument(d).map((m) => m.type)))];
 }
 
+/**
+ * Types the text mentions but not strongly enough to apply.
+ *
+ * `contentTypes` deliberately requires a title-region hit or MIN_RECURRENCE
+ * repeats, so a passing mention never types a document. Those rejected matches
+ * are still the best clue a human has about an otherwise unidentifiable file,
+ * and throwing them away leaves a review queue with nothing to order by.
+ *
+ * Offered as a SUGGESTION ONLY. Anything returned here has already failed the
+ * bar for automatic application; surfacing it as a one-click confirmation is
+ * different from acting on it.
+ */
+export function weakContentHints(text: string | null | undefined): string[] {
+  if (!text || !text.trim()) return [];
+  const strong = new Set(contentTypes(text));
+  return PATTERNS.filter((p) => !strong.has(p.type) && p.match.test(text)).map((p) => p.type);
+}
+
 // ---------------------------------------------------------------------------
 // Reviewer overrides
 // ---------------------------------------------------------------------------

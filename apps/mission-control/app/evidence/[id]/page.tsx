@@ -3,6 +3,11 @@ import { PageShell } from "@/components/page-shell";
 import { repository } from "@/lib/data/repository";
 import { requireWorkspaceId } from "@/lib/safe-auth";
 import { EvidenceDeleteButton } from "@/components/evidence-delete-button";
+import { EvidenceDocumentType } from "@/components/evidence-document-type";
+import {
+  knownDocumentTypes,
+  resolveDocumentTypes,
+} from "@/lib/domain/document-type-classifier";
 
 function fileName(path: string): string {
   return path.split("/").pop() || path;
@@ -26,6 +31,16 @@ export default async function EvidenceDetailPage({ params }: { params: Promise<{
   // notFound rather than a 403, so the page does not confirm that an id exists
   // in some other workspace.
   if (!row || row.workspaceId !== workspaceId) return notFound();
+
+  // Same resolution the coverage API uses, so the panel and the coverage
+  // counts can never disagree about what this document is.
+  const override = (await repository.getEvidenceTypeOverrides(workspaceId).catch(() => new Map())).get(
+    row.id
+  );
+  const resolved = resolveDocumentTypes(
+    { sourcePath: row.sourcePath, text: row.text },
+    override ?? null
+  );
 
   return (
     <PageShell title={`Evidence ${row.id}`} description="Inspect the source, confidence, freshness, and extracted text behind a NexusAI insight.">
@@ -60,6 +75,20 @@ export default async function EvidenceDetailPage({ params }: { params: Promise<{
               Original document preview is not available for this source.
             </p>
           )}
+          {/* Resolved server-side so the panel opens on the truth rather than
+              flashing the classifier's answer and correcting itself. */}
+          <EvidenceDocumentType
+            initial={{
+              evidenceId: row.id,
+              types: resolved.types,
+              source: resolved.source,
+              reviewed: resolved.reviewed,
+              setBy: override?.setBy ?? null,
+              note: override?.note ?? null,
+            }}
+            vocabulary={knownDocumentTypes()}
+          />
+
           <div className="border-t border-white/10 pt-4">
             <p className="mb-2 text-xs text-white/40">
               Admin cleanup for bad pilot uploads or test records.
