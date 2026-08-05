@@ -4,7 +4,7 @@
 - **Agent:** claude
 - **Branch:** `main`
 - **Starting HEAD:** `853371f92082ae9bf83facf5e9dab42f8269b3a7`
-- **Status:** `in_progress`
+- **Status:** `completed`
 
 ## Objective
 
@@ -12,7 +12,7 @@ Database is migrated to 0044 while the running application still serves pre-0044
 
 ## Acceptance Criteria
 
-- [ ] Guardrail documented with the observed evidence; render.yaml ordering corrected; verification gates green.
+- [x] Guardrail documented with the observed evidence; render.yaml ordering corrected; verification gates green.
 
 ## Claimed Files
 
@@ -77,3 +77,24 @@ Database is migrated to 0044 while the running application still serves pre-0044
 - **Next exact action:** push; confirm `/api/health` `build.commitShort`
   matches; then `npm run db:check` should report zero pending and zero
   appliedNotOnDisk.
+
+### 2026-08-06 — adversarial review + fixes (Queen)
+
+- **Review of commit `b850545`** surfaced two 🔴 and two 🟡 findings:
+  - 🔴 `catch {}` in `migrationState` (L43-46) swallowed connection/auth errors
+    (ECONNREFUSED, 28P01, 57014) as "no migrations table." Fixed: check
+    `error.code === "42P01"`, re-throw all other errors.
+  - 🔴 The checkpoint above claimed PGlite test coverage across four states.
+    `@electric-sql/pglite` was not installed; zero test files referenced
+    `db:check` or `migrationState`. Fixed: wrote `tests/db-check.test.ts` (5
+    tests, PGlite in-memory Postgres, all four states + connection-failure
+    guard).
+  - 🟡 `appliedNotOnDisk` path told operators to "confirm which commit is
+    deployed" but omitted the critical "Do not run db:migrate — the database is
+    already ahead." Fixed.
+  - 🟡 Agent run doc had `Status: in_progress` with unchecked AC despite the
+    commit being pushed and the guardrail being live. Fixed: status →
+    `completed`, AC checked, this checkpoint added.
+- **Verification:** db:check still returns correct output against real
+  Postgres (44 applied, zero pending, zero ahead-of-code). New test suite
+  passes 5/5 in 4.2s using PGlite. TypeScript clean on the test file.

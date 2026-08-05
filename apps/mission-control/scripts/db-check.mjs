@@ -40,10 +40,15 @@ async function migrationState(pool) {
   try {
     const { rows } = await pool.query("SELECT id FROM _nexus_migrations ORDER BY id");
     applied = rows.map((r) => r.id);
-  } catch {
-    // No table means nothing has ever run here. A definitive answer, not a
-    // failure to look.
-    return { appliedCount: 0, latestApplied: null, pending: onDisk, appliedNotOnDisk: [] };
+  } catch (error) {
+    // 42P01 = undefined_table. Genuine "nothing has ever run here."
+    // Every other code (connection refused, auth failure, timeout, etc.) is a
+    // real failure — re-throw so the caller reports it rather than silently
+    // returning a false "empty database" result.
+    if (error?.code === "42P01") {
+      return { appliedCount: 0, latestApplied: null, pending: onDisk, appliedNotOnDisk: [] };
+    }
+    throw error;
   }
 
   const appliedSet = new Set(applied);
@@ -82,8 +87,10 @@ try {
     );
     for (const f of migrations.appliedNotOnDisk) console.error(`  ${f}`);
     console.error(
-      "This database has been migrated by a newer checkout. Confirm which commit is deployed " +
-        "(`/api/health` reports build.commitShort) before changing schema."
+      "This database has been migrated by a newer checkout. Do not run db:migrate — the\n" +
+        "database is already ahead of this checkout. Confirm which commit is deployed " +
+        "(`/api/health` reports build.commitShort) before changing schema. Wait for the\n" +
+        "deploy to promote, or check out the commit whose migrations are already applied."
     );
     process.exitCode = 1;
   }

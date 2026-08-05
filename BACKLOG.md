@@ -7,7 +7,7 @@
 > Architecture review: `TASKS.md` § Architecture Review Action Items.
 > Distribution plan: `NexusAI_Distribution_Plan.docx` and `docs/INFRA_DECISION_MEMO.md`.
 > UI/UX workplan: `docs/UI_UX_WORKPLAN.md` (MCP-aware design-to-code pipeline).
-> Last reviewed: 2026-07-26.
+> Last reviewed: 2026-08-06.
 > Calendar anchor (2026-07-07): regulated-buyer demo ~week of 2026-07-13, public self-serve launch ~2026-08-04, paid pilot signing ~2026-08-18. Execution sequence: `TASKS.md` § Demo/Launch/Pilot Calendar Plan; demo runbook: `docs/DEMO_RUNBOOK_REGULATED.md`; decisions: `docs/USER_STRATEGY_AND_PIVOTS.md` §Decisions 2026-07-07.
 
 ---

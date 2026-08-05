@@ -36,6 +36,30 @@ Status: `locally verified`, `committed but unpushed` at `94bb983`.
 - [ ] Reconcile `matchesEvidenceTags` with reviewer overrides — pre-existing: the four native engines disagree with the Meridian coverage API about any document a human has retyped.
 - [ ] Design pass on cold-start rooms — `/meridian` on an unpopulated workspace renders a correct empty state that is indistinguishable from a broken page.
 
+## 2026-08-05 — Migration Promotion Ordering Guardrail
+
+Ledger: `docs/agent-runs/2026-08-05/migration-promotion-ordering-claude.md`.
+Status: `completed` at `b850545`. Review fixes pending in branch `fix/db-check-error-suppression-and-tests`.
+
+- [x] Document the build-time migration ordering constraint — `docs/ENGINEERING_GUARDRAILS.md` §9: every migration must leave the currently deployed release working. Render runs `db:migrate` inside `buildCommand`, so the database is migrated before the new code serves anything.
+- [x] Add the expand-and-contract per-operation rules: nullable columns, multi-deploy drops, three-step renames, constraint tightening only after every running release satisfies it.
+- [x] Comment `render.yaml` `buildCommand` with the ordering constraint and point at §9.
+- [x] Extend `npm run db:check` to report migration state in both directions — `pending` (files on disk not yet applied) and `appliedNotOnDisk` (migrations applied but absent from this checkout — the database-ahead-of-code case). Exits non-zero on either.
+- [x] Push commit `b850545` to `main`.
+- [ ] Confirm Render deployed `b850545` or later and `npm run db:check` reports clean against production.
+
+## 2026-08-06 — db:check Error Suppression Fix + Test Suite
+
+Ledger: this session (Queen adversarial review). Ledger entry in `docs/agent-runs/2026-08-05/migration-promotion-ordering-claude.md` §2026-08-06 checkpoint.
+
+- [x] Fix catch-all error suppression — `migrationState` `catch {}` now checks `error.code === "42P01"` and re-throws all other errors (ECONNREFUSED, 28P01, 57014, etc.).
+- [x] Add `@electric-sql/pglite` as a devDependency of `@nexus/mission-control`.
+- [x] Write `tests/db-check.test.ts` — 5 tests covering all four migration states plus connection-failure guard, using in-memory PGlite.
+- [x] Add explicit "Do not run db:migrate" guidance to the `appliedNotOnDisk` error path.
+- [x] Update agent run doc — status → `completed`, AC checked, review checkpoint added.
+- [x] Update CHANGELOG.md and HANDOVER.md with the review findings and fixes.
+- [ ] Branch, commit, push the review fixes, then open PR.
+
 ## 2026-08-04 — Current Release Repair Status
 
 - [x] Repair latest pricing/settings CI blockers — commit `6bcc970` fixes the malformed Settings import and the pricing test type-narrowing issue.
