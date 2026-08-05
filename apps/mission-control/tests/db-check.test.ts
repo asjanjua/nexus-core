@@ -90,9 +90,14 @@ async function migrationState(
       "SELECT id FROM _nexus_migrations ORDER BY id",
     );
     applied = rows.map((r) => r.id);
-  } catch (error: any) {
+  } catch (error: unknown) {
     // 42P01 = undefined_table. Genuine "nothing has ever run here."
-    if (error?.code === "42P01") {
+    if (
+      typeof error === "object" &&
+      error !== null &&
+      "code" in error &&
+      (error as Record<string, unknown>).code === "42P01"
+    ) {
       return {
         appliedCount: 0,
         latestApplied: null,
@@ -232,8 +237,10 @@ describe("migrationState", () => {
     // Simulate a connection failure: a pool that throws ECONNREFUSED on query.
     const brokenPool = {
       query: async (_sql: string) => {
-        const err = new Error("connect ECONNREFUSED 127.0.0.1:5432") as any;
-        err.code = "ECONNREFUSED";
+        const err = Object.assign(
+          new Error("connect ECONNREFUSED 127.0.0.1:5432"),
+          { code: "ECONNREFUSED" },
+        );
         throw err;
       },
     };
