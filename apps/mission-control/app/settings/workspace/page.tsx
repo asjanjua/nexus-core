@@ -1,6 +1,7 @@
 import { PageShell } from "@/components/page-shell";
 import { repository } from "@/lib/data/repository";
 import { requireWorkspaceId } from "@/lib/safe-auth";
+import { WorkspaceDashboard } from "@/components/workspace-dashboard";
 
 function BoolBadge({ enabled }: { enabled: boolean }) {
   return (
@@ -23,7 +24,8 @@ export default async function WorkspaceSettingsPage() {
 
   return (
     <PageShell title="Workspace Settings" description="Workspace identity, policy defaults, and source mapping posture.">
-      <section className="panel space-y-4 text-sm text-white/80">
+      <WorkspaceDashboard />
+      <section className="panel space-y-4 text-sm text-white/80 mt-6">
         <div>
           <p className="panel-title">Workspace Identity</p>
           <dl className="mt-3 grid gap-3 md:grid-cols-2">
