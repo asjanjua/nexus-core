@@ -27,6 +27,7 @@ const PUBLIC_ROUTES: Entry[] = [
   { path: "/product-brief", priority: 0.8, changeFrequency: "monthly" },
   { path: "/pricing", priority: 0.9, changeFrequency: "monthly" },
   { path: "/status", priority: 0.6, changeFrequency: "hourly" },
+  { path: "/support", priority: 0.7, changeFrequency: "monthly" },
   { path: "/solutions", priority: 0.8, changeFrequency: "monthly" },
   { path: "/research", priority: 0.7, changeFrequency: "monthly" },
   { path: "/pro-waitlist", priority: 0.6, changeFrequency: "monthly" },

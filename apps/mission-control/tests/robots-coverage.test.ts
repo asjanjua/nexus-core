@@ -48,6 +48,7 @@ const PUBLIC_ROUTES = new Set([
   "/pro-waitlist",
   "/readiness",
   "/status",
+  "/support",
   "/terms",
   "/privacy",
   "/security",
