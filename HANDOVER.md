@@ -4,6 +4,48 @@
 
 ---
 
+## 2026-08-06 — Nexus Room Portfolio (Durable Configuration)
+
+Built the durable room configuration system across 4 commits:
+
+### Migration 0045 — rooms table
+- `rooms` table with lifecycle_state, template, display_name, owner, evidence_scope, agent_pack, boundary_acknowledged, audit_trail (JSONB), and activation/deactivation timestamps
+- Unique index on (workspace_id, template) for non-custom rooms
+- Existing workspaces get CEO room seeded automatically
+- Migration applied locally; production pending
+
+### API — GET/PATCH /api/rooms
+- GET returns all rooms, seeds missing portfolio templates on first read (idempotent)
+- PATCH /api/rooms/[roomId] activates/updates a room with owner+scope+agent+lifecycle
+- `write:rooms` scope added to ADMIN_ONLY_SCOPES (workspace admin only)
+- CEO room protected: cannot be deactivated
+
+### /rooms page + RoomPortfolioGrid component
+- Server component fetches rooms, client component renders card grid
+- Inline activation form: owner (required), scope, agent pack, boundary checkbox
+- Lifecycle badges (active=accent, staged=sky, inactive=muted)
+- CEO card shows mandatory notice, no deactivation controls
+
+### Dynamic navigation
+- SideNav fetches GET /api/rooms and derives "Specialist Rooms" section from active rooms
+- Template-to-route mapping: CEO→/dashboard/ceo, Finance→/dashboard/cfo, etc.
+- Staged/inactive rooms excluded; falls back gracefully while loading
+- `/rooms` link added to Workspace section
+
+### Tests
+- `tests/room-activation.test.ts`: 9 assertions — CEO mandatory, staged default, product-room detection, template coverage
+
+### Verification
+TSC clean. Lint 0 errors 14 warnings. Migration 0045 applied locally. db:check clean. Tests: 9/9 room-activation, 9/9 team-seat-limit, 5/5 db-check.
+
+### Files changed
+`db/migrations/0045_nexus_rooms.sql`, `db/schema.ts`, `lib/contracts.ts`, `lib/data/repository.ts`, `lib/api-auth.ts`, `app/api/rooms/route.ts`, `app/api/rooms/[roomId]/route.ts`, `app/rooms/page.tsx`, `components/room-portfolio-grid.tsx`, `components/side-nav.tsx`, `tests/room-activation.test.ts`
+
+### Next action
+Production migration 0045. Then product-room activation adapters (handoff from rooms into vertical workflows — Quorum/Meridian/Vantage/Nucleus).
+
+---
+
 ## 2026-08-06 — Pilot Enforcement Sprint (Queen)
 
 Completed the four P0 items from TASKS.md §2026-08-05 Evidence section:

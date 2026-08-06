@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-08-06 — Nexus Room Portfolio (Durable Configuration)
+
+- **Durable room configuration** replaces the static onboarding role-state controls. Migration 0045 adds a `rooms` table with lifecycle state, template, accountable owner, evidence scope, agent pack, human-authority boundary acknowledgement, and an audited JSONB trail. Every workspace sees the complete curated portfolio from day one; activation requires an administrator to confirm owner + scope + boundary.
+- **`/rooms` page** with a card-grid portfolio and inline activation form. CEO is mandatory and cannot be deactivated. Other rooms start staged and require owner confirmation before going active.
+- **Dynamic navigation** derives the Specialist Rooms sidebar section from active room configuration. Templates map to canonical routes (CEO→/dashboard/ceo, Finance→/dashboard/cfo, etc.). Staged or inactive rooms are excluded.
+- **`GET /api/rooms`** seeds missing portfolio templates on first read so a new workspace sees the full portfolio immediately. **`PATCH /api/rooms/[roomId]`** activates a room with owner, scope, and agent pack, appending an audit entry. `write:rooms` scope is workspace-admin-only.
+- **9-room test suite** covering CEO-is-mandatory, staged defaults, product-room detection, and template display-name coverage.
+
 ## 2026-08-06 — maxTeam Enforcement + Reviewer Override Reconciliation
 
 - **maxTeam is now enforced** via the Clerk `organizationMembership.created` webhook. When a new member joins an organization, the workspace's plan seat limit is checked; the webhook returns 402 with seat details if the limit is exceeded. `checkTeamSeatLimit` in `lib/billing/budget.ts` follows the same fail-open pattern as `checkEvidenceLimit`. Enterprise workspaces (maxTeam=-1) are unlimited.
