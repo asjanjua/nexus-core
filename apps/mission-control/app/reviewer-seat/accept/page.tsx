@@ -11,6 +11,7 @@
  *      workspace's identity-bound reviewer with approval authority.
  */
 "use client";
+import Link from "next/link";
 
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
@@ -76,9 +77,9 @@ function AcceptPanel() {
                 This seat is tied to your account. You hold approval authority for this
                 workspace&apos;s pilot recommendations.
               </p>
-              <a href="/" className="btn-primary mt-4 inline-flex text-sm">
+              <Link href="/" className="btn-primary mt-4 inline-flex text-sm">
                 Go to Mission Control
-              </a>
+              </Link>
             </div>
           ) : (
             <div>
