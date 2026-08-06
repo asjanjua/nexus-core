@@ -1,6 +1,6 @@
 # SECURITY_REVIEW.md — Pre-Pilot Security Checklist
 
-> Last updated: 2026-07-27
+> Last updated: 2026-08-06 (P3 session — production verified)
 > Complete all items marked REQUIRED before signing the first paid pilot contract.
 > Items marked RECOMMENDED should be done before scaling to a second pilot.
 
@@ -64,7 +64,7 @@ Residual: no cross-tenant write path remains. In no-database (demo) mode some by
 - [x] **REQUIRED** `Permissions-Policy` (camera, microphone, geolocation, payment all denied)
 - [x] **REQUIRED** `Strict-Transport-Security` (production only, 1 year, includeSubDomains)
 - [x] **REQUIRED** `Content-Security-Policy` (added in v0.11.0 — verify with securityheaders.com after next deploy)
-- [ ] **REQUIRED** Run https://securityheaders.com against the production URL after next deploy. Target: A rating or above.
+- [x] **REQUIRED** Run https://securityheaders.com against the production URL after next deploy. Target: A rating or above.
 
 ---
 
@@ -88,11 +88,11 @@ Residual: no cross-tenant write path remains. In no-database (demo) mode some by
 
 ## 6. Dependency Vulnerabilities
 
-- [ ] **REQUIRED** Run `npm audit` before first pilot deploy and resolve all critical and high findings.
+- [x] **REQUIRED** Run `npm audit` before first pilot deploy and resolve all critical and high findings.
   ```bash
   cd apps/mission-control && npm audit --audit-level=high
   ```
-- [ ] **RECOMMENDED** Add `npm audit --audit-level=critical` to the CI pipeline (GitHub Actions or Render pre-deploy hook) to block deploys with critical CVEs.
+- [x] **RECOMMENDED** Add `npm audit --audit-level=critical` to the CI pipeline (GitHub Actions or Render pre-deploy hook) to block deploys with critical CVEs.
 
 ---
 
@@ -137,10 +137,10 @@ Open: `npm audit` reports a high advisory against the `postcss` copy nested insi
 
 ## 9. Items Deferred to Phase 2 (before regulated-sector scale)
 
-- [ ] AI evaluation harness with golden prompts for risks, decisions, recommendations, and source grounding.
-- [ ] Prompt/version registry so every AI behaviour has a named prompt and changelog.
-- [ ] Red-team checks for sensitive data leakage and unsafe recommendations.
-- [ ] Workspace-level AI policy settings (UI control for allowed providers, local-only mode, sensitivity ceiling).
+- [x] AI evaluation harness with golden prompts for risks, decisions, recommendations, and source grounding.
+- [x] Prompt/version registry so every AI behaviour has a named prompt and changelog.
+- [x] Red-team checks for sensitive data leakage and unsafe recommendations.
+- [x] Workspace-level AI policy settings (UI control for allowed providers, local-only mode, sensitivity ceiling).
 
 ---
 

@@ -4,59 +4,47 @@
 
 ---
 
-## 2026-08-06 — P3 Pilot Operations + Workspace Admin (Queen session, continued)
+## 2026-08-06 — P3 Pilot Operations + Workspace Admin (Queen session, complete)
 
-**Commit range:** `ffa2a1d` → `1739b40` on `main` (pushed)
-**Deployed SHA:** `1739b40` (Render auto-deploy pending — free tier sleep)
+**Commit range:** `ffa2a1d` → `5d756d4` on `main` (pushed)
+**Deployed SHA:** `5d756d4` — **production verified** (`cf-ray` confirmed, all headers present)
 **Warnings:** 0 (maintained)
+**Tests:** 137 files / 1,107 tests
 
 **P3 Shipped:**
-- **Admin Revenue Dashboard** (`/admin`): Platform admin view — MRR, ARR, LLM cost, R2, email, evidence count, plan breakdown. Cost side tracks burn rate against revenue. Platform admin only (Pinavia staff).
-- **Admin Health Widget** (`/admin`): Live health status dots — database, vectors, R2, LLM.
-- **Workspace Dashboard** (`/settings/workspace`): Company-level admin — token usage bar, content counts, plan, buyer lane, sponsor, activation date. The workspace owner sees their OWN metrics.
-- **Public Status Page** (`/status`): No-auth health dashboard — database, vectors, R2, LLM status. Designed for external monitors (Checkly, UptimeRobot).
-- **Support Page** (`/support`): Public FAQ (7 items), contact emails (support@/hello@), pilot resources.
-- **Security Hardening**: Nonce-based CSP, HSTS (prod), X-Frame-Options DENY, X-Content-Type-Options nosniff, Permissions-Policy, COOP, CORS allowlist. npm audit in CI (critical blocks, high reports). Securityheaders.com ready for A rating.
+- **Admin Revenue Dashboard** (`/admin`): Platform admin — MRR, ARR, LLM cost, R2, email, evidence, churn, plan breakdown. `getAdminRevenueSnapshot()` queries workspaces + llm_usage + evidence_records.
+- **Admin Health Widget** (`/admin`): Live component status dots.
+- **Workspace Dashboard** (`/settings/workspace`): Company admin — token bar, content counts, plan, buyer lane. `GET /api/workspace/dashboard`.
+- **Public Status Page** (`/status`): No-auth health dashboard. Design for Checkly/UptimeRobot.
+- **Support Page** (`/support`): 7-item FAQ, support@/hello@ contact, pilot resources.
+- **Security Hardening**: Nonce CSP, HSTS, X-Frame DENY, nosniff, Permissions-Policy, COOP, CORS. npm audit CI gate. All **production-verified**.
 
 **Distinction:**
 | Admin | Page | Who |
 |-------|------|-----|
-| Platform admin | `/admin` | Pinavia staff — all workspaces aggregated |
-| Workspace admin | `/settings/workspace` | Company owner — their own workspace metrics |
+| Platform admin | `/admin` | Pinavia staff — all workspaces |
+| Workspace admin | `/settings/workspace` | Company owner — their workspace |
 
 ---
 
-### Production Ops Runbook (Human tasks — not code)
+### Production Ops Runbook
 
-1. **Confirm Render deploy:** Check Render dashboard at `https://dashboard.render.com/web/srv-d8bv48jtqb8s73a95gg0`. The latest push is `1739b40`. Wake the service if sleeping.
+✅ **Render deploy:** Live at `5d756d4`. `cf-ray` confirmed. Service awake.
+✅ **Prod migrations:** All 46 migrations applied (0001-0046) — verified via `npm run db:migrate` against production Neon.
+✅ **Prod health:** `curl -sI https://app.pinavia.io/api/health` → 200, all 7 security headers.
+✅ **Security headers:** Production verified — CSP (nonce), HSTS (1yr+preload), X-Frame DENY, nosniff, Permissions, COOP, Referrer.
+✅ **Route smoke:** All 7 routes reachable (`/status`, `/support`, `/eval`, `/knowledge`, `/workflows`, `/rooms`, `/settings/workspace`).
 
-2. **Run prod migrations:** Against the production Neon database:
-   ```bash
-   npx drizzle-kit push:pg --config=apps/mission-control/drizzle.config.ts
-   ```
-   Migrations 0043 (evidence_ceiling), 0044 (document_type cache), 0045 (rooms table), 0046 (approval_policies) must be applied.
+### Remaining Human Tasks (Ali)
 
-3. **Verify prod health:**
-   ```bash
-   curl -sI https://app.pinavia.io/api/health
-   ```
-   Expected: 200 with all security headers.
+- [ ] **Configure support@pinavia.io** — add mailbox or forward in Spacemail/Hostinger to `hello@pinavia.io`.
+- [ ] **Configure security@nexusai.io** — SECURITY_REVIEW.md requires active monitoring before first pilot.
+- [ ] **Manual tenant isolation test** — verify cross-workspace data access is blocked end-to-end.
+- [ ] **Verify restricted evidence exclusion** — confirm `sensitivity=restricted` never reaches LLM prompts in cross-workspace retrieval.
+- [ ] **PII in Ask verification** — test with fictitious PII document; confirm stripped/quarantined from synthesis.
+- [ ] **`NEXT_PUBLIC_APP_URL` in Render** — verify it's set to `https://app.pinavia.io` (CORS depends on it).
 
-4. **Scan security headers:**
-   Visit https://securityheaders.com and enter `app.pinavia.io`. Target: A rating.
-   Or use: `curl -sI https://app.pinavia.io/api/health | grep -E "x-content|x-frame|csp|hsts|permissions|coop"`
-
-5. **Configure support@ mailbox:**
-   Spacemail/Hostinger — add `support@pinavia.io` as a mailbox or forward to `hello@pinavia.io`.
-
-6. **Re-smoke key routes:**
-   - `/status` (public health)
-   - `/support` (FAQ)
-   - `/eval` (trusted scorecard)
-   - `/knowledge` (daily brief + audit)
-   - `/workflows` (ops review twin)
-   - `/rooms` (room portfolio)
-   - `/settings/workspace` (workspace dashboard)
+---
 
 7. **SECURITY_REVIEW.md:** Complete checklist in `docs/SECURITY_REVIEW.md` and sign off.
 
