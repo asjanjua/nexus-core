@@ -1,5 +1,30 @@
 # Changelog
 
+## 2026-08-06 — P2 + P3 Completion Session (Queen, 25 commits)
+
+### P2 — Feature Depth
+- **Approval policies** (multi-level, N-of-M, sequential, role-scoped). Migration 0046 extends reviewer_seats and adds approval_policies table. Resolver (`resolveApprovalDecision`) supports all four modes with break-glass, terminal checks, and staffing validation. Settings UI tab for policy configuration. 25 tests across two suites. Wired into POST /api/approvals route with audit-trail prior-decision tracking.
+- **Ops Review Twin UI** — blockers list, overdue owners, KPI signal cards on `/workflows`.
+- **Knowledge duplicate/contradiction/staleness audit** — deterministic structural audit engine (duplicates by title similarity + evidence overlap, contradictions by opposing tags + keyword analysis, staleness by age + orphan detection). API at `/api/knowledge/audit`, UI panel at `/knowledge`. 10 tests.
+- **Trusted Eval Scorecard** — pass rate, confidence, latency, category breakdown, trend strip, per-case keyword analysis. Page at `/eval`. Consumes existing eval harness and golden set.
+- **Daily Brief** — 24h note activity scanner. API at `/api/knowledge/daily-brief`, UI panel at `/knowledge`.
+
+### P3 — Pilot Operations
+- **Admin Revenue Dashboard** (`/admin`) — platform admin: MRR, ARR, LLM cost from llm_usage table, R2 estimation, email cost, churn, plan breakdown. `getAdminRevenueSnapshot()` repository method queries workspaces + llm_usage + evidence_records.
+- **Admin Health Widget** (`/admin`) — live component status dots.
+- **Workspace Dashboard** (`/settings/workspace`) — company-level admin: token usage bar (color-coded), content counts, plan, buyer lane, sponsor.
+- **Public Status Page** (`/status`) — no-auth health dashboard.
+- **Public Support Page** (`/support`) — 7-item FAQ, contact emails, pilot resources.
+- **Security Hardening** — nonce-based CSP, HSTS, X-Frame-Options DENY, X-Content-Type-Options nosniff, Permissions-Policy, COOP, CORS allowlist, npm audit CI gate.
+
+### Quality
+- **Warnings:** 15 → 0 (enforced as hard rule). Clerk external links suppressed via eslint-disable in JSX, config files in eslint ignores, 4 `<a>`→`<Link>` conversions.
+- **Tests:** 137 test files, 1,107 tests all passing.
+- **Build:** 204 pages, TypeScript clean.
+
+### Ops runbook (see HANDOVER.md)
+- Render deploy confirmation, prod migrations 0043-0046, securityheaders.com scan, support@ mailbox, route smoke, SECURITY_REVIEW.md sign-off.
+
 ## 2026-08-06 — Nexus Room Portfolio (Durable Configuration)
 
 - **Durable room configuration** replaces the static onboarding role-state controls. Migration 0045 adds a `rooms` table with lifecycle state, template, accountable owner, evidence scope, agent pack, human-authority boundary acknowledgement, and an audited JSONB trail. Every workspace sees the complete curated portfolio from day one; activation requires an administrator to confirm owner + scope + boundary.

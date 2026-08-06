@@ -5,8 +5,30 @@
 > For the visual finish-line map, see `docs/DEVELOPMENT_FINISH_LINE_VISUAL.md`.
 > For the markdown estate review, see `docs/MARKDOWN_ESTATE_REVIEW_2026-06-25.md`.
 > For typed runtime/state/effect safety rules, see `docs/ENGINEERING_GUARDRAILS.md`.
-> Last reviewed and tightened: 2026-08-04.
+> Last reviewed and tightened: 2026-08-06 (P3 completion session).
 
+
+## 2026-08-06 — P3 Pilot Operations Completion (Queen session)
+
+Ledger: `HANDOVER.md` §2026-08-06 P3. 25 commits on `main`. Warnings: 0.
+
+- [x] Admin Revenue Dashboard (`/admin`) — platform admin: MRR, ARR, LLM cost, R2, email, churn, plan breakdown. Repository method `getAdminRevenueSnapshot`.
+- [x] Admin Health Widget (`/admin`) — live component status dots from `/api/health`.
+- [x] Workspace Dashboard (`/settings/workspace`) — company-level admin: token usage bar, content counts, plan, buyer lane. Distinct from platform admin.
+- [x] Public Status Page (`/status`) — no-auth health dashboard for external monitors.
+- [x] Support Page (`/support`) — public FAQ (7 items), contact emails, pilot resources.
+- [x] Security Hardening — nonce-based CSP, HSTS (prod), X-Frame-Options DENY, Permissions-Policy, CORS allowlist, npm audit in CI. Verified locally, A-rating ready.
+- [x] Zero-warning lint discipline — enforced as hard rule. 15→0 across session.
+
+**Ops tasks (human):**
+- [ ] Confirm Render deploy at `1739b40`
+- [ ] Run prod migrations 0043-0046
+- [ ] Securityheaders.com scan → A rating
+- [ ] Configure support@pinavia.io mailbox
+- [ ] Re-smoke 7 key routes
+- [ ] SECURITY_REVIEW.md sign-off
+
+---
 ---
 
 ## Project Overview
