@@ -1567,23 +1567,25 @@ function Step5({
 // ---------------------------------------------------------------------------
 
 function Step6({ results, onNext }: { results: IngestionResult[]; onNext: () => void }) {
-  const result = results[0];
   const avgConfidence = results.reduce((s, r) => s + r.extractionConfidence, 0) / results.length;
-  const filename = result.sourcePath.split("/").pop() ?? result.sourcePath;
-  const ext = filename.split(".").pop()?.toUpperCase() ?? "FILE";
 
   const processedCount = results.filter((r) => r.ingestionStatus === "processed").length;
   const pendingCount = results.filter((r) => r.ingestionStatus === "pending_approval").length;
   const quarantinedCount = results.filter((r) => r.ingestionStatus === "quarantined").length;
 
+  // Aggregate status — primary display for multi-file uploads.
+  // No longer anchored on results[0]; the aggregate badge + counts
+  // are the first thing the user sees, individual files below.
+  const allProcessed = processedCount === results.length;
+
   const statusBadge =
-    processedCount === results.length ? "border-green-500/40 bg-green-500/10 text-green-300"
+    allProcessed ? "border-green-500/40 bg-green-500/10 text-green-300"
       : pendingCount > 0 || quarantinedCount > 0 ? "border-amber-400/40 bg-amber-400/10 text-amber-300"
       : "border-white/20 bg-white/5 text-white/50";
 
   const statusLabel =
-    results.length === 1 ? result.ingestionStatus.replace(/_/g, " ")
-      : processedCount === results.length ? "all processed"
+    results.length === 1 ? results[0].ingestionStatus.replace(/_/g, " ")
+      : allProcessed ? "all processed"
       : `${processedCount} processed${pendingCount ? `, ${pendingCount} pending` : ""}${quarantinedCount ? `, ${quarantinedCount} quarantined` : ""}`;
 
   return (
@@ -1598,13 +1600,13 @@ function Step6({ results, onNext }: { results: IngestionResult[]; onNext: () => 
       <div className="rounded-xl border border-white/10 bg-white/5 p-5 space-y-4">
         <div className="flex items-start gap-4">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/20 bg-white/5 text-xs font-bold text-white/60">
-            {results.length === 1 ? ext : results.length}
+            {results.length === 1 ? results[0].sourcePath.split("/").pop()?.split(".").pop()?.toUpperCase() ?? "FILE" : results.length}
           </div>
           <div className="flex-1 min-w-0">
             {results.length === 1 ? (
               <>
-                <p className="font-medium text-white truncate">{filename}</p>
-                <p className="text-xs text-white/40 font-mono mt-0.5 truncate">{result.id}</p>
+                <p className="font-medium text-white truncate">{results[0].sourcePath.split("/").pop() ?? results[0].sourcePath}</p>
+                <p className="text-xs text-white/40 font-mono mt-0.5 truncate">{results[0].id}</p>
               </>
             ) : (
               <>
