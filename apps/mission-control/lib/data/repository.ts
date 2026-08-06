@@ -4600,7 +4600,13 @@ export const repository = {
         .from(reviewerSeats)
         .where(and(eq(reviewerSeats.workspaceId, workspaceId), eq(reviewerSeats.status, "accepted"))),
     );
-    if (!rows) return [];
+    // runDb returns null when using the in-memory store (dev/test fallback).
+    if (rows === null) {
+      // Delegate to the singular method which has a proven store fallback.
+      const single = await this.getAcceptedReviewerSeat(workspaceId);
+      return single ? [single] : [];
+    }
+    if (!rows.length) return [];
     return rows.map(mapReviewerSeatRow);
   },
 
