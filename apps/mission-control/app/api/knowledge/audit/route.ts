@@ -20,7 +20,10 @@ export async function GET(request: Request) {
     const notes = await repository.listKnowledgeNotes(auth.ctx.workspaceId, { limit: 500 });
     const report = auditKnowledgeWorkspace(auth.ctx.workspaceId, notes);
     return ok(report);
-  } catch (err) {
+  } catch (_err) {
+    // Internal details are intentionally not exposed — the audit engine
+    // is read-only and should not fail under normal conditions. A 500 here
+    // means the notes query or the engine itself threw unexpectedly.
     return fail("audit_failed", 500);
   }
 }

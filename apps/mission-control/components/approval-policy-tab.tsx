@@ -37,10 +37,12 @@ interface StaffingSummary {
 // ---------------------------------------------------------------------------
 
 interface Props {
-  workspaceId: string;
+  /** Workspace ID — reserved for future direct-to-repository calls.
+   *  Currently the component fetches via API which resolves workspace server-side. */
+  _workspaceId: string;
 }
 
-export function ApprovalPolicyTab({ workspaceId }: Props) {
+export function ApprovalPolicyTab({ _workspaceId }: Props) {
   const [data, setData] = useState<StaffingSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);

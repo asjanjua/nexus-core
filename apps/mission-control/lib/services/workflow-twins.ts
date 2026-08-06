@@ -304,13 +304,12 @@ export async function buildWorkflowTwinRunInput(
   twin: WorkflowTwin,
   workspaceId: string
 ): Promise<WorkflowTwinRunInput> {
-  const [decisions, actions, recommendations, profile, strategy, acceptedReviewerSeat, approvalPolicy, acceptedSeats] = await Promise.all([
+  const [decisions, actions, recommendations, profile, strategy, approvalPolicy, acceptedSeats] = await Promise.all([
     repository.listDecisions(workspaceId),
     repository.listActions(workspaceId),
     repository.getRecommendations(workspaceId),
     repository.getWorkspaceProfile(workspaceId),
     repository.getStrategyProfile(workspaceId),
-    repository.getAcceptedReviewerSeat(workspaceId),
     repository.getActiveApprovalPolicy(workspaceId).catch(() => null),
     repository.getAcceptedReviewerSeats(workspaceId).catch(() => []),
   ]);
@@ -347,6 +346,12 @@ export async function buildWorkflowTwinRunInput(
     // For single mode: one accepted seat. For n_of_m: required_count seats.
     // For role_scoped: one accepted seat per required role.
     // Falls back to the legacy single-seat check if resolver data is unavailable.
+    // 
+    // acceptedReviewerSeat (singular) is no longer loaded — the plural
+    // acceptedSeats from getAcceptedReviewerSeats supersedes it for the
+    // staffing check. The legacy boolean was for the old slice-3 gate
+    // which checked hasAcceptedReviewerSeat; the policy-aware gate uses
+    // isPolicyStaffable which needs the full seat list. Reviewed 2026-08-06.
     const { isPolicyStaffable } = await import("@/lib/approval-policy-resolver");
     const seatsForStaffing = acceptedSeats.map((s) => ({
       id: s.id,

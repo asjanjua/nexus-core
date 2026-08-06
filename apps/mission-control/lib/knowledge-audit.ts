@@ -240,11 +240,16 @@ function findStaleItems(notes: KnowledgeNote[]): StaleItem[] {
     }
 
     // Orphan draft: no tags, no refs, minimal body.
+    // Checks all five ref arrays — a note that only has decision refs
+    // should not be classified as an orphan. Reviewed 2026-08-06:
+    // decisionRefs and recommendationRefs were previously excluded.
     if (
       note.tags.length === 0 &&
       note.evidenceRefs.length === 0 &&
       note.entityRefs.length === 0 &&
       note.workflowRefs.length === 0 &&
+      note.decisionRefs.length === 0 &&
+      note.recommendationRefs.length === 0 &&
       note.body.length < 50
     ) {
       stale.push({

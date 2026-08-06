@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import { PageShell } from "@/components/page-shell";
 import { MetaChip } from "@/components/ui/nexus-primitives";
 import { HelpLabel } from "@/components/ui/help-dialog";
+// Approval policy editor tab (migration 0046, spec §7).
 import { ApprovalPolicyTab } from "@/components/approval-policy-tab";
 import { PRICING_TIERS, checkoutIntentFromParam, planLabel } from "@/lib/pricing-tiers";
 import {
@@ -3717,7 +3718,7 @@ export default function SettingsPage() {
         {activeTab === "synthesis-schedule" && <SynthesisScheduleTab />}
         {activeTab === "apikeys" && <APIKeysTab workspaceId={workspaceId} />}
         {activeTab === "roles" && <RolesTab />}
-        {activeTab === "approval-policy" && <ApprovalPolicyTab workspaceId={workspaceId} />}
+        {activeTab === "approval-policy" && <ApprovalPolicyTab _workspaceId={workspaceId} />}
         {activeTab === "audit" && <AuditTab />}
         {activeTab === "demo" && <DemoTab workspaceId={workspaceId} />}
       </div>
