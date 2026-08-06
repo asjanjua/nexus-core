@@ -9,6 +9,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+import Link from "next/link";
 
 const ROLES = ["owner", "admin", "executive", "reviewer", "contributor", "viewer"] as const;
 type MemberRole = (typeof ROLES)[number];
@@ -48,9 +49,11 @@ export function WorkspaceMembersPanel() {
 
   const updateRole = async (seatId: string, memberRole: MemberRole) => {
     // Optimistic update — set the role in UI immediately, then PATCH the server.
-    // If the server rejects, the error state is shown; the role is not rolled back
-    // locally since the caller can retry or the status remains as-displayed.
+    // On failure, revert to the original role so the dropdown reflects reality.
+    const original = members.find((m) => m.id === seatId)?.memberRole;
     setUpdating(seatId);
+    setMembers((prev) => prev.map((m) => (m.id === seatId ? { ...m, memberRole } : m)));
+
     try {
       const res = await fetch(`/api/workspace/members/${seatId}`, {
         method: "PATCH",
@@ -58,11 +61,14 @@ export function WorkspaceMembersPanel() {
         body: JSON.stringify({ memberRole }),
       });
       if (!res.ok) throw new Error("Failed");
-      setMembers((prev) =>
-        prev.map((m) => (m.id === seatId ? { ...m, memberRole } : m)),
-      );
     } catch {
       setError("Failed to update role");
+      // Revert to the original role since the server rejected the update.
+      if (original) {
+        setMembers((prev) =>
+          prev.map((m) => (m.id === seatId ? { ...m, memberRole: original } : m)),
+        );
+      }
     } finally {
       setUpdating(null);
     }
@@ -88,7 +94,7 @@ export function WorkspaceMembersPanel() {
         <p className="text-sm font-medium text-white">Workspace Members</p>
         <div className="flex items-center gap-2">
           <span className="text-xs text-white/30">{members.length} member{members.length !== 1 ? "s" : ""}</span>
-          <a href="/reviewer-seat" className="btn-subtle text-xs">+ Invite</a>
+          <Link href="/reviewer-seat" className="btn-subtle text-xs">+ Invite</Link>
         </div>
       </div>
 

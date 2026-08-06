@@ -4824,36 +4824,54 @@ export const repository = {
   },
 
   /**
+   * Update a seat's workspace-level member fields (migrations 0047-0049).
+   * Persists memberRole, departmentAccess, sensitivityCeiling, accessType,
+   * accessScope, and accessExpiresAt. Any field not provided is left unchanged.
+   */
+  async updateReviewerSeatFields(
+    workspaceId: string,
+    seatId: string,
+    fields: {
+      memberRole?: string;
+      departmentAccess?: string[];
+      sensitivityCeiling?: string | null;
+      accessType?: string;
+      accessScope?: string[];
+      accessExpiresAt?: string | null;
+    },
+  ): Promise<ReviewerSeat | null> {
+    const now = new Date();
+    const setValues: Record<string, unknown> = { updatedAt: now };
+    if (fields.memberRole) setValues.memberRole = fields.memberRole;
+    if (fields.departmentAccess) setValues.departmentAccess = fields.departmentAccess;
+    if (fields.sensitivityCeiling !== undefined) setValues.sensitivityCeiling = fields.sensitivityCeiling;
+    if (fields.accessType) setValues.accessType = fields.accessType;
+    if (fields.accessScope) setValues.accessScope = fields.accessScope;
+    if (fields.accessExpiresAt !== undefined) {
+      setValues.accessExpiresAt = fields.accessExpiresAt ? new Date(fields.accessExpiresAt) : null;
+    }
+
+    const rows = await runDb((db) =>
+      db
+        .update(reviewerSeats)
+        .set(setValues as Record<string, unknown>)
+        .where(and(eq(reviewerSeats.workspaceId, workspaceId), eq(reviewerSeats.id, seatId)))
+        .returning(),
+    );
+    if (rows === null) return null;
+    return rows.length ? mapReviewerSeatRow(rows[0]) : null;
+  },
+
+  /**
    * Update a seat's workspace-level member role (migration 0047).
-   * Distinct from the approval-policy `role` — this is the workspace
-   * membership tier: owner, admin, executive, reviewer, contributor, viewer.
+   * Convenience wrapper around updateReviewerSeatFields for role-only changes.
    */
   async updateReviewerSeatMemberRole(
     workspaceId: string,
     seatId: string,
     memberRole: string,
   ): Promise<ReviewerSeat | null> {
-    const now = new Date();
-    const rows = await runDb((db) =>
-      db
-        .update(reviewerSeats)
-        .set({ memberRole: memberRole as "reviewer", updatedAt: now })
-        .where(and(eq(reviewerSeats.workspaceId, workspaceId), eq(reviewerSeats.id, seatId)))
-        .returning(),
-    );
-    // In-memory store fallback — the store's ReviewerSeat type may not
-    // include memberRole, so we access it through a generic record.
-    if (rows === null) {
-      const storeGet = (store as Record<string, unknown>).getAcceptedReviewerSeat as
-        ((wsId: string) => ReviewerSeat | null) | undefined;
-      const stored = storeGet?.(workspaceId);
-      if (stored && stored.id === seatId) {
-        (stored as Record<string, unknown>).memberRole = memberRole;
-        return stored;
-      }
-      return null;
-    }
-    return rows.length ? mapReviewerSeatRow(rows[0]) : null;
+    return this.updateReviewerSeatFields(workspaceId, seatId, { memberRole });
   },
 
   /**

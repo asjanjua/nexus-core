@@ -36,18 +36,25 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ se
     const parsed = patchBodySchema.safeParse(body);
     if (!parsed.success) return fail("invalid_patch_body", 400);
 
-    const seat = await repository.getAcceptedReviewerSeat(auth.ctx.workspaceId);
-    if (!seat || seat.id !== seatId) return fail("member_not_found", 404);
+    // getAcceptedReviewerSeats returns ALL accepted seats — find the specific one.
+    const seats = await repository.getAcceptedReviewerSeats(auth.ctx.workspaceId);
+    const seat = seats.find((s) => s.id === seatId);
+    if (!seat) return fail("member_not_found", 404);
 
-    // Persist each updated field.
-    if (parsed.data.memberRole) {
-      const updated = await repository.updateReviewerSeatMemberRole(
-        auth.ctx.workspaceId,
-        seatId,
-        parsed.data.memberRole,
-      );
-      if (!updated) return fail("member_not_found", 404);
-    }
+    // Persist all provided fields via updateReviewerSeatFields.
+    const updated = await repository.updateReviewerSeatFields(
+      auth.ctx.workspaceId,
+      seatId,
+      {
+        memberRole: parsed.data.memberRole,
+        departmentAccess: parsed.data.departmentAccess,
+        sensitivityCeiling: parsed.data.sensitivityCeiling,
+        accessType: parsed.data.accessType,
+        accessScope: parsed.data.accessScope,
+        accessExpiresAt: parsed.data.accessExpiresAt,
+      },
+    );
+    if (!updated) return fail("member_not_found", 404);
 
     // Audit every field change for traceability.
     const changed: string[] = [];
@@ -82,6 +89,15 @@ export async function DELETE(_request: Request, { params }: { params: Promise<{ 
 
   try {
     const { seatId } = await params;
+
+    // Prevent self-revocation — cannot revoke a seat bound to your own identity.
+    const seats = await repository.getAcceptedReviewerSeats(auth.ctx.workspaceId);
+    const seat = seats.find((s) => s.id === seatId);
+    if (!seat) return fail("member_not_found", 404);
+    if (seat.clerkUserId === auth.ctx.userId) {
+      return fail("cannot_revoke_self", 400);
+    }
+
     await repository.revokeReviewerSeat(auth.ctx.workspaceId, seatId);
     return ok({ revoked: true });
   } catch (_err) {
