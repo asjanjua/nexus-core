@@ -1,9 +1,13 @@
 "use client";
 
 /**
- * Admin Revenue Dashboard — staff-gated revenue panel for the /admin page.
- * Fetches from GET /api/admin/revenue and displays MRR, ARR, subscriber
- * counts, churn, and plan breakdown.
+ * Admin Revenue Dashboard — Pinavia platform-admin revenue + cost panel.
+ *
+ * Revenue side: MRR, ARR, active subscribers/pilots, churn, plan breakdown.
+ * Cost side: LLM tokens/cost, estimated R2 storage, email sends, evidence count.
+ *
+ * This is the PLATFORM admin view — all workspaces aggregated.
+ * Workspace-level admin data lives on individual dashboards.
  */
 
 import { useState, useEffect, useCallback } from "react";
@@ -17,12 +21,24 @@ interface RevenueReport {
   activePilots: number;
   churned30d: number;
   planBreakdown: Record<string, number>;
+  llmTokensThisMonth: number;
+  llmCostMicrosThisMonth: number;
+  evidenceCount: number;
+  estimatedMonthlyLlmCostCents: number;
+  estimatedMonthlyR2CostCents: number;
+  estimatedMonthlyEmailCostCents: number;
 }
 
-function fmt(cents: number): string {
+function fmtDollars(cents: number): string {
   const usd = cents / 100;
   if (usd >= 1000) return `$${(usd / 1000).toFixed(1)}k`;
   return `$${usd.toFixed(0)}`;
+}
+
+function fmtTokens(n: number): string {
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(0)}k`;
+  return `${n}`;
 }
 
 export function AdminRevenueDashboard() {
@@ -51,9 +67,9 @@ export function AdminRevenueDashboard() {
     <section className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-white">Revenue Dashboard</p>
+          <p className="text-sm font-medium text-white">Revenue &amp; Cost Dashboard</p>
           <p className="mt-1 text-xs text-white/55">
-            MRR, ARR, subscriber counts, churn, plan breakdown.
+            Pinavia platform view — all workspaces aggregated. Revenue vs operational burn rate.
           </p>
         </div>
         <button className="btn-subtle text-xs" disabled={loading} onClick={fetchReport}>
@@ -66,21 +82,44 @@ export function AdminRevenueDashboard() {
       )}
 
       {report && (
-        <div className="space-y-3">
-          {/* KPI row */}
-          <div className="grid grid-cols-4 gap-2">
-            <Metric label="MRR" value={fmt(report.mrrCents)} />
-            <Metric label="ARR" value={fmt(report.arrCents)} />
-            <Metric label="Active Pilots" value={`${report.activePilots}`} />
-            <Metric label="Churned" value={`${report.churned30d}`} />
+        <div className="space-y-4">
+          {/* Revenue KPIs */}
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-white/40 mb-2">Revenue</p>
+            <div className="grid grid-cols-4 gap-2">
+              <Metric label="MRR" value={fmtDollars(report.mrrCents)} />
+              <Metric label="ARR" value={fmtDollars(report.arrCents)} />
+              <Metric label="Active Pilots" value={`${report.activePilots}`} />
+              <Metric label="Churned" value={`${report.churned30d}`} />
+            </div>
           </div>
 
-          {/* Subscriber detail */}
-          <div className="rounded border border-white/10 bg-white/[0.02] p-3">
-            <p className="text-[10px] uppercase tracking-wide text-white/40">Subscribers</p>
-            <div className="mt-1 flex items-baseline gap-2">
-              <span className="text-lg font-semibold text-green-300">{report.activeSubscribers}</span>
-              <span className="text-xs text-white/30">of {report.totalWorkspaces} workspaces</span>
+          {/* Cost KPIs */}
+          <div>
+            <p className="text-[10px] uppercase tracking-wide text-amber-400/50 mb-2">Operational Costs (estimated)</p>
+            <div className="grid grid-cols-4 gap-2">
+              <Metric label="LLM Tokens" value={fmtTokens(report.llmTokensThisMonth)} />
+              <Metric label="LLM Cost" value={fmtDollars(report.estimatedMonthlyLlmCostCents)} />
+              <Metric label="R2 Storage" value={fmtDollars(report.estimatedMonthlyR2CostCents)} />
+              <Metric label="Email" value={fmtDollars(report.estimatedMonthlyEmailCostCents)} />
+            </div>
+          </div>
+
+          {/* Runway: MRR ÷ burn */}
+          <div className="grid grid-cols-3 gap-2">
+            <div className="rounded border border-white/10 bg-white/[0.02] p-2">
+              <p className="text-[9px] uppercase tracking-wide text-white/40">Evidence Records</p>
+              <p className="text-sm font-semibold text-white">{report.evidenceCount.toLocaleString()}</p>
+            </div>
+            <div className="rounded border border-white/10 bg-white/[0.02] p-2">
+              <p className="text-[9px] uppercase tracking-wide text-white/40">Subscribers</p>
+              <p className="text-sm font-semibold text-green-300">{report.activeSubscribers} <span className="text-[10px] text-white/30 font-normal">/ {report.totalWorkspaces}</span></p>
+            </div>
+            <div className="rounded border border-white/10 bg-white/[0.02] p-2">
+              <p className="text-[9px] uppercase tracking-wide text-white/40">Burn Rate</p>
+              <p className="text-sm font-semibold text-amber-300">
+                {fmtDollars(report.estimatedMonthlyLlmCostCents + report.estimatedMonthlyR2CostCents + report.estimatedMonthlyEmailCostCents)}/mo
+              </p>
             </div>
           </div>
 

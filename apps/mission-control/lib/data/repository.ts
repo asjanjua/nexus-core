@@ -5169,11 +5169,18 @@ export const repository = {
     planBreakdown: Record<string, number>;
     churned30d: number;
     activePilots: number;
+    // Cost side — operational burn rate.
+    llmTokensThisMonth: number;
+    llmCostMicrosThisMonth: number;
+    evidenceCount: number;
+    // Estimated costs (approximate — R2 and email are not metered precisely).
+    estimatedMonthlyLlmCostCents: number;
+    estimatedMonthlyR2CostCents: number;
+    estimatedMonthlyEmailCostCents: number;
   }> {
     const { PLAN_FALLBACKS } = await import("@/lib/billing/plan-catalog");
 
-    // Build price map from plan fallbacks by plan key (not stripePriceId —
-    // workspaces reference the plan key via the `plan` column).
+    // Build price map from plan fallbacks by plan key.
     const priceMap = new Map<string, { priceCents: number; label: string }>();
     for (const plan of Object.values(PLAN_FALLBACKS)) {
       priceMap.set(plan.planKey, { priceCents: plan.priceCents, label: plan.label });
@@ -5181,6 +5188,28 @@ export const repository = {
 
     const rows = await runDb((db) => db.select().from(workspaces));
     const all = rows ?? [];
+
+    // LLM usage this month — sum input + output tokens and cost across all workspaces.
+    const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString();
+    const usageRows = await runDb((db) =>
+      db
+        .select({
+          totalInput: sql<number>`COALESCE(SUM(${llmUsage.inputTokens}), 0)`,
+          totalOutput: sql<number>`COALESCE(SUM(${llmUsage.outputTokens}), 0)`,
+          totalCost: sql<number>`COALESCE(SUM(${llmUsage.costUsdMicro}), 0)`,
+        })
+        .from(llmUsage)
+        .where(sql`${llmUsage.day} >= ${monthStart}::date`),
+    );
+    const usage = usageRows?.[0];
+    const llmTokensThisMonth = (usage?.totalInput ?? 0) + (usage?.totalOutput ?? 0);
+    const llmCostMicrosThisMonth = usage?.totalCost ?? 0;
+
+    // Evidence count — total records across all workspaces.
+    const evidenceRows = await runDb((db) =>
+      db.select({ count: sql<number>`COUNT(*)` }).from(evidenceRecords),
+    );
+    const evidenceCount = evidenceRows?.[0]?.count ?? 0;
 
     const planBreakdown: Record<string, number> = {};
     let activeSubscribers = 0;
@@ -5193,7 +5222,6 @@ export const repository = {
       const stripeSub = ws.stripeSubscriptionId;
       const planKey = ws.plan ?? "free";
 
-      // Active subscriber: has stripe sub and workspace is active.
       if (stripeSub && status === "active") {
         activeSubscribers++;
         const plan = priceMap.get(planKey);
@@ -5202,18 +5230,23 @@ export const repository = {
         planBreakdown[label] = (planBreakdown[label] ?? 0) + 1;
       }
 
-      // Churn: cancelled or suspended in the last 30 days.
-      // Workspace rows don't have an updatedAt field, so we count
-      // all currently cancelled/suspended workspaces as potential churn.
       if (status === "cancelled" || status === "suspended") {
         churned30d++;
       }
 
-      // Active pilot: workspace in active status with some token usage.
       if (status === "active" || status === "pilot") {
         activePilots++;
       }
     }
+
+    // Estimated operational costs (monthly approximation).
+    // R2: $0.015/GB storage + $0.01/10k reads. Evidence text avg ~5KB each.
+    const estimatedR2StorageGb = evidenceCount * 5 * 1024 / (1024 * 1024 * 1024);
+    const estimatedMonthlyR2CostCents = Math.round(estimatedR2StorageGb * 1.5);
+    // Email: Resend charges $20/mo for up to 50k emails. Estimate by workspace count.
+    const estimatedMonthlyEmailCostCents = 2000;
+    // LLM: from llm_usage table cost tracking.
+    const estimatedMonthlyLlmCostCents = Math.round(llmCostMicrosThisMonth / 1000);
 
     return {
       activeSubscribers,
@@ -5222,6 +5255,12 @@ export const repository = {
       planBreakdown,
       churned30d,
       activePilots,
+      llmTokensThisMonth,
+      llmCostMicrosThisMonth,
+      evidenceCount,
+      estimatedMonthlyLlmCostCents,
+      estimatedMonthlyR2CostCents,
+      estimatedMonthlyEmailCostCents,
     };
   },
 };
