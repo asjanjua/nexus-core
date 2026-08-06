@@ -93,6 +93,7 @@ const arcSections: NavSection[] = [
       { href: "/workflows", label: "Workflow Twins" },
       { href: "/entities", label: "Company Memory" },
       { href: "/knowledge", label: "Knowledge Workspace" },
+      { href: "/eval", label: "Eval Scorecard" },
     ],
   },
   {
