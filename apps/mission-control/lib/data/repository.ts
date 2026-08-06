@@ -6,7 +6,7 @@ import { Pool } from "pg";
 import { verifyPassword } from "@/lib/auth";
 import { store } from "@/lib/data/store";
 import { evidenceSourceTypeSchema, ROOM_TEMPLATES, ROOM_TEMPLATE_DEFAULTS } from "@/lib/contracts";
-import type { Action, ActionInput, ActionStatus, ActivateRoomInput, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, DispatchJob, DispatchJobInput, DispatchJobStatus, Entity, EntityInput, EntityRelationship, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, KnowledgeLink, KnowledgeNote, KnowledgeNoteInput, KnowledgeSearchResult, KnowledgeSyncEvent, LearningSignal, LearningSignalInput, LearningSignalSummary, MeridianScope, MeridianScopeInput, NexusRoom, PilotOutcome, ProWaitlistEntry, PromptRegistryEntry, ReadinessSubmission, Recommendation, ReviewerSeat, RoomAuditEntry, RoomLifecycleState, RoomTemplate, TrialInvite, RecommendationStatus, StrategyProfile, StrategyProfileInput, SynthesisSchedule, SynthesisScheduleInput, SynthesisScheduleStatus, WorkflowTwin, WorkflowTwinInput, WorkflowTwinRun, WorkflowTwinRunInput, WorkflowTwinRunStatus, WorkflowTwinStatus, WorkflowTwinType, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
+import type { Action, ActionInput, ActionStatus, ActivateRoomInput, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, DispatchJob, DispatchJobInput, DispatchJobStatus, Entity, EntityInput, EntityRelationship, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, KnowledgeLink, KnowledgeNote, KnowledgeNoteInput, KnowledgeSearchResult, KnowledgeSyncEvent, LearningSignal, LearningSignalInput, LearningSignalSummary, MeridianScope, MeridianScopeInput, NexusRoom, PilotOutcome, ProWaitlistEntry, PromptRegistryEntry, ReadinessSubmission, Recommendation, ReviewerSeat, ApprovalPolicy, ApprovalPolicyMode, RoomAuditEntry, RoomLifecycleState, RoomTemplate, TrialInvite, RecommendationStatus, StrategyProfile, StrategyProfileInput, SynthesisSchedule, SynthesisScheduleInput, SynthesisScheduleStatus, WorkflowTwin, WorkflowTwinInput, WorkflowTwinRun, WorkflowTwinRunInput, WorkflowTwinRunStatus, WorkflowTwinStatus, WorkflowTwinType, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
 import { assertDbConfigured, isDbRequired } from "@/lib/data/db-policy";
 
 // In-memory idempotency cache for Stripe events (fallback when DB is unavailable).
@@ -53,6 +53,7 @@ import {
   dispatchJobs,
   readinessSubmissions,
   emailSuppressions,
+  approvalPolicies,
   reviewerSeats,
   trialInvites,
   pilotOutcomes,
@@ -462,6 +463,9 @@ function mapReviewerSeatRow(row: typeof reviewerSeats.$inferSelect): ReviewerSea
     acceptedAt: isoOrNull(row.acceptedAt),
     revokedAt: isoOrNull(row.revokedAt),
     expiresAt: isoOrNull(row.expiresAt) ?? new Date(0).toISOString(),
+    role: row.role ?? null,
+    level: row.level ?? null,
+    team: row.team ?? null,
     createdAt: isoOrNull(row.createdAt) ?? new Date(0).toISOString(),
     updatedAt: isoOrNull(row.updatedAt) ?? new Date(0).toISOString(),
   };
@@ -4586,6 +4590,48 @@ export const repository = {
     );
     if (rows === null) return store.getAcceptedReviewerSeat(workspaceId);
     return rows.length ? mapReviewerSeatRow(rows[0]) : null;
+  },
+
+  /** All accepted seats for a workspace — used by the policy resolver. */
+  async getAcceptedReviewerSeats(workspaceId: string): Promise<ReviewerSeat[]> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(reviewerSeats)
+        .where(and(eq(reviewerSeats.workspaceId, workspaceId), eq(reviewerSeats.status, "accepted"))),
+    );
+    if (!rows) return [];
+    return rows.map(mapReviewerSeatRow);
+  },
+
+  /**
+   * The active approval policy for this workspace, or null
+   * (null = implicit "single" mode = today's behavior).
+   */
+  async getActiveApprovalPolicy(workspaceId: string): Promise<ApprovalPolicy | null> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(approvalPolicies)
+        .where(and(
+          eq(approvalPolicies.workspaceId, workspaceId),
+          eq(approvalPolicies.status, "active"),
+        ))
+        .limit(1),
+    );
+    if (!rows || !rows.length) return null;
+    const r = rows[0];
+    return {
+      id: r.id,
+      workspaceId: r.workspaceId,
+      mode: r.mode as ApprovalPolicyMode,
+      requiredCount: r.requiredCount,
+      requiredRoles: r.requiredRoles as string[] | null,
+      allowBreakGlass: r.allowBreakGlass,
+      status: r.status as "active" | "superseded",
+      createdAt: r.createdAt.toISOString(),
+      updatedAt: r.updatedAt.toISOString(),
+    };
   },
 
   /**

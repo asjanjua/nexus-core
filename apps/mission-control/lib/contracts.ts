@@ -1143,6 +1143,10 @@ export const reviewerSeatSchema = z.object({
   acceptedAt: z.string().nullable().optional(),
   revokedAt: z.string().nullable().optional(),
   expiresAt: z.string(),
+  // Approval-policy extensions (migration 0046).
+  role: z.string().nullable().optional(),
+  level: z.number().int().nullable().optional(),
+  team: z.string().nullable().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
