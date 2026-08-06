@@ -20,6 +20,9 @@ export async function GET(request: Request) {
       approvalRole: s.role,
       departmentAccess: s.departmentAccess ?? [],
       sensitivityCeiling: s.sensitivityCeiling ?? null,
+      accessType: s.accessType ?? "member",
+      accessScope: s.accessScope ?? [],
+      accessExpiresAt: s.accessExpiresAt ?? null,
     }));
     return ok(members);
   } catch (_err) {

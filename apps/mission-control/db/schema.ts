@@ -651,6 +651,9 @@ export const reviewerSeats = pgTable("reviewer_seats", {
   memberRole:     varchar("member_role", { length: 32 }).notNull().default("reviewer"),
   departmentAccess: jsonb("department_access").$type<string[]>().default([]).notNull(),
   sensitivityCeiling: varchar("sensitivity_ceiling", { length: 16 }),
+  accessType:      varchar("access_type", { length: 16 }).notNull().default("member"),
+  accessScope:     jsonb("access_scope").$type<string[]>().default([]).notNull(),
+  accessExpiresAt: timestamp("access_expires_at", { withTimezone: true }),
   createdAt:      timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt:      timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

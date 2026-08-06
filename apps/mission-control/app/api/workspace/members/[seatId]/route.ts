@@ -21,6 +21,9 @@ const patchBodySchema = z.object({
   memberRole: memberRoleSchema.optional(),
   departmentAccess: z.array(z.string()).optional(),
   sensitivityCeiling: sensitivityCeilingSchema.optional(),
+  accessType: z.enum(["member", "advisor"]).optional(),
+  accessScope: z.array(z.string()).optional(),
+  accessExpiresAt: z.string().nullable().optional(),
 });
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ seatId: string }> }) {
@@ -51,6 +54,9 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ se
     if (parsed.data.memberRole) changed.push("memberRole");
     if (parsed.data.departmentAccess) changed.push("departmentAccess");
     if (parsed.data.sensitivityCeiling !== undefined) changed.push("sensitivityCeiling");
+    if (parsed.data.accessType) changed.push("accessType");
+    if (parsed.data.accessScope) changed.push("accessScope");
+    if (parsed.data.accessExpiresAt !== undefined) changed.push("accessExpiresAt");
 
     await repository.pushAudit({
       type: "member_role_updated",
