@@ -649,6 +649,8 @@ export const reviewerSeats = pgTable("reviewer_seats", {
   level:          integer("level"),
   team:           text("team"),
   memberRole:     varchar("member_role", { length: 32 }).notNull().default("reviewer"),
+  departmentAccess: jsonb("department_access").$type<string[]>().default([]).notNull(),
+  sensitivityCeiling: varchar("sensitivity_ceiling", { length: 16 }),
   createdAt:      timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt:      timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

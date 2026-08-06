@@ -466,6 +466,8 @@ function mapReviewerSeatRow(row: typeof reviewerSeats.$inferSelect): ReviewerSea
     role: row.role ?? null,
     level: row.level ?? null,
     team: row.team ?? null,
+    departmentAccess: Array.isArray(row.departmentAccess) ? row.departmentAccess : [],
+    sensitivityCeiling: (row.sensitivityCeiling as "public" | "internal" | "confidential" | "restricted" | null) ?? null,
     memberRole: (row.memberRole as "reviewer") ?? "reviewer",
     createdAt: isoOrNull(row.createdAt) ?? new Date(0).toISOString(),
     updatedAt: isoOrNull(row.updatedAt) ?? new Date(0).toISOString(),
@@ -4523,6 +4525,8 @@ export const repository = {
       expiresAt: input.expiresAt.toISOString(),
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      departmentAccess: [],
+      sensitivityCeiling: null,
     };
     const wrote = await runDb(async (db) => {
       await db.insert(reviewerSeats).values({

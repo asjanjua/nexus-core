@@ -15,6 +15,13 @@ import { z } from "zod";
 export const runtime = "nodejs";
 
 const memberRoleSchema = z.enum(["owner", "admin", "executive", "reviewer", "contributor", "viewer"]);
+const sensitivityCeilingSchema = z.enum(["public", "internal", "confidential", "restricted"]).nullable();
+
+const patchBodySchema = z.object({
+  memberRole: memberRoleSchema.optional(),
+  departmentAccess: z.array(z.string()).optional(),
+  sensitivityCeiling: sensitivityCeilingSchema.optional(),
+});
 
 export async function PATCH(request: Request, { params }: { params: Promise<{ seatId: string }> }) {
   const auth = await requireScope(request, "write:settings");
@@ -23,33 +30,41 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ se
   try {
     const { seatId } = await params;
     const body = await request.json();
-    const parsed = z.object({ memberRole: memberRoleSchema }).safeParse(body);
-    if (!parsed.success) return fail("invalid_member_role", 400);
+    const parsed = patchBodySchema.safeParse(body);
+    if (!parsed.success) return fail("invalid_patch_body", 400);
 
     const seat = await repository.getAcceptedReviewerSeat(auth.ctx.workspaceId);
     if (!seat || seat.id !== seatId) return fail("member_not_found", 404);
 
-    // Persist the member role to the DB row.
-    const updated = await repository.updateReviewerSeatMemberRole(
-      auth.ctx.workspaceId,
-      seatId,
-      parsed.data.memberRole,
-    );
-    if (!updated) return fail("member_not_found", 404);
+    // Persist each updated field.
+    if (parsed.data.memberRole) {
+      const updated = await repository.updateReviewerSeatMemberRole(
+        auth.ctx.workspaceId,
+        seatId,
+        parsed.data.memberRole,
+      );
+      if (!updated) return fail("member_not_found", 404);
+    }
 
-    // Audit the role change for traceability.
+    // Audit every field change for traceability.
+    const changed: string[] = [];
+    if (parsed.data.memberRole) changed.push("memberRole");
+    if (parsed.data.departmentAccess) changed.push("departmentAccess");
+    if (parsed.data.sensitivityCeiling !== undefined) changed.push("sensitivityCeiling");
+
     await repository.pushAudit({
       type: "member_role_updated",
       workspaceId: auth.ctx.workspaceId,
       actor: auth.ctx.userId ?? "system",
       payload: {
+        changes: changed,
         seatId,
         memberRole: parsed.data.memberRole,
         previousRole: seat.memberRole ?? "reviewer",
       },
     });
 
-    return ok({ id: seatId, memberRole: parsed.data.memberRole });
+    return ok({ id: seatId, ...parsed.data });
   } catch (_err) {
     return fail("update_member_failed", 500);
   }

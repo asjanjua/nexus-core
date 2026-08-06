@@ -18,6 +18,8 @@ export async function GET(request: Request) {
       memberRole: s.memberRole ?? "reviewer",
       acceptedAt: s.acceptedAt,
       approvalRole: s.role,
+      departmentAccess: s.departmentAccess ?? [],
+      sensitivityCeiling: s.sensitivityCeiling ?? null,
     }));
     return ok(members);
   } catch (_err) {

@@ -1148,6 +1148,8 @@ export const reviewerSeatSchema = z.object({
   level: z.number().int().nullable().optional(),
   team: z.string().nullable().optional(),
   memberRole: z.enum(["owner", "admin", "executive", "reviewer", "contributor", "viewer"]).default("reviewer").optional(),
+  departmentAccess: z.array(z.string()).optional().default([]),
+  sensitivityCeiling: z.enum(["public", "internal", "confidential", "restricted"]).nullable().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
