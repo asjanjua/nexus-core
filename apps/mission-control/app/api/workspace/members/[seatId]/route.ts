@@ -29,8 +29,15 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ se
     const seat = await repository.getAcceptedReviewerSeat(auth.ctx.workspaceId);
     if (!seat || seat.id !== seatId) return fail("member_not_found", 404);
 
-    // Audit the role change — the member_role column on reviewer_seats
-    // is updated via the DB. The audit records intent for traceability.
+    // Persist the member role to the DB row.
+    const updated = await repository.updateReviewerSeatMemberRole(
+      auth.ctx.workspaceId,
+      seatId,
+      parsed.data.memberRole,
+    );
+    if (!updated) return fail("member_not_found", 404);
+
+    // Audit the role change for traceability.
     await repository.pushAudit({
       type: "member_role_updated",
       workspaceId: auth.ctx.workspaceId,
