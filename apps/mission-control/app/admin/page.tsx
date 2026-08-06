@@ -6,6 +6,7 @@ import { isPlatformAdmin, platformAdminConfigured } from "@/lib/platform-admin";
 
 import { AdminRevenueDashboard } from "@/components/admin-revenue-dashboard";
 import { AdminHealthWidget } from "@/components/admin-health-widget";
+import { IngestionMonitoringPanel } from "@/components/ingestion-monitoring-panel";
 
 const RETURN_PATH = "/admin";
 
@@ -74,6 +75,7 @@ export default async function PinaviaControlPage() {
             <AdminRevenueDashboard />
           </div>
           <AdminHealthWidget />
+          <IngestionMonitoringPanel />
         </div>
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {controls.map((control) => (
