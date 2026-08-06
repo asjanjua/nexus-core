@@ -4,6 +4,53 @@
 
 ---
 
+## 2026-08-06 — Approval Policies (P2): Multi-Level, N-of-M, Sequential Chains
+
+Built the approval policy system on top of the existing reviewer-seat model (migration 0035), following `docs/APPROVAL_POLICIES_SPEC.md`:
+
+### Migration 0046
+- Extends `reviewer_seats` with nullable `role`, `level`, `team` columns
+- New `approval_policies` table: mode, required_count, required_roles, allow_break_glass, status (active/superseded), versioned per workspace
+- Unique index: one active policy per workspace
+- Backfill: existing accepted seats → role='reviewer'. Absent policy = single mode = unchanged behavior.
+
+### Contracts
+- `ApprovalPolicy`, `UpdateApprovalPolicyInput`, `EligibleApprover`, `ApprovalDecision` discriminated union
+- `ReviewerSeat` extended with role/level/team
+
+### Resolver (`lib/approval-policy-resolver.ts`)
+- `resolveApprovalDecision()`: pure resolver covering single, n_of_m, sequential, role_scoped
+- `isPolicyStaffable()`: used by buildPilotGates for staffing check (§5)
+- `effectiveMode()`: defaults to "single" when no policy exists
+
+### Wired endpoints
+- `POST /api/approvals/[recommendationId]` now calls `resolveApprovalDecision` instead of the slice-3 single-seat check. Break-glass bypass with audit trail.
+- `GET /api/approval-policy`: returns active policy + staffing summary + role breakdown
+- `PUT /api/approval-policy` (write:settings): supersedes prior row, inserts new active policy
+
+### Policy-aware pilot gate
+- `buildPilotGates` now accepts `policyStaffable` + `staffingDetail` label
+- `buildWorkflowTwinRunInput` loads policy + all accepted seats, calls `isPolicyStaffable`
+- Gate labels adapt: "2 of 3 reviewer seats accepted" (n_of_m), "1 of 2 required roles filled" (role_scoped)
+
+### Tests
+- `tests/approval-policy-resolver.test.ts`: 9 assertions — effectiveMode, isPolicyStaffable (all 4 modes), computeEligible
+- `tests/approval-policy-resolver-full.test.ts`: 15 assertions — single, n_of_m, sequential ordering, role_scoped, break-glass, reject-ends-chain, redundant caller
+
+### Verification
+TSC clean. Lint 0 errors 15 warnings. Build: production success. db:check clean. Tests: 24/24 approval-policy resolver. Migration 0046 applied locally.
+
+### Files changed
+`db/migrations/0046_approval_policies.sql`, `db/schema.ts`, `lib/contracts.ts`, `lib/approval-policy-resolver.ts`, `lib/data/repository.ts`, `lib/services/workflow-twins.ts`, `app/api/approvals/[recommendationId]/route.ts`, `app/api/approval-policy/route.ts`, `tests/approval-policy-resolver.test.ts`, `tests/approval-policy-resolver-full.test.ts`
+
+### HEAD
+`7374e3f` — pushed. CI pending.
+
+### Next action
+Settings UI for policy editing (§7 of spec). Production migration 0046.
+
+---
+
 ## 2026-08-06 — Room Portfolio: Adversarial Review Fixes + P2 Refinements
 
 ### Adversarial review fixes (Queen, 2026-08-06)
