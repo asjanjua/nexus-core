@@ -66,14 +66,14 @@ const PRODUCT_ROOM_HANDOFF: Record<string, {
 
 interface Props {
   rooms: NexusRoom[];
-  workspaceId: string;
+  _workspaceId: string;
 }
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export function RoomPortfolioGrid({ rooms, workspaceId }: Props) {
+export function RoomPortfolioGrid({ rooms, _workspaceId }: Props) {
   const [activating, setActivating] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 

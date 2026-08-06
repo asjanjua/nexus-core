@@ -28,10 +28,6 @@ interface Seat {
   team: string | null;
 }
 
-interface Prior {
-  seatId: string;
-  approved: boolean;
-}
 
 // ---------------------------------------------------------------------------
 // Standalone implementations (mirror approval-policy-resolver.ts)

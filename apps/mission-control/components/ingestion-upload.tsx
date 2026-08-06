@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import { useRef, useState, useCallback } from "react";
 import { HelpLabel } from "@/components/ui/help-dialog";
@@ -378,9 +379,9 @@ export function IngestionUpload({ workspaceId }: { workspaceId?: string }) {
                 {fr.result?.ingestionStatus === "processed" && (
                   <p className="text-xs text-green-200/70">
                     Cleared for LLM synthesis —{" "}
-                    <a href="/dashboard/ceo" className="underline hover:text-green-200 transition">
+                    <Link href="/dashboard/ceo" className="underline hover:text-green-200 transition">
                       view your dashboard
-                    </a>.
+                    </Link>.
                   </p>
                 )}
               </div>

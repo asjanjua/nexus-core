@@ -24,7 +24,7 @@ export default async function RoomsPage() {
       title="Room Portfolio"
       description="Every room in the Nexus operating model. Activate the ones your organisation needs — each requires a named owner, evidence scope, and confirmed authority boundary."
     >
-      <RoomPortfolioGrid rooms={rooms} workspaceId={workspaceId} />
+      <RoomPortfolioGrid rooms={rooms} _workspaceId={workspaceId} />
     </PageShell>
   );
 }

@@ -86,7 +86,7 @@ export async function PUT(request: Request) {
   try {
     const updated = await repository.upsertApprovalPolicy(auth.ctx.workspaceId, parsed.data);
     return ok(updated);
-  } catch (err) {
+  } catch (_err) {
     return fail("internal_error", 500);
   }
 }

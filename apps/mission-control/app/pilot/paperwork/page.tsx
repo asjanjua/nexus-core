@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 /**
  * /pilot/paperwork — Pilot Paperwork Pack (rendered)
@@ -191,7 +192,7 @@ export default function PilotPaperworkPage() {
       {/* Controls */}
       <div className="no-print sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white px-6 py-3 shadow-sm">
         <div className="flex items-center gap-3">
-          <a href="/dashboard/ceo" className="text-sm text-gray-500 hover:text-gray-800">← Dashboard</a>
+          <Link href="/dashboard/ceo" className="text-sm text-gray-500 hover:text-gray-800">← Dashboard</Link>
           <span className="text-gray-200">|</span>
           <span className="text-sm text-gray-500">Pilot Paperwork Pack — send to sponsor</span>
         </div>

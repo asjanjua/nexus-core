@@ -16,6 +16,7 @@
  */
 "use client";
 
+import Link from "next/link";
 import { Suspense, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { PageShell } from "@/components/page-shell";
@@ -116,9 +117,9 @@ function RedeemPanel() {
             Sample material has been loaded so there is something to look at immediately.
           </p>
         ) : null}
-        <a href="/dashboard" className="btn-primary mt-4 inline-flex text-sm">
+        <Link href="/dashboard" className="btn-primary mt-4 inline-flex text-sm">
           Open Mission Control
-        </a>
+        </Link>
       </div>
     );
   }
