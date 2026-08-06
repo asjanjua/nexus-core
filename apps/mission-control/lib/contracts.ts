@@ -1325,3 +1325,87 @@ export const readinessSubmissionSchema = z.object({
   createdAt: z.string(),
 });
 export type ReadinessSubmission = z.infer<typeof readinessSubmissionSchema>;
+
+// ---------------------------------------------------------------------------
+// Nexus Room Portfolio — durable room configuration
+// ---------------------------------------------------------------------------
+// See docs/NEXUS_ROOM_PORTFOLIO_ACTIVATION.md for the full policy.
+
+/** Room templates — the curated portfolio every workspace sees from day one. */
+export const ROOM_TEMPLATES = [
+  "executive", "finance", "operations", "growth", "technology",
+  "people", "risk", "board", "submission", "deal", "engagement",
+  "staged", "dual_hat", "custom",
+] as const;
+export type RoomTemplate = typeof ROOM_TEMPLATES[number];
+
+/** Room lifecycle — a room is active, staged (configured but not live), or inactive. */
+export const ROOM_LIFECYCLE_STATES = ["active", "staged", "inactive"] as const;
+export type RoomLifecycleState = typeof ROOM_LIFECYCLE_STATES[number];
+
+/** Default display names per template, used when seeding a new workspace. */
+export const ROOM_TEMPLATE_DEFAULTS: Record<RoomTemplate, string> = {
+  executive: "Executive Command",
+  finance: "Finance Room",
+  operations: "Operating Room",
+  growth: "Growth Room",
+  technology: "Technology Room",
+  people: "People Room",
+  risk: "Risk Room",
+  board: "Board Room",
+  submission: "Submission Room",
+  deal: "Deal Room",
+  engagement: "Engagement Room",
+  staged: "Staged Role",
+  dual_hat: "Dual-Hat Role",
+  custom: "Custom Room",
+};
+
+/** Product rooms that hand off into vertical workflows. */
+export const PRODUCT_ROOM_TEMPLATES: RoomTemplate[] = [
+  "board", "submission", "deal", "engagement",
+];
+
+/** A single audit entry in a room's audit trail. */
+export const roomAuditEntrySchema = z.object({
+  action: z.enum(["activated", "deactivated", "owner_changed", "scope_changed",
+    "agent_changed", "dual_hat_assigned", "customized", "product_activated"]),
+  by: z.string(),
+  at: z.string(),
+  detail: z.string().optional(),
+});
+export type RoomAuditEntry = z.infer<typeof roomAuditEntrySchema>;
+
+export const roomSchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  template: z.enum(ROOM_TEMPLATES),
+  displayName: z.string().min(1).max(128),
+  ownerUserId: z.string().nullable().optional(),
+  evidenceScope: z.string().nullable().optional(),
+  agentPack: z.string().nullable().optional(),
+  lifecycleState: z.enum(ROOM_LIFECYCLE_STATES),
+  boundaryAcknowledged: z.boolean(),
+  activatedAt: z.string().nullable().optional(),
+  activatedBy: z.string().nullable().optional(),
+  deactivatedAt: z.string().nullable().optional(),
+  deactivatedBy: z.string().nullable().optional(),
+  dualHatOwnerId: z.string().nullable().optional(),
+  customNameSource: z.enum(ROOM_TEMPLATES).nullable().optional(),
+  metadata: z.record(z.unknown()).nullable().optional(),
+  auditTrail: z.array(roomAuditEntrySchema).nullable().optional(),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type NexusRoom = z.infer<typeof roomSchema>;
+
+/** Activate a room — the admin confirms the activation contract. */
+export const activateRoomSchema = z.object({
+  ownerUserId: z.string().min(1, "An accountable owner is required"),
+  evidenceScope: z.string().optional(),
+  agentPack: z.string().optional(),
+  displayName: z.string().min(1).max(128).optional(),
+  /** Explicitly set lifecycle state. Omit to default to "active" on activation. */
+  lifecycleState: z.enum(["active", "inactive"]).optional(),
+});
+export type ActivateRoomInput = z.infer<typeof activateRoomSchema>;

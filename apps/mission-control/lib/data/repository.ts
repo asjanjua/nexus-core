@@ -5,8 +5,8 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { verifyPassword } from "@/lib/auth";
 import { store } from "@/lib/data/store";
-import { evidenceSourceTypeSchema } from "@/lib/contracts";
-import type { Action, ActionInput, ActionStatus, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, DispatchJob, DispatchJobInput, DispatchJobStatus, Entity, EntityInput, EntityRelationship, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, KnowledgeLink, KnowledgeNote, KnowledgeNoteInput, KnowledgeSearchResult, KnowledgeSyncEvent, LearningSignal, LearningSignalInput, LearningSignalSummary, MeridianScope, MeridianScopeInput, PilotOutcome, ProWaitlistEntry, PromptRegistryEntry, ReadinessSubmission, Recommendation, ReviewerSeat, TrialInvite, RecommendationStatus, StrategyProfile, StrategyProfileInput, SynthesisSchedule, SynthesisScheduleInput, SynthesisScheduleStatus, WorkflowTwin, WorkflowTwinInput, WorkflowTwinRun, WorkflowTwinRunInput, WorkflowTwinRunStatus, WorkflowTwinStatus, WorkflowTwinType, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
+import { evidenceSourceTypeSchema, ROOM_TEMPLATE_DEFAULTS } from "@/lib/contracts";
+import type { Action, ActionInput, ActionStatus, ActivateRoomInput, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, DispatchJob, DispatchJobInput, DispatchJobStatus, Entity, EntityInput, EntityRelationship, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, KnowledgeLink, KnowledgeNote, KnowledgeNoteInput, KnowledgeSearchResult, KnowledgeSyncEvent, LearningSignal, LearningSignalInput, LearningSignalSummary, MeridianScope, MeridianScopeInput, NexusRoom, PilotOutcome, ProWaitlistEntry, PromptRegistryEntry, ReadinessSubmission, Recommendation, ReviewerSeat, RoomAuditEntry, RoomLifecycleState, RoomTemplate, TrialInvite, RecommendationStatus, StrategyProfile, StrategyProfileInput, SynthesisSchedule, SynthesisScheduleInput, SynthesisScheduleStatus, WorkflowTwin, WorkflowTwinInput, WorkflowTwinRun, WorkflowTwinRunInput, WorkflowTwinRunStatus, WorkflowTwinStatus, WorkflowTwinType, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
 import { assertDbConfigured, isDbRequired } from "@/lib/data/db-policy";
 
 // In-memory idempotency cache for Stripe events (fallback when DB is unavailable).
@@ -58,6 +58,7 @@ import {
   pilotOutcomes,
   proWaitlist,
   meridianScope,
+  rooms,
   strategyProfiles,
   type recommendationStatusEnum,
   type ingestionStatusEnum
@@ -4908,5 +4909,129 @@ export const repository = {
     });
     if (!rows || !rows.length) return [];
     return rows.map((r) => toKnowledgeNote(r as typeof knowledgeNotes.$inferSelect));
+  },
+
+  // ---------------------------------------------------------------------------
+  // Nexus Room Portfolio — durable room configuration
+  // ---------------------------------------------------------------------------
+  // See docs/NEXUS_ROOM_PORTFOLIO_ACTIVATION.md for the full policy.
+  // Every workspace sees the complete curated portfolio from day one.
+  // CEO is mandatory and cannot be deactivated.
+
+  /** A workspace's rooms, ordered by template in portfolio order. */
+  async listRooms(workspaceId: string): Promise<NexusRoom[]> {
+    const rows = await runDb((db) =>
+      db.select().from(rooms).where(eq(rooms.workspaceId, workspaceId)).orderBy(rooms.template),
+    );
+    if (!rows) return [];
+    return rows.map((r) => ({
+      id: r.id,
+      workspaceId: r.workspaceId,
+      template: r.template as RoomTemplate,
+      displayName: r.displayName,
+      ownerUserId: r.ownerUserId,
+      evidenceScope: r.evidenceScope,
+      agentPack: r.agentPack,
+      lifecycleState: r.lifecycleState as RoomLifecycleState,
+      boundaryAcknowledged: r.boundaryAcknowledged,
+      activatedAt: r.activatedAt?.toISOString() ?? null,
+      activatedBy: r.activatedBy,
+      deactivatedAt: r.deactivatedAt?.toISOString() ?? null,
+      deactivatedBy: r.deactivatedBy,
+      dualHatOwnerId: r.dualHatOwnerId,
+      customNameSource: r.customNameSource as RoomTemplate | null,
+      metadata: r.metadata as Record<string, unknown> | null,
+      auditTrail: (r.auditTrail as RoomAuditEntry[] | null) ?? [],
+      createdAt: r.createdAt.toISOString(),
+      updatedAt: r.updatedAt.toISOString(),
+    }));
+  },
+
+  /** Get a single room by id, scoped to the workspace. */
+  async getRoom(workspaceId: string, roomId: string): Promise<NexusRoom | null> {
+    const rows = await runDb((db) =>
+      db.select().from(rooms).where(and(eq(rooms.workspaceId, workspaceId), eq(rooms.id, roomId))),
+    );
+    if (!rows || !rows.length) return null;
+    const r = rows[0];
+    return {
+      id: r.id,
+      workspaceId: r.workspaceId,
+      template: r.template as RoomTemplate,
+      displayName: r.displayName,
+      ownerUserId: r.ownerUserId,
+      evidenceScope: r.evidenceScope,
+      agentPack: r.agentPack,
+      lifecycleState: r.lifecycleState as RoomLifecycleState,
+      boundaryAcknowledged: r.boundaryAcknowledged,
+      activatedAt: r.activatedAt?.toISOString() ?? null,
+      activatedBy: r.activatedBy,
+      deactivatedAt: r.deactivatedAt?.toISOString() ?? null,
+      deactivatedBy: r.deactivatedBy,
+      dualHatOwnerId: r.dualHatOwnerId,
+      customNameSource: r.customNameSource as RoomTemplate | null,
+      metadata: r.metadata as Record<string, unknown> | null,
+      auditTrail: (r.auditTrail as RoomAuditEntry[] | null) ?? [],
+      createdAt: r.createdAt.toISOString(),
+      updatedAt: r.updatedAt.toISOString(),
+    };
+  },
+
+  /** Seed a portfolio template that hasn't been materialised for this workspace yet. */
+  async seedRoom(workspaceId: string, template: RoomTemplate): Promise<NexusRoom> {
+    const id = `room_${workspaceId}_${template}`;
+    const displayName = ROOM_TEMPLATE_DEFAULTS[template];
+    const lifecycleState: RoomLifecycleState = template === "executive" ? "active" : "staged";
+
+    await runDb((db) =>
+      db.insert(rooms).values({
+        id,
+        workspaceId,
+        template,
+        displayName,
+        lifecycleState,
+        boundaryAcknowledged: template === "executive",
+      }).onConflictDoNothing(),
+    );
+
+    return this.getRoom(workspaceId, id) as Promise<NexusRoom>;
+  },
+
+  /** Activate or update a room. Fails if the room doesn't exist. */
+  async activateRoom(
+    workspaceId: string,
+    roomId: string,
+    input: ActivateRoomInput & { activatedBy: string },
+  ): Promise<NexusRoom> {
+    const now = new Date();
+    const existing = await this.getRoom(workspaceId, roomId);
+    if (!existing) throw new Error("room_not_found");
+
+    // Build the audit entry.
+    const entry: RoomAuditEntry = {
+      action: existing.lifecycleState === "active" ? "owner_changed" : "activated",
+      by: input.activatedBy,
+      at: now.toISOString(),
+    };
+    const trail = [...(existing.auditTrail ?? []), entry];
+
+    await runDb((db) =>
+      db.update(rooms)
+        .set({
+          displayName: input.displayName ?? existing.displayName,
+          ownerUserId: input.ownerUserId ?? existing.ownerUserId,
+          evidenceScope: input.evidenceScope ?? existing.evidenceScope,
+          agentPack: input.agentPack ?? existing.agentPack,
+          lifecycleState: "active",
+          boundaryAcknowledged: true,
+          activatedAt: existing.activatedAt ?? now,
+          activatedBy: input.activatedBy,
+          auditTrail: trail as unknown as Record<string, unknown>[],
+          updatedAt: now,
+        })
+        .where(and(eq(rooms.workspaceId, workspaceId), eq(rooms.id, roomId))),
+    );
+
+    return this.getRoom(workspaceId, roomId) as Promise<NexusRoom>;
   },
 };

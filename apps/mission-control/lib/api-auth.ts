@@ -46,7 +46,7 @@ const CLERK_ADMIN_ROLE = "org:admin";
  * tenant-wide operations — workspace purge, agent-key issue/revoke, connector
  * install, prompt and eval management, audit log access.
  */
-const ADMIN_ONLY_SCOPES = new Set(["admin", "read:admin"]);
+const ADMIN_ONLY_SCOPES = new Set(["admin", "read:admin", "write:rooms"]);
 
 export const DEFAULT_WORKSPACE =
   process.env.NEXUS_DEMO_WORKSPACE ?? "workspace-demo";
