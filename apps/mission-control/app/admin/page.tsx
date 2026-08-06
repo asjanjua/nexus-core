@@ -4,6 +4,8 @@ import { PageShell } from "@/components/page-shell";
 import { repository } from "@/lib/data/repository";
 import { isPlatformAdmin, platformAdminConfigured } from "@/lib/platform-admin";
 
+import { AdminRevenueDashboard } from "@/components/admin-revenue-dashboard";
+
 const RETURN_PATH = "/admin";
 
 type ControlCard = {
@@ -65,7 +67,9 @@ export default async function PinaviaControlPage() {
 
   return (
     <PageShell title="Pinavia Control" description="One staff-only operational control point. Health signals and links are safe to view; credentials remain dashboard-managed and customer authority stays scoped.">
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="space-y-6">
+        <AdminRevenueDashboard />
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {controls.map((control) => (
           <a key={control.title} href={control.href} target={control.external ? "_blank" : undefined} rel={control.external ? "noreferrer" : undefined} className="rounded-lg border border-white/10 bg-white/[0.035] p-5 transition hover:border-nexus-accent/50 hover:bg-white/[0.06]">
             <div className="flex items-start justify-between gap-3">
@@ -76,6 +80,7 @@ export default async function PinaviaControlPage() {
             <p className="mt-4 text-sm font-medium text-nexus-accent">Open {control.external ? "dashboard" : "control"} →</p>
           </a>
         ))}
+      </div>
       </div>
     </PageShell>
   );

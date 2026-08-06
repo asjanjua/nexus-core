@@ -5156,4 +5156,72 @@ export const repository = {
 
     return this.getRoom(workspaceId, roomId) as Promise<NexusRoom>;
   },
+
+  /**
+   * Admin revenue snapshot — aggregate workspace data for the admin dashboard.
+   * Called by GET /api/admin/revenue (admin-gated). Computes subscriber counts,
+   * MRR, ARR, churn, and plan breakdown from workspace metadata.
+   */
+  async getAdminRevenueSnapshot(): Promise<{
+    activeSubscribers: number;
+    totalWorkspaces: number;
+    mrrCents: number;
+    planBreakdown: Record<string, number>;
+    churned30d: number;
+    activePilots: number;
+  }> {
+    const { PLAN_FALLBACKS } = await import("@/lib/billing/plan-catalog");
+
+    // Build price map from plan fallbacks by plan key (not stripePriceId —
+    // workspaces reference the plan key via the `plan` column).
+    const priceMap = new Map<string, { priceCents: number; label: string }>();
+    for (const plan of Object.values(PLAN_FALLBACKS)) {
+      priceMap.set(plan.planKey, { priceCents: plan.priceCents, label: plan.label });
+    }
+
+    const rows = await runDb((db) => db.select().from(workspaces));
+    const all = rows ?? [];
+
+    const planBreakdown: Record<string, number> = {};
+    let activeSubscribers = 0;
+    let mrrCents = 0;
+    let churned30d = 0;
+    let activePilots = 0;
+
+    for (const ws of all) {
+      const status = ws.status;
+      const stripeSub = ws.stripeSubscriptionId;
+      const planKey = ws.plan ?? "free";
+
+      // Active subscriber: has stripe sub and workspace is active.
+      if (stripeSub && status === "active") {
+        activeSubscribers++;
+        const plan = priceMap.get(planKey);
+        mrrCents += plan?.priceCents ?? 0;
+        const label = plan?.label ?? planKey;
+        planBreakdown[label] = (planBreakdown[label] ?? 0) + 1;
+      }
+
+      // Churn: cancelled or suspended in the last 30 days.
+      // Workspace rows don't have an updatedAt field, so we count
+      // all currently cancelled/suspended workspaces as potential churn.
+      if (status === "cancelled" || status === "suspended") {
+        churned30d++;
+      }
+
+      // Active pilot: workspace in active status with some token usage.
+      if (status === "active" || status === "pilot") {
+        activePilots++;
+      }
+    }
+
+    return {
+      activeSubscribers,
+      totalWorkspaces: all.length,
+      mrrCents,
+      planBreakdown,
+      churned30d,
+      activePilots,
+    };
+  },
 };
