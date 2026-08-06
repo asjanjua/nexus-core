@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { PageShell } from "@/components/page-shell";
+import { OpsReviewPanel } from "@/components/ops-review-panel";
 import { HelpLabel } from "@/components/ui/help-dialog";
 
 type TwinType = "decision_action" | "workflow_scorer" | "ops_review";
@@ -149,7 +150,9 @@ export default function WorkflowsPage() {
 
   const scorerTwin = useMemo(() => twins.find((twin) => twin.type === "workflow_scorer"), [twins]);
   const decisionTwin = useMemo(() => twins.find((twin) => twin.type === "decision_action"), [twins]);
+  const opsReviewTwin = useMemo(() => twins.find((twin) => twin.type === "ops_review"), [twins]);
   const scorerRun = scorerTwin ? runs[scorerTwin.id]?.[0] : null;
+  const opsReviewRun = opsReviewTwin ? runs[opsReviewTwin.id]?.[0] : null;
   const candidates = asCandidates(scorerRun?.payload?.candidates);
   // A hard-gated workflow is never the recommendation, even if ranked first.
   const recommended = candidates.find((candidate) => candidate.recommended && !candidate.hardGate) ?? null;
@@ -471,6 +474,26 @@ export default function WorkflowsPage() {
             </p>
           )}
         </section>
+      {/* Ops Review Twin — weekly execution snapshot */}
+      {opsReviewRun ? (
+        <OpsReviewPanel
+          run={opsReviewRun}
+          onRunAgain={opsReviewTwin ? () => runTwin(opsReviewTwin) : undefined}
+          busy={!!busy}
+        />
+      ) : opsReviewTwin ? (
+        <section className="panel space-y-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="panel-title">Ops Review Twin</p>
+              <p className="mt-1 text-sm text-white/55">No runs yet. Run the twin to produce a weekly execution snapshot.</p>
+            </div>
+            <button className="btn-subtle" disabled={!!busy} onClick={() => runTwin(opsReviewTwin)}>
+              {busy ? "Running…" : "Run now"}
+            </button>
+          </div>
+        </section>
+      ) : null}
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
