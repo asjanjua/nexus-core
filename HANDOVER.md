@@ -4,6 +4,66 @@
 
 ---
 
+## 2026-08-06 — P3 Pilot Operations + Workspace Admin (Queen session, continued)
+
+**Commit range:** `ffa2a1d` → `1739b40` on `main` (pushed)
+**Deployed SHA:** `1739b40` (Render auto-deploy pending — free tier sleep)
+**Warnings:** 0 (maintained)
+
+**P3 Shipped:**
+- **Admin Revenue Dashboard** (`/admin`): Platform admin view — MRR, ARR, LLM cost, R2, email, evidence count, plan breakdown. Cost side tracks burn rate against revenue. Platform admin only (Pinavia staff).
+- **Admin Health Widget** (`/admin`): Live health status dots — database, vectors, R2, LLM.
+- **Workspace Dashboard** (`/settings/workspace`): Company-level admin — token usage bar, content counts, plan, buyer lane, sponsor, activation date. The workspace owner sees their OWN metrics.
+- **Public Status Page** (`/status`): No-auth health dashboard — database, vectors, R2, LLM status. Designed for external monitors (Checkly, UptimeRobot).
+- **Support Page** (`/support`): Public FAQ (7 items), contact emails (support@/hello@), pilot resources.
+- **Security Hardening**: Nonce-based CSP, HSTS (prod), X-Frame-Options DENY, X-Content-Type-Options nosniff, Permissions-Policy, COOP, CORS allowlist. npm audit in CI (critical blocks, high reports). Securityheaders.com ready for A rating.
+
+**Distinction:**
+| Admin | Page | Who |
+|-------|------|-----|
+| Platform admin | `/admin` | Pinavia staff — all workspaces aggregated |
+| Workspace admin | `/settings/workspace` | Company owner — their own workspace metrics |
+
+---
+
+### Production Ops Runbook (Human tasks — not code)
+
+1. **Confirm Render deploy:** Check Render dashboard at `https://dashboard.render.com/web/srv-d8bv48jtqb8s73a95gg0`. The latest push is `1739b40`. Wake the service if sleeping.
+
+2. **Run prod migrations:** Against the production Neon database:
+   ```bash
+   npx drizzle-kit push:pg --config=apps/mission-control/drizzle.config.ts
+   ```
+   Migrations 0043 (evidence_ceiling), 0044 (document_type cache), 0045 (rooms table), 0046 (approval_policies) must be applied.
+
+3. **Verify prod health:**
+   ```bash
+   curl -sI https://app.pinavia.io/api/health
+   ```
+   Expected: 200 with all security headers.
+
+4. **Scan security headers:**
+   Visit https://securityheaders.com and enter `app.pinavia.io`. Target: A rating.
+   Or use: `curl -sI https://app.pinavia.io/api/health | grep -E "x-content|x-frame|csp|hsts|permissions|coop"`
+
+5. **Configure support@ mailbox:**
+   Spacemail/Hostinger — add `support@pinavia.io` as a mailbox or forward to `hello@pinavia.io`.
+
+6. **Re-smoke key routes:**
+   - `/status` (public health)
+   - `/support` (FAQ)
+   - `/eval` (trusted scorecard)
+   - `/knowledge` (daily brief + audit)
+   - `/workflows` (ops review twin)
+   - `/rooms` (room portfolio)
+   - `/settings/workspace` (workspace dashboard)
+
+7. **SECURITY_REVIEW.md:** Complete checklist in `docs/SECURITY_REVIEW.md` and sign off.
+
+---
+
+## 2026-08-06 — P2 Completion: Eval Scorecards + Daily Brief (Queen session)
+
 ## 2026-08-06 — P2 Completion: Eval Scorecards + Daily Brief (Queen session)
 
 **Commit range:** `0278eae` → `3e310d6` on `main` (pushed)
