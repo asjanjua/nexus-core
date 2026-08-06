@@ -207,8 +207,8 @@ describe("migrationState", () => {
 
     // Apply all real migrations plus two that don't exist on disk.
     const aheadOfCheckout = [
-      "0045_future_feature_a.sql",
-      "0046_future_feature_b.sql",
+      "0091_future_feature_a.sql",
+      "0092_future_feature_b.sql",
     ];
     const allIds = [...allFiles, ...aheadOfCheckout];
 
