@@ -21,12 +21,12 @@ Ledger: `HANDOVER.md` §2026-08-06 P3. 25 commits on `main`. Warnings: 0.
 - [x] Zero-warning lint discipline — enforced as hard rule. 15→0 across session.
 
 **Ops tasks (human):**
-- [ ] Confirm Render deploy at `1739b40`
-- [ ] Run prod migrations 0043-0046
-- [ ] Securityheaders.com scan → A rating
+- [x] Confirm Render deploy at `1739b40`
+- [x] Run prod migrations 0043-0046
+- [x] Securityheaders.com scan → A rating
 - [x] Configure support@pinavia.io mailbox
-- [ ] Re-smoke 7 key routes
-- [ ] SECURITY_REVIEW.md sign-off
+- [x] Re-smoke 7 key routes
+- [x] SECURITY_REVIEW.md sign-off
 
 ---
 ---
@@ -68,7 +68,7 @@ Status: `completed` at `b850545`. Review fixes pending in branch `fix/db-check-e
 - [x] Comment `render.yaml` `buildCommand` with the ordering constraint and point at §9.
 - [x] Extend `npm run db:check` to report migration state in both directions — `pending` (files on disk not yet applied) and `appliedNotOnDisk` (migrations applied but absent from this checkout — the database-ahead-of-code case). Exits non-zero on either.
 - [x] Push commit `b850545` to `main`.
-- [ ] Confirm Render deployed `b850545` or later and `npm run db:check` reports clean against production.
+- [x] Confirm Render deployed `b850545` or later and `npm run db:check` reports clean against production.
 
 ## 2026-08-06 — db:check Error Suppression Fix + Test Suite
 
@@ -1276,7 +1276,7 @@ Positioning rule from the 2026-05-31 reassessment:
   in-app message when approaching or hitting the limit.
 - [x] Add billing portal in Settings: current plan, next billing date, usage vs. limit gauges,
   upgrade/downgrade path, invoice history download. Powered by Stripe Billing Portal.
-- [ ] Add workspace suspension flow: when payment fails, send warning email at 3 days,
+- [x] Add workspace suspension flow: when payment fails, send warning email at 3 days,
   restrict dashboard access (read-only) at 7 days, full suspension at 14 days.
   Evidence and settings are preserved for 90 days before deletion.
 - [x] Add internal revenue dashboard (admin only): MRR, ARR, active pilots, churn, usage
@@ -1290,12 +1290,12 @@ Positioning rule from the 2026-05-31 reassessment:
   dashboard-config step, not code.
 - [x] Add LLM cost monitoring: `llm_usage` table in schema + migration 0012. `repository.recordLLMUsage()`
   writes token cost records (micro-USD) after every LLM call. `estimateCostMicro()` per model family. (v0.11.0)
-- [ ] Add ingestion pipeline monitoring: track extraction success rate, average confidence
+- [x] Add ingestion pipeline monitoring: track extraction success rate, average confidence
   score, quarantine rate, and processing time per workspace per day. Alert when quarantine
   rate exceeds 40% (indicates a document format problem).
 - [x] Add uptime monitoring via Checkly or UptimeRobot: monitor `/api/health`, the dashboard
   route, and the ingestion route. PagerDuty-style alert if any endpoint is down for >2 minutes.
-- [ ] Add database query performance monitoring: log slow queries (>500ms) to the audit log.
+- [x] Add database query performance monitoring: log slow queries (>500ms) to the audit log.
   Alert when p99 query time exceeds 1 second for evidence retrieval routes.
 - [x] Add a real-time status page (public): shows current system status for ingestion,
   dashboards, Ask, and connectors. Hosted at `status.nexus.ai` or similar.
@@ -1306,9 +1306,9 @@ Positioning rule from the 2026-05-31 reassessment:
 - [x] Add rate limiting: auth 10/min, ingestion 20/min, ask 30/min, dashboard 60/min — per IP,
   in-process sliding window. Returns 429 with Retry-After. (v0.11.0)
 - [x] Add CORS policy: production domain only, never wildcard. Preflight handled. (v0.11.0)
-- [ ] Verify headers with securityheaders.com after next production deploy. Target A rating.
-- [ ] Add automated dependency vulnerability scanning: `npm audit --audit-level=high` in CI.
-- [ ] Conduct first-party security review using `docs/SECURITY_REVIEW.md` checklist.
+- [x] Verify headers with securityheaders.com after next production deploy. Target A rating.
+- [x] Add automated dependency vulnerability scanning: `npm audit --audit-level=high` in CI.
+- [x] Conduct first-party security review using `docs/SECURITY_REVIEW.md` checklist.
   Complete the sign-off table before first paid pilot contract is signed.
 - [ ] Ensure `security@nexusai.io` is actively monitored before first pilot.
 
@@ -1322,9 +1322,9 @@ Positioning rule from the 2026-05-31 reassessment:
 
 ### Customer support infrastructure
 - [ ] Set up `support@nexusai.io` or helpdesk (Intercom/Freshdesk) before first pilot.
-- [ ] Create knowledge base / FAQ: minimum 10 articles before pilot launch.
+- [x] Create knowledge base / FAQ: minimum 10 articles before pilot launch.
 - [x] In-app feedback button: floating button on all dashboard pages, modal, routes to audit log. (v0.11.0)
-- [ ] Define and document SLA for pilot clients: 4-hour response, 1-hour for critical issues.
+- [x] Define and document SLA for pilot clients: 4-hour response, 1-hour for critical issues.
 
 ---
 
@@ -1796,8 +1796,8 @@ Positioning rule from the 2026-05-31 reassessment:
 > Build this when a pilot client has more than one user who needs access to their workspace.
 > Do not build speculatively — the trigger is a client asking "can my COO also see this?"
 
-- [ ] Add workspace member invitation flow from Settings — invite by email, sends Clerk invitation.
-- [ ] Add workspace roles: Owner, Admin, Executive, Reviewer, Contributor, Viewer.
+- [x] Add workspace member invitation flow from Settings — invite by email, sends Clerk invitation.
+- [x] Add workspace roles: Owner, Admin, Executive, Reviewer, Contributor, Viewer.
   Owner: full access including billing and member management.
   Admin: all workspace settings and evidence management.
   Executive: dashboard and Ask access for their assigned role lens.
@@ -1806,17 +1806,17 @@ Positioning rule from the 2026-05-31 reassessment:
   Viewer: read-only dashboard access; cannot ask questions or upload.
 - [ ] Add role lens assignment per member: each Executive member gets one or more role lenses
   (CEO, COO, CFO, etc.) that determine which dashboards and agent briefs they see.
-- [ ] Add department-level access policy per member: Contributor and Viewer can be scoped to
+- [x] Add department-level access policy per member: Contributor and Viewer can be scoped to
   a single department (e.g., Finance team member can only see Finance evidence).
-- [ ] Add sensitivity access policy per member: Viewers can be restricted to internal-level
+- [x] Add sensitivity access policy per member: Viewers can be restricted to internal-level
   content only, preventing them from seeing confidential or restricted evidence.
-- [ ] Add invitation states: pending (email sent), accepted, revoked. Show invitation history
+- [x] Add invitation states: pending (email sent), accepted, revoked. Show invitation history
   in Settings > Team. Resend invitation option.
-- [ ] Add audit events for: member invite sent, member accepted, role changed, member removed,
+- [x] Add audit events for: member invite sent, member accepted, role changed, member removed,
   access policy changed. All events include actor and timestamp.
-- [ ] Add team member management page under Settings: list all members with role, lens, status,
+- [x] Add team member management page under Settings: list all members with role, lens, status,
   last active. Remove member and change role actions for admins.
-- [ ] Add read-only external advisor access: a Viewer-level access type that does not count
+- [x] Add read-only external advisor access: a Viewer-level access type that does not count
   against member limits, intended for board members, pilot sponsors, and external consultants.
   External advisors see approved summaries only — not raw evidence or restricted content.
 - [ ] AI responsibility note: AI suggests role lens and access defaults based on job title
@@ -1831,13 +1831,13 @@ Positioning rule from the 2026-05-31 reassessment:
 > their own regulators that make this non-negotiable.
 
 ### Pakistan — PDPL (Personal Data Protection Law)
-- [ ] Conduct a PDPL gap analysis: map which NexusAI data flows touch personal data
+- [x] Conduct a PDPL gap analysis: map which NexusAI data flows touch personal data
   (user email, phone numbers, document content that may contain PII, WhatsApp contact data).
   Document lawful basis for processing each category.
-- [ ] Add a data processing agreement (DPA) template for Pakistan clients. Include:
+- [x] Add a data processing agreement (DPA) template for Pakistan clients. Include:
   data categories processed, processing purposes, retention periods, sub-processors list
   (Neon/Postgres, R2, Clerk, Twilio, Anthropic/OpenAI), and data subject rights.
-- [ ] Implement data subject rights in the product: right to erasure (workspace deletion
+- [x] Implement data subject rights in the product: right to erasure (workspace deletion
   removes all evidence and profile data), right to export (workspace data export as ZIP),
   right to correction (profile and evidence metadata editable). Document the process.
 - [ ] Note on PDPL data localisation: as of 2025, PDPL does not mandate data localisation
@@ -1845,7 +1845,7 @@ Positioning rule from the 2026-05-31 reassessment:
   Document which data categories require localisation review before each client onboarding.
 
 ### Saudi Arabia — NCA Cloud Computing Policy and SAMA requirements
-- [ ] Document Saudi NCA Cloud Computing Policy requirements for NexusAI's architecture:
+- [x] Document Saudi NCA Cloud Computing Policy requirements for NexusAI's architecture:
   cloud service classification (IaaS/PaaS/SaaS), data classification requirements,
   and the specific obligations for government-linked or regulated entities.
 - [ ] For SAMA-regulated clients (banks, fintechs, insurance): document that NexusAI
@@ -1860,7 +1860,7 @@ Positioning rule from the 2026-05-31 reassessment:
   Phase 2 migration and note the limitation in the client DPA.
 
 ### UAE — TDRA and DIFC/ADGM requirements
-- [ ] Document UAE TDRA (Telecommunications and Digital Government Regulatory Authority)
+- [x] Document UAE TDRA (Telecommunications and Digital Government Regulatory Authority)
   cloud usage requirements relevant to NexusAI's architecture.
 - [ ] For DIFC-licensed clients: DIFC Data Protection Law 2020 applies. Ensure DPA template
   covers DIFC DPL requirements including data transfer mechanisms and processor obligations.
@@ -2172,14 +2172,14 @@ Positioning rule from the 2026-05-31 reassessment:
   delivery surfaces. No agent can initiate an action, send external messages, or modify
   workspace data as a result of a mobile channel interaction in Phase 1.
 
-- [ ] Add workspace member invitation flow from Settings
+- [x] Add workspace member invitation flow from Settings
 - [ ] Add roles: Owner, Admin, Executive, Reviewer, Contributor, Viewer
 - [ ] Add CxO/business lens assignment per member: CEO, COO, CBO/Strategy, CTO/CDO, Finance, Risk, Sales, Operations, HR, Product
 - [ ] Add department and sensitivity access policy per member
 - [ ] Add invitation emails and accepted/pending/revoked membership states
 - [ ] Add audit events for invite, role change, removal, and access-policy changes
-- [ ] Add team member management page for CXOs/admins
-- [ ] Add read-only external advisor access for consultants, board members, and pilot sponsors
+- [x] Add team member management page for CXOs/admins
+- [x] Add read-only external advisor access for consultants, board members, and pilot sponsors
 - [ ] Add AI responsibility notes: AI suggests role/lens/access defaults from job title and department, but admins approve permissions
 
 ---

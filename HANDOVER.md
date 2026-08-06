@@ -1,5 +1,66 @@
 # HANDOVER.md -- NexusAI Live Session State
 
+## 2026-08-06 — Session Summary (Queen, ~35 commits)
+
+**Branch:** main
+**Warnings:** 0 (maintained across entire session)
+**Tests:** 137 files / 1,107 tests (maintained)
+**Build:** 215 pages
+
+### P2 — Feature Depth (completed)
+- Approval policies (multi-level, N-of-M, sequential, role-scoped)
+- Ops Review Twin UI panel on /workflows
+- Knowledge audit engine (duplicate/contradiction/staleness detection)
+- Trusted Eval Scorecard on /eval
+- Daily Brief automation
+
+### P3 — Pilot Operations (completed, production-verified)
+- Admin revenue dashboard (MRR, ARR, LLM cost, R2, email, evidence)
+- Admin health widget
+- Public /status page (no-auth health)
+- Public /support page (FAQ, contact)
+- Security hardening (CSP nonce, HSTS, X-Frame DENY, CORS, npm audit CI)
+- Workspace dashboard (/settings/workspace)
+- Workspace member roles (owner→viewer)
+- Department access + sensitivity ceiling per member
+- External advisor access (time-limited, scope-bounded)
+
+### P4 — Compliance + Operations (completed)
+- /compliance page (Pakistan PDPL, UAE PDPL, KSA SAMA/NCA)
+- /pilot-sla page (uptime, support, escalation, exclusions)
+- Workspace suspension flow (migration 0050, cron, Stripe webhook)
+- Ingestion pipeline monitoring widget
+- DB slow query detection (>500ms console.warn)
+- Onboarding aggregate status polish
+
+### Adversarial Review (5 of 6 findings resolved)
+- getAcceptedReviewerSeat → getAcceptedReviewerSeats (multi-member fix)
+- Optimistic update rollback on server failure
+- Member fields persisted to DB (updateReviewerSeatFields)
+- Self-revocation guard on DELETE
+- <a> → <Link> in member panel
+- security@nexusai.io mailbox — remaining (Ali's task)
+
+### Migrations Built
+- 0047: workspace_member_role
+- 0048: member_department_access
+- 0049: external_advisor_access
+- 0050: suspension_warning
+
+### Production State
+- Render: live at df742d7, all security headers verified
+- Migrations: all 50 applied against production Neon
+- Route smoke: all 7 key routes reachable
+
+### Remaining Open (Ali's Tasks)
+- Configure support@pinavia.io + security@nexusai.io mailboxes
+- Manual tenant isolation test
+- Restricted evidence exclusion verification
+- PII in Ask verification
+- NEXT_PUBLIC_APP_URL in Render dashboard
+- Neon backup restore test
+- R2 versioning enable
+
 > This file is the memory of the NexusAI relay team. Update it at the end of every meaningful work session.
 
 ---
