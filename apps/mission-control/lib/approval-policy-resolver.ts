@@ -137,7 +137,14 @@ export function resolveApprovalDecision(input: ResolveInput): ApprovalDecision {
 
   // Sequential: must be the caller's turn.
   if (mode === "sequential") {
-    const nextLevel = nextSequentialLevel(seats, priorDecisions);
+    // Use the eligible set (leveled seats only) rather than all seats, so
+    // unleveled seats or role-scoped exclusions don't affect the sequence.
+    // Reviewed 2026-08-06: prior code passed `seats` here, which included
+    // all accepted seats regardless of level — wrong for role+sequential combos.
+    const nextLevel = nextSequentialLevel(eligible, priorDecisions);
+    if (nextLevel == null) {
+      return { allowed: false, reason: "not_eligible", detail: "The approval chain is already complete." };
+    }
     if (callerSeat.level !== nextLevel) {
       return { allowed: false, reason: "wrong_step", detail: `Current approval step is level ${nextLevel}. Your level is ${callerSeat.level ?? "unset"}.` };
     }
@@ -220,17 +227,19 @@ function computeEligibleSet(
   }
 }
 
-/** The next unapproved level in a sequential chain. */
+/** The next unapproved level in a sequential chain.
+ *  Accepts any object with an `id` and optional `level` — works with both
+ *  ResolverSeat and EligibleApprover shapes. */
 function nextSequentialLevel(
-  seats: ResolverSeat[],
+  leveledSeats: { id?: string; seatId?: string; level?: number | null }[],
   priorDecisions: PriorApproval[],
 ): number | null {
-  const levels = [...new Set(seats.map((s) => s.level).filter((l) => l != null))].sort((a, b) => (a ?? 0) - (b ?? 0));
+  const levels = [...new Set(leveledSeats.map((s) => s.level).filter((l): l is number => l != null))].sort((a, b) => a - b);
   const approvedLevels = new Set(
     priorDecisions
       .filter((d) => d.approved)
-      .map((d) => seats.find((s) => s.id === d.seatId)?.level)
-      .filter((l) => l != null),
+      .map((d) => leveledSeats.find((s) => (s.id ?? s.seatId) === d.seatId)?.level)
+      .filter((l): l is number => l != null),
   );
   return levels.find((l) => !approvedLevels.has(l)) ?? null;
 }

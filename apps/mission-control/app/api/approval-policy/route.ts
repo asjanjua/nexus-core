@@ -67,7 +67,26 @@ export async function PUT(request: Request) {
   const parsed = updateApprovalPolicySchema.safeParse(body);
   if (!parsed.success) return fail(parsed.error.issues[0]?.message ?? "invalid_input", 400);
 
-  const updated = await repository.upsertApprovalPolicy(auth.ctx.workspaceId, parsed.data);
+  // Validate internal consistency — the Zod schema checks types but not
+  // mode-specific requirements. Reviewed 2026-08-06 (adversarial review).
+  if (parsed.data.mode === "n_of_m") {
+    const count = parsed.data.requiredCount ?? 0;
+    if (count < 2) return fail("n_of_m mode requires required_count >= 2", 400);
+  }
+  if (parsed.data.mode === "role_scoped") {
+    if (!parsed.data.requiredRoles || parsed.data.requiredRoles.length === 0) {
+      return fail("role_scoped mode requires at least one required role", 400);
+    }
+  }
+  if (parsed.data.mode === "sequential") {
+    const count = parsed.data.requiredCount ?? 0;
+    if (count < 2) return fail("sequential mode requires required_count >= 2", 400);
+  }
 
-  return ok(updated);
+  try {
+    const updated = await repository.upsertApprovalPolicy(auth.ctx.workspaceId, parsed.data);
+    return ok(updated);
+  } catch (err) {
+    return fail("internal_error", 500);
+  }
 }

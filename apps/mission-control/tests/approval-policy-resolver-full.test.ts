@@ -98,6 +98,9 @@ function resolveApprovalDecision(
     const levels = [...new Set(eligible.map((s) => s.level))].sort((a, b) => (a ?? 0) - (b ?? 0));
     const approvedLevels = new Set(priorDecisions.filter((d) => d.approved).map((d) => eligible.find((e) => e.id === d.seatId)?.level));
     const nextLevel = levels.find((l) => !approvedLevels.has(l));
+    if (nextLevel == null) {
+      return { allowed: false, reason: "not_eligible", detail: "The approval chain is already complete." };
+    }
     if (seat.level !== nextLevel) {
       return { allowed: false, reason: "wrong_step", detail: `Next is level ${nextLevel}.` };
     }
@@ -226,6 +229,20 @@ describe("resolveApprovalDecision — sequential mode", () => {
     ]);
     expect(d.allowed).toBe(true);
     expect(d.terminal).toBe(true);
+  });
+
+  it("denies after the chain is already complete (nextLevel is null)", () => {
+    // Two-level chain, both levels approved. Level 2 tries again.
+    const d = resolveApprovalDecision(policy, [
+      { ...s("1", "a"), level: 1 },
+      { ...s("2", "b"), level: 2 },
+    ], "b", false, [
+      { seatId: "1", approved: true },
+      { seatId: "2", approved: true },
+    ]);
+    expect(d.allowed).toBe(false);
+    expect(d.reason).toBe("not_eligible");
+    expect(d.detail).toContain("already complete");
   });
 });
 

@@ -5,6 +5,7 @@ import { requireScope } from "@/lib/api-auth";
 import {
   resolveApprovalDecision,
   type ResolverSeat,
+  type PriorApproval,
 } from "@/lib/approval-policy-resolver";
 
 const bodySchema = z.object({
@@ -31,6 +32,27 @@ export async function POST(
   const policy = await repository.getActiveApprovalPolicy(ctx.workspaceId).catch(() => null);
   const seats = await repository.getAcceptedReviewerSeats(ctx.workspaceId).catch(() => []);
 
+  // Load prior approval decisions for this recommendation from the audit trail.
+  // The pushAudit table stores approval.decision events with payload.recommendationId
+  // and payload.seatId. We query recent events and filter in-memory because the
+  // audit table has no indexed payload field — a dedicated approval_progress view
+  // is the correct long-term fix (spec §3.3), but for pilot-scale volumes this is fine.
+  const priorDecisions: PriorApproval[] = await repository
+    .getAuditEvents(ctx.workspaceId, 100)
+    .then((events) =>
+      events
+        .filter(
+          (e) =>
+            e.type === "approval.decision" &&
+            e.payload?.recommendationId === recommendationId,
+        )
+        .map((e) => ({
+          seatId: String(e.payload?.seatId ?? ""),
+          approved: String(e.payload?.status) === "approved",
+        })),
+    )
+    .catch(() => []);
+
   // Resolve the approval decision against the configured policy.
   const isBreakGlass = ctx.authType !== "session";
   const decision = resolveApprovalDecision({
@@ -44,7 +66,7 @@ export async function POST(
     })),
     callerUserId: ctx.userId ?? null,
     isBreakGlass,
-    priorDecisions: [], // TODO: populate from audit trail for multi-approver modes
+    priorDecisions,
   });
 
   if (!decision.allowed) {
