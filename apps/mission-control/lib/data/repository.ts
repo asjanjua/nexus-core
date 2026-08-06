@@ -5,7 +5,7 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { verifyPassword } from "@/lib/auth";
 import { store } from "@/lib/data/store";
-import { evidenceSourceTypeSchema, ROOM_TEMPLATE_DEFAULTS } from "@/lib/contracts";
+import { evidenceSourceTypeSchema, ROOM_TEMPLATES, ROOM_TEMPLATE_DEFAULTS } from "@/lib/contracts";
 import type { Action, ActionInput, ActionStatus, ActivateRoomInput, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, DispatchJob, DispatchJobInput, DispatchJobStatus, Entity, EntityInput, EntityRelationship, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, KnowledgeLink, KnowledgeNote, KnowledgeNoteInput, KnowledgeSearchResult, KnowledgeSyncEvent, LearningSignal, LearningSignalInput, LearningSignalSummary, MeridianScope, MeridianScopeInput, NexusRoom, PilotOutcome, ProWaitlistEntry, PromptRegistryEntry, ReadinessSubmission, Recommendation, ReviewerSeat, RoomAuditEntry, RoomLifecycleState, RoomTemplate, TrialInvite, RecommendationStatus, StrategyProfile, StrategyProfileInput, SynthesisSchedule, SynthesisScheduleInput, SynthesisScheduleStatus, WorkflowTwin, WorkflowTwinInput, WorkflowTwinRun, WorkflowTwinRunInput, WorkflowTwinRunStatus, WorkflowTwinStatus, WorkflowTwinType, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
 import { assertDbConfigured, isDbRequired } from "@/lib/data/db-policy";
 
@@ -2739,6 +2739,26 @@ export const repository = {
           updatedAt: now
         })
         .onConflictDoNothing();
+
+      // Seed the complete room portfolio for this workspace.
+      // CEO is active from day one; all other templates start staged.
+      // The GET /api/rooms read-side seed path also exists as a
+      // convergence guarantee, but provisioning here means a new
+      // workspace's rooms page is populated without a round-trip.
+      for (const template of ROOM_TEMPLATES) {
+        const roomId = `room_${workspaceId}_${template}`;
+        await db
+          .insert(rooms)
+          .values({
+            id: roomId,
+            workspaceId,
+            template,
+            displayName: ROOM_TEMPLATE_DEFAULTS[template],
+            lifecycleState: template === "executive" ? "active" : "staged",
+            boundaryAcknowledged: template === "executive",
+          })
+          .onConflictDoNothing();
+      }
 
       return true;
     });
