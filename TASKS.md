@@ -78,10 +78,10 @@ Ledger: this session (Queen adversarial review). Ledger entry in `docs/agent-run
 - [x] Define the Room Portfolio policy — every workspace sees the complete curated portfolio from day one; visibility is not activation and activation is not authority. Source: `docs/NEXUS_ROOM_PORTFOLIO_ACTIVATION.md`.
 - [x] Create Room Portfolio Figma references — page `29 Nexus Room Portfolio / 2026-07-29` (`212:2`) covers populated and first-run portfolio states, template selection, owner/evidence configuration, boundary review, activation, active Finance Room detail, and product-room discovery.
 - [x] Add the room activation branch to the Pinavia Code-to-Visual Tree — frame `216:2` records code-now onboarding role states, the planned `/rooms` control plane, product-room handoff, and the required activation contract.
-- [ ] Implement durable room configuration — extend current `roleStates` and `priorityRoles` with a governed room entity, owner, evidence scope, agent boundary, lifecycle state, activation metadata, and audit references.
-- [ ] Build `/rooms` and the administrator activation flow — preserve CEO as mandatory, support active/staged/dual-hat/custom states, and require owner plus evidence scope or empty-state reason before activation.
-- [ ] Replace the fixed specialist-room navigation with configuration-derived active rooms — keep the top-level cap and preserve product rooms as separately governed vertical workflows.
-- [ ] Add room activation regression coverage — authorization, tenant isolation, audit events, authority boundary, keyboard/mobile, and route smoke before representing the feature as live.
+- [x] Implement durable room configuration — extend current `roleStates` and `priorityRoles` with a governed room entity, owner, evidence scope, agent boundary, lifecycle state, activation metadata, and audit references. Shipped 2026-08-06: migration 0045 (rooms table), Drizzle schema, Zod contracts, repository CRUD, API routes.
+- [x] Build `/rooms` and the administrator activation flow — preserve CEO as mandatory, support active/staged/dual-hat/custom states, and require owner plus evidence scope or empty-state reason before activation. Shipped 2026-08-06: page with card grid, inline activation form, product-room handoff.
+- [x] Replace the fixed specialist-room navigation with configuration-derived active rooms — keep the top-level cap and preserve product rooms as separately governed vertical workflows. Shipped 2026-08-06: SideNav fetches GET /api/rooms, derives from active rooms with template-to-route mapping.
+- [x] Add room activation regression coverage — authorization, tenant isolation, audit events, authority boundary, keyboard/mobile, and route smoke before representing the feature as live. Shipped 2026-08-06: 9-room lifecycle tests, 5-product-room handoff tests. CEO mandatory, staged default, product-room detection. Full integration tests + route smoke remain for next pass.
 
 ---
 

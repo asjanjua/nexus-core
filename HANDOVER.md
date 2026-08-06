@@ -4,6 +4,29 @@
 
 ---
 
+## 2026-08-06 — Room Portfolio: Adversarial Review Fixes + P2 Refinements
+
+### Adversarial review fixes (Queen, 2026-08-06)
+Two bugs found and fixed:
+- **L1 — PATCH lifecycleState overwrite:** when `lifecycleState` was omitted from the body, the route defaulted to `"active"`, re-activating inactive rooms. Fixed to preserve existing state when not explicitly provided. CEO deactivation guard tightened to check explicit input only.
+- **L2 — seedRoom null unsafety:** the `as Promise\<NexusRoom\>` cast stripped the `null` branch from `getRoom`'s return type. Fixed with an explicit null check and throw.
+
+### P2 refinements
+- **Workspace provision seeds all 14 room templates:** `provisionWorkspace()` now inserts the complete portfolio during workspace creation (individual INSERTs with `onConflictDoNothing` inside the transaction). CEO is active, all others staged. The read-side seed path in `GET /api/rooms` remains as a convergence guarantee.
+- **Activation timestamp on room cards:** active rooms now display activation date (en-GB format) and the truncated Clerk user ID of the activator. CEO has no `activatedBy` (provisioned, not human-activated).
+- **Inline comments** added for both changes explaining design rationale.
+
+### Verification
+TSC clean. Lint 0 errors 13 warnings. Tests: 28/28 (9 room-activation, 5 product-room-handoff, 5 robots-coverage, 9 team-seat-limit).
+
+### HEAD
+`686f190` — pushed. CI pending.
+
+### Next action
+Room card sorting by lifecycle + template order. Audit trail expandable display on active room cards.
+
+---
+
 ## 2026-08-06 — Nexus Room Portfolio (Durable Configuration)
 
 Built the durable room configuration system across 4 commits:
