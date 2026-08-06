@@ -2,6 +2,7 @@ import { PageShell } from "@/components/page-shell";
 import { KnowledgeWorkspace } from "@/components/knowledge-workspace";
 import { KnowledgeAuditPanel } from "@/components/knowledge-audit-panel";
 import { DailyBriefPanel } from "@/components/daily-brief-panel";
+import { KnowledgeSynthesisPanel } from "@/components/knowledge-synthesis-panel";
 
 export default function KnowledgePage() {
   return (
@@ -12,6 +13,7 @@ export default function KnowledgePage() {
       <KnowledgeWorkspace />
       <DailyBriefPanel />
       <KnowledgeAuditPanel />
+      <KnowledgeSynthesisPanel />
     </PageShell>
   );
 }

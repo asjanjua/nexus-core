@@ -226,8 +226,8 @@ export const NEXUS_NATIVE_SKILLS: NexusNativeSkill[] = [
     outputs: ["workspace_brief", "linked_evidence_map", "theme_summary", "follow_up_questions"],
     approvalRequired: false,
     auditEvents: ["native_skill.knowledge_workspace_synthesis.started", "native_skill.knowledge_workspace_synthesis.completed"],
-    runtimeStatus: "planned",
-    externalReferences: ["kepano/obsidian-skills"],
+    runtimeStatus: "runtime_ready",
+    externalReferences: [],
   },
 ];
 
