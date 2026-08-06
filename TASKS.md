@@ -34,7 +34,7 @@ Status: `locally verified`, `committed but unpushed` at `94bb983`.
 - [ ] Re-smoke `/evidence/review` and `/meridian` against the deployed SHA after the push.
 - [x] Enforce `maxTeam` — cannot use the ingest chokepoint; membership is granted through Clerk, so this needs a webhook on `organizationMembership.created`. Counting is already correct in the plan summary.
 - [x] Reconcile `matchesEvidenceTags` with reviewer overrides — pre-existing: the four native engines disagree with the Meridian coverage API about any document a human has retyped.
-- [ ] Design pass on cold-start rooms — `/meridian` on an unpopulated workspace renders a correct empty state that is indistinguishable from a broken page.
+- [x] Design pass on cold-start rooms — `/meridian` on an unpopulated workspace renders a correct empty state that is indistinguishable from a broken page.
 
 ## 2026-08-05 — Migration Promotion Ordering Guardrail
 

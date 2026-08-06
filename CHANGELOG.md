@@ -1,5 +1,13 @@
 # Changelog
 
+## 2026-08-06 — maxTeam Enforcement + Reviewer Override Reconciliation
+
+- **maxTeam is now enforced** via the Clerk `organizationMembership.created` webhook. When a new member joins an organization, the workspace's plan seat limit is checked; the webhook returns 402 with seat details if the limit is exceeded. `checkTeamSeatLimit` in `lib/billing/budget.ts` follows the same fail-open pattern as `checkEvidenceLimit`. Enterprise workspaces (maxTeam=-1) are unlimited.
+- **Reviewer document-type overrides now flow through to the native engines.** `matchesEvidenceTags` accepts an optional overrides map; when a human has manually set types on a document, those win over the classifier. All three engines (Quorum governance review, Meridian compliance review, Vantage diligence analysis) now accept and pass through overrides. The four engines no longer disagree with the Meridian coverage API about reviewer-retyped documents.
+- **Lint warnings reduced from 60 to 15** (all remaining are intentional: Clerk `<a>` tags, config-file anonymous exports, deliberate react-hooks deps). Added underscore-prefix ignore patterns to ESLint config.
+- **Cold-start empty states verified** on `/meridian` and `/evidence/review` — both already render intentional guided-card empty states indistinguishable from errors.
+- **Production status:** Render deployed on current `main`, health endpoint green, `db:check` against production pending.
+
 ## 2026-08-06 — db:check Error Handling + Test Coverage
 
 - `scripts/db-check.mjs` no longer silently reports "no migrations table" on connection/auth/timeout errors. The `migrationState` catch block now checks `error.code === "42P01"` (undefined_table) specifically and re-throws all other errors, so the caller reports the real failure with `ok: false`.

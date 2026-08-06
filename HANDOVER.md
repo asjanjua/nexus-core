@@ -4,6 +4,40 @@
 
 ---
 
+## 2026-08-06 — Pilot Enforcement Sprint (Queen)
+
+Completed the four P0 items from TASKS.md §2026-08-05 Evidence section:
+
+### maxTeam enforcement (`ef640ad`)
+- Clerk `organizationMembership.created` webhook now checks the workspace plan's `maxTeam` against current seat count before acknowledging a new member. Returns 402 with seat details when over limit.
+- `checkTeamSeatLimit` added to `lib/billing/budget.ts` — mirrors `checkEvidenceLimit` pattern: fails open, consults DB plan definition first, suggests next tier up.
+- `tests/team-seat-limit.test.ts`: 9 assertions (below/at/over limit, Enterprise unlimited, plan overrides, tier upgrades).
+
+### matchesEvidenceTags reviewer override reconciliation (`f4e92f8`)
+- `matchesEvidenceTags` now accepts an optional `overrides` Map<evidenceId, DocumentTypeOverride>. When a reviewer has manually set types, those win over the classifier.
+- All three engine functions wired: `reviewQuorumGovernance`, `reviewMeridianCompliance`, `analyzeVantageDiligence` accept and pass through overrides.
+
+### Cold-start empty states
+- Verified `/meridian` and `/evidence/review` already have well-designed empty states (GuidedActionCard, descriptive zeros). Marked done.
+
+### Production verification
+- Render deployed on `f4e92f8`. Health green. `db:check` against production pending (needs prod DB URL).
+
+### Lint cleanup
+- 60 → 15 warnings (all now pre-existing/intentional: 10 <a> tags, 3 anon exports, 2 react-hooks deps).
+- Added underscore-prefix ignore patterns to eslint config.
+
+### Files changed
+`app/api/webhooks/clerk/route.ts`, `lib/billing/budget.ts`, `lib/domain/document-type-classifier.ts`, `lib/agents/quorum-governance-review.ts`, `lib/agents/meridian-compliance-review.ts`, `lib/agents/vantage-diligence-analysis.ts`, `tests/team-seat-limit.test.ts` (new), `eslint.config.mjs`, plus ~12 files from lint cleanup pass.
+
+### Verification
+TSC clean. Lint 0 errors, 15 warnings. Tests: 9/9 team-seat-limit, 5/5 db-check. db:check clean vs local Postgres.
+
+### Next action
+Run `db:check` against production Neon DB. Confirm Render deployed `f4e92f8` (health endpoint already returning 200). Next build: items remaining in TASKS.md evidence section (push old commits, production migration 0043/0044, smoke `/evidence/review` and `/meridian`).
+
+---
+
 ## 2026-08-06 — db:check Error Suppression Fix + PGlite Test Suite
 
 - Queen adversarial review of `b850545` (`fix(deploy): guard against the database running ahead of the application`) surfaced four findings. The two critical ones are fixed here.
