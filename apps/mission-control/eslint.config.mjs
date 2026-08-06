@@ -26,6 +26,11 @@ export default [
       "**/* 2.*",
       "**/node_modules 2/**",
       "next-env.d.ts",
+      // Config files — export-default is the tooling convention
+      // (Drizzle, PostCSS, ESLint all expect inline exports).
+      "postcss.config.mjs",
+      "drizzle.config.ts",
+      "eslint.config.mjs",
     ],
   },
   ...compat.extends("next/core-web-vitals", "next/typescript"),

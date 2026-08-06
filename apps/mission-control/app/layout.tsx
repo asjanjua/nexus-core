@@ -129,13 +129,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <Analytics />
           <header className="sticky top-0 z-20 border-b border-white/10 bg-[#090f1b]/88 backdrop-blur">
             <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 lg:px-8">
-              <a href="/" className="flex items-center gap-3 text-white">
+              <Link href="/" className="flex items-center gap-3 text-white">
                 <PinaviaMark className="h-8 w-8" tone={isFamilyEntry ? "brand" : "mono"} title={shellName} />
                 <div className="flex flex-col">
                   <span className="font-semibold leading-tight">{shellName}</span>
                   <span className="text-[10px] leading-tight text-white/35">{shellSubtitle}</span>
                 </div>
-              </a>
+              </Link>
               <div className="flex items-center gap-2">
                 <a href="/solutions" className="hidden rounded-lg px-3 py-2 text-sm text-white/60 transition hover:bg-white/[0.06] hover:text-white sm:inline-flex">
                   Solutions
@@ -152,6 +152,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   Pricing
                 </a>
                 <a href="/start-pilot" className="btn-primary text-sm">Start pilot</a>
+                {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
                 <a href="/sign-in" className="hidden rounded-lg px-3 py-2 text-sm text-white/60 transition hover:bg-white/[0.06] hover:text-white sm:inline-flex">Sign in</a>
               </div>
             </div>
@@ -208,6 +209,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           <PwaRegister />
           <Analytics />
           <header className="flex items-center justify-end gap-3 border-b border-white/10 px-6 py-3">
+            {/* Clerk-hosted auth page — external, not a Next.js route. */}
+{/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
             <a href="/sign-in" className="btn-primary text-sm">Sign in</a>
           </header>
           <main className="min-h-screen p-6">{children}</main>

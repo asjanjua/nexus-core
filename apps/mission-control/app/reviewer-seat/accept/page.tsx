@@ -100,6 +100,8 @@ function AcceptPanel() {
                 >
                   {state.kind === "submitting" ? "Accepting…" : "Accept reviewer invite"}
                 </button>
+{/* Clerk-hosted auth page — external, not a Next.js route. */}
+                {/* eslint-disable-next-line @next/next/no-html-link-for-pages */}
                 <a href="/sign-in" className="btn-subtle text-sm">
                   Sign in
                 </a>
