@@ -75,6 +75,9 @@ Since commit `68a5a0b`, four things are banned from the production build path be
 - Prefer explicit, typed contracts at API boundaries.
 - If touching ingestion, test both UI and API behavior.
 - If touching dashboard/Ask behavior, verify evidence refs and refusal paths still make sense.
+- Lint warnings are triaged one at a time, never bulk-fixed and never bulk-ignored. `react-hooks/exhaustive-deps` is a real stale-closure bug, a deliberate run-once effect, or an unstable identity for a constant — and only the first is fixed by adding the dependency. Adding a `load` function to a mount effect's deps creates a fetch loop. See `docs/ENGINEERING_GUARDRAILS.md` §10.
+- The nine `no-html-link-for-pages` warnings are intentional; `next/link` breaks the hosted-Clerk handoff. Do not "fix" them. Any rule downgraded to `warn` carries its reason beside it in `eslint.config.mjs`.
+- Report warnings as warnings. Run `npx eslint .` and quote the summary line before escalating anything from a build log; "0 errors" is a different conversation from a failing build.
 
 ## Handoff
 

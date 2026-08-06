@@ -275,3 +275,99 @@ build and before promotion, which is strictly better, but it requires a paid
 instance type and `render.yaml` currently pins `plan: free`. Until that plan
 changes, the ordering above is a constraint to design around, not a bug to
 route past.
+
+## 10. Triage Lint Warnings; Never Bulk-Fix And Never Bulk-Ignore
+
+A build log full of yellow triangles trains everyone to stop reading it. That
+is the actual danger: not the warnings, but the habit of scrolling past them.
+
+On 2026-08-06 the deployed build carried 15 warnings. Reading each one
+individually found **one live defect, two false alarms, and twelve entries that
+should never go away**. Both bulk responses — "fix them all" and "turn the rule
+off" — would have been wrong, and the bulk-fix would have introduced a fetch
+loop.
+
+### 10.1 Every `react-hooks/exhaustive-deps` warning is one of three things
+
+Decide WHICH before touching it. Adding the missing dependency is correct in
+only one of the three cases.
+
+**(a) A real stale closure. Fix it.**
+
+`components/ingestion-upload.tsx` had:
+
+```ts
+const handleDrop = useCallback((e) => { ...; pickFiles(e.dataTransfer.files); }, []);
+```
+
+`pickFiles` is redefined every render and closes over `files`. The empty
+dependency array froze the FIRST render's copy, so every drop ran against
+`files === []`: the duplicate check compared against an empty list, and
+`MAX_FILES - files.length` was always `MAX_FILES`. Drag-and-drop accepted
+duplicates and ignored the ten-file cap.
+
+Two things hid it, and both are the general pattern:
+
+- `setFiles` used the functional form, so files still accumulated correctly.
+  The visible behaviour was right; only the *guards* were dead.
+- The sibling path, `<input onChange={(e) => pickFiles(e.target.files)}>`, uses
+  an inline arrow recreated each render, so the file picker was always correct.
+  **One path worked and one did not**, which is why nobody noticed.
+
+The fix was to delete the `useCallback`, not to add `files` to it. The handler
+was attached to a non-memoised element, so memoising it bought nothing and cost
+a bug.
+
+**(b) A deliberate run-once effect. Suppress it, with the reason written down.**
+
+```ts
+useEffect(() => { load(); }, []);
+```
+
+`load` is redefined each render and calls `setState`. Adding it as a dependency
+makes the effect re-run after every load: a fetch loop. Here the rule is simply
+wrong about the intent. Use
+`// eslint-disable-next-line react-hooks/exhaustive-deps` **with a comment
+saying why**. A bare disable is indistinguishable from giving up.
+
+**(c) An unstable identity for a value that is actually constant. Remove the
+cause.**
+
+`const sectors = getAllSectors()` inside a component returns a fresh array
+every render from a static module table. Nothing misbehaved, but the warning
+was accurate. Hoisting it to module scope resolved it properly. Prefer this
+over suppression whenever the value genuinely never changes — it is the only
+one of the three where the warning disappears because the code got better.
+
+### 10.2 A rule set to `warn` on purpose must say so in the config
+
+`@next/next/no-html-link-for-pages` fires nine times and every one is intended:
+`CLAUDE.md` §"Production Build Constraints" requires signed-out UI to be gated
+with a plain `<a href="/sign-in">` rather than Clerk client components, because
+the hosted-Clerk handoff depends on a hard navigation for session pickup.
+`next/link` would break it.
+
+The rule is `warn` rather than `off` so an *accidental* `<a>` still surfaces in
+review. That trade-off is written in `eslint.config.mjs` next to the rule.
+
+**Whenever you downgrade or disable a rule, the reason goes beside it.** A
+future agent reading nine identical warnings will otherwise "fix" them and
+break authentication — the exact failure this section exists to prevent.
+
+### 10.3 Warnings are not errors, and saying so is part of the report
+
+`next build` prints warnings with the same yellow triangle whether they are
+cosmetic or a live bug, and Render's log viewer makes a handful look like a
+wall. Before escalating, run `npx eslint .` and read the summary line. "15
+problems (0 errors, 15 warnings)" is a different conversation from a failing
+build, and conflating them wastes a cycle.
+
+Reconcile the count. If local and CI disagree, that difference is itself the
+finding — do not start fixing until they agree.
+
+### 10.4 The standing rule
+
+Treat the warning count as a budget that only moves for a stated reason. Each
+remaining warning should be explainable in one sentence by whoever last touched
+it. Twelve explainable warnings beat zero warnings achieved by disabling rules,
+and both beat fifteen nobody has read.

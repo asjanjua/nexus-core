@@ -837,8 +837,21 @@ function WorkspaceTab({ workspaceId }: { workspaceId: string }) {
 // Company profile tab
 // ---------------------------------------------------------------------------
 
+/**
+ * Hoisted out of the component deliberately.
+ *
+ * `getAllSectors()` returns a static catalogue — `Object.values` over a module
+ * constant — but calling it during render produced a NEW array identity every
+ * time, which the mount effect below then closed over. The values were never
+ * wrong, so nothing misbehaved; the warning was still telling the truth about
+ * the dependency being unstable.
+ *
+ * Computing it once at module scope makes it a genuine constant, which
+ * resolves the warning by removing the cause rather than silencing the report.
+ */
+const SECTORS = getAllSectors();
+
 function ProfileTab() {
-  const sectors = getAllSectors();
   const [profile, setProfile] = useState<WorkspaceProfile | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -850,7 +863,7 @@ function ProfileTab() {
         const data = j.ok && j.data ? j.data : {};
         setProfile({
           companyName: data.companyName ?? "",
-          sector: data.sector ?? sectors[0]?.key ?? "technology_saas",
+          sector: data.sector ?? SECTORS[0]?.key ?? "technology_saas",
           subsector: data.subsector ?? "",
           businessModel: data.businessModel ?? "b2b",
           companyStage: data.companyStage ?? "growth",
@@ -962,7 +975,7 @@ function ProfileTab() {
                 });
               }}
             >
-              {sectors.map((item) => (
+              {SECTORS.map((item) => (
                 <option key={item.key} value={item.key}>{item.label}</option>
               ))}
             </select>
@@ -2255,6 +2268,11 @@ function AgentGovernanceTab() {
     }
   }
 
+  // Load once on mount. `load` is intentionally NOT a dependency: it is
+  // redefined every render and calls setState, so depending on it would make
+  // the effect re-run after every load — a fetch loop, not a fix. Suppressed
+  // rather than "corrected", because the rule is wrong about the intent here.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => { load(); }, []);
 
   async function loadOutputs(agent = outputAgent, days = outputDays) {

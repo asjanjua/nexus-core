@@ -2,6 +2,7 @@
 
 import { useRef, useState, useCallback } from "react";
 import { HelpLabel } from "@/components/ui/help-dialog";
+import { MAX_FILES, selectQueueAdditions } from "@/lib/ingestion-queue";
 
 type IngestionResult = {
   id: string;
@@ -16,7 +17,6 @@ type FileResult = {
   error?: string;
 };
 
-const MAX_FILES = 10;
 const ACCEPT = ".pdf,.docx,.pptx,.xlsx,.txt,.md";
 
 function StatusBadge({ status }: { status: string }) {
@@ -86,21 +86,10 @@ export function IngestionUpload({ workspaceId }: { workspaceId?: string }) {
 
   function pickFiles(incoming: FileList | null) {
     if (!incoming) return;
-    const existingKeys = new Set(files.map((file) => `${file.name}:${file.size}:${file.lastModified}`));
-    const additions = Array.from(incoming).filter((file) => {
-      const key = `${file.name}:${file.size}:${file.lastModified}`;
-      if (existingKeys.has(key)) return false;
-      existingKeys.add(key);
-      return true;
-    });
-    const available = Math.max(0, MAX_FILES - files.length);
-    const selected = additions.slice(0, available);
+    const { selected, overflowed } = selectQueueAdditions(files, Array.from(incoming));
     setFiles((prev) => [...prev, ...selected]);
     setFileResults([]);
-    setError(null);
-    if (additions.length > available) {
-      setError(`You can queue up to ${MAX_FILES} files per batch.`);
-    }
+    setError(overflowed ? `You can queue up to ${MAX_FILES} files per batch.` : null);
   }
 
   function removeFile(index: number) {
@@ -108,11 +97,33 @@ export function IngestionUpload({ workspaceId }: { workspaceId?: string }) {
     setError(null);
   }
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
+  /**
+   * NOT useCallback. It was, with an empty dependency array, and that silently
+   * broke drag-and-drop.
+   *
+   * `pickFiles` is redefined every render and closes over `files`. A
+   * `useCallback(..., [])` captures the FIRST render's copy forever, so every
+   * drop ran against `files === []`:
+   *
+   *   - the duplicate check built `existingKeys` from an empty list, so the
+   *     same file could be queued repeatedly;
+   *   - `MAX_FILES - files.length` was always MAX_FILES, so the batch cap
+   *     never applied.
+   *
+   * Neither failure was visible, because `setFiles` uses the functional form
+   * and so kept accumulating correctly, and because the file-picker path at
+   * the `<input onChange>` below passes an inline arrow that is recreated each
+   * render and was therefore always correct. Only the drop path was wrong.
+   *
+   * Memoising this bought nothing — the element it is attached to is not
+   * memoised — so the fix is to stop memoising rather than to add `files` to
+   * the dependency array.
+   */
+  function handleDrop(e: React.DragEvent) {
     e.preventDefault();
     setIsDragging(false);
     pickFiles(e.dataTransfer.files);
-  }, []);
+  }
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
