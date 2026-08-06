@@ -78,6 +78,7 @@ export const workspaces = pgTable("workspaces", {
   status: workspaceStatusEnum("status").notNull().default("trial"),
   trialEndsAt: timestamp("trial_ends_at", { withTimezone: true }),
   suspendedAt: timestamp("suspended_at", { withTimezone: true }),
+  suspensionWarnedAt: timestamp("suspension_warned_at", { withTimezone: true }),
   /** Time-boxed workspace deadline (Vantage per-deal, Meridian per-submission
    * workspaces). Distinct from trialEndsAt: this is a deliberate business
    * deadline, not a billing trial. When passed, convertExpiredWorkspaces()

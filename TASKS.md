@@ -24,7 +24,7 @@ Ledger: `HANDOVER.md` §2026-08-06 P3. 25 commits on `main`. Warnings: 0.
 - [ ] Confirm Render deploy at `1739b40`
 - [ ] Run prod migrations 0043-0046
 - [ ] Securityheaders.com scan → A rating
-- [ ] Configure support@pinavia.io mailbox
+- [x] Configure support@pinavia.io mailbox
 - [ ] Re-smoke 7 key routes
 - [ ] SECURITY_REVIEW.md sign-off
 
@@ -1279,7 +1279,7 @@ Positioning rule from the 2026-05-31 reassessment:
 - [ ] Add workspace suspension flow: when payment fails, send warning email at 3 days,
   restrict dashboard access (read-only) at 7 days, full suspension at 14 days.
   Evidence and settings are preserved for 90 days before deletion.
-- [ ] Add internal revenue dashboard (admin only): MRR, ARR, active pilots, churn, usage
+- [x] Add internal revenue dashboard (admin only): MRR, ARR, active pilots, churn, usage
   per workspace. Not a client-facing feature — internal business intelligence.
 
 ### Operational monitoring and observability
@@ -1293,11 +1293,11 @@ Positioning rule from the 2026-05-31 reassessment:
 - [ ] Add ingestion pipeline monitoring: track extraction success rate, average confidence
   score, quarantine rate, and processing time per workspace per day. Alert when quarantine
   rate exceeds 40% (indicates a document format problem).
-- [ ] Add uptime monitoring via Checkly or UptimeRobot: monitor `/api/health`, the dashboard
+- [x] Add uptime monitoring via Checkly or UptimeRobot: monitor `/api/health`, the dashboard
   route, and the ingestion route. PagerDuty-style alert if any endpoint is down for >2 minutes.
 - [ ] Add database query performance monitoring: log slow queries (>500ms) to the audit log.
   Alert when p99 query time exceeds 1 second for evidence retrieval routes.
-- [ ] Add a real-time status page (public): shows current system status for ingestion,
+- [x] Add a real-time status page (public): shows current system status for ingestion,
   dashboards, Ask, and connectors. Hosted at `status.nexus.ai` or similar.
 
 ### Security hardening

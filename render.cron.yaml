@@ -62,3 +62,19 @@ services:
         sync: false
       - key: NEXUS_CRON_SECRET
         sync: false
+
+  - type: cron
+    name: nexus-suspension-check-cron
+    runtime: node
+    plan: starter
+    region: oregon
+    schedule: "0 8 * * *"
+    buildCommand: npm ci --production
+    startCommand: node -e "fetch(process.env.NEXT_PUBLIC_APP_URL+'/api/cron/suspension-check',{method:'POST',headers:{Authorization:'Bearer '+process.env.NEXUS_CRON_SECRET,'Content-Type':'application/json'}}).then(r=>{if(!r.ok){console.error(r.status);process.exit(1)}r.json().then(d=>{console.log(JSON.stringify(d));process.exit(0)})}).catch(e=>{console.error(e);process.exit(1)})"
+    envVars:
+      - key: NODE_VERSION
+        value: 24
+      - key: NEXT_PUBLIC_APP_URL
+        sync: false
+      - key: NEXUS_CRON_SECRET
+        sync: false
