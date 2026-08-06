@@ -25,6 +25,7 @@ const DISALLOW = [
   "/evidence",
   "/entities",
   "/knowledge",
+  "/eval",
   "/sources",
   "/ingestion",
   "/workflows",
