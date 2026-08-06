@@ -49,6 +49,7 @@ const PUBLIC_ROUTES = new Set([
   "/readiness",
   "/status",
   "/support",
+  "/compliance",
   "/terms",
   "/privacy",
   "/security",

@@ -90,6 +90,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     pathname === "/start-pilot" ||
     pathname === "/status" ||
     pathname === "/support" ||
+    pathname === "/compliance" ||
     pathname === "/workspace" ||
     pathname === "/diagnostic" ||
     pathname === "/solutions" ||
@@ -117,6 +118,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       pathname === "/start-pilot" ||
     pathname === "/status" ||
     pathname === "/support" ||
+    pathname === "/compliance" ||
       pathname === "/product-brief" ||
       pathname === "/diagnostic" ||
       pathname === "/solutions" ||
