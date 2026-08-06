@@ -9,6 +9,7 @@ import { useState, useEffect } from "react";
 import { PageShell } from "@/components/page-shell";
 import { MetaChip } from "@/components/ui/nexus-primitives";
 import { HelpLabel } from "@/components/ui/help-dialog";
+import { ApprovalPolicyTab } from "@/components/approval-policy-tab";
 import { PRICING_TIERS, checkoutIntentFromParam, planLabel } from "@/lib/pricing-tiers";
 import {
   briefLanguageModeForArchetype,
@@ -343,6 +344,7 @@ const TABS = [
   { id: "synthesis-schedule", label: "Scheduled Synthesis" },
   { id: "apikeys", label: "API Keys" },
   { id: "roles", label: "Roles" },
+  { id: "approval-policy", label: "Approval Policy" },
   { id: "audit", label: "Audit Log" },
   { id: "demo", label: "Demo Tools" },
 ] as const;
@@ -3715,6 +3717,7 @@ export default function SettingsPage() {
         {activeTab === "synthesis-schedule" && <SynthesisScheduleTab />}
         {activeTab === "apikeys" && <APIKeysTab workspaceId={workspaceId} />}
         {activeTab === "roles" && <RolesTab />}
+        {activeTab === "approval-policy" && <ApprovalPolicyTab workspaceId={workspaceId} />}
         {activeTab === "audit" && <AuditTab />}
         {activeTab === "demo" && <DemoTab workspaceId={workspaceId} />}
       </div>
