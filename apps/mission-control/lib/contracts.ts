@@ -1148,6 +1148,62 @@ export const reviewerSeatSchema = z.object({
 });
 export type ReviewerSeat = z.infer<typeof reviewerSeatSchema>;
 
+// ---------------------------------------------------------------------------
+// Approval Policies (migration 0046) — multi-level, N-of-M, sequential chains
+// ---------------------------------------------------------------------------
+// See docs/APPROVAL_POLICIES_SPEC.md. Extends reviewer_seats without rebuild.
+
+export const APPROVAL_POLICY_MODES = ["single", "n_of_m", "sequential", "role_scoped"] as const;
+export type ApprovalPolicyMode = typeof APPROVAL_POLICY_MODES[number];
+
+export const approvalPolicySchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  mode: z.enum(APPROVAL_POLICY_MODES).default("single"),
+  requiredCount: z.number().int().positive().nullable().optional(),
+  requiredRoles: z.array(z.string()).nullable().optional(),
+  allowBreakGlass: z.boolean().default(true),
+  status: z.enum(["active", "superseded"]).default("active"),
+  createdAt: z.string(),
+  updatedAt: z.string(),
+});
+export type ApprovalPolicy = z.infer<typeof approvalPolicySchema>;
+
+/** Policy update input — all fields optional, always supersedes prior row. */
+export const updateApprovalPolicySchema = z.object({
+  mode: z.enum(APPROVAL_POLICY_MODES).optional(),
+  requiredCount: z.number().int().positive().optional(),
+  requiredRoles: z.array(z.string()).optional(),
+  allowBreakGlass: z.boolean().optional(),
+});
+export type UpdateApprovalPolicyInput = z.infer<typeof updateApprovalPolicySchema>;
+
+/** Eligible approver — a resolved seat identity from the policy resolver. */
+export const eligibleApproverSchema = z.object({
+  seatId: z.string(),
+  clerkUserId: z.string(),
+  role: z.string().nullable().optional(),
+  level: z.number().nullable().optional(),
+  team: z.string().nullable().optional(),
+});
+export type EligibleApprover = z.infer<typeof eligibleApproverSchema>;
+
+/** Approval decision result from the resolver. */
+export type ApprovalDecision = {
+  allowed: true;
+  /** Which seat matched the caller. */
+  matchedSeat: EligibleApprover;
+  /** Whether the policy condition is now met (terminal). */
+  terminal: boolean;
+  /** How many more approvals are needed (n_of_m mode). */
+  remaining?: number;
+} | {
+  allowed: false;
+  reason: "no_bound_reviewer" | "wrong_step" | "wrong_role" | "policy_unsatisfiable" | "not_eligible";
+  /** Human-readable detail for the 403 body. */
+  detail: string;
+};
+
 // Pilot outcome (migration 0036): expand/hold/stop lifecycle record for a
 // selected pilot workflow.
 export const pilotOutcomeStatusSchema = z.enum(["running", "expand", "hold", "stop"]);

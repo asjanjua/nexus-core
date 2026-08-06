@@ -643,6 +643,11 @@ export const reviewerSeats = pgTable("reviewer_seats", {
   acceptedAt:     timestamp("accepted_at", { withTimezone: true }),
   revokedAt:      timestamp("revoked_at", { withTimezone: true }),
   expiresAt:      timestamp("expires_at", { withTimezone: true }).notNull(),
+  // Approval-policy extensions (migration 0046).
+  // Nullable — absent row = today's generic reviewer behavior.
+  role:           text("role"),
+  level:          integer("level"),
+  team:           text("team"),
   createdAt:      timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt:      timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
@@ -810,4 +815,22 @@ export const rooms = pgTable("rooms", {
   auditTrail:       jsonb("audit_trail").$type<Record<string, unknown>[]>(),
   createdAt:        timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt:        timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+// ---------------------------------------------------------------------------
+// Approval Policies — multi-level, N-of-M, sequential chains
+// ---------------------------------------------------------------------------
+// Migration 0046. Extends reviewer_seats (0035). See docs/APPROVAL_POLICIES_SPEC.md.
+// Absent policy row = single mode = today's single-reviewer behavior.
+
+export const approvalPolicies = pgTable("approval_policies", {
+  id:                text("id").primaryKey(),
+  workspaceId:       text("workspace_id").notNull(),
+  mode:              text("mode").notNull().default("single"),
+  requiredCount:     integer("required_count"),
+  requiredRoles:     jsonb("required_roles").$type<string[]>(),
+  allowBreakGlass:   boolean("allow_break_glass").notNull().default(true),
+  status:            text("status").notNull().default("active"),
+  createdAt:         timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:         timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
