@@ -30,12 +30,14 @@ interface RevenueReport {
 }
 
 function fmtDollars(cents: number): string {
+  // Converts cents to a compact dollar string: 49900 → "$499", 150000 → "$1.5k"
   const usd = cents / 100;
   if (usd >= 1000) return `$${(usd / 1000).toFixed(1)}k`;
   return `$${usd.toFixed(0)}`;
 }
 
 function fmtTokens(n: number): string {
+  // Compact token count: 2500000 → "2.5M", 1500 → "1.5k", 500 → "500"
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
   if (n >= 1_000) return `${(n / 1_000).toFixed(0)}k`;
   return `${n}`;
