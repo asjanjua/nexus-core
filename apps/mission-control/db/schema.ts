@@ -648,6 +648,7 @@ export const reviewerSeats = pgTable("reviewer_seats", {
   role:           text("role"),
   level:          integer("level"),
   team:           text("team"),
+  memberRole:     varchar("member_role", { length: 32 }).notNull().default("reviewer"),
   createdAt:      timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt:      timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });

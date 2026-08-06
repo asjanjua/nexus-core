@@ -1147,6 +1147,7 @@ export const reviewerSeatSchema = z.object({
   role: z.string().nullable().optional(),
   level: z.number().int().nullable().optional(),
   team: z.string().nullable().optional(),
+  memberRole: z.enum(["owner", "admin", "executive", "reviewer", "contributor", "viewer"]).default("reviewer").optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });
