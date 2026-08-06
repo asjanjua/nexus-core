@@ -188,6 +188,10 @@ function RoomCard({
               {room.evidenceScope}
             </p>
           )}
+          {/* Activated-at timestamp and the user who performed the activation.
+               Clerk user IDs have the format "user_<random>" — split on "_"
+               and take the last segment (the actual ID). CEO room has no
+               activatedBy (it is provisioned, not human-activated). */}
           {room.activatedAt && (
             <p>
               <span className="text-white/30">Activated:</span>{" "}

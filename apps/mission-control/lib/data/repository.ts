@@ -2745,6 +2745,11 @@ export const repository = {
       // The GET /api/rooms read-side seed path also exists as a
       // convergence guarantee, but provisioning here means a new
       // workspace's rooms page is populated without a round-trip.
+      //
+      // Individual INSERTs rather than a batch — Drizzle's multi-row
+      // insert requires a raw SQL VALUES clause, and 14 individual
+      // calls with onConflictDoNothing is simpler and just as safe
+      // inside the runDb transaction.
       for (const template of ROOM_TEMPLATES) {
         const roomId = `room_${workspaceId}_${template}`;
         await db
