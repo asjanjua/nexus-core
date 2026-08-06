@@ -784,3 +784,30 @@ export const evidenceTypeOverrides = pgTable("evidence_type_overrides", {
   createdAt:   timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt:   timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+// ---------------------------------------------------------------------------
+// Nexus Room Portfolio — durable room configuration
+// ---------------------------------------------------------------------------
+// Migration 0045. See docs/NEXUS_ROOM_PORTFOLIO_ACTIVATION.md.
+
+export const rooms = pgTable("rooms", {
+  id:               text("id").primaryKey(),
+  workspaceId:      text("workspace_id").notNull(),
+  template:         text("template").notNull(),
+  displayName:      text("display_name").notNull(),
+  ownerUserId:      text("owner_user_id"),
+  evidenceScope:    text("evidence_scope"),
+  agentPack:        text("agent_pack"),
+  lifecycleState:   text("lifecycle_state").notNull().default("active"),
+  boundaryAcknowledged: boolean("boundary_acknowledged").notNull().default(false),
+  activatedAt:      timestamp("activated_at", { withTimezone: true }),
+  activatedBy:      text("activated_by"),
+  deactivatedAt:    timestamp("deactivated_at", { withTimezone: true }),
+  deactivatedBy:    text("deactivated_by"),
+  dualHatOwnerId:   text("dual_hat_owner_id"),
+  customNameSource: text("custom_name_source"),
+  metadata:         jsonb("metadata"),
+  auditTrail:       jsonb("audit_trail").$type<Record<string, unknown>[]>(),
+  createdAt:        timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:        timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});

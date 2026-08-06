@@ -5024,7 +5024,7 @@ export const repository = {
           agentPack: input.agentPack ?? existing.agentPack,
           lifecycleState: "active",
           boundaryAcknowledged: true,
-          activatedAt: existing.activatedAt ?? now,
+          activatedAt: existing.activatedAt ? new Date(existing.activatedAt) : now,
           activatedBy: input.activatedBy,
           auditTrail: trail as unknown as Record<string, unknown>[],
           updatedAt: now,
