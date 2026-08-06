@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import type { NexusRoom } from "@/lib/contracts";
 import { LogoutButton } from "@/components/logout-button";
 
 // ---------------------------------------------------------------------------
@@ -118,21 +119,6 @@ const arcSections: NavSection[] = [
 /** Tier 3 — collapsed-by-default spine groups. */
 const spineSections: NavSection[] = [
   {
-    label: "Specialist Rooms",
-    items: [
-      { href: "/dashboard/coo", label: "Operating Room" },
-      { href: "/dashboard/cbo", label: "Growth Room" },
-      { href: "/dashboard/cto", label: "Technology Room" },
-      { href: "/dashboard/cfo", label: "Finance Room" },
-      { href: "/dashboard/cro", label: "Risk Room" },
-      { href: "/dashboard/chro", label: "People Room" },
-      { href: "/board", label: "Board Room" },
-      { href: "/meridian", label: "Submission Room" },
-      { href: "/vantage", label: "Deal Room" },
-      { href: "/nucleus", label: "Engagement Room" },
-    ],
-  },
-  {
     label: "Workspace",
     items: [
       { href: "/settings", label: "Settings" },
@@ -146,6 +132,7 @@ const spineSections: NavSection[] = [
       ...(process.env.NEXT_PUBLIC_NEXUS_FUNNEL_NAV === "visible"
         ? [{ href: "/funnel", label: "Pilot Funnel" }]
         : []),
+      { href: "/rooms", label: "Room Portfolio" },
       { href: "/pilot/afterlife", label: "Pilot Afterlife" },
     ],
   },
@@ -179,7 +166,9 @@ function NavLink({
 export function SideNav() {
   const pathname = usePathname();
   const [health, setHealth] = useState<NavHealth | null>(null);
+  const [rooms, setRooms] = useState<NexusRoom[]>([]);
 
+  // Health badges.
   useEffect(() => {
     let cancelled = false;
     fetch("/api/nav/health")
@@ -190,9 +179,21 @@ export function SideNav() {
       .catch(() => {
         // Quiet failure — badges are a convenience, not a critical path.
       });
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
+  }, [pathname]);
+
+  // Active rooms — derive specialist navigation from room configuration.
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/rooms")
+      .then((res) => res.json())
+      .then((payload) => {
+        if (!cancelled && payload.ok) setRooms(payload.data ?? []);
+      })
+      .catch(() => {
+        // Quiet failure — static nav fallback is acceptable for initial render.
+      });
+    return () => { cancelled = true; };
   }, [pathname]);
 
   function isActive(href: string) {
@@ -204,6 +205,35 @@ export function SideNav() {
   function spineGroupOpen(section: NavSection) {
     return section.items.some((item) => isActive(item.href));
   }
+
+  // Derive "Specialist Rooms" nav from active room configuration.
+  // Falls back to empty section while rooms are loading (graceful).
+  // Each template maps to its canonical route.
+  const ROOM_ROUTES: Record<string, string> = {
+    executive: "/dashboard/ceo",
+    finance: "/dashboard/cfo",
+    operations: "/dashboard/coo",
+    growth: "/dashboard/cbo",
+    technology: "/dashboard/cto",
+    people: "/dashboard/chro",
+    risk: "/dashboard/cro",
+    board: "/board",
+    submission: "/meridian",
+    deal: "/vantage",
+    engagement: "/nucleus",
+  };
+  const activeRooms = rooms.filter((r) => r.lifecycleState === "active");
+  const roomsSection: NavSection = {
+    label: "Specialist Rooms",
+    items: activeRooms.map((r) => ({
+      href: ROOM_ROUTES[r.template] ?? "/rooms",
+      label: r.displayName,
+    })),
+  };
+  const visibleSpineSections: NavSection[] =
+    activeRooms.length > 0
+      ? [roomsSection, ...spineSections]
+      : spineSections;
 
   const renderArcs = (
     <>
@@ -225,7 +255,7 @@ export function SideNav() {
       ))}
 
       {/* Tier 3 — collapsed spine */}
-      {spineSections.map((section) => (
+      {visibleSpineSections.map((section) => (
         <details key={section.label} className="group/spine" open={spineGroupOpen(section)}>
           <summary className="flex cursor-pointer list-none items-center justify-between px-3 py-1 text-xs uppercase text-white/30 transition hover:text-white/50">
             <span>{section.label}</span>
