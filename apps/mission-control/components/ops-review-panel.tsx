@@ -1,17 +1,27 @@
 "use client";
 
 /**
- * Ops Review Twin Panel — weekly execution summary, blockers, overdue owners,
- * and KPI signals derived from the ops_review workflow twin run payload.
+ * Ops Review Twin Panel — weekly execution snapshot, blockers, overdue
+ * owners, and KPI signals derived from the ops_review workflow twin run.
  *
- * The data is produced by buildWorkflowTwinRunInput in lib/services/workflow-twins.ts
- * and already fetched by the /workflows page. This component just renders it.
+ * The data is produced by buildWorkflowTwinRunInput() in
+ * lib/services/workflow-twins.ts (L426-440), which queries the workspace
+ * for open decisions, blockers, overdue actions, and open recommendations,
+ * then packages them into the twin run payload. This component is purely
+ * a rendering layer — no additional data fetching.
+ *
+ * The /workflows page fetches all twin runs via getWorkflowTwins() and
+ * getWorkflowTwinRuns(), then renders this panel when an ops_review run
+ * with pipeline data exists.
+ *
+ * Reviewed 2026-08-06: payload destructuring uses [] defaults so a
+ * missing or empty payload degrades gracefully (empty state).
  */
 
 import { HelpLabel } from "@/components/ui/help-dialog";
 
 // ---------------------------------------------------------------------------
-// Types
+// Types — mirrors the ops_review run payload shape from workflow-twins.ts
 // ---------------------------------------------------------------------------
 
 interface Action {
@@ -49,10 +59,6 @@ interface OpsReviewRun {
   };
 }
 
-// ---------------------------------------------------------------------------
-// Props
-// ---------------------------------------------------------------------------
-
 interface Props {
   run: OpsReviewRun;
   onRunAgain?: () => void;
@@ -64,9 +70,20 @@ interface Props {
 // ---------------------------------------------------------------------------
 
 export function OpsReviewPanel({ run, onRunAgain, busy }: Props) {
-  const { blockers = [], overdueActions = [], openDecisions = [], openRecommendations = [] } = run.payload;
+  // Payload destructured with empty-array defaults — if the twin hasn't
+  // produced a run yet (or the run has a minimal payload), every list is
+  // empty and the panel shows the "operating cleanly" empty state.
+  const { blockers = [], overdueActions = [], openDecisions = [], openRecommendations = [] } =
+    run.payload ?? {};
 
-  const hasContent = blockers.length > 0 || overdueActions.length > 0 || openDecisions.length > 0;
+  // Panel is considered "has content" when any of the tracked categories
+  // has at least one item. Open recommendations alone are included so
+  // the panel doesn't hide itself when only recs are present.
+  const hasContent =
+    blockers.length > 0 ||
+    overdueActions.length > 0 ||
+    openDecisions.length > 0 ||
+    openRecommendations.length > 0;
 
   return (
     <section className="panel space-y-4">
@@ -97,7 +114,9 @@ export function OpsReviewPanel({ run, onRunAgain, busy }: Props) {
         </div>
       ) : (
         <div className="space-y-4">
-          {/* KPI summary strip */}
+          {/* KPI summary strip — four cards showing counts. Blockers use
+               danger tone only when non-zero (green if clean). Overdue is
+               amber. Decisions/recs are neutral. */}
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             <KpiCard label="Blockers" value={blockers.length} tone="danger" />
             <KpiCard label="Overdue" value={overdueActions.length} tone="warning" />
@@ -105,7 +124,10 @@ export function OpsReviewPanel({ run, onRunAgain, busy }: Props) {
             <KpiCard label="Open recs" value={openRecommendations.length} tone="neutral" />
           </div>
 
-          {/* Blockers */}
+          {/* Blockers — the items that are actively blocking execution.
+               Rendered as danger-bordered cards with owner + due date.
+               An unassigned owner is explicitly marked "Unassigned" so
+               the operator can see the gap at a glance. */}
           {blockers.length > 0 && (
             <div>
               <h4 className="text-xs font-medium uppercase tracking-wide text-nexus-danger/80">
@@ -117,7 +139,9 @@ export function OpsReviewPanel({ run, onRunAgain, busy }: Props) {
                     <p className="text-sm font-medium text-white">{b.title}</p>
                     <div className="mt-1 flex items-center gap-3 text-xs text-white/40">
                       <span>Owner: {b.owner || "Unassigned"}</span>
-                      {b.dueDate && <span>Due: {new Date(b.dueDate).toLocaleDateString("en-GB")}</span>}
+                      {b.dueDate && (
+                        <span>Due: {new Date(b.dueDate).toLocaleDateString("en-GB")}</span>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -125,7 +149,9 @@ export function OpsReviewPanel({ run, onRunAgain, busy }: Props) {
             </div>
           )}
 
-          {/* Overdue actions */}
+          {/* Overdue actions — items past their due date. Amber-bordered
+               cards to distinguish from blockers (which actively gate
+               progress) while still signalling urgency. */}
           {overdueActions.length > 0 && (
             <div>
               <h4 className="text-xs font-medium uppercase tracking-wide text-amber-300/80">
@@ -137,7 +163,9 @@ export function OpsReviewPanel({ run, onRunAgain, busy }: Props) {
                     <p className="text-sm font-medium text-white">{a.title}</p>
                     <div className="mt-1 flex items-center gap-3 text-xs text-white/40">
                       <span>Owner: {a.owner || "Unassigned"}</span>
-                      {a.dueDate && <span>Due: {new Date(a.dueDate).toLocaleDateString("en-GB")}</span>}
+                      {a.dueDate && (
+                        <span>Due: {new Date(a.dueDate).toLocaleDateString("en-GB")}</span>
+                      )}
                     </div>
                   </div>
                 ))}
@@ -145,7 +173,9 @@ export function OpsReviewPanel({ run, onRunAgain, busy }: Props) {
             </div>
           )}
 
-          {/* Open decisions */}
+          {/* Open decisions — lightweight rows with owner. Less prominent
+               than blockers/overdue because decisions don't necessarily
+               gate execution. */}
           {openDecisions.length > 0 && (
             <div>
               <h4 className="text-xs font-medium uppercase tracking-wide text-white/50">
@@ -162,9 +192,12 @@ export function OpsReviewPanel({ run, onRunAgain, busy }: Props) {
             </div>
           )}
 
-          {/* Meta */}
+          {/* Run metadata — generation timestamp and confidence score.
+               Confidence is the twin's own assessment of data quality,
+               not a quality gate. */}
           <p className="text-[11px] text-white/25">
-            Generated {new Date(run.runAt).toLocaleString("en-GB")} · Confidence: {Math.round(run.confidence * 100)}%
+            Generated {new Date(run.runAt).toLocaleString("en-GB")} ·
+            Confidence: {Math.round(run.confidence * 100)}%
           </p>
         </div>
       )}
@@ -173,11 +206,24 @@ export function OpsReviewPanel({ run, onRunAgain, busy }: Props) {
 }
 
 // ---------------------------------------------------------------------------
-// KPI card
+// KPI card — a single metric in the summary strip
 // ---------------------------------------------------------------------------
+//
+// Color logic: danger (red) and warning (amber) are only used when the
+// count is non-zero — a "0 Blockers" card is green/neutral, not red.
+// This prevents the dashboard from looking alarming when the workspace
+// is clean.
 
-function KpiCard({ label, value, tone }: { label: string; value: number; tone: "danger" | "warning" | "neutral" }) {
-  const colors = {
+function KpiCard({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: number;
+  tone: "danger" | "warning" | "neutral";
+}) {
+  const colors: Record<string, string> = {
     danger: value > 0 ? "text-nexus-danger" : "text-white/30",
     warning: value > 0 ? "text-amber-300" : "text-white/30",
     neutral: "text-white/60",
