@@ -406,7 +406,20 @@ async function runDb<T>(runner: (db: DbShape) => Promise<T>): Promise<T | null> 
     return null;
   }
   try {
-    return await runner(db);
+    // Slow query detection: log any DB operation exceeding 500ms.
+    // Uses console.warn (not pushAudit) to avoid recursion — the audit
+    // logger itself calls runDb, so we'd loop if both used the same path.
+    // Production log aggregator (Render log stream / Sentry) picks this up.
+    const start = performance.now();
+    const result = await runner(db);
+    const elapsed = performance.now() - start;
+    if (elapsed > 500) {
+      console.warn(
+        `[slow-query] ${elapsed.toFixed(0)}ms`,
+        JSON.stringify({ elapsedMs: elapsed, timestamp: new Date().toISOString() }),
+      );
+    }
+    return result;
   } catch (error) {
     if (isDbRequired()) throw error;
     return null;
