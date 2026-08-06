@@ -44,7 +44,7 @@ test("Render Blueprint uses .io-only Pinavia application and Clerk hosts", () =>
 test("Render cron services use a supported plan and Node 24", () => {
   const crons = cronServices.filter((service) => /^  - type: cron$/m.test(service));
 
-  assert.equal(crons.length, 4, "expected all four production cron services");
+  assert.equal(crons.length, 5, "expected all four production cron services");
   for (const cron of crons) {
     assert.doesNotMatch(cron, /^    plan: free$/m);
     assert.match(cron, /^    plan: starter$/m);
