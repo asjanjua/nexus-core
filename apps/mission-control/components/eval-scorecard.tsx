@@ -40,6 +40,8 @@ export function EvalScorecard() {
 
   const latest = runs[0] ?? null;
   const previousRuns = runs.slice(1);
+  // When only one run exists, previousRuns is [] and the trend strip
+  // won't render — there's no history to trend against.
 
   return (
     <section className="panel space-y-4">
