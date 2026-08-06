@@ -17,6 +17,23 @@
 
 ---
 
+## 2026-08-06 — P4 Team + Compliance (complete)n
+n
+**Commit range:** `28ff51e` → `cd51a44` on `main`n
+**Warnings:** 0n
+**Migrations:** 0047 (member_role), 0048 (department_access + sensitivity_ceiling), 0049 (external_advisor_access)n
+n
+- **Member roles** (0047): owner, admin, executive, reviewer, contributor, viewer on reviewer_seats. API: GET/PATCH/DELETE /api/workspace/members. Settings UI with role dropdown + revoke.n
+- **Department access + sensitivity ceiling** (0048): per-member department scope (JSON array) and sensitivity cap. PATCH /api/workspace/members/[seatId] accepts all fields.n
+- **External advisor access** (0049): time-limited, scope-bounded advisor seats with access_type (member/advisor), access_scope (room/evidence IDs), access_expires_at. Partial index for expired cleanup.n
+- **DB persistence:** updateReviewerSeatMemberRole() writes member_role to the DB row. Previously audit-only.n
+- **GCC/Pakistan compliance page:** /compliance — 3 regional frameworks (Pakistan PDPL, UAE PDPL, KSA SAMA/NCA), 5 processing commitments (residency, retention, breach, subprocessors, DPA).n
+- **Onboarding polish:** aggregate file status (processed/pending/quarantined counts) replaces results[0] anchor for multi-file uploads.n
+n
+**Deferred P4 polish:** design system lock (needs Figma MCP), command palette (nice-to-have). Empty states already present in most key pages.n
+n
+---n
+
 ## 2026-08-06 — P3 Pilot Operations + Workspace Admin (Queen session, complete)
 
 **Commit range:** `ffa2a1d` → `5d756d4` on `main` (pushed)

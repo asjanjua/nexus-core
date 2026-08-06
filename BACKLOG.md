@@ -245,10 +245,10 @@ Slack has the first inbound channel-message ingestion path and Connector Setting
 
 | Area | Status | Source | Notes |
 |---|---|---|---|
-| Workspace invitations and member roles | open | `TASKS.md`, `docs/ROADMAP.md` | Owner/Admin/Executive/Reviewer/Contributor/Viewer. |
-| Department and sensitivity access policy per member | open | `TASKS.md` | Needed for multi-person pilot teams. |
-| External advisor / viewer access | open | `TASKS.md` | Useful for consultants, auditors, board observers. |
-| GCC/Pakistan compliance package | open | `TASKS.md` | PDPL, DPA, SAMA/NCA/UAE notes, retention/deletion, breach response. |
+| Workspace invitations and member roles | shipped 2026-08-06 | `TASKS.md`, `docs/ROADMAP.md` | Owner/Admin/Executive/Reviewer/Contributor/Viewer. |
+| Department and sensitivity access policy per member | shipped 2026-08-06 | `TASKS.md` | Needed for multi-person pilot teams. |
+| External advisor / viewer access | shipped 2026-08-06 | `TASKS.md` | Useful for consultants, auditors, board observers. |
+| GCC/Pakistan compliance package | shipped 2026-08-06 | `TASKS.md` | PDPL, DPA, SAMA/NCA/UAE notes, retention/deletion, breach response. |
 | WhatsApp/SMS/voice channels | deferred | `TASKS.md`, `docs/USER_STRATEGY_AND_PIVOTS.md` | Differentiator for GCC/Pakistan but not current release blocker. First iteration should not require Whisper, browser microphone permissions, Twilio Voice, or audio storage. Future-proof the seam as local dictation/Whisper -> transcript -> Ask/evidence ingestion, then WhatsApp voice notes and outbound voice later. |
 | Local Edge / on-prem client | deferred | `TASKS.md`, `docs/ROADMAP.md` | Mac Studio/local LLM path for sensitive client files. |
 
@@ -267,7 +267,7 @@ Slack has the first inbound channel-message ingestion path and Connector Setting
 | Desktop option comparison: Render rooms vs proposed command center | done | Figma page `03 Desktop Options - Render vs Proposed` | Created on 2026-06-26 as two 1440x900 browser frames: Option A preserves the pushed room-based Render structure; Option B keeps rooms but adds the command-center layer for executive triage. |
 | Primary action hierarchy across the 7 Figma screens | done | `docs/UI_UX_EXPERT_REVIEW_2026-06-16.md` | Completed in Figma on 2026-06-26. Added one dominant top-bar action per existing screen: Review blockers, Review passport, Run forecast, Launch guarded run, Review open gates, Approve evidence, Review now. Visual render checked after removing a cluttered secondary hint treatment. |
 | Live CEO dashboard command-center bridge | local verified | live `/dashboard/ceo`, `dashboard-panel.tsx` | Added a Figma-aligned command-center layer above the existing executive synthesis: evidence confidence, open decisions, blockers, estimated hours returned, mission-flow state, and primary next action. TypeScript clean on 2026-06-26. Authenticated browser smoke still needed in logged-in Render session. |
-| Onboarding multi-file aggregate status polish | open | `UIUX_AUDIT.md` | Current wizard still anchors top-level result around `results[0]`; show processed/pending/quarantined counts. |
+| Onboarding multi-file aggregate status polish | shipped 2026-08-06 | `UIUX_AUDIT.md` | Current wizard still anchors top-level result around `results[0]`; show processed/pending/quarantined counts. |
 | Design system lock (Tailwind + Figma variables) | open | `docs/UI_UX_WORKPLAN.md` Phase 1 | Round-trip design tokens between Tailwind config and Figma variables via Plugin API MCP. |
 | Governance/admin Figma batch | open | `docs/UI_UX_WORKPLAN.md` Phase 2 | Risk and Audit, Integration Hub, Integration Detail, Governance Settings. Via `use_figma` Plugin API. |
 | Onboarding/prototype handoff batch | open | `docs/UI_UX_WORKPLAN.md` Phase 2 | User and Role Management, Company Setup, First Mission Template, Audit Export / Executive Pack. |
