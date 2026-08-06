@@ -4635,6 +4635,45 @@ export const repository = {
   },
 
   /**
+   * Set the active approval policy, superseding any prior row.
+   * The unique index on (workspace_id) WHERE status='active' ensures
+   * only one row is active at a time. Prior row gets status='superseded'.
+   */
+  async upsertApprovalPolicy(
+    workspaceId: string,
+    input: { mode?: string; requiredCount?: number; requiredRoles?: string[]; allowBreakGlass?: boolean },
+  ): Promise<ApprovalPolicy> {
+    // Supersede any existing active policy.
+    await runDb((db) =>
+      db
+        .update(approvalPolicies)
+        .set({ status: "superseded", updatedAt: new Date() })
+        .where(and(
+          eq(approvalPolicies.workspaceId, workspaceId),
+          eq(approvalPolicies.status, "active"),
+        )),
+    );
+
+    // Insert the new active policy.
+    const id = `ap_${workspaceId}_${Date.now()}`;
+    await runDb((db) =>
+      db.insert(approvalPolicies).values({
+        id,
+        workspaceId,
+        mode: (input.mode ?? "single") as string,
+        requiredCount: input.requiredCount ?? null,
+        requiredRoles: input.requiredRoles ?? null,
+        allowBreakGlass: input.allowBreakGlass ?? true,
+      }),
+    );
+
+    // Return the freshly inserted row.
+    const fresh = await this.getActiveApprovalPolicy(workspaceId);
+    if (!fresh) throw new Error("approval_policy_insert_failed");
+    return fresh;
+  },
+
+  /**
    * Real seat and role counts for a workspace.
    *
    * The plan summary previously reported `team: { used: 1 }` and
