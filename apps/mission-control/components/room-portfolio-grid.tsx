@@ -188,6 +188,21 @@ function RoomCard({
               {room.evidenceScope}
             </p>
           )}
+          {room.activatedAt && (
+            <p>
+              <span className="text-white/30">Activated:</span>{" "}
+              {new Date(room.activatedAt).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })}
+              {room.activatedBy && (
+                <span className="text-white/25">
+                  {" "}by {room.activatedBy.split("_").pop()?.slice(0, 8) ?? room.activatedBy}
+                </span>
+              )}
+            </p>
+          )}
         </div>
       )}
 
