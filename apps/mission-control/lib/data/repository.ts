@@ -5230,6 +5230,7 @@ export const repository = {
     mrrCents: number;
     planBreakdown: Record<string, number>;
     churned30d: number;
+    suspendedWorkspaces: number;
     activePilots: number;
     // Cost side — operational burn rate.
     llmTokensThisMonth: number;
@@ -5278,6 +5279,7 @@ export const repository = {
     let mrrCents = 0;
     let churned30d = 0;
     let activePilots = 0;
+    let suspendedWorkspaces = 0;
 
     for (const ws of all) {
       const status = ws.status;
@@ -5294,6 +5296,10 @@ export const repository = {
 
       if (status === "cancelled" || status === "suspended") {
         churned30d++;
+      }
+
+      if (status === "suspended") {
+        suspendedWorkspaces++;
       }
 
       if (status === "active" || status === "pilot") {
@@ -5316,6 +5322,7 @@ export const repository = {
       mrrCents,
       planBreakdown,
       churned30d,
+      suspendedWorkspaces,
       activePilots,
       llmTokensThisMonth,
       llmCostMicrosThisMonth,

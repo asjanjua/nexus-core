@@ -20,6 +20,7 @@ interface RevenueReport {
   arrCents: number;
   activePilots: number;
   churned30d: number;
+  suspendedWorkspaces: number;
   planBreakdown: Record<string, number>;
   llmTokensThisMonth: number;
   llmCostMicrosThisMonth: number;
@@ -93,6 +94,7 @@ export function AdminRevenueDashboard() {
               <Metric label="ARR" value={fmtDollars(report.arrCents)} />
               <Metric label="Active Pilots" value={`${report.activePilots}`} />
               <Metric label="Churned" value={`${report.churned30d}`} />
+              <Metric label="Suspended" value={`${report.suspendedWorkspaces}`} warn={report.suspendedWorkspaces > 0} />
             </div>
           </div>
 
@@ -149,10 +151,10 @@ export function AdminRevenueDashboard() {
   );
 }
 
-function Metric({ label, value }: { label: string; value: string }) {
+function Metric({ label, value, warn }: { label: string; value: string; warn?: boolean }) {
   return (
     <div className="rounded border border-white/10 bg-white/[0.03] p-2 text-center">
-      <p className="text-lg font-semibold text-white">{value}</p>
+      <p className={`text-lg font-semibold ${warn ? "text-amber-400" : "text-white"}`}>{value}</p>
       <p className="text-[9px] uppercase tracking-wide text-white/30">{label}</p>
     </div>
   );
