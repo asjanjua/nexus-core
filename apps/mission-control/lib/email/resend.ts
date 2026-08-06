@@ -10,7 +10,10 @@
  * Environment variables required:
  *   NEXUS_RESEND_API_KEY    — re_... API key from resend.com
  *   NEXT_PUBLIC_APP_URL     — used for unsubscribe links
- *   NEXUS_FROM_EMAIL        — optional, defaults to "NexusAI <briefs@pinavia.io>"
+ *   NEXUS_FROM_EMAIL        — optional, defaults to "NexusAI <briefs@send.pinavia.io>".
+ *                             Must be on a domain VERIFIED in Resend, which is
+ *                             send.pinavia.io (Ireland / eu-west-1), not the
+ *                             apex. Resend rejects any other From outright.
  *   NEXUS_ENV               — production boundary: sends to arbitrary recipients
  *                             only when "pilot" or "production". In any other
  *                             environment, recipients must match
@@ -37,7 +40,16 @@ export function resendConfigured(): boolean {
 }
 
 function fromEmail(): string {
-  return process.env.NEXUS_FROM_EMAIL?.trim() ?? "NexusAI <briefs@pinavia.io>";
+  // send.pinavia.io, not the apex. The verified Resend domain is the
+  // subdomain, deliberately: it keeps Resend's SPF away from whatever already
+  // handles @pinavia.io corporate mail, and isolates transactional sending
+  // reputation from it.
+  //
+  // The previous default was briefs@pinavia.io, which no verified domain
+  // covers. Resend rejects a From on an unverified domain, so that default
+  // could only ever fail — and it would fail at send time, per email, with
+  // nothing in the repository indicating why.
+  return process.env.NEXUS_FROM_EMAIL?.trim() ?? "NexusAI <briefs@send.pinavia.io>";
 }
 
 /**
