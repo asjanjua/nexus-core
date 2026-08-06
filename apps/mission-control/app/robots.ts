@@ -43,7 +43,7 @@ const DISALLOW = [
   "/settings",
   "/export",
   "/board",
-  "/pilot",
+  "/pilot/",
   "/pilot-kit",
   "/funnel",
   "/reviewer-seat",

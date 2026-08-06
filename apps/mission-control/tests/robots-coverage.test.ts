@@ -50,6 +50,7 @@ const PUBLIC_ROUTES = new Set([
   "/status",
   "/support",
   "/compliance",
+  "/pilot-sla",
   "/terms",
   "/privacy",
   "/security",
