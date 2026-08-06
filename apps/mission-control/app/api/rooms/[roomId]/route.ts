@@ -33,8 +33,14 @@ export async function PATCH(
   if (!room) return fail("room_not_found", 404);
 
   // The Executive Command room must remain active.
-  const willDeactivate = parsed.data.lifecycleState === "inactive";
-  if (room.template === "executive" && willDeactivate) {
+  // If lifecycleState is explicitly provided, use it; otherwise preserve
+  // the room's existing state (a PATCH that only changes the owner should
+  // not re-activate an inactive room — reviewed 2026-08-06).
+  const willDeactivate = parsed.data.lifecycleState !== undefined
+    ? parsed.data.lifecycleState === "inactive"
+    : room.lifecycleState === "inactive";
+
+  if (room.template === "executive" && parsed.data.lifecycleState === "inactive") {
     return fail("executive_room_is_mandatory", 400);
   }
 

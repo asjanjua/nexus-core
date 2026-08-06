@@ -4994,7 +4994,13 @@ export const repository = {
       }).onConflictDoNothing(),
     );
 
-    return this.getRoom(workspaceId, id) as Promise<NexusRoom>;
+    // getRoom returns Promise<NexusRoom | null>. The `as` cast below was
+    // stripping the null branch — if the INSERT+SELECT window closes
+    // (deletion, workspace mismatch), the caller would get null instead
+    // of a room and crash on property access. Throw explicitly instead.
+    const seeded = await this.getRoom(workspaceId, id);
+    if (!seeded) throw new Error("room_seed_failed");
+    return seeded;
   },
 
   /** Activate or update a room. Fails if the room doesn't exist. */
