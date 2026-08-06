@@ -34,6 +34,7 @@ const DISALLOW = [
   // consuming rate-limited budget. This list has fallen behind four times as
   // new rooms shipped — tests/robots-coverage.test.ts now fails the build if
   // it happens again.
+  "/rooms",
   "/meridian",
   "/vantage",
   "/nucleus",
