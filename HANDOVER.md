@@ -4,6 +4,61 @@
 
 ---
 
+## 2026-08-06 — P2 Completion: Eval Scorecards + Daily Brief (Queen session)
+
+**Commit range:** `0278eae` → `3e310d6` on `main` (pushed)
+**Deployed SHA:** `3e310d6` (needs Render confirmation)
+**Warnings:** 0 (zero-tolerance enforced)
+
+**Shipped:**
+- **Trusted Eval Scorecard:** `/eval` page + EvalScorecard component — pass rate, confidence, latency, category breakdown per eval case, trend strip across runs, expandable keyword analysis. Side-nav entry "Eval Scorecard." Consumes existing `/api/eval/results`.
+- **Daily Brief:** `lib/daily-brief.ts` scans Knowledge Workspace notes for 24h activity, pending decisions, untagged notes needing classification, stale items, and tag changes. API route `GET /api/knowledge/daily-brief`. DailyBriefPanel wired into `/knowledge` above the audit panel.
+- **Warnings reduction:** 15→0 across 4 commits. Strategy: suppress Clerk external links in JSX, ignore config files in eslint config, convert 4 `<a>`→`<Link>`.
+- **Lint discipline:** Zero-tolerance rule established — warnings must be 0 before any feature closes.
+
+**P2 — Complete:**
+| Item | Status |
+|------|--------|
+| Approval policies (multi-level, N-of-M, sequential, role-scoped) | ✅ Resolver + API + UI + 25 tests |
+| Ops Review Twin UI (blockers, overdue, KPI dashboard) | ✅ Panel on `/workflows` |
+| Knowledge audit (duplicates, contradictions, staleness) | ✅ Engine + API + 10 tests + UI |
+| Trusted eval scorecards | ✅ Panel on `/eval` |
+| Daily brief from Knowledge Workspace | ✅ Panel on `/knowledge` |
+
+**Files changed this session (approximate):**
+- `lib/approval-policy-resolver.ts` — resolver + comments
+- `lib/knowledge-audit.ts` — audit engine (283 lines)
+- `lib/daily-brief.ts` — brief generator (141 lines)
+- `lib/knowledge/markdown.ts` — linked note search
+- `lib/data/repository.ts` — getActiveApprovalPolicy, getAcceptedReviewerSeats, upsertApprovalPolicy, mapReviewerSeatRow extension
+- `app/api/approval-policy/route.ts` — GET/PUT
+- `app/api/approvals/[recommendationId]/route.ts` — policy-aware rewrite
+- `app/api/knowledge/audit/route.ts` — audit API
+- `app/api/knowledge/daily-brief/route.ts` — brief API
+- `app/api/eval/results/route.ts` — existing, consumed by scorecard
+- `app/knowledge/page.tsx` — audit + brief panels
+- `app/eval/page.tsx` — eval scorecard page
+- `app/settings/page.tsx` — Approval Policy tab
+- `app/layout.tsx` — `<a>`→`<Link>` + suppress
+- `components/approval-policy-tab.tsx` — policy editor
+- `components/ops-review-panel.tsx` — ops review UI (193 lines)
+- `components/knowledge-audit-panel.tsx` — audit UI (231 lines)
+- `components/daily-brief-panel.tsx` — brief UI (190 lines)
+- `components/eval-scorecard.tsx` — scorecard UI (242 lines)
+- `components/side-nav.tsx` — Eval Scorecard link
+- `eslint.config.mjs` — ignores for config files
+- Multiple test files: approval-policy-resolver (9), approval-policy-resolver-full (16), knowledge-audit (10), approvals-authz (4)
+- `BACKLOG.md`, `HANDOVER.md` — paperwork
+
+**Next action (Queen recommendation):**
+Pilot readiness operations — admin revenue dashboard, uptime monitoring, security hardening. These are the gaps between code-complete and pilot-safe. The open items at TASKS.md L32-34 (pushing old commits, running migrations against production) are blocked on user git credentials.
+
+Before starting P3: resolve the user-blocked items — push old commits, run prod migrations 0043/0044/0045/0046, confirm Render deployment, re-smoke key routes.
+
+---
+
+## 2026-08-06 — Approval Policies (P2): Migration → Resolver → API → UI
+
 ## 2026-08-06 — Approval Policies (P2): Multi-Level, N-of-M, Sequential Chains
 
 Built the approval policy system on top of the existing reviewer-seat model (migration 0035), following `docs/APPROVAL_POLICIES_SPEC.md`:
