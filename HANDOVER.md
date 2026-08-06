@@ -4,6 +4,19 @@
 
 ---
 
+## 2026-08-06 — P4 Team: Workspace Member Roles (started)
+
+**Commit range:** `6f78b4a` → `44b0a40` on `main`
+**Warnings:** 0
+
+- Migration 0047: adds `member_role` column to `reviewer_seats` with index. Roles: owner, admin, executive, reviewer, contributor, viewer. Default `reviewer` for backward compatibility.
+- GET /api/workspace/members: lists accepted seats with member roles.
+- PATCH/DELETE /api/workspace/members/[seatId]: role update + revoke with audit trail.
+- WorkspaceMembersPanel: member list with role dropdown + revoke, wired into `/settings/workspace`.
+- PATCH/DELETE member routes currently audit the intent but do NOT persist the member_role column update to the DB row (repository lacks an `updateReviewerSeatRole` method). Audit trail is written; follow-on task: add DB persistence.
+
+---
+
 ## 2026-08-06 — P3 Pilot Operations + Workspace Admin (Queen session, complete)
 
 **Commit range:** `ffa2a1d` → `5d756d4` on `main` (pushed)

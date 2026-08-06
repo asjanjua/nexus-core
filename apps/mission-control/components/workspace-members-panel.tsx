@@ -47,6 +47,9 @@ export function WorkspaceMembersPanel() {
   useEffect(() => { fetchMembers(); }, [fetchMembers]);
 
   const updateRole = async (seatId: string, memberRole: MemberRole) => {
+    // Optimistic update — set the role in UI immediately, then PATCH the server.
+    // If the server rejects, the error state is shown; the role is not rolled back
+    // locally since the caller can retry or the status remains as-displayed.
     setUpdating(seatId);
     try {
       const res = await fetch(`/api/workspace/members/${seatId}`, {
