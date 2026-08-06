@@ -21,7 +21,7 @@
 
 import type { EvidenceRecord } from "@/lib/contracts";
 import { extractSourceSpan } from "@/lib/agents/evidence-grid-review";
-import { matchesEvidenceTags } from "@/lib/domain/document-type-classifier";
+import { matchesEvidenceTags, type DocumentTypeOverride } from "@/lib/domain/document-type-classifier";
 import {
   REGULATORS,
   requirementsFor,
@@ -114,11 +114,16 @@ function jurisdictionForLicenseType(licenseTypeKey: string): string {
   return "unspecified";
 }
 
-function citeRequirement(item: RequirementItem, records: EvidenceRecord[], max: number): ComplianceCitation[] {
+function citeRequirement(
+  item: RequirementItem,
+  records: EvidenceRecord[],
+  max: number,
+  overrides?: Map<string, DocumentTypeOverride>,
+): ComplianceCitation[] {
   // Document type, not department. See matchesEvidenceTags for why the old
   // comparison could never match.
   return records
-    .filter((record) => matchesEvidenceTags(record, item.evidenceTags))
+    .filter((record) => matchesEvidenceTags(record, item.evidenceTags, overrides))
     .sort((a, b) => b.extractionConfidence - a.extractionConfidence)
     .slice(0, max)
     .map((record) => ({
@@ -136,13 +141,15 @@ export function reviewMeridianCompliance(input: {
   status: LicenseStatus;
   records: EvidenceRecord[];
   options?: MeridianComplianceOptions;
+  /** Reviewer-set document types, keyed by evidence id. */
+  overrides?: Map<string, DocumentTypeOverride>;
 }): MeridianComplianceResult {
   const opts = { ...DEFAULTS, ...(input.options ?? {}) };
   const governed = input.records.filter((record) => record.ingestionStatus === "processed");
   const requirements = requirementsFor(input.licenseTypeKey, input.status);
 
   const requirementCoverage: RequirementCoverageRow[] = requirements.map((item) => {
-    const citations = citeRequirement(item, governed, opts.maxCitationsPerRequirement);
+    const citations = citeRequirement(item, governed, opts.maxCitationsPerRequirement, input.overrides);
     return {
       itemId: item.id,
       requirement: item.requirement,

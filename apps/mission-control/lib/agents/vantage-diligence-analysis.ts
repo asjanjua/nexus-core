@@ -22,7 +22,7 @@
 
 import type { EvidenceRecord } from "@/lib/contracts";
 import { extractSourceSpan } from "@/lib/agents/evidence-grid-review";
-import { matchesEvidenceTags } from "@/lib/domain/document-type-classifier";
+import { matchesEvidenceTags, type DocumentTypeOverride } from "@/lib/domain/document-type-classifier";
 import {
   checklistForDealType,
   IC_MEMO_TEMPLATE,
@@ -112,13 +112,18 @@ const DEFAULTS: Required<VantageDiligenceOptions> = {
 const SEVERITY_ORDER: Record<DDSeverity, number> = { critical: 0, high: 1, medium: 2, low: 3 };
 const FINANCIAL_CATEGORY_KEY = "financial";
 
-function citeItem(item: DDChecklistItem, records: EvidenceRecord[], opts: Required<VantageDiligenceOptions>): DiligenceCitation[] {
+function citeItem(
+  item: DDChecklistItem,
+  records: EvidenceRecord[],
+  opts: Required<VantageDiligenceOptions>,
+  overrides?: Map<string, DocumentTypeOverride>,
+): DiligenceCitation[] {
   // Matches the checklist's DOCUMENT TYPES against the type derived from each
   // record. Previously compared evidenceTags to record.department, a
   // vocabulary with no values in common, so nothing was ever cited: every
   // review returned 0% coverage and raised every critical and high item as a
   // red flag. See matchesEvidenceTags.
-  const matched = records.filter((record) => matchesEvidenceTags(record, item.evidenceTags));
+  const matched = records.filter((record) => matchesEvidenceTags(record, item.evidenceTags, overrides));
   return matched
     .sort((a, b) => b.extractionConfidence - a.extractionConfidence)
     .slice(0, opts.maxCitationsPerItem)
@@ -137,6 +142,8 @@ export function analyzeVantageDiligence(input: {
   dealType: DealType;
   records: EvidenceRecord[];
   options?: VantageDiligenceOptions;
+  /** Reviewer-set document types, keyed by evidence id. */
+  overrides?: Map<string, DocumentTypeOverride>;
 }): VantageDiligenceResult {
   const opts = { ...DEFAULTS, ...(input.options ?? {}) };
   // Only cite governed evidence; ungoverned records never back a diligence finding.
@@ -149,7 +156,7 @@ export function analyzeVantageDiligence(input: {
 
   for (const category of categories) {
     for (const item of category.items) {
-      const citations = citeItem(item, governed, opts);
+      const citations = citeItem(item, governed, opts, input.overrides);
       const covered = citations.length > 0;
 
       coverage.push({

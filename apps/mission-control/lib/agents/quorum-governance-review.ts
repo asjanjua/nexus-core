@@ -20,7 +20,7 @@
 
 import type { Action, Decision, EvidenceRecord } from "@/lib/contracts";
 import { extractSourceSpan } from "@/lib/agents/evidence-grid-review";
-import { matchesEvidenceTags } from "@/lib/domain/document-type-classifier";
+import { matchesEvidenceTags, type DocumentTypeOverride } from "@/lib/domain/document-type-classifier";
 import type { DDSeverity } from "@/lib/domain/dd-checklist-library";
 import { quorumGovernanceBoundaries } from "@/lib/board-governance-workflow";
 
@@ -114,13 +114,18 @@ const DEFAULTS: Required<QuorumGovernanceOptions> = {
   maxCitationsPerRequirement: 3,
 };
 
-function citeRequirement(requirement: BoardPackRequirement, records: EvidenceRecord[], max: number): GovernanceCitation[] {
+function citeRequirement(
+  requirement: BoardPackRequirement,
+  records: EvidenceRecord[],
+  max: number,
+  overrides?: Map<string, DocumentTypeOverride>,
+): GovernanceCitation[] {
   // Matches the requirement's DOCUMENT TYPES against the type derived from
   // each record. Previously compared evidenceTags to record.department, a
   // vocabulary with no values in common, so nothing was ever cited and every
   // board pack reported as incomplete. See matchesEvidenceTags.
   return records
-    .filter((record) => matchesEvidenceTags(record, requirement.evidenceTags))
+    .filter((record) => matchesEvidenceTags(record, requirement.evidenceTags, overrides))
     .sort((a, b) => b.extractionConfidence - a.extractionConfidence)
     .slice(0, max)
     .map((record) => ({
@@ -139,6 +144,8 @@ export function reviewQuorumGovernance(input: {
   actions: Action[];
   now: string;
   options?: QuorumGovernanceOptions;
+  /** Reviewer-set document types, keyed by evidence id. Pass through from the caller's workspace context. */
+  overrides?: Map<string, DocumentTypeOverride>;
 }): QuorumGovernanceResult {
   const opts = { ...DEFAULTS, ...(input.options ?? {}) };
   const governed = input.records.filter((record) => record.ingestionStatus === "processed");
@@ -146,7 +153,7 @@ export function reviewQuorumGovernance(input: {
 
   // --- Governance findings (board-pack completeness) ------------------------
   const governanceFindings: GovernanceFinding[] = BOARD_PACK_REQUIREMENTS.map((requirement) => {
-    const citations = citeRequirement(requirement, governed, opts.maxCitationsPerRequirement);
+    const citations = citeRequirement(requirement, governed, opts.maxCitationsPerRequirement, input.overrides);
     return {
       requirementId: requirement.id,
       label: requirement.label,

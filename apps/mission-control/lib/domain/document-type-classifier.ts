@@ -347,17 +347,35 @@ export function resolveDocumentTypes(
  * "Conflicts Register"). The vocabularies share no values, so every one of
  * those engines silently reported zero coverage. Having one predicate is the
  * only reason a fifth engine will not repeat it.
+ *
+ * @param record  The evidence record (must carry an `id` when overrides are provided).
+ * @param evidenceTags  Document-type tags from a requirement/checklist item.
+ * @param overrides  Optional map of reviewer-set document types, keyed by
+ *   evidence id. When a reviewer has manually set the types for this record,
+ *   those win over the classifier. Without this, the four native engines
+ *   disagree with the Meridian coverage API about any document a human has
+ *   retyped — the API reads overrides, the engines did not.
  */
 export function matchesEvidenceTags(
   record: {
+    id?: string;
     sourcePath?: string | null;
     text?: string | null;
     classification?: CachedClassification | null;
   },
-  evidenceTags: string[]
+  evidenceTags: string[],
+  overrides?: Map<string, DocumentTypeOverride>,
 ): boolean {
   if (evidenceTags.length === 0) return false;
   const wanted = new Set(evidenceTags.map((t) => t.toLowerCase()));
+
+  // Reviewer overrides win over the classifier. A human who explicitly sets
+  // types has the final say; the classifier is a fallback.
+  const override = overrides?.get(record.id ?? "");
+  if (override) {
+    return override.types.some((t) => wanted.has(t.toLowerCase()));
+  }
+
   // Uses the stored classification when it is current. The four native engines
   // that call this each scan every record against every requirement, so this is
   // where the cache earns most of its keep.
