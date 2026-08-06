@@ -101,3 +101,32 @@ changed.
 - **Next exact action:** Ali signs in to Cloudflare and adds the three records;
   then click verify in Resend; then set `NEXUS_RESEND_API_KEY` and
   `NEXUS_FROM_EMAIL` in Render.
+
+### 2026-08-06T09:34 — domain VERIFIED
+
+- **`send.pinavia.io` status: Verified.** Resend reports "ready to send
+  emails". Region Ireland (eu-west-1), provider Cloudflare.
+- **The DKIM reconstruction was correct.** Resend's own check reported "DNS
+  verified" at 09:31 and completed domain verification at 09:33. This is the
+  point that mattered: the key had been reassembled from two truncated
+  renderings, and Resend's verification — not the reassembly — is what
+  establishes it is right.
+- **Records added to the `pinavia.io` zone**, all DNS-only, TTL Auto:
+  - `TXT resend._domainkey.send` — DKIM public key
+  - `MX  send.send` → `feedback-smtp.eu-west-1.amazonses.com`, priority 10
+  - `TXT send.send` → `v=spf1 include:amazonses.com ~all`
+- **Checked for conflicts before writing.** All 13 pre-existing records were
+  CNAMEs — Clerk (`clerk`, `clkmail`, `clk._domainkey`, `clk2._domainkey`,
+  `accounts`) and the product hostnames. No TXT, MX, SPF or DMARC existed, so
+  nothing was overwritten and no SPF merge was needed. Cloudflare's own
+  recommendation panel confirms no mail is currently received at `@pinavia.io`.
+- **Still not set: apex DMARC.** Resend offers it at `_dmarc`, which governs
+  all `@pinavia.io` mail. Clerk sends on this domain. Publishing a policy
+  without first confirming Clerk's mail aligns under SPF or DKIM risks
+  quarantining sign-in and invite email. The right sequence is `p=none` with
+  an `rua` reporting address, observe, then tighten — a separate deliberate
+  step, not a checkbox during setup.
+- **Remaining before email actually sends:** `NEXUS_RESEND_API_KEY` in Render.
+  Ali sets this; this agent does not handle credentials.
+- **Status:** domain `operationally verified`; application email
+  `blocked on user` for the API key.
