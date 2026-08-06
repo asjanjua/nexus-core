@@ -93,7 +93,10 @@ export function computeSignalStrength(
 function buildPilotGates(
   strategy: StrategyProfile | null,
   evidenceCoverage: number,
-  hasAcceptedReviewerSeat: boolean
+  /** Whether the workspace's approval policy can be satisfied by currently accepted seats. */
+  policyStaffable: boolean,
+  /** Human-readable staffing detail for the gate label. */
+  staffingDetail?: string,
 ): PilotGate[] {
   return [
     {
@@ -102,13 +105,14 @@ function buildPilotGates(
       blocked: !strategy?.sponsorName,
     },
     {
-      // The reviewer gate requires an identity-bound reviewer seat, not a
-      // free-text name. A reviewer must accept an invite (binding the seat to
-      // their Clerk identity) before the workspace is pilot-ready — this is
-      // what makes pilot approvals attributable to a real, accountable person.
+      // The reviewer gate checks that the configured approval policy can be
+      // satisfied by the currently accepted reviewer seats. For single mode
+      // this is "one accepted seat" (today's behavior). For n_of_m, at least
+      // required_count seats. For role_scoped/sequential, at least one accepted
+      // seat per required role/level.
       key: "reviewer_named",
-      label: "Identity-bound reviewer seat accepted",
-      blocked: !hasAcceptedReviewerSeat,
+      label: staffingDetail ?? "Identity-bound reviewer seat accepted",
+      blocked: !policyStaffable,
     },
     {
       key: "evidence_available",
@@ -300,13 +304,15 @@ export async function buildWorkflowTwinRunInput(
   twin: WorkflowTwin,
   workspaceId: string
 ): Promise<WorkflowTwinRunInput> {
-  const [decisions, actions, recommendations, profile, strategy, acceptedReviewerSeat] = await Promise.all([
+  const [decisions, actions, recommendations, profile, strategy, acceptedReviewerSeat, approvalPolicy, acceptedSeats] = await Promise.all([
     repository.listDecisions(workspaceId),
     repository.listActions(workspaceId),
     repository.getRecommendations(workspaceId),
     repository.getWorkspaceProfile(workspaceId),
     repository.getStrategyProfile(workspaceId),
-    repository.getAcceptedReviewerSeat(workspaceId)
+    repository.getAcceptedReviewerSeat(workspaceId),
+    repository.getActiveApprovalPolicy(workspaceId).catch(() => null),
+    repository.getAcceptedReviewerSeats(workspaceId).catch(() => []),
   ]);
 
   const openDecisions = decisions.filter((decision) => decision.status === "open");
@@ -337,7 +343,28 @@ export async function buildWorkflowTwinRunInput(
     const recommended = candidates.find((candidate) => candidate.recommended) ?? null;
     // Bridgeable workspace gates: named sponsor, named reviewer, evidence.
     // pilotReady only when a recommendation exists AND all gates clear.
-    const pilotGates = buildPilotGates(strategy, evidenceRefs.length, Boolean(acceptedReviewerSeat));
+    // Policy-aware reviewer gate — uses isPolicyStaffable from the resolver.
+    // For single mode: one accepted seat. For n_of_m: required_count seats.
+    // For role_scoped: one accepted seat per required role.
+    // Falls back to the legacy single-seat check if resolver data is unavailable.
+    const { isPolicyStaffable } = await import("@/lib/approval-policy-resolver");
+    const seatsForStaffing = acceptedSeats.map((s) => ({
+      id: s.id,
+      clerkUserId: s.clerkUserId ?? "",
+      role: s.role ?? null,
+      level: s.level ?? null,
+      team: s.team ?? null,
+    }));
+    const staffable = isPolicyStaffable(approvalPolicy, seatsForStaffing);
+    const policy = approvalPolicy;
+    const count = policy?.requiredCount ?? 1;
+    const staffingDetail = policy?.mode === "n_of_m"
+      ? `${seatsForStaffing.length} of ${count} reviewer seats accepted`
+      : policy?.mode === "role_scoped"
+        ? `${(policy.requiredRoles ?? []).filter((r) => seatsForStaffing.some((s) => s.role === r)).length} of ${(policy.requiredRoles ?? []).length} required roles filled`
+        : undefined;
+
+    const pilotGates = buildPilotGates(strategy, evidenceRefs.length, staffable, staffingDetail);
     const pilotReady = Boolean(recommended) && pilotGates.every((gate) => !gate.blocked);
     // Signal confidence is computed AFTER pilotReady so the informational entry
     // below can never affect gating. It is persisted inside the pilotGates JSON
