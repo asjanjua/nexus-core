@@ -151,11 +151,19 @@ export function resolveApprovalDecision(input: ResolveInput): ApprovalDecision {
   }
 
   // Count prior approvals from the eligible set for n_of_m terminal check.
+  // Uses eligible.seatId which maps from ResolverSeat.id via computeEligibleSet.
+  // Both seats and eligible use the same underlying ID values — seats has `id`,
+  // eligible maps it to `seatId`, so comparison against PriorApproval.seatId
+  // works in both directions.
   const priorEligibleApprovals = priorDecisions.filter((d) =>
     d.approved && eligible.some((e) => e.seatId === d.seatId),
   ).length;
 
-  // Terminal check.
+  // Terminal check — determines whether this approval completes the policy
+  // condition. n_of_m checks required_count vs prior approvals. role_scoped
+  // checks whether every required role has been approved (including the
+  // current caller). sequential checks whether the caller is at the highest
+  // level in the chain.
   let terminal = false;
   let remaining: number | undefined;
   switch (mode) {
@@ -170,17 +178,25 @@ export function resolveApprovalDecision(input: ResolveInput): ApprovalDecision {
     }
     case "role_scoped": {
       const required = policy?.requiredRoles ?? [];
+      // Map prior approved decisions to roles by looking up each decision's
+      // seatId in the full seats array (persistent IDs, no seatId→id mismatch).
       const alreadyApproved = priorDecisions
         .filter((d) => d.approved)
         .map((d) => seats.find((s) => s.id === d.seatId)?.role)
         .filter(Boolean);
       const currentRole = callerSeat.role;
+      // Terminal when every required role is covered by either a prior
+      // approver or the current caller. A null-role caller never satisfies
+      // a required role (they wouldn't be eligible — the eligibility filter
+      // only admits seats whose role is in requiredRoles).
       const stillNeeded = required.filter((r) => !alreadyApproved.includes(r) && r !== currentRole);
       terminal = stillNeeded.length === 0;
       break;
     }
     case "sequential": {
-      const levels = [...new Set(seats.map((s) => s.level).filter((l) => l != null))].sort((a, b) => (a ?? 0) - (b ?? 0));
+      // Terminal when the caller is at the highest level across all seats
+      // (not just eligible — sequential mode admits all leveled seats).
+      const levels = [...new Set(seats.map((s) => s.level).filter((l): l is number => l != null))].sort((a, b) => (a ?? 0) - (b ?? 0));
       terminal = callerSeat.level === levels[levels.length - 1];
       break;
     }
