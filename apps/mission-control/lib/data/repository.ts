@@ -5396,4 +5396,12 @@ export const repository = {
 
     return (await this.getBoardProfile(workspaceId))!;
   },
+
+  async listBoardMeetings(workspaceId: string): Promise<Record<string, unknown>[]> {
+    const rows = await runDb((db) =>
+      db.select().from(boardMeetings).where(eq(boardMeetings.workspaceId, workspaceId)).orderBy(desc(boardMeetings.meetingDate)),
+    );
+    if (!rows) return [];
+    return rows as unknown as Record<string, unknown>[];
+  },
 };
