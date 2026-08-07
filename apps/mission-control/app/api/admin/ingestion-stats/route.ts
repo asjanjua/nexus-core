@@ -2,12 +2,16 @@
  * GET /api/admin/ingestion-stats
  *
  * Ingestion pipeline monitoring: success rate, failure breakdown,
- * average extraction confidence, throughput. Admin-only.
+ * average extraction confidence. Admin-only (read:admin scope).
+ *
+ * Queries evidence records for the authenticated admin's workspace —
+ * the admin workspace IS the platform view in the current architecture.
  */
 
 import { ok, fail } from "@/lib/api";
 import { requireScope } from "@/lib/api-auth";
 import { repository } from "@/lib/data/repository";
+import type { EvidenceRecord } from "@/lib/contracts";
 
 export const runtime = "nodejs";
 
@@ -16,34 +20,25 @@ export async function GET(request: Request) {
   if (auth.error) return auth.error;
 
   try {
-    // Query evidence records from the last 30 days.
-    const now = new Date();
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 86_400_000);
+    // Fetch all evidence for the admin workspace.
+    // The admin workspace aggregates the platform view.
+    const all: EvidenceRecord[] = await repository.getEvidenceForWorkspace(
+      auth.ctx.workspaceId,
+    );
 
-    // We use the repository's admin snapshot which already counts
-    // evidence, but we need per-status breakdown + confidence.
-    const allEvidence = await repository.getEvidenceForWorkspace(auth.ctx.workspaceId);
+    const total = all.length;
 
-    const total = allEvidence.length;
-
-    const processed = allEvidence.filter(
-      (r: Record<string, unknown>) => r.ingestionStatus === "processed",
-    ).length;
-    const failed = allEvidence.filter(
-      (r: Record<string, unknown>) => r.ingestionStatus === "failed",
-    ).length;
-    const quarantined = allEvidence.filter(
-      (r: Record<string, unknown>) => r.ingestionStatus === "quarantined",
-    ).length;
-    const pending = allEvidence.filter(
-      (r: Record<string, unknown>) =>
-        r.ingestionStatus === "pending_approval" || r.ingestionStatus === "queued",
+    const processed = all.filter((r) => r.ingestionStatus === "processed").length;
+    const failed = all.filter((r) => r.ingestionStatus === "failed").length;
+    const quarantined = all.filter((r) => r.ingestionStatus === "quarantined").length;
+    const pending = all.filter(
+      (r) => r.ingestionStatus === "pending_approval" || r.ingestionStatus === "queued",
     ).length;
 
     const successRate = total > 0 ? Math.round((processed / total) * 100) : null;
 
-    const confidenceScores = allEvidence
-      .map((r: Record<string, unknown>) => r.extractionConfidence as number)
+    const confidenceScores = all
+      .map((r) => r.extractionConfidence)
       .filter((c): c is number => typeof c === "number");
     const avgConfidence =
       confidenceScores.length > 0
@@ -51,8 +46,7 @@ export async function GET(request: Request) {
         : null;
 
     return ok({
-      generatedAt: now.toISOString(),
-      windowStart: thirtyDaysAgo.toISOString(),
+      generatedAt: new Date().toISOString(),
       total,
       processed,
       failed,
