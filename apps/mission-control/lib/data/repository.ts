@@ -60,6 +60,8 @@ import {
   proWaitlist,
   meridianScope,
   rooms,
+  boardProfiles,
+  boardMeetings,
   strategyProfiles,
   type recommendationStatusEnum,
   type ingestionStatusEnum
@@ -5110,6 +5112,8 @@ export const repository = {
   // CEO is mandatory and cannot be deactivated.
 
   /** A workspace's rooms, ordered by template in portfolio order. */
+  boardProfiles,
+  boardMeetings,
   async listRooms(workspaceId: string): Promise<NexusRoom[]> {
     const rows = await runDb((db) =>
       db.select().from(rooms).where(eq(rooms.workspaceId, workspaceId)).orderBy(rooms.template),
@@ -5344,5 +5348,52 @@ export const repository = {
       estimatedMonthlyR2CostCents,
       estimatedMonthlyEmailCostCents,
     };
+  },
+
+  // -------------------------------------------------------------------------
+  // Board governance (Quorum — migrations 0053-0054)
+  // -------------------------------------------------------------------------
+
+  async getBoardProfile(workspaceId: string): Promise<Record<string, unknown> | null> {
+    const rows = await runDb((db) =>
+      db.select().from(boardProfiles).where(eq(boardProfiles.workspaceId, workspaceId)).limit(1),
+    );
+    if (!rows || rows.length === 0) return null;
+    return rows[0] as unknown as Record<string, unknown>;
+  },
+
+  async upsertBoardProfile(
+    workspaceId: string,
+    input: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    const id = `board-${workspaceId}`;
+    const now = new Date();
+    const existing = await this.getBoardProfile(workspaceId);
+
+    if (existing) {
+      await runDb((db) =>
+        db.update(boardProfiles).set({ ...input, updatedAt: now }).where(eq(boardProfiles.workspaceId, workspaceId)),
+      );
+    } else {
+      // Explicit fields to satisfy Drizzle's type inference — spread + id/ws
+      await runDb((db) =>
+        db.insert(boardProfiles).values({
+          id,
+          workspaceId,
+          boardType: (input.boardType as string) ?? "advisory",
+          jurisdiction: (input.jurisdiction as string) ?? "pakistan",
+          meetingSchedule: input.meetingSchedule as string | undefined,
+          quorumRequirement: (input.quorumRequirement as number) ?? 2,
+          noticePeriodDays: (input.noticePeriodDays as number) ?? 7,
+          chairpersonName: input.chairpersonName as string | undefined,
+          secretaryName: input.secretaryName as string | undefined,
+          nextMeetingAt: input.nextMeetingAt ? new Date(input.nextMeetingAt as string) : undefined,
+          createdAt: now,
+          updatedAt: now,
+        }),
+      );
+    }
+
+    return (await this.getBoardProfile(workspaceId))!;
   },
 };

@@ -530,6 +530,41 @@ export const connectors = pgTable("connectors", {
  */
 // Connector sync run history (migration 0052).
 // Tracks every sync execution: status, duration, record counts, errors.
+// Board governance — Quorum data models (migrations 0053-0054).
+export const boardProfiles = pgTable("board_profiles", {
+  id:               text("id").primaryKey(),
+  workspaceId:      text("workspace_id").notNull(),
+  boardType:        varchar("board_type", { length: 32 }).notNull().default("advisory"),
+  jurisdiction:     varchar("jurisdiction", { length: 64 }).notNull().default("pakistan"),
+  meetingSchedule:  varchar("meeting_schedule", { length: 64 }),
+  quorumRequirement: integer("quorum_requirement").notNull().default(2),
+  noticePeriodDays: integer("notice_period_days").notNull().default(7),
+  chairpersonName:  text("chairperson_name"),
+  secretaryName:    text("secretary_name"),
+  nextMeetingAt:    timestamp("next_meeting_at", { withTimezone: true }),
+  createdAt:        timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:        timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
+export const boardMeetings = pgTable("board_meetings", {
+  id:               text("id").primaryKey(),
+  boardId:          text("board_id").notNull(),
+  workspaceId:      text("workspace_id").notNull(),
+  meetingNumber:    integer("meeting_number").notNull().default(1),
+  title:            text("title").notNull(),
+  meetingDate:      timestamp("meeting_date", { withTimezone: true }).notNull(),
+  location:         text("location"),
+  attendeesCount:   integer("attendees_count").notNull().default(0),
+  quorumMet:        boolean("quorum_met").notNull().default(false),
+  agendaStatus:     varchar("agenda_status", { length: 32 }).notNull().default("draft"),
+  minutesStatus:    varchar("minutes_status", { length: 32 }).notNull().default("pending"),
+  decisionsCount:   integer("decisions_count").notNull().default(0),
+  actionItemsCount: integer("action_items_count").notNull().default(0),
+  notes:            text("notes"),
+  createdAt:        timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:        timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+});
+
 export const connectorSyncRuns = pgTable("connector_sync_runs", {
   id:              text("id").primaryKey(),
   connectorId:     text("connector_id").notNull(),

@@ -111,6 +111,8 @@ vi.mock("@/db/schema", () => {
   return {
     actions: table("actions"),
     agentControlProfiles: table("agentControlProfiles"),
+    boardProfiles: table("boardProfiles"),
+    boardMeetings: table("boardMeetings"),
     agentOutputs: table("agentOutputs"),
     agentKeys: table("agentKeys"),
     askConversationMessages: table("askConversationMessages"),
