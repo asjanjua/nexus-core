@@ -5,6 +5,7 @@ import { WorkspaceDashboard } from "@/components/workspace-dashboard";
 import { WorkspaceMembersPanel } from "@/components/workspace-members-panel";
 import { SourceCoveragePanel } from "@/components/source-coverage-panel";
 import { ConnectorSyncPanel } from "@/components/connector-sync-panel";
+import { BoardSettingsPanel } from "@/components/board-settings-panel";
 
 function BoolBadge({ enabled }: { enabled: boolean }) {
   return (
@@ -31,6 +32,7 @@ export default async function WorkspaceSettingsPage() {
       <WorkspaceMembersPanel />
       <SourceCoveragePanel />
       <ConnectorSyncPanel />
+      <BoardSettingsPanel />
       <section className="panel space-y-4 text-sm text-white/80 mt-6">
         <div>
           <p className="panel-title">Workspace Identity</p>
