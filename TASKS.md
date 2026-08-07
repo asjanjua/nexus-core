@@ -1580,7 +1580,7 @@ Positioning rule from the 2026-05-31 reassessment:
   `GET /api/action-items` alias for workflow surfaces. (v0.19.1)
 - [x] Add deterministic first-pass run payloads for Decision & Action, Workflow Scorer, and
   Ops Review twin types. (v0.19.1)
-- [ ] Enforce Agent Control Profiles before evidence enters workflow twin LLM prompts.
+- [x] Enforce Agent Control Profiles before evidence enters workflow twin LLM prompts.
 - [x] Acceptance rule: no proposed decision/action becomes canonical without explicit user click.
 - [ ] Acceptance test: output works across financial services, professional services, and SaaS profiles.
 
@@ -2174,7 +2174,7 @@ Positioning rule from the 2026-05-31 reassessment:
 
 - [x] Add workspace member invitation flow from Settings
 - [ ] Add roles: Owner, Admin, Executive, Reviewer, Contributor, Viewer
-- [ ] Add CxO/business lens assignment per member: CEO, COO, CBO/Strategy, CTO/CDO, Finance, Risk, Sales, Operations, HR, Product
+- [x] Add CxO/business lens assignment per member: CEO, COO, CBO/Strategy, CTO/CDO, Finance, Risk, Sales, Operations, HR, Product
 - [ ] Add department and sensitivity access policy per member
 - [ ] Add invitation emails and accepted/pending/revoked membership states
 - [ ] Add audit events for invite, role change, removal, and access-policy changes
