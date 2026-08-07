@@ -5404,4 +5404,21 @@ export const repository = {
     if (!rows) return [];
     return rows as unknown as Record<string, unknown>[];
   },
+
+  async updateBoardMeeting(
+    workspaceId: string,
+    meetingId: string,
+    input: Record<string, unknown>,
+  ): Promise<Record<string, unknown> | null> {
+    const now = new Date();
+    const rows = await runDb((db) =>
+      db
+        .update(boardMeetings)
+        .set({ ...input, updatedAt: now })
+        .where(and(eq(boardMeetings.id, meetingId), eq(boardMeetings.workspaceId, workspaceId)))
+        .returning(),
+    );
+    if (!rows || rows.length === 0) return null;
+    return rows[0] as unknown as Record<string, unknown>;
+  },
 };
