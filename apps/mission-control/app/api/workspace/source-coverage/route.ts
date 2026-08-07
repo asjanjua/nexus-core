@@ -9,6 +9,7 @@ import { ok, fail } from "@/lib/api";
 import { requireScope } from "@/lib/api-auth";
 import { repository } from "@/lib/data/repository";
 import { analyzeSourceCoverage } from "@/lib/services/source-coverage";
+import type { EvidenceRecord } from "@/lib/contracts";
 
 export const runtime = "nodejs";
 
@@ -17,12 +18,14 @@ export async function GET(request: Request) {
   if (auth.error) return auth.error;
 
   try {
-    const evidence = await repository.getEvidenceForWorkspace(auth.ctx.workspaceId);
+    const evidence: EvidenceRecord[] = await repository.getEvidenceForWorkspace(
+      auth.ctx.workspaceId,
+    );
     const result = analyzeSourceCoverage(
       auth.ctx.workspaceId,
-      evidence.map((e: Record<string, unknown>) => ({
-        sourceType: (e.sourceType as string) ?? "unknown",
-        department: e.department as string | null,
+      evidence.map((e) => ({
+        sourceType: e.sourceType,
+        department: e.department,
       })),
     );
     return ok(result);
