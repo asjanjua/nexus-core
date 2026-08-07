@@ -282,7 +282,6 @@ Slack has the first inbound channel-message ingestion path and Connector Setting
 | Passport drift warning | done (2026-06-26) | `docs/UI_UX_EXPERT_REVIEW_2026-06-16.md` | Built into `app/settings/page.tsx` Agent Governance tab — Agent Output Log now flags when `AgentOutput.agentVersion` no longer matches the agent's current Agent Control Profile version. Step 4 of the pilot build-out plan. |
 | Contextual help icons and dialogs | done (2026-07-05) | user request, `components/ui/help-dialog.tsx`, `docs/CONTEXTUAL_HELP_COPY.md` | Added reusable `HelpDialog`/`HelpLabel` primitives and wired them into dashboard metrics, Ask, ingestion, synthesis, approvals, recommendations, workflows, settings, and connectors. Dialogs include title/body/OK, Escape close, outside-click close, focus return, and screen-reader labelling. Copy registry now lives in `docs/CONTEXTUAL_HELP_COPY.md`. |
 | Connector setup instructions and real CTAs | done (2026-07-05) | user request, `app/settings/connectors/page.tsx`, `docs/CONNECTOR_SETUP_GUIDE.md` | Connector catalogue now carries setup/docs links, env vars, redirect URI, scopes/access, data scope, and setup notes. Settings > Connectors renders a full setup guide and row-level provider setup/docs CTAs; future connectors no longer show dead install actions. |
-| Source coverage map | open | `docs/UI_UX_EXPERT_REVIEW_2026-06-16.md` | Show required source types found/missing before weak-evidence outputs happen. |
 | Accessibility/state icon pass | open | `docs/UI_UX_EXPERT_REVIEW_2026-06-16.md` | Validate focus states, contrast, labels, icons, loading/empty/error/blocked states before implementation. |
 
 ---
@@ -308,3 +307,26 @@ The following older audit claims should not be treated as active backlog without
 - `docs/KNOWLEDGE_WORKSPACE.md` — Knowledge Workspace details.
 - `docs/UI_UX_FLOW_PLAN.md` — design flow plan.
 - `UIUX_AUDIT.md` — historical UI/UX audit; re-check items before implementation.
+
+---
+
+## Figma / UI-UX Backlog (consolidated 2026-08-06)
+
+> Items that require Figma design work before code implementation.
+> Tracked separately from code-backlog to support dedicated design sprints.
+
+| Item | Status | Source | Notes |
+|---|---|---|---|
+| Design system lock (Tailwind ↔ Figma variables) | open | `docs/UI_UX_WORKPLAN.md` Phase 1 | Round-trip design tokens via Plugin API MCP. |
+| Governance/admin Figma batch | open | `docs/UI_UX_WORKPLAN.md` Phase 2 | Risk and Audit, Integration Hub, Integration Detail, Governance Settings. |
+| Onboarding/prototype handoff batch | open | `docs/UI_UX_WORKPLAN.md` Phase 2 | User and Role Management, Company Setup, First Mission Template, Audit Export / Executive Pack. |
+| Design-to-code generation full | in progress | `docs/UI_UX_WORKPLAN.md` Phase 4 | 6 signature patterns proven; remaining screen batches open. |
+| Command palette | open | `docs/UI_UX_EXPERT_REVIEW_2026-06-16.md` | Keyboard-first launcher. |
+| Accessibility / state icon pass | open | `docs/UI_UX_EXPERT_REVIEW_2026-06-16.md` | Focus states, contrast, labels, loading/empty/error/blocked states. |
+| Commercial pilot loop | smoke pending | `docs/UI_V0_4_COMMERCIAL_PILOT_LOOP_FIGMA_PLAN.md` | Authenticated staff invite/redemption smoke pending. |
+| Durable room configuration (Figma flow) | open | `docs/NEXUS_ROOM_PORTFOLIO_ACTIVATION.md` | Figma flow not yet live; code-side room infrastructure complete. |
+| Quorum board governance workflow | in progress | Figma nodes `80:3`, `87:3` | 17-screen V0.2 board in Figma. |
+| Meridian regulatory workflow | partial | Figma nodes `87:3`, `160:2`, `182:2`, `182:74` | Scope, evidence coverage, filing pack live. |
+| Vantage / Nucleus launch routes | deployed | `/vantage`, `/nucleus` | Route hubs live; deep workflow screens in Figma. |
+| Live CEO dashboard bridge | local verified | `/dashboard/ceo` | Figma-aligned; authenticated smoke pending. |
+
