@@ -1,5 +1,42 @@
 # HANDOVER.md -- NexusAI Live Session State
 
+## 2026-08-06 — Connector Ops + Quorum + Meridian (Queen session, continued)
+
+**Commit range:** `48663ec` → `31078c6` on `main`
+**Warnings:** 0 (maintained)
+**Tests:** 140 files / 1,141 tests
+
+### Connector Ops (migration 0052)
+- connector_sync_runs table: sync execution history with status, duration, record counts, errors
+- Exponential backoff retry engine (30s→1hr, max 5 retries)
+- GET /api/workspace/connector-sync-history + ConnectorSyncPanel widget
+
+### Quorum Board Governance (migrations 0053-0054)
+- board_profiles: board type, jurisdiction, meeting schedule, quorum requirement, officers
+- board_meetings: date, number, location, attendees, agenda/minutes status, decisions
+- GET/PATCH /api/workspace/board-profile: board config CRUD
+- GET/POST /api/workspace/board-meetings: meeting list + create with auto-numbering
+- GET/PATCH /api/workspace/board-meetings/[meetingId]: detail + minutes update
+- BoardSettingsPanel: profile display + meeting list on /settings/workspace
+
+### Meridian (requirement coverage bridge)
+- GET /api/meridian/requirement-coverage: merges scope profile → requirement library → evidence
+- Per-license-type coverage scoring with regulator context
+
+### Infrastructure
+- GET /api/admin/infrastructure-health: R2, Neon PITR, versioning checks
+- GET /api/admin/email-config: Resend API key, sender domain verification
+
+### UX Enhancements
+- AskPreflightWarning: source coverage banner on /ask (dismissable)
+- QuickDecisionButton: one-click from dashboard brief → decision creation
+
+### Items Already Built (pre-existing, verified)
+- Agent Control Profile UI → Agent Governance tab in Settings
+- Export/Executive Pack → lib/services/exports.ts (4 formats)
+- Mission Template → onboarding wizard + company setup flow
+
+
 ## 2026-08-06 — Session Summary (Queen, ~35 commits)
 
 **Branch:** main
