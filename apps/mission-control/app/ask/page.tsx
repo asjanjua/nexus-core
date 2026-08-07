@@ -1,4 +1,5 @@
 import { AskPanel } from "@/components/ask-panel";
+import { AskPreflightWarning } from "@/components/ask-preflight-warning";
 import { PageShell } from "@/components/page-shell";
 import { requireWorkspaceId, safeAuth } from "@/lib/safe-auth";
 import { repository } from "@/lib/data/repository";
@@ -22,6 +23,7 @@ export default async function AskPage({
       title="Ask"
       description="Ask questions about your business. NexusAI answers using your approved documents and data."
     >
+      <AskPreflightWarning />
       <AskPanel
         workspaceId={workspaceId}
         userId={userId ?? "user-demo"}
