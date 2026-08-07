@@ -528,6 +528,27 @@ export const connectors = pgTable("connectors", {
  * Every signal is linked to the specific agent_output it was raised against.
  * Drives quality improvement reporting and trend analysis for regulated-sector pilots.
  */
+// Connector sync run history (migration 0052).
+// Tracks every sync execution: status, duration, record counts, errors.
+export const connectorSyncRuns = pgTable("connector_sync_runs", {
+  id:              text("id").primaryKey(),
+  connectorId:     text("connector_id").notNull(),
+  workspaceId:     text("workspace_id").notNull(),
+  status:          varchar("status", { length: 32 }).notNull().default("running"),
+  startedAt:       timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
+  completedAt:     timestamp("completed_at", { withTimezone: true }),
+  durationMs:      integer("duration_ms"),
+  recordsIngested: integer("records_ingested").default(0),
+  recordsFailed:   integer("records_failed").default(0),
+  recordsSkipped:  integer("records_skipped").default(0),
+  errorMessage:    text("error_message"),
+  errorCode:       varchar("error_code", { length: 64 }),
+  retryCount:      integer("retry_count").notNull().default(0),
+  nextRetryAt:     timestamp("next_retry_at", { withTimezone: true }),
+  triggerType:     varchar("trigger_type", { length: 32 }).notNull().default("manual"),
+  metadata:        jsonb("metadata").default({}).notNull(),
+});
+
 export const learningSignals = pgTable("learning_signals", {
   id:            text("id").primaryKey(),
   workspaceId:   text("workspace_id").notNull(),
