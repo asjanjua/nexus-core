@@ -5,6 +5,7 @@ import { repository } from "@/lib/data/repository";
 import { DashboardCharts } from "@/components/dashboard-charts";
 import { EvidenceSourceList } from "@/components/evidence-source-list";
 import { ExecutiveSynthesisBrief, AgentDetailSection } from "@/components/synthesis-brief";
+import { QuickDecisionButton } from "@/components/quick-decision-button";
 import { KnowledgeRoomGraph } from "@/components/knowledge-room-graph";
 import { AGENT_ROOMS, agentBriefIdsForRoleContext, agentForId, roomForRole } from "@/lib/agents/agent-library";
 import { labelForRole } from "@/lib/domain/role-registry";
@@ -354,7 +355,10 @@ export async function DashboardPanel({
       {/* PRIMARY: Executive Synthesis Brief                                  */}
       {/* ----------------------------------------------------------------- */}
       {synthesis && (
-        <ExecutiveSynthesisBrief synthesis={synthesis} roleLabel={roomLabel} department={department} />
+        <>
+          <ExecutiveSynthesisBrief synthesis={synthesis} roleLabel={roomLabel} department={department} />
+          <div className="mt-3"><QuickDecisionButton /></div>
+        </>
       )}
 
       {/* Single-agent view header when filtered */}
