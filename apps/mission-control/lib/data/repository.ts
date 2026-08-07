@@ -5421,4 +5421,33 @@ export const repository = {
     if (!rows || rows.length === 0) return null;
     return rows[0] as unknown as Record<string, unknown>;
   },
+
+  async createBoardMeeting(
+    workspaceId: string,
+    boardId: string,
+    input: Record<string, unknown>,
+  ): Promise<Record<string, unknown>> {
+    const id = `meeting-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    const now = new Date();
+    await runDb((db) =>
+      db.insert(boardMeetings).values({
+        id,
+        boardId,
+        workspaceId,
+        title: (input.title as string) ?? "Board Meeting",
+        meetingDate: input.meetingDate as Date,
+        location: input.location as string | undefined,
+        meetingNumber: (input.meetingNumber as number) ?? 1,
+        createdAt: now,
+        updatedAt: now,
+      }),
+    );
+    return (await this.getBoardMeeting?.(id)) ?? { id, boardId, workspaceId, title: input.title };
+  },
+
+  async getBoardMeeting(id: string): Promise<Record<string, unknown> | null> {
+    const rows = await runDb((db) => db.select().from(boardMeetings).where(eq(boardMeetings.id, id)).limit(1));
+    if (!rows || rows.length === 0) return null;
+    return rows[0] as unknown as Record<string, unknown>;
+  },
 };
