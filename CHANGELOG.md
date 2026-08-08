@@ -1,5 +1,352 @@
 # Changelog
 
+## 2026-08-08 (infra, later) — R2 was never actually working; build OOM; two route fixes
+
+Continues the "Security review + infrastructure tier decisions" entry further
+down. That entry recorded the decisions; this one records what happened when
+they met production. Two of these were my own defects.
+
+### The build OOM was self-inflicted
+
+`NODE_OPTIONS=--max-old-space-size=400` was added to the service's `envVars`.
+Render applies service environment variables to the BUILD as well as the
+runtime, so the ceiling intended for the 512 MB instance also capped
+`next build`, which died with `Ineffective mark-compacts near heap limit -
+JavaScript heap out of memory`. Two deploys failed before the cause was found.
+
+Fixed in `660ac8f` by setting it inline on `startCommand`. The trap worth
+remembering: **removing it from the blueprint was not enough.** Render keeps env
+vars that a blueprint stops declaring, so it also had to be deleted in the
+dashboard before the build would pass.
+
+### R2 original evidence retention had never worked, and every check said it had
+
+`R2_ACCOUNT_ID` and `R2_BUCKET` in Render were set to the literal two characters
+`""`. Not empty values — a string containing two quote marks. The check was
+`Boolean(R2_ACCOUNT_ID && ...)`, and `Boolean('""')` is true. So
+`isOriginalStorageEnabled()` returned true, `/api/health` reported
+`originalsStorage.ok: true`, and the S3 client built
+`https://"".r2.cloudflarestorage.com`, which cannot resolve.
+
+Every upload threw, was caught by the ingestion route, recorded as
+`ingestion_original_storage_failed` in the audit log, and ingestion continued
+without retaining the original. No bucket existed in the Cloudflare account at
+all. Evidence provenance — the product's core claim — was off for the entire
+life of the deployment and no surface said so.
+
+`683e2a0`:
+- `r2ConfigProblem()` validates SHAPE, not presence: account id must be 32 hex
+  chars, bucket a valid DNS label, credentials containing a quote mark rejected.
+- Config is read at CALL time. Freezing it into module constants at import made
+  the module untestable without cache-busting and meant nothing could
+  re-evaluate the config to report on it. That coupling was part of the
+  invisibility.
+- `probeOriginalStorage()` does a real `HeadBucket` round trip, distinguishing
+  `NotFound` (bucket missing) from `Forbidden` (token wrong or wrongly scoped).
+  Wired into the platform-admin-gated admin route, deliberately NOT into public
+  `/api/health` — that is Render's `healthCheckPath` and would hit Cloudflare on
+  every request.
+
+`efa49ea` replaced the `r2_versioning` check, which told operators to enable a
+versioning toggle R2 does not expose; following it led nowhere. Now
+`r2_object_immutability`, pointing at Bucket Lock, and stated as a DECISION
+rather than a recommendation: a locked object cannot be deleted before its
+retention expires, which conflicts with a PDPL/GDPR Art. 17 erasure request.
+That is a legal call, so the route flags it and does not resolve it.
+
+Bucket `nexus-evidence` (Asia-Pacific) and an API token scoped to it now exist
+in Cloudflare. The four `R2_*` variables in Render still hold the `""`
+placeholders, so `/api/health` correctly reports `degraded` until they are
+replaced.
+
+### Two route fixes
+
+- `GET /api/prompts` called `syncPromptRegistry()`, a platform-wide upsert on
+  `prompt_registry`. The Prompts tab in `/settings` is customer-facing, so every
+  client admin opening it drove a write to a table no tenant owns. The write fed
+  nothing: the response is built from the in-memory registry and
+  `repository.listPromptRegistry()` is called nowhere. Removed (`013655e`);
+  response is byte-identical. Deliberately left on `requireScope("admin")` — the
+  manifest is a governance feature for regulated buyers, not platform data.
+- `PATCH /api/workspace/board-profile` had no schema, so over-long strings, wrong
+  types and unparseable timestamps reached Postgres and surfaced as one blanket
+  500. Now validated against the actual column bounds with per-field 400s
+  (`b550563`). Deliberately not an enum: `boardType` and `jurisdiction` are
+  free-text varchars and the UI renders whatever is stored.
+
+### My own test was part of the problem
+
+`infrastructure-health-route.test.ts` originally asserted "configured" from env
+presence — the same weak assumption that hid the outage. Rewritten to pin the
+probe contract, including that a malformed config and a missing bucket must not
+report identically, and to fail if the route stops calling the probe at all.
+
+## 2026-08-08 — Adversarial review of the remediation itself
+
+The remediation below was reviewed as hostilely as the PRs it was fixing. Five
+defects, **two of which meant the fix never ran in production at all**. That is
+the more useful category: a fix that is wrong gets caught, a fix that is inert
+looks finished.
+
+### The fix that never ran (1) — binary detection
+
+`decodeDownloadedText` gained a `contentType` parameter described in its own
+docstring as "the stronger signal". Neither call site passed it. Both
+`sharepoint/ingest` and `google-drive/ingest` called
+`decodeDownloadedText(buffer)` while `download.contentType` sat two lines below,
+already in use for `estimateExtractionConfidence`. The replacement-character
+heuristic was carrying the whole feature. Fixed at both call sites.
+
+### The fix that never ran (2) — OAuth state would have broken API-key installs
+
+Binding the callback to "the Clerk session must equal `state.userId`" assumed
+`AuthContext.userId` is always a Clerk user. For a bearer caller
+`lib/api-auth.ts` sets it to `payload.keyId` — an API key id. A Clerk session
+can never equal a key id, so **every install started with an API token would
+have failed at the callback**, permanently, with `invalid_state`.
+
+The state now records `identityKind` (`clerk` | `api-key`), set from
+`ctx.authType`. Only `clerk` states are session-bound; `api-key` states fall
+back to signature, expiry and nonce — which is what they had before, so nothing
+is weakened. A pre-upgrade state with no `identityKind` is treated as unbindable
+rather than invalid, because states issued before deploy stay in flight for ten
+minutes.
+
+### Advisory lock held a Postgres transaction across an HTTP call
+
+`withAdvisoryLock` wrapped the provider's token endpoint in `db.transaction()`.
+That pins a pooled connection in an open transaction for the length of an
+external network call. Two consequences on a default pool of 10: exhaustion
+under concurrent refreshes, and Neon's `idle_in_transaction_session_timeout`
+killing the session mid-refresh.
+
+- `CONNECTOR_REFRESH_TIMEOUT_MS` (10s) bounds the provider call — the primary
+  control, and the caller's responsibility.
+- `withAdvisoryLock` takes a `maxHoldMs` backstop (20s) for callers that forget.
+- The docstring now states plainly that the transaction scopes the **lock only**,
+  not `fn`'s writes, which commit on a different connection — and that a caller
+  needing more than a few seconds should claim work with a row update instead.
+
+### In-flight promise registered after the work started
+
+`const run = (async () => {…})(); map.set(key, run)` worked only because the body
+suspends at its first `await`. If it ever completed synchronously the `finally`
+would delete the key before it was set, leaving a permanently stale entry that
+every later caller inherits. Now registered before the work begins, via a
+deferred handle.
+
+### The report cooldown made tests order-dependent
+
+Keyed on `errorType:route:workspaceId` and process-global, so the second test in
+a file to trigger the same event silently logged nothing and failed for a reason
+unrelated to what it was testing. It caught me immediately. `beforeEach` in the
+affected suites now calls `__resetReportCooldownForTests()`.
+
+### Verification
+
+`tsc` clean · `eslint` clean · `check:boundaries` clean · `vitest`
+**1438/1438 across 152 files**, run twice to rule out flake. Nine new tests
+covering the five findings.
+
+## 2026-08-08 — Post-merge PR review remediation (PRs #5, #8, #9, #10, #11, #13, #14)
+
+An adversarial review of all seven merged pull requests found 1 critical, 4 high
+and 8 medium defects that survived merge. Full findings, with the verification
+performed for each, in `docs/PR_REVIEW_2026-08-08.md`. Everything below is the
+remediation.
+
+**Two of the review's own findings were wrong, and are corrected here rather
+than quietly dropped.** See "Corrections to the review" at the end of this
+entry.
+
+### Critical — the db-check test suite did not test db-check
+
+`tests/db-check.test.ts` kept its own copy of `migrationState` because
+`db-check.mjs` is a top-level script with no exports. All five tests passed
+against the duplicate, so the shipped script had zero regression protection, and
+PR #14 had already begun to diverge the two (it tightened the test's error
+narrowing and left the script's alone).
+
+- New `scripts/migration-state.mjs`. `db-check.mjs` imports it; the test imports
+  it; there is one implementation.
+- `migrationState` now takes a `dir` parameter, so cases run against a temporary
+  fixture directory instead of coupling every assertion to whatever is in
+  `db/migrations` today. One test still points at the real directory, because
+  "does this still find our migrations" is the one thing worth coupling.
+- Suite grew from 5 tests to 10. Verified by mutation: reverting the 42P01
+  narrowing fails 2 tests, disabling the checksum comparison fails 1. Both
+  mutations passed silently against the old suite.
+
+### Critical follow-on — migration content drift was invisible
+
+`_nexus_migrations` stored ids only, so editing an already-applied migration was
+undetectable: `db:migrate` skips on id and `db:check` compared id sets.
+
+- `db-migrate.mjs` adds a nullable `checksum` column and writes the hash in the
+  same transaction as the DDL.
+- `db:check` reports a third drift class, `modified`, and exits non-zero on it.
+- Rows written before the column existed have a null checksum and are skipped,
+  not reported as modified. A database with no checksum column at all (42703)
+  degrades to id-only checking rather than failing.
+- Checksums normalise CRLF, so a Windows checkout does not report every
+  migration as edited.
+
+### High — concurrent token refresh could brick a connector
+
+`getValidConnectorAuth` had no lock. Microsoft (SharePoint, Outlook Mail) and
+QuickBooks issue single-use refresh tokens, so two concurrent refreshes retire
+the token the winner just stored. Ingest routes and cron sync fire concurrently
+by design, so this was reachable in normal operation, and recovery required the
+customer to reconnect.
+
+- Two layers: an in-process promise map dedupes callers on one instance;
+  `repository.withAdvisoryLock` (new, `pg_advisory_xact_lock`) serialises across
+  Render instances.
+- Credentials are re-read **inside** the lock. Without that the lock is
+  decorative — every waiter would still fire its own refresh with the retired
+  token the moment it acquired the lock.
+- Refresh no longer overwrites `installedBy` with the literal `"token-refresh"`,
+  which had been destroying install attribution on every refresh. Adds
+  `lastRefreshedAt` instead.
+- An expired token with no refresh token is now reported rather than returned
+  silently.
+- Six new tests. Verified by removing the dedupe layer and watching the race
+  reappear as 3 refreshes instead of 1.
+
+### High — signed unsubscribe tokens killed every link already in the wild
+
+PR #10 introduced signing with no grace period, so the unsubscribe link in every
+brief email already delivered returned "invalid token". Recipients who cannot
+unsubscribe press "spam" instead, which damages the sending domain, and a
+non-functioning unsubscribe mechanism is an exposure under CAN-SPAM and GDPR
+Article 21.
+
+- `decodeUnsubscribeToken` accepts legacy unsigned tokens until 2026-10-31, and
+  reports each acceptance so the tail is observable and the branch can be
+  deleted early.
+- Signatures now use an HKDF subkey (`unsubscribe-v1`) via new
+  `signHmacHexFor()`, so rotating `AUTH_SECRET` no longer silently invalidates
+  every outstanding unsubscribe link and in-flight connector install. Tokens
+  signed with the raw secret between 2026-07-28 and today are honoured for the
+  same window.
+- **Deliberate, time-boxed weakening.** Both the acceptance and its expiry are
+  pinned by tests so the branch cannot outlive its window unnoticed.
+
+### High — the fail-open workspace access result was cached
+
+`checkWorkspaceAccess` cached `{ blocked: false }` after a lookup error, turning
+one transient DB blip into a full TTL of unrestricted access for a workspace
+that may be suspended or expired. The fallback is no longer cached, so each
+request retries and access is restored the moment the database recovers.
+
+### Medium — tenant derivation was a silent data-isolation hazard
+
+`tenantIdForWorkspace` was `workspaceId.replace("workspace-", "tenant-")`.
+`String.replace` with a string pattern replaces the first match *anywhere*, so
+`acme-workspace-1` became `acme-tenant-1` and an id with no prefix passed
+through unchanged. Three of five realistic id shapes were wrong, and the
+existing suite pinned only the happy case.
+
+Now anchored to the prefix and throws on anything else. A 500 on ingest is
+recoverable; mis-filing evidence across a tenant boundary is not.
+
+### Medium — binary downloads were stored as mojibake
+
+`decodeDownloadedText` tested only for a NUL byte, inside a `try/catch` that was
+dead code (`Buffer.toString("utf-8")` never throws). Binary formats with no NUL
+byte — a JPEG header, verified — were stored as replacement characters, then
+hashed, embedded and surfaced as citable evidence.
+
+Now consults the provider's `content-type` first and falls back to a
+replacement-character ratio. `readStreamToBuffer` also gained a 50 MB cap,
+checked as chunks arrive.
+
+### Medium — connector OAuth state was not bound to the initiating user
+
+A signed state proved only "this server issued it, recently". An attacker could
+start an install for their own workspace, capture the state, and induce a victim
+to complete the provider consent screen with it — filing the victim's SharePoint
+or QuickBooks tokens under the attacker's workspace.
+
+- State now carries `userId` and a single-use `nonce`, and is parsed with zod
+  rather than cast (a payload missing `ts` previously gave `NaN` on the expiry
+  comparison and passed).
+- New `consumeConnectorCallbackState` resolves the Clerk session on the callback
+  and requires it to match. All 10 install routes and 10 callback routes
+  updated.
+- **Needs a staging pass before deploy.** Strict mode refuses a callback with no
+  resolvable session, which depends on the session cookie surviving the
+  provider's redirect chain. `NEXUS_CONNECTOR_CALLBACK_BIND=report-only`
+  downgrades *that* case to a warning for a rollout. It does not downgrade a
+  mismatch, which is always refused.
+
+### Medium — remaining items
+
+- `connectorAppUrl()` now fails closed outside an explicit dev runtime. It was
+  defaulting to `http://localhost:3000`, so with `NEXT_PUBLIC_APP_URL` unset
+  every connector install redirected the customer to their own machine. The
+  refactor in PR #11 had extracted the weaker of two existing patterns;
+  `lib/connectors/outlook-mail.ts` already did this correctly.
+- `jszip` pinned to an exact `3.10.1`. The zip-bomb guard reads the private
+  `_data.uncompressedSize`, so a caret-range upgrade could disable it silently.
+  `tests/knowledge.test.ts` now asserts the field is still readable, turning a
+  bump into a red build.
+- Knowledge import checks `content-length` before `formData()`, which buffers
+  the whole upload. Added `MAX_IMPORT_TOTAL_UNCOMPRESSED_BYTES` (100 MB) —
+  per-note and note-count caps alone allowed 1 GB of writes from one upload.
+- `tests/dev-runtime-drift.test.ts` pins the two `isExplicitDevRuntime`
+  implementations together. They are duplicated for a real reason (edge
+  middleware cannot import `node:crypto`) but nothing stopped them drifting, and
+  they gate different security decisions.
+- `db:check` and `db:migrate` both take connection timeouts, and all three
+  places that order migration ids now use one comparator.
+
+### Observability
+
+`lib/observability/sentry.ts` never reported to Sentry — the runtime entrypoints
+are disabled because Next 15 middleware builds hang while bundling
+Sentry/OpenTelemetry. Implementation moved to `lib/observability/report.ts` as
+`reportHandledError` / `reportDegradedState`; the old module is a deprecated
+re-export so the rename cannot itself break ~60 call sites.
+
+- A 60-second cooldown keyed on `errorType:route:workspaceId`. A bulk ingest
+  against a degraded OpenAI previously emitted one line per chunk.
+- Error messages are collapsed to one line, truncated, and scrubbed of Postgres
+  constraint values and email addresses.
+
+### Corrections to the review
+
+Two findings in `docs/PR_REVIEW_2026-08-08.md` were wrong. Both are annotated in
+place there.
+
+1. **§7.1 claimed `context.extra` being dropped was a bug.** It was a deliberate
+   PII decision, pinned by `tests/audit-write-failure.test.ts` with a caller
+   passing `{ email, secret }`. Logging it as the review recommended reopened
+   that hole — caught only because the existing test failed on the full run.
+   Resolved with an allowlist: operational keys (`connectorType`, `feature`,
+   `attempt`) are logged, anything a caller invents is dropped and counted as
+   `extraOmitted=N`. Both properties are now tested.
+
+2. **§4 claimed lint did not run before PR #13 merged.** The Lint step was
+   already in `ci.yml` and eslint does error on `no-explicit-any` — both
+   verified. The actual gap is that the lint job is not a *required status
+   check* in branch protection, so a squash merge can land before CI reports.
+   That is a GitHub setting, not a repository file. Added
+   `scripts/lint-staged.mjs` to the pre-commit hook so the error never reaches
+   CI, and recorded the setting in `docs/ENGINEERING_GUARDRAILS.md` §11.
+
+### Verification
+
+`tsc --noEmit` clean. `vitest run`: **1425 tests / 151 files, all passing**, no
+worker errors. `npm run lint` clean. `npm run check:boundaries` clean. New
+guards were verified by reintroducing the defect and watching the test fail, not
+by inspection.
+
+One defect found in this work and fixed: the new PGlite suite leaked WASM
+instances (the old suite asserted, wrongly, that there was "no persistent
+connection to close"), which ended the full run in "Timeout terminating forks
+worker". Invisible when the file runs alone.
+
 ## 2026-08-08 — Security review + infrastructure tier decisions
 
 ### Security — platform admin routes were reachable by any signed-up user

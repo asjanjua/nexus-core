@@ -4,11 +4,22 @@ import { productOrigins } from "@/lib/product-detection";
 /**
  * Mirrors lib/security.ts. Duplicated rather than imported because this module
  * runs in the edge middleware, and lib/security pulls in node:crypto.
+ *
+ * The two copies must stay identical: this one decides whether /api/* echoes an
+ * arbitrary Origin back, the other whether to fall back to the shared dev
+ * signing secret. Drift between them would be a security difference that both
+ * files still look correct about in isolation.
+ *
+ * tests/dev-runtime-drift.test.ts pins them together. Any change here must be
+ * made in lib/security.ts too, or that suite fails.
  */
 function isExplicitDevRuntime(): boolean {
   const env = process.env.NODE_ENV;
   return env === "development" || env === "test";
 }
+
+/** Test-only handle on the edge copy, so the drift guard can compare the two. */
+export const __isExplicitDevRuntimeForTests = isExplicitDevRuntime;
 
 export function parseAllowedOrigins(input: string | undefined): string[] {
   return (input ?? "")

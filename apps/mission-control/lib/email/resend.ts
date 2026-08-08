@@ -21,7 +21,8 @@
  *                             or @domains), otherwise the send is refused.
  */
 
-import { signHmacHex, timingSafeEqualString } from "@/lib/security";
+import { signHmacHex, signHmacHexFor, timingSafeEqualString } from "@/lib/security";
+import { reportDegradedState } from "@/lib/observability/report";
 
 // ---------------------------------------------------------------------------
 // Config
@@ -470,9 +471,16 @@ export function buildSynthesisBriefHtml(ctx: SynthesisEmailContext): string {
  * just base64 of two values an outsider can guess, so anyone could name an
  * arbitrary workspace and address and have the unsubscribe route act on them.
  */
+/**
+ * HKDF label for unsubscribe signatures. Bump the version to invalidate every
+ * outstanding unsubscribe link without touching AUTH_SECRET (and therefore
+ * without logging every user out or breaking in-flight connector installs).
+ */
+const UNSUBSCRIBE_KEY_PURPOSE = "unsubscribe-v1";
+
 export function buildUnsubscribeToken(workspaceId: string, email: string): string {
   const body = Buffer.from(`${workspaceId}:${email}`).toString("base64url");
-  return `${body}.${signHmacHex(body)}`;
+  return `${body}.${signHmacHexFor(UNSUBSCRIBE_KEY_PURPOSE, body)}`;
 }
 
 /**
@@ -482,16 +490,72 @@ export function buildUnsubscribeToken(workspaceId: string, email: string): strin
  * public unauthenticated route, so treat that as an unusable token rather than
  * letting it surface as a 500.
  */
+/**
+ * Last day on which an unsigned legacy token is still honoured.
+ *
+ * Signing was introduced on 2026-07-28 with no grace period, which killed the
+ * unsubscribe link in every brief email already delivered. Two problems with
+ * that: recipients who cannot unsubscribe press "spam" instead, which damages
+ * the sending domain, and a non-functioning unsubscribe mechanism is an
+ * exposure under CAN-SPAM and GDPR Article 21 for the EU recipients in the
+ * client base.
+ *
+ * Delete this constant and the legacy branch below after the date. The window
+ * is deliberately short: an unsigned token is forgeable, and although the only
+ * thing a forgery achieves is unsubscribing an address the attacker already
+ * knows, that is still a nuisance worth ending.
+ */
+const LEGACY_UNSUBSCRIBE_UNTIL = Date.parse("2026-10-31T23:59:59Z");
+
+function splitWorkspaceAndEmail(decoded: string): [string, string] | null {
+  const idx = decoded.indexOf(":");
+  if (idx <= 0) return null;
+  return [decoded.slice(0, idx), decoded.slice(idx + 1)];
+}
+
 export function decodeUnsubscribeToken(token: string): [string, string] | null {
   try {
+    // Legacy unsigned token, issued before 2026-07-28. base64url never
+    // contains a dot, so the absence of one identifies the old format
+    // unambiguously.
+    if (!token.includes(".")) {
+      if (Date.now() > LEGACY_UNSUBSCRIBE_UNTIL) return null;
+      const legacy = splitWorkspaceAndEmail(
+        Buffer.from(token, "base64url").toString("utf-8")
+      );
+      if (legacy) {
+        // Reported so the tail of legacy links is observable. When this stops
+        // appearing in the logs, the branch can be deleted early rather than
+        // waiting out the full window.
+        reportDegradedState("accepted a legacy unsigned unsubscribe token", {
+          route: "lib/email/resend.decodeUnsubscribeToken",
+          errorType: "unsubscribe_token_legacy_unsigned",
+          workspaceId: legacy[0],
+        });
+      }
+      return legacy;
+    }
+
     const [body, signature, ...rest] = token.split(".");
     if (!body || !signature || rest.length) return null;
-    if (!timingSafeEqualString(signHmacHex(body), signature, "hex")) return null;
 
-    const decoded = Buffer.from(body, "base64url").toString("utf-8");
-    const idx = decoded.indexOf(":");
-    if (idx <= 0) return null;
-    return [decoded.slice(0, idx), decoded.slice(idx + 1)];
+    const signedWithSubkey = timingSafeEqualString(
+      signHmacHexFor(UNSUBSCRIBE_KEY_PURPOSE, body),
+      signature,
+      "hex"
+    );
+    // Tokens issued between 2026-07-28 and 2026-08-08 were signed with
+    // AUTH_SECRET directly, before signing keys were derived per purpose.
+    // Accepted for the same grace window as unsigned legacy tokens, then
+    // deleted along with this branch.
+    const signedWithRawSecret =
+      !signedWithSubkey &&
+      Date.now() <= LEGACY_UNSUBSCRIBE_UNTIL &&
+      timingSafeEqualString(signHmacHex(body), signature, "hex");
+
+    if (!signedWithSubkey && !signedWithRawSecret) return null;
+
+    return splitWorkspaceAndEmail(Buffer.from(body, "base64url").toString("utf-8"));
   } catch {
     return null;
   }

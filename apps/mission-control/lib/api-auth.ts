@@ -153,7 +153,18 @@ async function checkWorkspaceAccess(workspaceId: string): Promise<{ blocked: boo
     });
     return null;
   });
-  const result = record ? evaluateWorkspaceAccess(record) : { blocked: false, reason: null };
+
+  if (!record) {
+    // Fail open, but do NOT cache the fallback. Caching it turned one
+    // transient DB error into a full TTL of unrestricted access for a
+    // workspace that may be suspended or expired: the next request would hit
+    // the cached { blocked: false } and never retry the lookup. Returning
+    // uncached means each request re-attempts, so access is restored the
+    // moment the database recovers.
+    return { blocked: false, reason: null };
+  }
+
+  const result = evaluateWorkspaceAccess(record);
   accessCache.set(workspaceId, { ...result, expiresAt: Date.now() + ACCESS_CACHE_TTL_MS });
   return result;
 }

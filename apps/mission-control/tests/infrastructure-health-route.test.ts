@@ -24,7 +24,20 @@
  * against the old broken code too.
  */
 
-import { afterAll, describe, expect, it, vi } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
+
+const storage = vi.hoisted(() => ({
+  probeOriginalStorage: vi.fn(),
+  r2ConfigProblem: vi.fn(),
+}));
+
+// The route now asks the storage module whether the bucket ANSWERS, rather than
+// whether env vars are non-empty. Mocking here keeps the test hermetic while
+// still pinning that contract: no network, but also no env-presence shortcut.
+vi.mock("@/lib/services/object-storage", () => ({
+  probeOriginalStorage: storage.probeOriginalStorage,
+  r2ConfigProblem: storage.r2ConfigProblem,
+}));
 
 vi.mock("@/lib/api-auth", () => ({
   requirePlatformAdmin: vi.fn().mockResolvedValue({
@@ -75,10 +88,56 @@ function check(checks: Check[], name: string): Check {
 }
 
 describe("infrastructure health check", () => {
-  it("reports R2 configured using the variable names the storage client reads", async () => {
+  beforeEach(() => {
+    // Call counts accumulate otherwise; implementations survive clearAllMocks.
+    vi.clearAllMocks();
+    storage.probeOriginalStorage.mockResolvedValue({ ok: true });
+    storage.r2ConfigProblem.mockReturnValue(null);
+  });
+  it("reports R2 configured only when the bucket actually answers", async () => {
     const { checks } = await runChecks();
 
     expect(check(checks, "r2_bucket").status).toBe("configured");
+    expect(storage.probeOriginalStorage).toHaveBeenCalled();
+  });
+
+  /**
+   * The 2026-08-08 failure: config present and truthy, no bucket. Presence must
+   * never be enough to report green.
+   */
+  it("reports not_configured when the config is malformed, even though the vars are set", async () => {
+    storage.r2ConfigProblem.mockReturnValue("malformed_account_id");
+    storage.probeOriginalStorage.mockResolvedValue({
+      ok: false,
+      reason: "malformed_account_id",
+    });
+
+    const { checks, overall } = await runChecks();
+
+    expect(check(checks, "r2_bucket").status).toBe("not_configured");
+    expect(check(checks, "r2_bucket").detail).toMatch(/32 hex/i);
+    expect(overall).toBe("degraded");
+  });
+
+  /** Well-formed config, absent bucket. Must be distinguishable from the above. */
+  it("distinguishes a missing bucket from a malformed config", async () => {
+    storage.r2ConfigProblem.mockReturnValue(null);
+    storage.probeOriginalStorage.mockResolvedValue({ ok: false, reason: "NotFound" });
+
+    const { checks } = await runChecks();
+
+    expect(check(checks, "r2_bucket").status).toBe("not_configured");
+    expect(check(checks, "r2_bucket").detail).toMatch(/NotFound/);
+    expect(check(checks, "r2_bucket").detail).toMatch(/does not exist/i);
+  });
+
+  it("surfaces a wrongly scoped token as Forbidden rather than a generic failure", async () => {
+    storage.r2ConfigProblem.mockReturnValue(null);
+    storage.probeOriginalStorage.mockResolvedValue({ ok: false, reason: "Forbidden" });
+
+    const { checks } = await runChecks();
+
+    expect(check(checks, "r2_bucket").detail).toMatch(/token is wrong or not scoped/i);
   });
 
   it("does not drag overall to degraded when everything is configured", async () => {
@@ -97,6 +156,14 @@ describe("infrastructure health check", () => {
 
     expect(raw).not.toContain("CLOUDFLARE_R2_ENDPOINT");
     expect(raw).not.toContain("CLOUDFLARE_R2_ACCESS_KEY_ID");
+  });
+
+  it("never claims R2 is fine without asking the bucket", async () => {
+    await runChecks();
+
+    // If this stops being called, the route has gone back to inferring health
+    // from environment variables, which is what hid the outage.
+    expect(storage.probeOriginalStorage).toHaveBeenCalledTimes(1);
   });
 
   /**
@@ -121,9 +188,28 @@ describe("infrastructure health check", () => {
     expect(check(checks, "neon_backup").detail).toMatch(/Launch up to 7 days/i);
   });
 
-  it("still flags R2 versioning as needing manual confirmation", async () => {
+  it("flags object immutability as a manual decision, not a recommendation", async () => {
     const { checks } = await runChecks();
+    const immutability = check(checks, "r2_object_immutability");
 
-    expect(check(checks, "r2_versioning").status).toBe("manual_verification_required");
+    expect(immutability.status).toBe("manual_verification_required");
+    // Points at the control that actually exists in R2.
+    expect(immutability.detail).toMatch(/Bucket Lock/);
+    // And states the tension rather than telling the operator to just turn it on.
+    expect(immutability.detail).toMatch(/erasure/i);
+  });
+
+  /**
+   * The old check told operators to "enable versioning in bucket settings".
+   * R2 has no such toggle, so that instruction led nowhere. If the word comes
+   * back as an instruction, someone has reintroduced advice that cannot be
+   * followed.
+   */
+  it("does not tell operators to enable a versioning toggle that R2 does not have", async () => {
+    const { checks } = await runChecks();
+    const immutability = check(checks, "r2_object_immutability");
+
+    expect(immutability.detail).toMatch(/no versioning toggle/i);
+    expect(checks.some((c) => c.name === "r2_versioning")).toBe(false);
   });
 });

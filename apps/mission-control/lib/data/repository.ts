@@ -3550,6 +3550,84 @@ export const repository = {
     return record;
   },
 
+  /**
+   * Run `fn` while holding a cluster-wide Postgres advisory lock on `key`.
+   *
+   * Needed because Render runs more than one instance, so an in-process mutex
+   * only serialises callers that happen to share a Node process. The concrete
+   * case this exists for is OAuth token refresh: Microsoft (SharePoint,
+   * Outlook Mail) and QuickBooks issue single-use refresh tokens, so two
+   * instances refreshing the same connector at once retires the token the
+   * winner just stored and bricks the connector until the customer reconnects.
+   * See docs/PR_REVIEW_2026-08-08.md §5.1.
+   *
+   * `pg_advisory_xact_lock` releases when the transaction ends, including on
+   * rollback, so a crash inside `fn` cannot leave the lock held. `hashtextextended`
+   * maps the key to the bigint the lock function wants; collisions are possible
+   * and harmless — the worst outcome is two unrelated keys serialising against
+   * each other.
+   *
+   * Runs `fn` unserialised when no database is configured (demo/in-memory
+   * mode) — single process, nothing to race.
+   *
+   * TWO THINGS THIS IS NOT
+   * ----------------------
+   * 1. **Not a transaction around `fn`'s writes.** The transaction exists only
+   *    to scope the lock. Anything `fn` writes goes through `repository.*` on a
+   *    different pooled connection and commits independently, so a rollback
+   *    here would not undo it. That is intended for the token-refresh caller —
+   *    the new token must survive — but do not read this as atomicity.
+   *
+   * 2. **Not free to hold for a long time.** While `fn` runs, a pooled
+   *    connection sits in an open transaction that Postgres sees as idle. Two
+   *    consequences: the connection is unavailable to everyone else (the pg
+   *    default pool is 10), and a server with
+   *    `idle_in_transaction_session_timeout` set — Neon does — will kill the
+   *    session out from under it.
+   *
+   *    So `fn` MUST be bounded. Callers that make a network call inside the
+   *    lock are required to impose their own timeout; the token-refresh path
+   *    caps its provider call at CONNECTOR_REFRESH_TIMEOUT_MS. `maxHoldMs`
+   *    below is the backstop, not the primary control.
+   *
+   * If a future caller needs to hold this for more than a few seconds, it
+   * should not use an advisory lock at all — it should claim work with a row
+   * update and release it with another, which holds no connection while the
+   * slow part runs.
+   */
+  async withAdvisoryLock<T>(
+    key: string,
+    fn: () => Promise<T>,
+    maxHoldMs = 20_000
+  ): Promise<T> {
+    const db = getDb();
+    if (!db) return fn();
+    let result!: T;
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtextextended(${key}, 0))`);
+      // Backstop so a caller that forgot its own timeout cannot pin a
+      // connection indefinitely. Rejecting here rolls the transaction back,
+      // which releases the advisory lock; `fn` itself keeps running to
+      // completion in the background, and any write it makes still lands,
+      // because those writes are not on this connection.
+      let timer: NodeJS.Timeout | undefined;
+      try {
+        result = await Promise.race([
+          fn(),
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(
+              () => reject(new Error(`advisory lock ${key} held longer than ${maxHoldMs}ms`)),
+              maxHoldMs
+            );
+          }),
+        ]);
+      } finally {
+        if (timer) clearTimeout(timer);
+      }
+    });
+    return result;
+  },
+
   async getConnectorCredentials(
     workspaceId: string,
     type: string

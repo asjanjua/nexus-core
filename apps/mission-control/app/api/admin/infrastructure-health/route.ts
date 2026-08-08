@@ -16,7 +16,7 @@
 
 import { ok } from "@/lib/api";
 import { requirePlatformAdmin } from "@/lib/api-auth";
-import { isOriginalStorageEnabled } from "@/lib/services/object-storage";
+import { probeOriginalStorage, r2ConfigProblem } from "@/lib/services/object-storage";
 
 export const runtime = "nodejs";
 
@@ -49,19 +49,38 @@ export async function GET(request: Request) {
       detail:
         "NEXUS_R2_ORIGINALS is not 'enabled'. Original evidence files are not retained in object storage. This is a valid configuration, not a fault.",
     });
-  } else if (isOriginalStorageEnabled()) {
-    checks.push({
-      name: "r2_bucket",
-      status: "configured",
-      detail: `Bucket: ${process.env.R2_BUCKET ?? "unknown"} (account ${process.env.R2_ACCOUNT_ID ?? "unknown"}).`,
-    });
   } else {
-    checks.push({
-      name: "r2_bucket",
-      status: "not_configured",
-      detail:
-        "NEXUS_R2_ORIGINALS is 'enabled' but one of R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY or R2_BUCKET is missing. Originals are being dropped silently.",
-    });
+    // A REAL round trip (HeadBucket), not a presence check on env vars.
+    //
+    // The 2026-08-08 outage is why. R2_ACCOUNT_ID and R2_BUCKET were both the
+    // literal two characters `""`, which is truthy, so every config-shaped
+    // check reported healthy while no bucket existed and every original was
+    // being dropped. Asking Cloudflare is the only answer that cannot lie.
+    const configProblem = r2ConfigProblem();
+    const probe = await probeOriginalStorage().catch(() => ({
+      ok: false as const,
+      reason: "probe_threw",
+    }));
+
+    if (probe.ok) {
+      checks.push({
+        name: "r2_bucket",
+        status: "configured",
+        detail: `Bucket ${process.env.R2_BUCKET?.trim()} is reachable and the credentials are accepted (verified by HeadBucket, not by reading environment variables).`,
+      });
+    } else if (configProblem) {
+      checks.push({
+        name: "r2_bucket",
+        status: "not_configured",
+        detail: `R2 config is invalid (${configProblem}). Originals are being dropped silently. Check R2_ACCOUNT_ID (32 hex chars), R2_BUCKET, R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY in Render — paste raw values, no quote marks.`,
+      });
+    } else {
+      checks.push({
+        name: "r2_bucket",
+        status: "not_configured",
+        detail: `R2 config looks well formed but the bucket did not answer (${probe.reason}). NotFound means the bucket does not exist; Forbidden means the API token is wrong or not scoped to this bucket. Originals are being dropped silently.`,
+      });
+    }
   }
 
   // Neon backup.
@@ -91,13 +110,27 @@ export async function GET(request: Request) {
       : "DATABASE_URL does not appear to be a Neon connection. Verify backup configuration.",
   });
 
-  // R2 versioning — documented requirement for original-file recovery.
-  // Versioning must be enabled in the Cloudflare dashboard per bucket.
+  // Immutability for original evidence files.
+  //
+  // Renamed from r2_versioning 2026-08-08. The old check told operators to
+  // "enable versioning in bucket settings", which is not a control the R2
+  // dashboard exposes — following that instruction leads nowhere. R2's actual
+  // mechanism is Bucket Lock: a retention policy that prevents overwrites and
+  // deletions until the period ends.
+  //
+  // Still manual, and deliberately left as a DECISION rather than a
+  // recommendation. Bucket Lock is genuinely in tension with data protection:
+  // a locked object cannot be deleted before its retention expires, which
+  // conflicts directly with an erasure request under PDPL or GDPR Art. 17.
+  // Evidence immutability and the right to erasure pull in opposite
+  // directions, and picking a retention period is a legal call about which
+  // obligation dominates for a given client. This route flags it; it must not
+  // resolve it.
   checks.push({
-    name: "r2_versioning",
+    name: "r2_object_immutability",
     status: "manual_verification_required",
     detail:
-      "R2 bucket versioning must be enabled in Cloudflare Dashboard → R2 → bucket settings. This preserves original evidence files for recovery commitments.",
+      "Cloudflare R2 has no versioning toggle. The equivalent control is Bucket Lock (R2 → bucket → Settings → Bucket Lock Rules), which blocks overwrites and deletions for a chosen retention period. NOT enabled by default, so an overwrite currently destroys the original evidence file. Note the trade-off before setting one: a locked object cannot be deleted before its retention expires, which conflicts with a PDPL/GDPR erasure request. Decide the period against client obligations.",
   });
 
   const allConfigured = checks.every((c) => c.status !== "not_configured");
