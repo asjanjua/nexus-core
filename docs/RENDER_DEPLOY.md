@@ -69,7 +69,9 @@ Move to `standard` when either is true:
 
 A short-term bump to `standard` for the week of a live client demo, then back down, costs a few dollars because of per-second proration. That is a cheaper way to buy demo headroom than running `standard` permanently.
 
-**`NODE_OPTIONS=--max-old-space-size=400`** is set in `render.yaml` and is not optional on a 512 MB instance. Node sizes its default heap from the host machine rather than the container's cgroup limit, so without a ceiling it grows past 512 MB and is OOM-killed by the platform instead of collecting first. The symptom is an abrupt restart with nothing useful in the logs. If the instance type changes, change this number with it: roughly 1600 on `standard`.
+**`NODE_OPTIONS=--max-old-space-size=400`** is set **inline on `startCommand`**, deliberately not in `envVars`, and is not optional on a 512 MB instance. Node sizes its default heap from the host machine rather than the container's cgroup limit, so without a ceiling it grows past 512 MB and is OOM-killed by the platform instead of collecting first. The symptom is an abrupt restart with nothing useful in the logs. If the instance type changes, change this number with it: roughly 1600 on `standard`.
+
+**Never move this into `envVars`.** Render applies service environment variables to the build as well as the runtime, so a `NODE_OPTIONS` env var caps `next build` too. That was tried on 2026-08-08 and the build died with `Ineffective mark-compacts near heap limit - JavaScript heap out of memory` (deploy `dep-d9rk0us`). The build runs on Render's build pipeline, not on the 512 MB instance, and must not inherit the instance's ceiling.
 
 The ingestion paths are what make the ceiling necessary. `/api/ingestion/status` accepts `MAX_UPLOAD_BYTES` (50 MB) and buffers the whole file twice before `pdf-parse` allocates on top; knowledge import holds a 25 MB archive in JSZip. Raising either cap requires re-checking this figure.
 

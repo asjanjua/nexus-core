@@ -34,34 +34,33 @@ services:
     # serving, which is the behaviour buildCommand could not give us.
     buildCommand: npm ci --include=dev && npm run build
     preDeployCommand: npm run db:migrate
-    startCommand: npm run start -w @nexus/mission-control -- -p $PORT
+    # NODE_OPTIONS is set HERE, not in envVars.
+    #
+    # Render applies service environment variables to the BUILD as well as the
+    # runtime. A --max-old-space-size=400 env var therefore capped `next build`
+    # at 400 MB, and the build died with "Ineffective mark-compacts near heap
+    # limit - JavaScript heap out of memory" (deploy dep-d9rk0us, 2026-08-08).
+    # The build runs on Render's build pipeline, not on the 512 MB instance, so
+    # it must NOT inherit the instance's ceiling.
+    #
+    # Why the runtime still needs a ceiling: Node sizes its default heap from
+    # the host machine rather than the container cgroup, so on a 512 MB instance
+    # it grows past the limit and is OOM-killed by the platform instead of
+    # collecting first. 400 leaves ~110 MB for the non-heap footprint.
+    #
+    # The forcing paths are ingestion, not steady state:
+    # /api/ingestion/status accepts MAX_UPLOAD_BYTES (50 MB) and does
+    # `Buffer.from(await file.arrayBuffer())` before pdf-parse allocates on top;
+    # knowledge import holds a 25 MB archive in JSZip. Raising either cap means
+    # re-checking this number.
+    #
+    # On `standard` (2 GB) this becomes roughly 1600.
+    startCommand: NODE_OPTIONS=--max-old-space-size=400 npm run start -w @nexus/mission-control -- -p $PORT
     autoDeploy: true
     healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION
         value: 24
-      # Heap ceiling, and it matters more than the instance size does.
-      #
-      # Node sizes its default old-space from the HOST machine, not from the
-      # container's cgroup limit. On a 512 MB instance it will therefore grow
-      # past 512 MB quite happily and be OOM-killed by the platform instead of
-      # collecting first. The symptom is an abrupt restart with nothing useful
-      # in the logs, which reads like a crash rather than memory pressure.
-      #
-      # 400 leaves roughly 110 MB for the non-heap footprint: the Node binary,
-      # native modules, and buffers outside the JS heap.
-      #
-      # The paths that make this necessary are ingestion, not steady state.
-      # /api/ingestion/status accepts MAX_UPLOAD_BYTES (50 MB) and does
-      # `Buffer.from(await file.arrayBuffer())` — the file twice in memory —
-      # before pdf-parse allocates its own multiples on top. Knowledge import
-      # holds a 25 MB archive in JSZip the same way. Raising either cap without
-      # re-checking this number is how the instance starts dying on upload.
-      #
-      # Revisit when the plan changes: on `standard` (2 GB) this should become
-      # roughly 1600, not stay at 400.
-      - key: NODE_OPTIONS
-        value: --max-old-space-size=400
       # Set explicitly rather than relying on `next start` to infer it. Any
       # process here that is not `next start` (migrations, one-off scripts)
       # must still be treated as production by lib/security.ts.
