@@ -17,11 +17,10 @@
 import { createHash, randomBytes, randomUUID } from "crypto";
 import { z } from "zod";
 import { ok, fail } from "@/lib/api";
-import { resolveAuth } from "@/lib/api-auth";
+import { requirePlatformAdmin } from "@/lib/api-auth";
 import { repository } from "@/lib/data/repository";
 import { DEMO_PACK_SECTORS } from "@/lib/demo/sector-packs";
 import { buildTrialInviteEmailHtml, resendConfigured, sendEmail } from "@/lib/email/resend";
-import { isPlatformAdmin } from "@/lib/platform-admin";
 
 /** How long the LINK stays valid. Distinct from trialDays, the trial length. */
 const INVITE_TTL_MS = 14 * 24 * 60 * 60 * 1000;
@@ -35,30 +34,23 @@ const inviteSchema = z.object({
   trialDays: z.number().int().min(1).max(365).default(30),
 });
 
-/**
- * Resolve the caller and confirm Pinavia staff. Returns a 403 rather than a 404
- * for a signed-in non-staff user: the route's existence is not a secret, and a
- * misleading 404 would send a Pinavia operator hunting a deploy problem when the
- * real cause is an unset PINAVIA_ADMIN_PRINCIPALS.
- */
-async function requirePlatformAdmin(request: Request) {
-  const auth = await resolveAuth(request);
-  if (!auth) return { auth: null, error: fail("unauthorized", 401) };
-  if (!isPlatformAdmin(auth)) return { auth: null, error: fail("platform_admin_required", 403) };
-  return { auth, error: null };
-}
+// The staff gate now lives in lib/api-auth as `requirePlatformAdmin`. This
+// route used to carry its own copy of the policy, and the three other
+// platform-wide admin routes each grew a weaker gate instead of reusing it.
 
 export async function GET(request: Request) {
-  const { auth, error } = await requirePlatformAdmin(request);
-  if (!auth) return error;
+  // Listing needs the gate but not the identity, so ctx is deliberately not
+  // destructured here. The repo treats lint warnings as errors.
+  const { error } = await requirePlatformAdmin(request);
+  if (error) return error;
 
   const invites = await repository.listTrialInvites();
   return ok({ invites });
 }
 
 export async function POST(request: Request) {
-  const { auth, error } = await requirePlatformAdmin(request);
-  if (!auth) return error;
+  const { ctx: auth, error } = await requirePlatformAdmin(request);
+  if (error) return error;
 
   const body = await request.json().catch(() => null);
   const parsed = inviteSchema.safeParse(body);
@@ -126,8 +118,8 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const { auth, error } = await requirePlatformAdmin(request);
-  if (!auth) return error;
+  const { ctx: auth, error } = await requirePlatformAdmin(request);
+  if (error) return error;
 
   const inviteId = new URL(request.url).searchParams.get("id");
   if (!inviteId) return fail("invalid_request", 400);

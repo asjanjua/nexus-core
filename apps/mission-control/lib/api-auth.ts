@@ -19,6 +19,7 @@
 import { auth } from "@clerk/nextjs/server";
 import { decodeBearerToken } from "@/lib/tokens";
 import { fail } from "@/lib/api";
+import { isPlatformAdmin } from "@/lib/platform-admin";
 import { repository, evaluateWorkspaceAccess } from "@/lib/data/repository";
 import { captureHandledError } from "@/lib/observability/sentry";
 
@@ -197,6 +198,39 @@ export async function requireScope(
     if (access.blocked) {
       return { ctx: null, error: fail(`workspace_${access.reason}`, 402) };
     }
+  }
+  return { ctx, error: null };
+}
+
+/**
+ * Gate for Pinavia staff-only API routes — the ones whose response describes
+ * the PLATFORM rather than the caller's own workspace.
+ *
+ * Use this, not `requireScope("admin")`, whenever the handler returns data
+ * aggregated across workspaces or describes deployment infrastructure.
+ * `requireScope` resolves admin-ness through `AuthContext.isOrgAdmin`, which is
+ * true for every Clerk org-admin AND for every org-less personal workspace — so
+ * any self-signed-up user passes it. That is the correct gate for tenant-wide
+ * actions inside a customer's own workspace and the wrong gate for platform
+ * surfaces.
+ *
+ * The `/admin` page already gates on `isPlatformAdmin`. Routes it fetches from
+ * must gate the same way or the page check is decorative: the browser can call
+ * the API directly.
+ *
+ * Fails closed — with PINAVIA_ADMIN_PRINCIPALS unset nobody passes.
+ *
+ * Returns 403 rather than 404 for a signed-in non-staff user: the route's
+ * existence is not a secret, and a misleading 404 would send a Pinavia operator
+ * hunting a deploy problem when the real cause is an unset env var.
+ */
+export async function requirePlatformAdmin(
+  request: Request
+): Promise<{ ctx: AuthContext; error: null } | { ctx: null; error: Response }> {
+  const ctx = await resolveAuth(request);
+  if (!ctx) return { ctx: null, error: fail("unauthorized", 401) };
+  if (!isPlatformAdmin(ctx)) {
+    return { ctx: null, error: fail("platform_admin_required", 403) };
   }
   return { ctx, error: null };
 }

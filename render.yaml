@@ -2,26 +2,66 @@ services:
   - type: web
     name: nexus-mission-control
     runtime: node
-    plan: free
+    # Starter (512 MB, 0.5 CPU), not free. Free instances spin down after
+    # inactivity and cold-start in ~50s, which is a lost demo in front of a
+    # client. Starter is also the cheapest tier that unlocks preDeployCommand,
+    # SSH, zero-downtime deploys and one-off jobs — Standard adds only RAM and
+    # CPU over it, and Render prorates by the second, so buying that headroom
+    # before the metrics ask for it is money spent on nothing.
+    #
+    # UPGRADE TRIGGER, so this is a measurement and not a guess: move to
+    # `standard` (2 GB, 1 CPU) when steady-state memory on the Metrics tab sits
+    # above ~400 MB, or when any "Out of memory" entry appears in service
+    # Events. See NODE_OPTIONS below for why 512 MB needs a heap ceiling.
+    plan: starter
     region: oregon
     rootDir: .
-    # NOTE: db:migrate runs at BUILD time, so the database is migrated before
-    # the new code serves anything, and stays migrated even if the deploy never
-    # promotes. Every migration must therefore leave the CURRENTLY DEPLOYED
-    # release working — expand and contract as separate deploys. See
-    # docs/ENGINEERING_GUARDRAILS.md §9 for the rule and the 2026-08-05 case
-    # where the database ran a release ahead of the application.
+    # Migrations run in preDeployCommand: after the build succeeds, before the
+    # new version takes traffic, and NOT AT ALL if the build fails. This is the
+    # fix for the 2026-08-05 case recorded in docs/ENGINEERING_GUARDRAILS.md §9,
+    # where migrations 0043 and 0044 were applied from buildCommand while the
+    # deploy that needed them never promoted, leaving the database a release
+    # ahead of the application.
     #
-    # preDeployCommand would be the correct home for this, but it requires a
-    # paid instance type and this service is on `plan: free`. Revisit when the
-    # plan changes.
-    buildCommand: npm ci --include=dev && npm run build && npm run db:migrate
+    # WHAT THIS DOES NOT FIX. Between the migration and the new version taking
+    # traffic, the OLD release is still serving against the NEW schema. So
+    # expand and contract as separate deploys is still mandatory: nullable or
+    # defaulted columns on the way in, drop readers before dropping columns.
+    # The window is now seconds instead of open-ended, but it is not zero, and
+    # §9's rule stands unchanged.
+    #
+    # A failing migration aborts the deploy and leaves the current release
+    # serving, which is the behaviour buildCommand could not give us.
+    buildCommand: npm ci --include=dev && npm run build
+    preDeployCommand: npm run db:migrate
     startCommand: npm run start -w @nexus/mission-control -- -p $PORT
     autoDeploy: true
     healthCheckPath: /api/health
     envVars:
       - key: NODE_VERSION
         value: 24
+      # Heap ceiling, and it matters more than the instance size does.
+      #
+      # Node sizes its default old-space from the HOST machine, not from the
+      # container's cgroup limit. On a 512 MB instance it will therefore grow
+      # past 512 MB quite happily and be OOM-killed by the platform instead of
+      # collecting first. The symptom is an abrupt restart with nothing useful
+      # in the logs, which reads like a crash rather than memory pressure.
+      #
+      # 400 leaves roughly 110 MB for the non-heap footprint: the Node binary,
+      # native modules, and buffers outside the JS heap.
+      #
+      # The paths that make this necessary are ingestion, not steady state.
+      # /api/ingestion/status accepts MAX_UPLOAD_BYTES (50 MB) and does
+      # `Buffer.from(await file.arrayBuffer())` — the file twice in memory —
+      # before pdf-parse allocates its own multiples on top. Knowledge import
+      # holds a 25 MB archive in JSZip the same way. Raising either cap without
+      # re-checking this number is how the instance starts dying on upload.
+      #
+      # Revisit when the plan changes: on `standard` (2 GB) this should become
+      # roughly 1600, not stay at 400.
+      - key: NODE_OPTIONS
+        value: --max-old-space-size=400
       # Set explicitly rather than relying on `next start` to infer it. Any
       # process here that is not `next start` (migrations, one-off scripts)
       # must still be treated as production by lib/security.ts.

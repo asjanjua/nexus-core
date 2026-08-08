@@ -1,8 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// Payload/envelope contract only. The staff gate itself is exercised against
+// the real lib/api-auth implementation in platform-admin-route-gate.test.ts —
+// re-implementing it here would make this file a fixture that agrees with
+// whatever the route does.
 const mocks = vi.hoisted(() => ({
-  resolveAuth: vi.fn(),
-  isPlatformAdmin: vi.fn(),
+  requirePlatformAdmin: vi.fn(),
   listTrialInvites: vi.fn(),
   createTrialInvite: vi.fn(),
   pushAudit: vi.fn(),
@@ -10,8 +13,7 @@ const mocks = vi.hoisted(() => ({
   sendEmail: vi.fn(),
 }));
 
-vi.mock("@/lib/api-auth", () => ({ resolveAuth: mocks.resolveAuth }));
-vi.mock("@/lib/platform-admin", () => ({ isPlatformAdmin: mocks.isPlatformAdmin }));
+vi.mock("@/lib/api-auth", () => ({ requirePlatformAdmin: mocks.requirePlatformAdmin }));
 vi.mock("@/lib/data/repository", () => ({
   repository: {
     listTrialInvites: mocks.listTrialInvites,
@@ -50,8 +52,7 @@ const invite = {
 describe("trial invite admin API contract", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.resolveAuth.mockResolvedValue(staff);
-    mocks.isPlatformAdmin.mockReturnValue(true);
+    mocks.requirePlatformAdmin.mockResolvedValue({ ctx: staff, error: null });
     mocks.listTrialInvites.mockResolvedValue([invite]);
     mocks.createTrialInvite.mockResolvedValue(invite);
     mocks.pushAudit.mockResolvedValue(undefined);

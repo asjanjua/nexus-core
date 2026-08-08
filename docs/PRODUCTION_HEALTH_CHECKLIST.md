@@ -15,15 +15,20 @@ Neon, Cloudflare, Clerk, GitHub, or the command line.
 - [x] A manual latest-commit deployment was initiated in Render and the
   canonical app subsequently passed the full 8-check public smoke.
 - [ ] Render's dashboard remained on a loading shell after the deploy request,
-  so its exact resulting Git SHA still needs confirmation. The Free plan can
-  sleep for 50 seconds or more and is not suitable for a time-critical demo.
+  so its exact resulting Git SHA still needs confirmation.
+- [x] Free-plan sleep is resolved. 2026-08-08: workspace moved to Render Pro and
+  the web service from `plan: free` to `plan: starter`, so the instance no
+  longer sleeps and the ~50s cold start is gone. Watch memory instead — see the
+  `standard` upgrade trigger in `docs/RENDER_DEPLOY.md`.
 
 ---
 
 ## 1. Required Services
 
 - [ ] Render web service is deployed from the intended application Git commit. A latest-commit deploy was initiated from `80ed650` and public smoke passed afterward; confirm the SHA when Render's dashboard recovers.
-- [x] Render service is running a responsive production instance on Node 24. `app.pinavia.io` passed the public smoke after the deployment request; Free-plan sleep remains an operational constraint.
+- [x] Render service is running a responsive production instance on Node 24, on `plan: starter` since 2026-08-08. `app.pinavia.io` passed the public smoke after the deployment request. Sleep is no longer a constraint; memory headroom is (512 MB, capped by `NODE_OPTIONS=--max-old-space-size=400`).
+- [ ] Neon plan and restore window confirmed **in the Neon console**, not inferred. Free is a 6-hour history window, Launch up to 7 days, Scale up to 30 days. `/api/admin/infrastructure-health` deliberately does not state a window because it cannot see the plan. Do not quote a recovery window to a client without checking this.
+- [ ] R2 bucket versioning is enabled in the Cloudflare dashboard. It is off by default and cannot be assumed; without it an overwrite destroys the original evidence file.
 - [ ] Clerk sign-in and sign-up URLs point to the live app URL.
 - [x] Product hosts use Cloudflare redirect-entry rules into canonical `app.pinavia.io`; separate Render custom domains are not required for `nexus`, `quorum`, `meridian`, `vantage`, or `nucleus`.
 - [x] Cloudflare redirect behavior is active for product hosts. Verify the exact branded URL used in a demo and then verify the canonical app responds.

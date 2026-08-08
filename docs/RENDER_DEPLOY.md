@@ -48,11 +48,30 @@ Recommended path:
 Render uses:
 
 ```bash
-npm ci && npm run build && npm run db:migrate
+# build
+npm ci --include=dev && npm run build
+# preDeploy (after build, before the new version takes traffic)
+npm run db:migrate
+# start
 npm run start -w @nexus/mission-control -- -p $PORT
 ```
 
-The ordering is intentional: a failed install or production build prevents database mutation. The repository migration runner is transactional and records applied files, so later builds skip completed migrations. This build-time gate is the current free-tier compromise because Render Shell, one-off jobs, and pre-deploy commands require a paid service. If the web service is upgraded, move migrations to `preDeployCommand` so schema changes are separated from artifact construction.
+The ordering is intentional. A failed install or build prevents database mutation, and because `db:migrate` now sits in `preDeployCommand` rather than `buildCommand`, a build that never promotes cannot leave the schema ahead of the running code. A failing migration aborts the deploy and the current release keeps serving. The migration runner is transactional and records applied files, so repeat runs skip completed migrations.
+
+This does not remove the need for backward-compatible migrations. During the cutover the old release is briefly serving against the new schema. Expand and contract as separate deploys remains mandatory — see `docs/ENGINEERING_GUARDRAILS.md` §9.
+
+**Instance type.** The web service runs on `starter` (512 MB, 0.5 CPU) as of 2026-08-08, upgraded from `free`. Free instances sleep after inactivity and cold-start in roughly 50 seconds. Starter is also the cheapest tier that unlocks `preDeployCommand`, SSH, one-off jobs and zero-downtime deploys; `standard` adds only RAM and CPU on top. Render prorates by the second, so upgrade when the metrics ask for it rather than in advance.
+
+Move to `standard` when either is true:
+
+- Steady-state memory on the Metrics tab sits above ~400 MB.
+- Any `Out of memory` entry appears in service Events.
+
+A short-term bump to `standard` for the week of a live client demo, then back down, costs a few dollars because of per-second proration. That is a cheaper way to buy demo headroom than running `standard` permanently.
+
+**`NODE_OPTIONS=--max-old-space-size=400`** is set in `render.yaml` and is not optional on a 512 MB instance. Node sizes its default heap from the host machine rather than the container's cgroup limit, so without a ceiling it grows past 512 MB and is OOM-killed by the platform instead of collecting first. The symptom is an abrupt restart with nothing useful in the logs. If the instance type changes, change this number with it: roughly 1600 on `standard`.
+
+The ingestion paths are what make the ceiling necessary. `/api/ingestion/status` accepts `MAX_UPLOAD_BYTES` (50 MB) and buffers the whole file twice before `pdf-parse` allocates on top; knowledge import holds a 25 MB archive in JSZip. Raising either cap requires re-checking this figure.
 
 The primary `render.yaml` declares only the web service. Optional cost-bearing cron services are isolated in `render.cron.yaml`; sync that Blueprint only after billing approval and after setting `NEXUS_CRON_SECRET`.
 

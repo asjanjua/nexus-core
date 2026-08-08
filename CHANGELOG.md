@@ -1,5 +1,98 @@
 # Changelog
 
+## 2026-08-08 — Security review + infrastructure tier decisions
+
+### Security — platform admin routes were reachable by any signed-up user
+
+`/api/admin/revenue`, `/api/admin/email-config` and `/api/admin/infrastructure-health`
+return platform-wide data but were gated on `requireScope("admin")` /
+`requireScope("read:admin")`. Those resolve through `AuthContext.isOrgAdmin`,
+which `lib/api-auth.ts` sets to `true` for any caller with no active Clerk org —
+which is every self-service signup. The `/admin` page was gated correctly on
+`isPlatformAdmin`; only the APIs it fetches were not, and a page gate the
+browser can call around is not a gate.
+
+Worst case was `/api/admin/revenue`: `getAdminRevenueSnapshot()` selects every
+row in `workspaces` and sums `llm_usage` across all of them, so any registered
+user could read total MRR, ARR, subscriber and pilot counts, churn, plan mix and
+operational burn with one authenticated GET.
+
+- Added `requirePlatformAdmin()` to `lib/api-auth.ts` as the single gate for
+  routes whose response describes the platform rather than the caller's
+  workspace. Fails closed when `PINAVIA_ADMIN_PRINCIPALS` is unset.
+- Repointed all three routes at it, and removed the duplicate private copy of
+  the policy from `/api/admin/trial-invites` (which had the gate right, and was
+  the reason the others were not noticed).
+- `tests/platform-admin-route-gate.test.ts` — 14 tests driving the real gate,
+  not a stub. Verified by reintroducing the defect and watching them fail.
+- `/api/admin/ingestion-stats` was already workspace-scoped and is unchanged.
+
+Also: `/api/cron/suspension-check` compared its secret with `!==` (variable
+time) and treated an unset `NEXUS_CRON_SECRET` as a comparison against
+`undefined` rather than returning the 503 the other five cron routes return. Now
+uses the shared timing-safe `cronAuthorized`.
+
+Scanned and clean: no hardcoded secrets (no `.env` ever committed), no SQL
+injection (all Drizzle tagged templates), no XSS sinks, no SSRF, no path
+traversal, no zip-slip in knowledge import, CORS allowlisted with no
+`allow-credentials`, all webhooks signature-verified with timestamp windows.
+Outstanding and not fixed: `PATCH /api/workspace/board-profile` has no zod
+schema (data integrity, not exploitable); `postcss`/`nanoid` advisories are
+build-time only and transitive through Next.
+
+### Infrastructure — Render Starter, Neon Launch, and a heap ceiling
+
+- **Render workspace on Pro**, renamed `My Workspace` → `Pinavia` so invoices
+  and audit logs carry the company name.
+- **Web service `plan: free` → `plan: starter`.** Free sleeps and cold-starts in
+  ~50s, which is a lost client demo. Starter is the cheapest tier that unlocks
+  `preDeployCommand`, SSH, one-off jobs and zero-downtime deploys; `standard`
+  adds only RAM and CPU. Upgrade trigger is recorded in `render.yaml` and
+  `docs/RENDER_DEPLOY.md` rather than left to judgement.
+- **`db:migrate` moved from `buildCommand` to `preDeployCommand`.** A build that
+  never promotes can no longer leave the database a release ahead of the
+  application — the 2026-08-05 failure in `ENGINEERING_GUARDRAILS.md` §9. The
+  expand-and-contract rule is unchanged: the old release still serves against
+  the new schema for the length of the cutover.
+- **`NODE_OPTIONS=--max-old-space-size=400` added.** Node sizes its default heap
+  from the host, not the container cgroup, so on 512 MB it grows past the limit
+  and is OOM-killed instead of collecting. The forcing paths are ingestion:
+  `MAX_UPLOAD_BYTES` (50 MB) buffered twice before `pdf-parse` allocates, and a
+  25 MB archive held whole in JSZip.
+
+### Fixed — a health check that could never pass, and one that overstated
+
+`/api/admin/infrastructure-health` had two defects:
+
+- It read `CLOUDFLARE_R2_ENDPOINT` and `CLOUDFLARE_R2_ACCESS_KEY_ID`, which are
+  set nowhere and read by nothing. The storage client reads `R2_ACCOUNT_ID` /
+  `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` / `R2_BUCKET`. So it reported
+  `not_configured` and pinned `overall` to `degraded` permanently, including
+  when R2 was working. Now delegates to `isOriginalStorageEnabled()`.
+- It asserted `"Point-in-Time Recovery active (30-day retention)"` from a
+  substring match on `DATABASE_URL`. Thirty days is Neon's Scale tier; Free is
+  6 hours and Launch up to 7 days. Recovery windows reach client packs and DR
+  sections of proposals, so the route now reports
+  `manual_verification_required` and names all three windows instead of
+  claiming one it cannot see.
+- `tests/infrastructure-health-route.test.ts` — 6 tests, including a guard that
+  fails if the `CLOUDFLARE_`-prefixed names return and one that fails if any
+  retention window is asserted again.
+
+### Vendor review — Neon, Cloudflare R2, Resend
+
+- **Neon:** move to Launch. On Free, the `*/2` dispatch cron defeats
+  scale-to-zero, so ~182 CU-hours accrue against a 100 CU-hour allowance and
+  compute suspends around day 16 of the month. SOC 2, IP allow rules and the
+  uptime SLA are Scale-only — price that into pilots rather than absorbing it.
+- **Cloudflare R2:** stays free at pilot volume (10 GB-month, 1M Class A ops).
+  Two gaps: bucket versioning is off by default, and `region: "auto"` is not an
+  answer to a data-residency question from an SBP/SAMA/PDPL-regulated buyer.
+  Jurisdiction is fixed at bucket creation, so decide while the bucket is empty.
+- **Resend:** move to Pro. Free caps at 100 emails/day, and scheduled synthesis
+  briefs are the batch that will clip it silently. SOC 2 Type II is included on
+  every Resend tier, unlike Render and Neon.
+
 ## 2026-08-06 — P2 + P3 Completion Session (Queen, 25 commits)
 
 ### P2 — Feature Depth

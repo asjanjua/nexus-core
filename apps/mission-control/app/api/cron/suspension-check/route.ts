@@ -7,19 +7,24 @@
  * that slipped through — and the warning-email delivery path.
  *
  * Schedule: daily at 8am UTC via render.cron.yaml.
- * Protected by CRON_SECRET (Bearer token).
+ * Protected by NEXUS_CRON_SECRET.
+ *
+ * Uses the shared `cronAuthorized` helper like every other cron route. The
+ * hand-rolled check this replaced compared the secret with `!==`, which is
+ * variable-time, and it treated an unset NEXUS_CRON_SECRET as a comparison
+ * against `undefined` rather than as "not configured" — so it never returned
+ * the 503 the other five routes return, and its failure mode on a missing env
+ * var was silent.
  */
 
 import { ok, fail } from "@/lib/api";
+import { cronAuthorized } from "@/lib/security";
 
 export const runtime = "nodejs";
 
 export async function POST(request: Request) {
-  const auth = request.headers.get("authorization") ?? "";
-  const token = auth.startsWith("Bearer ") ? auth.slice(7) : "";
-  if (!token || token !== process.env.NEXUS_CRON_SECRET) {
-    return fail("unauthorized", 401);
-  }
+  if (!process.env.NEXUS_CRON_SECRET) return fail("cron_not_configured", 503);
+  if (!cronAuthorized(request)) return fail("unauthorized", 401);
 
   try {
     // Stripe webhook (invoice.payment_failed) handles real-time suspension.

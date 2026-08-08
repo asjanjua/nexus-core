@@ -235,9 +235,21 @@ In an iCloud/File Provider checkout, a normal-looking dependency file may be onl
 
 ## 9. Migrations Run Before Promotion: Every Migration Must Be Backward Compatible
 
-`render.yaml` runs `npm run db:migrate` inside `buildCommand`. Migrations
-therefore reach the production database **before** the new code serves a single
-request, and they stay applied even if the deploy never promotes.
+`render.yaml` runs `npm run db:migrate` in `preDeployCommand` (changed
+2026-08-08, when the web service moved from `plan: free` to `plan: starter`).
+Migrations therefore run after the build succeeds, before the new version takes
+traffic, and not at all if the build fails. A failing migration now aborts the
+deploy and leaves the current release serving.
+
+**This narrowed the window. It did not close it.** Between the migration
+completing and the new version taking traffic, the OLD release is still serving
+against the NEW schema. The rule below is unchanged and still mandatory. What
+changed is that the exposure is now seconds rather than open-ended, and a build
+failure can no longer leave the database a release ahead of the application.
+
+Until 2026-08-08 `db:migrate` ran inside `buildCommand`, so migrations reached
+the production database whether or not the deploy ever promoted. That is the
+failure below, kept here because it is the reason the rule exists.
 
 This is not hypothetical. Observed 2026-08-05: migrations 0043 and 0044 were
 recorded in `_nexus_migrations` while `https://pinavia.io` was still serving a
@@ -270,11 +282,12 @@ migration ran, not that the schema matches the running code. `/api/health`
 reports `build.commitShort`; compare it against the commit whose migrations you
 expect to be applied before treating a deploy as complete.
 
-**Why the ordering is not simply moved.** Render's `preDeployCommand` runs after
-build and before promotion, which is strictly better, but it requires a paid
-instance type and `render.yaml` currently pins `plan: free`. Until that plan
-changes, the ordering above is a constraint to design around, not a bug to
-route past.
+**Why the rule survives the `preDeployCommand` move.** It is tempting to read
+"migrations now run just before promotion" as "the old release never sees the
+new schema". It does, for the length of the cutover. Any migration that would
+break the currently deployed release still breaks it, just for a shorter time
+and in a way that is harder to notice. Expand and contract as separate deploys
+remains the only safe pattern here.
 
 ## 10. Triage Lint Warnings; Never Bulk-Fix And Never Bulk-Ignore
 

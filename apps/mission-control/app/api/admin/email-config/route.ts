@@ -3,16 +3,20 @@
  *
  * Verifies production email boundary: Resend API key presence,
  * sender domain configuration, and email readiness for pilot.
- * Admin-only.
+ *
+ * DESCRIBES THE DEPLOYMENT, NOT A WORKSPACE. It echoes NEXUS_FROM_EMAIL and
+ * reports whether the Resend key is set, so it is gated by
+ * `requirePlatformAdmin` rather than `requireScope("read:admin")` — the latter
+ * passes for any org-less personal workspace, i.e. any signup.
  */
 
 import { ok } from "@/lib/api";
-import { requireScope } from "@/lib/api-auth";
+import { requirePlatformAdmin } from "@/lib/api-auth";
 
 export const runtime = "nodejs";
 
 export async function GET(request: Request) {
-  const auth = await requireScope(request, "read:admin");
+  const auth = await requirePlatformAdmin(request);
   if (auth.error) return auth.error;
 
   const checks: Array<{ name: string; status: string; detail: string }> = [];
