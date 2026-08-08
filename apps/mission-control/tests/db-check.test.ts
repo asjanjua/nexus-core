@@ -1,18 +1,36 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { PGlite } from "@electric-sql/pglite";
+import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import path from "node:path";
+
+// The REAL implementation that db-check.mjs runs. This import is the point of
+// the suite: the previous version of this file kept its own copy of
+// migrationState, so all five tests passed against a duplicate and
+// db-check.mjs had no regression protection at all. See
+// docs/PR_REVIEW_2026-08-08.md §3.1.
+//
+// @ts-expect-error — .mjs script module, no type declarations.
+import { migrationState, migrationChecksum, MIGRATIONS_DIR } from "../scripts/migration-state.mjs";
 
 /**
- * db-check.mjs — migration-state test suite.
+ * migration-state.mjs — drift detection test suite.
  *
- * Exercises the `migrationState` function in-process against PGlite across the
- * four states the script must distinguish:
+ * Exercises the real `migrationState` against PGlite (in-memory Postgres, WASM)
+ * across every state the script must distinguish:
  *
- *   1. No _nexus_migrations table  (fresh database)
- *   2. Partially applied             (some migrations ran)
- *   3. Fully applied                 (all migrations ran)
- *   4. Database ahead of checkout    (migrations applied that don't exist on disk)
+ *   1. No _nexus_migrations table   (fresh database)
+ *   2. Partially applied            (some migrations ran)
+ *   3. Fully applied                (all migrations ran)
+ *   4. Database ahead of checkout   (applied ids absent from disk)
+ *   5. Applied file edited since    (checksum mismatch)
+ *   6. Pre-checksum database        (checksum column missing entirely)
+ *   7. Connection failure           (must throw, not report an empty database)
  *
- * PGlite is an in-memory Postgres (WASM). No external database is needed.
+ * States 1 to 5 run against a temporary fixture directory rather than the real
+ * db/migrations folder, so assertions do not shift every time a migration is
+ * added. State 3 additionally runs against the real directory, because the
+ * one thing worth coupling to reality is "does this still find our migrations".
  */
 
 // ---------------------------------------------------------------------------
@@ -20,232 +38,221 @@ import { PGlite } from "@electric-sql/pglite";
 // ---------------------------------------------------------------------------
 
 /**
- * Build a pool-compatible wrapper around a PGlite instance.
+ * Pool-compatible wrapper around a PGlite instance.
  *
- * `migrationState` calls `pool.query(sql)` and expects `{ rows: [...] }` where
- * each row has an `id` column. PGlite returns exactly that shape, plus the
- * `affectedRows`, `fields`, and `duration` that pg.Pool also returns. No
- * adapter needed — the two interfaces are compatible for SELECT queries.
+ * `migrationState` calls `pool.query(sql)` and reads `rows[].id` and
+ * `rows[].checksum`. PGlite returns exactly that shape, and — importantly for
+ * the 42P01 and 42703 branches — surfaces real Postgres error codes on the
+ * thrown error. No adapter needed.
  */
 function pgLitePool(pglite: PGlite) {
-  return {
-    // PGlite.query() returns Results<unknown>; migrationState only reads
-    // `rows[].id`, which exists at runtime. The cast is safe.
-    query: (sql: string) =>
-      pglite.query(sql) as Promise<{ rows: { id: string }[] }>,
-  };
+  return { query: (sql: string) => pglite.query(sql) };
 }
 
-/**
- * All .sql files in the real migrations directory, sorted.
- *
- * `migrationState` reads this set from disk via `readdir`, so the test must
- * reflect the real file system. This is intentional: if the directory moves or
- * the file naming convention changes, this test catches it.
- */
-import path from "node:path";
-import { readdir } from "node:fs/promises";
-import { fileURLToPath } from "node:url";
+let fixtureDir: string;
 
-const MIGRATIONS_DIR = path.join(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "..",
-  "db",
-  "migrations",
-);
-
-async function allMigrationFiles(): Promise<string[]> {
-  return (await readdir(MIGRATIONS_DIR))
-    .filter((f) => f.endsWith(".sql"))
-    .sort();
+/** Write `name` into the fixture directory with the given SQL body. */
+async function writeMigration(name: string, sql: string): Promise<void> {
+  await writeFile(path.join(fixtureDir, name), sql, "utf8");
 }
 
-// ---------------------------------------------------------------------------
-// Dynamic import of migrationState
-// ---------------------------------------------------------------------------
-// db-check.mjs is an ESM script (not a module exporting symbols), so
-// migrationState is not importable. The test reproduces the logic inline
-// rather than requiring a refactor of the script into a library.
-//
-// This is deliberate: the test IS the specification. If the script changes,
-// the test must change with it. Keeping the logic duplicated here means the
-// test author must consciously decide whether a behavioural change is correct.
-// ---------------------------------------------------------------------------
-
-interface MigrationState {
-  appliedCount: number;
-  latestApplied: string | null;
-  pending: string[];
-  appliedNotOnDisk: string[];
+/** Insert a row into _nexus_migrations, optionally with a checksum. */
+async function recordApplied(
+  pglite: PGlite,
+  id: string,
+  checksum?: string,
+): Promise<void> {
+  await pglite.query(
+    "INSERT INTO _nexus_migrations (id, checksum) VALUES ($1, $2)",
+    [id, checksum ?? null],
+  );
 }
 
-async function migrationState(
-  pool: { query: (sql: string) => Promise<{ rows: { id: string }[] }> },
-): Promise<MigrationState> {
-  const onDisk = await allMigrationFiles();
-
-  let applied: string[] = [];
-  try {
-    const { rows } = await pool.query(
-      "SELECT id FROM _nexus_migrations ORDER BY id",
-    );
-    applied = rows.map((r) => r.id);
-  } catch (error: unknown) {
-    // 42P01 = undefined_table. Genuine "nothing has ever run here."
-    if (
-      typeof error === "object" &&
-      error !== null &&
-      "code" in error &&
-      (error as Record<string, unknown>).code === "42P01"
-    ) {
-      return {
-        appliedCount: 0,
-        latestApplied: null,
-        pending: onDisk,
-        appliedNotOnDisk: [],
-      };
-    }
-    throw error;
-  }
-
-  const appliedSet = new Set(applied);
-  const diskSet = new Set(onDisk);
-  return {
-    appliedCount: applied.length,
-    latestApplied: applied[applied.length - 1] ?? null,
-    pending: onDisk.filter((f) => !appliedSet.has(f)),
-    appliedNotOnDisk: applied.filter((id) => !diskSet.has(id)),
-  };
+/** The migrations table as db-migrate.mjs creates it today. */
+async function createMigrationsTable(pglite: PGlite): Promise<void> {
+  await pglite.query(
+    "CREATE TABLE _nexus_migrations (id TEXT PRIMARY KEY, checksum TEXT)",
+  );
 }
 
-// ---------------------------------------------------------------------------
-// Tests
+const A_SQL = "CREATE TABLE a (id INT);";
+const B_SQL = "CREATE TABLE b (id INT);";
+const C_SQL = "CREATE TABLE c (id INT);";
+
 // ---------------------------------------------------------------------------
 
-describe("migrationState", () => {
-  // PGlite instances are in-memory, WASM-backed, and garbage-collected.
-  // No persistent connection to close — each test creates a fresh instance.
+// Suite-level timeout. Every case boots a fresh PGlite (WASM Postgres), which
+// costs 1.3s to 3.9s of pure CPU. That fits the 5s default when this file runs
+// alone but gets starved when the full suite runs 150 files in parallel — the
+// same failure mode already documented on the zip-bomb test in
+// tests/knowledge.test.ts. The assertions are sound; only the fixture is slow.
+describe("migrationState", { timeout: 30_000 }, () => {
   let pglite: PGlite;
+
+  beforeEach(async () => {
+    fixtureDir = await mkdtemp(path.join(tmpdir(), "nexus-migrations-"));
+    await writeMigration("0001_a.sql", A_SQL);
+    await writeMigration("0002_b.sql", B_SQL);
+    await writeMigration("0003_c.sql", C_SQL);
+    // A non-.sql file must be ignored, not counted as a migration.
+    await writeMigration("README.md", "not a migration");
+    pglite = new PGlite();
+  });
+
+  afterEach(async () => {
+    // PGlite must be closed explicitly. The previous version of this suite
+    // asserted "no persistent connection to close — instances are
+    // garbage-collected", which is wrong: each instance holds a WASM runtime
+    // and its own event-loop handles, so leaking them left the vitest fork
+    // unable to exit and the run ended in "Timeout terminating forks worker".
+    // Harmless when this file runs alone, which is why it went unnoticed.
+    await pglite?.close().catch(() => {});
+    await rm(fixtureDir, { recursive: true, force: true });
+  });
 
   // -- State 1: no _nexus_migrations table --------------------------------
 
   it("reports all files as pending when the migrations table does not exist", async () => {
-    pglite = new PGlite();
-    const pool = pgLitePool(pglite);
-    const state = await migrationState(pool);
+    const state = await migrationState(pgLitePool(pglite), fixtureDir);
 
-    const allFiles = await allMigrationFiles();
     expect(state.appliedCount).toBe(0);
     expect(state.latestApplied).toBeNull();
-    expect(state.pending).toEqual(allFiles);
+    expect(state.pending).toEqual(["0001_a.sql", "0002_b.sql", "0003_c.sql"]);
     expect(state.appliedNotOnDisk).toEqual([]);
+    expect(state.modified).toEqual([]);
   });
 
   // -- State 2: partially applied -----------------------------------------
 
   it("distinguishes applied from pending when some migrations have run", async () => {
-    pglite = new PGlite();
-    await pglite.query(
-      "CREATE TABLE IF NOT EXISTS _nexus_migrations (id TEXT PRIMARY KEY)",
-    );
+    await createMigrationsTable(pglite);
+    await recordApplied(pglite, "0001_a.sql", migrationChecksum(A_SQL));
 
-    const allFiles = await allMigrationFiles();
-    const halfway = Math.floor(allFiles.length / 2);
-    const applied = allFiles.slice(0, halfway);
-    const pending = allFiles.slice(halfway);
+    const state = await migrationState(pgLitePool(pglite), fixtureDir);
 
-    for (const id of applied) {
-      await pglite.query(
-        "INSERT INTO _nexus_migrations (id) VALUES ($1)",
-        [id],
-      );
-    }
-
-    const pool = pgLitePool(pglite);
-    const state = await migrationState(pool);
-
-    expect(state.appliedCount).toBe(halfway);
-    expect(state.latestApplied).toBe(applied[applied.length - 1]);
-    expect(state.pending).toEqual(pending);
+    expect(state.appliedCount).toBe(1);
+    expect(state.latestApplied).toBe("0001_a.sql");
+    expect(state.pending).toEqual(["0002_b.sql", "0003_c.sql"]);
     expect(state.appliedNotOnDisk).toEqual([]);
+    expect(state.modified).toEqual([]);
   });
 
   // -- State 3: fully applied ---------------------------------------------
 
-  it("reports zero pending and zero ahead-of-code when fully applied", async () => {
-    pglite = new PGlite();
-    await pglite.query(
-      "CREATE TABLE IF NOT EXISTS _nexus_migrations (id TEXT PRIMARY KEY)",
-    );
+  it("reports no drift in any direction when fully applied", async () => {
+    await createMigrationsTable(pglite);
+    await recordApplied(pglite, "0001_a.sql", migrationChecksum(A_SQL));
+    await recordApplied(pglite, "0002_b.sql", migrationChecksum(B_SQL));
+    await recordApplied(pglite, "0003_c.sql", migrationChecksum(C_SQL));
 
-    const allFiles = await allMigrationFiles();
-    for (const id of allFiles) {
-      await pglite.query(
-        "INSERT INTO _nexus_migrations (id) VALUES ($1)",
-        [id],
-      );
-    }
+    const state = await migrationState(pgLitePool(pglite), fixtureDir);
 
-    const pool = pgLitePool(pglite);
-    const state = await migrationState(pool);
-
-    expect(state.appliedCount).toBe(allFiles.length);
-    expect(state.latestApplied).toBe(allFiles[allFiles.length - 1]);
+    expect(state.appliedCount).toBe(3);
+    expect(state.latestApplied).toBe("0003_c.sql");
     expect(state.pending).toEqual([]);
     expect(state.appliedNotOnDisk).toEqual([]);
+    expect(state.modified).toEqual([]);
   });
 
   // -- State 4: database ahead of checkout --------------------------------
 
   it("reports appliedNotOnDisk when the database has migrations absent from this checkout", async () => {
-    pglite = new PGlite();
-    await pglite.query(
-      "CREATE TABLE IF NOT EXISTS _nexus_migrations (id TEXT PRIMARY KEY)",
-    );
+    await createMigrationsTable(pglite);
+    await recordApplied(pglite, "0001_a.sql", migrationChecksum(A_SQL));
+    await recordApplied(pglite, "0002_b.sql", migrationChecksum(B_SQL));
+    await recordApplied(pglite, "0003_c.sql", migrationChecksum(C_SQL));
+    // Applied by a newer checkout — the 2026-08-05 production case.
+    await recordApplied(pglite, "0004_future.sql", "deadbeef");
+    await recordApplied(pglite, "0005_future.sql", "deadbeef");
 
-    const allFiles = await allMigrationFiles();
+    const state = await migrationState(pgLitePool(pglite), fixtureDir);
 
-    // Apply all real migrations plus two that don't exist on disk.
-    const aheadOfCheckout = [
-      "0091_future_feature_a.sql",
-      "0092_future_feature_b.sql",
-    ];
-    const allIds = [...allFiles, ...aheadOfCheckout];
-
-    for (const id of allIds) {
-      await pglite.query(
-        "INSERT INTO _nexus_migrations (id) VALUES ($1)",
-        [id],
-      );
-    }
-
-    const pool = pgLitePool(pglite);
-    const state = await migrationState(pool);
-
-    expect(state.appliedCount).toBe(allIds.length);
-    expect(state.latestApplied).toBe(
-      aheadOfCheckout[aheadOfCheckout.length - 1],
-    );
+    expect(state.appliedCount).toBe(5);
+    expect(state.latestApplied).toBe("0005_future.sql");
     expect(state.pending).toEqual([]);
-    expect(state.appliedNotOnDisk).toEqual(aheadOfCheckout);
+    expect(state.appliedNotOnDisk).toEqual(["0004_future.sql", "0005_future.sql"]);
   });
 
-  // -- Edge case: the 42P01 guard from Fix 1 ------------------------------
+  // -- State 5: an applied file was edited after it ran --------------------
+
+  it("reports a migration whose file changed after it was applied", async () => {
+    await createMigrationsTable(pglite);
+    await recordApplied(pglite, "0001_a.sql", migrationChecksum(A_SQL));
+    await recordApplied(pglite, "0002_b.sql", migrationChecksum(B_SQL));
+    await recordApplied(pglite, "0003_c.sql", migrationChecksum(C_SQL));
+
+    // Edit 0002 after the fact. db:migrate would print `skip` for it, because
+    // it matches on id — this is exactly the drift that used to be invisible.
+    await writeMigration("0002_b.sql", "CREATE TABLE b (id INT, extra TEXT);");
+
+    const state = await migrationState(pgLitePool(pglite), fixtureDir);
+
+    expect(state.modified).toEqual(["0002_b.sql"]);
+    expect(state.pending).toEqual([]);
+    expect(state.appliedNotOnDisk).toEqual([]);
+  });
+
+  it("treats CRLF and LF versions of the same migration as identical", async () => {
+    await createMigrationsTable(pglite);
+    await recordApplied(pglite, "0001_a.sql", migrationChecksum(A_SQL));
+    // A Windows checkout, or an editor that rewrites line endings, must not
+    // report every migration in the repository as modified.
+    await writeMigration("0001_a.sql", A_SQL.replace(/\n/g, "\r\n"));
+
+    const state = await migrationState(pgLitePool(pglite), fixtureDir);
+    expect(state.modified).toEqual([]);
+  });
+
+  // -- State 6: database predates the checksum column ----------------------
+
+  it("still reports id drift against a database with no checksum column", async () => {
+    // A database migrated before checksums existed. The column is missing
+    // entirely, which raises 42703 — recoverable, not fatal.
+    await pglite.query("CREATE TABLE _nexus_migrations (id TEXT PRIMARY KEY)");
+    await pglite.query("INSERT INTO _nexus_migrations (id) VALUES ('0001_a.sql')");
+
+    const state = await migrationState(pgLitePool(pglite), fixtureDir);
+
+    expect(state.appliedCount).toBe(1);
+    expect(state.pending).toEqual(["0002_b.sql", "0003_c.sql"]);
+    // Content drift is unavailable without the column — silently, but the id
+    // checks still work, which is the behaviour that matters on an old database.
+    expect(state.modified).toEqual([]);
+  });
+
+  it("does not report rows whose checksum was never recorded", async () => {
+    await createMigrationsTable(pglite);
+    // Column exists, value is null: applied before checksums were introduced.
+    await recordApplied(pglite, "0001_a.sql");
+    await writeMigration("0001_a.sql", "CREATE TABLE a (id INT, changed TEXT);");
+
+    const state = await migrationState(pgLitePool(pglite), fixtureDir);
+    expect(state.modified).toEqual([]);
+  });
+
+  // -- State 7: connection failure -----------------------------------------
 
   it("throws on connection-level errors rather than silently reporting an empty database", async () => {
-    // Simulate a connection failure: a pool that throws ECONNREFUSED on query.
     const brokenPool = {
       query: async (_sql: string) => {
-        const err = Object.assign(
-          new Error("connect ECONNREFUSED 127.0.0.1:5432"),
-          { code: "ECONNREFUSED" },
-        );
-        throw err;
+        throw Object.assign(new Error("connect ECONNREFUSED 127.0.0.1:5432"), {
+          code: "ECONNREFUSED",
+        });
       },
     };
 
-    await expect(migrationState(brokenPool)).rejects.toMatchObject({
+    await expect(migrationState(brokenPool, fixtureDir)).rejects.toMatchObject({
       code: "ECONNREFUSED",
     });
+  });
+
+  // -- Coupling check against the real migrations directory ----------------
+
+  it("finds the real db/migrations directory and reads .sql files from it", async () => {
+    // The one assertion that should be coupled to reality: if the directory
+    // moves or the naming convention changes, this fails.
+    const state = await migrationState(pgLitePool(pglite), MIGRATIONS_DIR);
+    expect(state.pending.length).toBeGreaterThan(0);
+    expect(state.pending.every((f: string) => f.endsWith(".sql"))).toBe(true);
   });
 });

@@ -188,9 +188,28 @@ describe("infrastructure health check", () => {
     expect(check(checks, "neon_backup").detail).toMatch(/Launch up to 7 days/i);
   });
 
-  it("still flags R2 versioning as needing manual confirmation", async () => {
+  it("flags object immutability as a manual decision, not a recommendation", async () => {
     const { checks } = await runChecks();
+    const immutability = check(checks, "r2_object_immutability");
 
-    expect(check(checks, "r2_versioning").status).toBe("manual_verification_required");
+    expect(immutability.status).toBe("manual_verification_required");
+    // Points at the control that actually exists in R2.
+    expect(immutability.detail).toMatch(/Bucket Lock/);
+    // And states the tension rather than telling the operator to just turn it on.
+    expect(immutability.detail).toMatch(/erasure/i);
+  });
+
+  /**
+   * The old check told operators to "enable versioning in bucket settings".
+   * R2 has no such toggle, so that instruction led nowhere. If the word comes
+   * back as an instruction, someone has reintroduced advice that cannot be
+   * followed.
+   */
+  it("does not tell operators to enable a versioning toggle that R2 does not have", async () => {
+    const { checks } = await runChecks();
+    const immutability = check(checks, "r2_object_immutability");
+
+    expect(immutability.detail).toMatch(/no versioning toggle/i);
+    expect(checks.some((c) => c.name === "r2_versioning")).toBe(false);
   });
 });

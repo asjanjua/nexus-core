@@ -384,3 +384,43 @@ Treat the warning count as a budget that only moves for a stated reason. Each
 remaining warning should be explainable in one sentence by whoever last touched
 it. Twelve explainable warnings beat zero warnings achieved by disabling rules,
 and both beat fifteen nobody has read.
+
+## 11. A CI Job That Exists Is Not A Gate
+
+PR #14 exists only to strip two `any`s from a file PR #13 had added eight
+minutes earlier. The obvious diagnosis is "lint does not run in CI". That
+diagnosis is wrong, and it was checked rather than assumed: the Lint step was
+already in `.github/workflows/ci.yml`, and `eslint` does report
+`@typescript-eslint/no-explicit-any` as an error, not a warning.
+
+The actual gap is that the lint job is not a **required status check** in branch
+protection. A squash merge can land before CI reports, and nothing blocks it.
+
+### The setting
+
+GitHub → Settings → Branches → branch protection rule for `main` → *Require
+status checks to pass before merging*. Add, at minimum:
+
+- `Typecheck, test, build (Node 22)`
+- `Typecheck, test, build (Node 24)`
+
+Also enable *Require branches to be up to date before merging*, or a check can
+pass against a stale base and still merge something broken.
+
+This cannot be configured from a file in the repository. It has to be set in the
+GitHub UI, and it is worth re-checking after any repository transfer or
+organisation move, because branch protection does not always survive them.
+
+### What the repository can do
+
+`.githooks/pre-commit` runs `scripts/lint-staged.mjs`, which lints the staged
+TypeScript only. That keeps the common case from ever reaching CI, at a fraction
+of a second per commit. It is not a substitute for the required check — a hook
+is skippable with `--no-verify`, and hooks only exist for people who ran
+`npm run hooks:install`.
+
+### The general rule
+
+Before concluding that a check is missing, run it. "CI does not lint" and "CI
+lints but nothing waits for the result" have the same symptom and completely
+different fixes, and only one of them is fixed by editing a workflow file.

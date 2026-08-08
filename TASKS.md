@@ -8,6 +8,57 @@
 > Last reviewed and tightened: 2026-08-06 (P3 completion session).
 
 
+## 2026-08-08 — Appearance control (branch `feat/theme-day-night-system`)
+
+Worktree: `~/Developer/nexus-theme`. Staged, not committed. Notes:
+`docs/THEME_DAY_NIGHT.md`. Tests 1253/1253, tsc/eslint/boundaries clean.
+
+- [x] Day / Night / System / Local-time modes; default `system`.
+- [x] Full sweep of ~2,500 dark-mode utilities via split `ink`/`raise` CSS channels — night mode byte-identical to today.
+- [x] Chrome stays dark in both themes (`data-chrome="dark"`, three elements).
+- [x] Exports and print always light, whatever the theme.
+- [x] Status colours darkened for light surfaces, contrast-gated in CI against `globals.css` (not a copy of it).
+- [x] Pre-paint inline script — no flash on `system` / `clock`; executed in a vm sandbox against the same case table as the TypeScript.
+- [x] OS-preference listener and clock-boundary tick while a tab stays open.
+- [ ] **Commit and push the branch.** Git cannot finalise a commit through the sandbox mount.
+- [ ] **One visual pass on day mode** before it ships — `/settings`, Executive Room, one Trust Drawer. Nothing has been rendered in a browser.
+- [ ] Decide whether the default should move from `system` to `day` once day mode has been seen.
+
+## 2026-08-08 — Adversarial review of the remediation
+
+- [x] Pass `download.contentType` at both `decodeDownloadedText` call sites — the parameter existed and nothing passed it, so the improvement was inert.
+- [x] Record `identityKind` on connector OAuth state — the session bind would have broken every API-key-initiated install.
+- [x] Bound the provider token call (10s) and add a `maxHoldMs` backstop — the advisory lock held a Postgres transaction across an external HTTP call.
+- [x] Register the in-flight refresh promise before the work starts, not after.
+- [x] Reset the observability cooldown per test — it was silently suppressing assertions in later tests.
+
+## 2026-08-08 — Post-merge PR review remediation
+
+Ledger: `HANDOVER.md` §2026-08-08. Findings: `docs/PR_REVIEW_2026-08-08.md`.
+Uncommitted. Tests 1425/1425, tsc clean, lint clean, boundaries clean.
+
+- [x] Extract `migrationState` to `scripts/migration-state.mjs` — the test suite was asserting against its own copy, so `db-check.mjs` had no regression protection. Verified by mutation.
+- [x] Migration checksums — `db:check` reports a third drift class, `modified`. Editing an applied migration was previously invisible to both scripts.
+- [x] Serialise connector token refresh — in-process dedupe plus `pg_advisory_xact_lock`, with a re-read inside the lock. Single-use refresh tokens (Microsoft, QuickBooks) could brick a connector.
+- [x] Preserve `installedBy` across token refresh; add `lastRefreshedAt`.
+- [x] Legacy grace window for unsubscribe tokens to 2026-10-31, with per-acceptance reporting. Signing had killed every link in already-delivered mail.
+- [x] HKDF purpose-derived signing subkeys (`signHmacHexFor`) so rotating `AUTH_SECRET` does not silently invalidate unsubscribe links and OAuth states.
+- [x] Stop caching the fail-open result in `checkWorkspaceAccess`.
+- [x] Anchor `tenantIdForWorkspace` to the prefix and throw otherwise — a data-isolation boundary that silently guessed on 3 of 5 id shapes.
+- [x] Fix binary detection in `decodeDownloadedText`; cap `readStreamToBuffer` at 50 MB.
+- [x] Bind connector OAuth state to `userId` + single-use nonce; parse with zod. 10 install + 10 callback routes updated.
+- [x] `connectorAppUrl()` fails closed outside dev instead of redirecting customers to localhost.
+- [x] Pin `jszip` exactly; add a dependency guard test for the zip-bomb check.
+- [x] `content-length` pre-check on knowledge import; aggregate uncompressed cap.
+- [x] Move observability to `lib/observability/report.ts`; allowlisted `extra`, 60s cooldown, one-line scrubbed output.
+- [x] Drift guard pinning the two `isExplicitDevRuntime` implementations together.
+- [x] Connection timeouts on `db:check` / `db:migrate`; one comparator for migration ordering.
+- [x] `scripts/lint-staged.mjs` in the pre-commit hook.
+- [ ] **Set lint + typecheck as required status checks on `main`.** GitHub UI only — see `docs/ENGINEERING_GUARDRAILS.md` §11. This is the actual cause of PR #14.
+- [ ] **Exercise one real connector install on staging** before the OAuth state bind reaches production. Use `NEXUS_CONNECTOR_CALLBACK_BIND=report-only` if the session does not resolve.
+- [ ] Delete the unsubscribe legacy branch after 2026-10-31 (or earlier, once `unsubscribe_token_legacy_unsigned` stops appearing in the logs).
+- [ ] Migrate the ~60 `captureHandledError` / `captureDegradedState` call sites to `reportHandledError` / `reportDegradedState`, then delete `lib/observability/sentry.ts`.
+
 ## 2026-08-06 — P3 Pilot Operations Completion (Queen session)
 
 Ledger: `HANDOVER.md` §2026-08-06 P3. 25 commits on `main`. Warnings: 0.

@@ -1,5 +1,101 @@
 # HANDOVER.md -- NexusAI Live Session State
 
+## 2026-08-08 — Two parallel workstreams, both awaiting your commit
+
+### A. `main` working tree (uncommitted) — PR remediation + self-review
+
+16 review fixes, then an adversarial pass over those fixes that found 5 more
+defects. Detail in the two CHANGELOG entries of this date.
+**1438/1438 tests, tsc / eslint / boundaries clean.**
+
+### B. `feat/theme-day-night-system` — day/night/system/local-time appearance
+
+In a **separate git worktree** at `~/Developer/nexus-theme`, branched from
+`a1a9bdd`. Fully staged, **not committed**: git cannot finalise a commit through
+the sandbox mount (it cannot unlink `index.lock`), and the repo's own guidance
+forbids the `GIT_INDEX_FILE` workaround. Run `git commit` there yourself.
+
+**1253/1253 tests, tsc / eslint / boundaries clean.** Design notes:
+`docs/THEME_DAY_NIGHT.md` on that branch.
+
+The interesting part: the app had 2,500+ hardcoded dark-mode utilities across
+105 files. Rather than edit them, `white` became a theme variable — split into
+an `ink` channel (text/border/divide/ring) and a `raise` channel (background).
+In night both are pure white, so **night mode is byte-identical to today** and
+only day mode is under test. Verified against real Tailwind output.
+
+Not verified: **nothing was rendered in a browser.** Day mode needs one visual
+pass before it ships.
+
+### Two decisions you should sanity-check
+
+1. **Theme default is `system`, not `day`.** The design system says light is the
+   default for working surfaces; taken literally that flips every existing pilot
+   user to a light app on their next page load. Following the device honours the
+   intent for light-desktop users without that. Exports stay light regardless.
+2. **Unsubscribe grace window** (below) deliberately accepts unsigned tokens
+   until 2026-10-31.
+
+---
+
+## 2026-08-08 — Post-merge PR review remediation (uncommitted)
+
+**State:** working tree, not committed, not pushed. `tsc` clean, `vitest run`
+1425/1425 across 151 files, `npm run lint` clean, `npm run check:boundaries`
+clean.
+
+All seven merged PRs (#5, #8, #9, #10, #11, #13, #14) were reviewed
+adversarially. Findings in `docs/PR_REVIEW_2026-08-08.md`; remediation detail in
+the CHANGELOG entry of the same date. Agent split on those PRs: Devin AI
+produced #8/#9/#10/#11 in one parallel batch on 28 July; Claude Opus 5 produced
+#5/#13/#14.
+
+### What changed
+
+| Area | Files |
+| --- | --- |
+| Migration drift | `scripts/migration-state.mjs` (new), `db-check.mjs`, `db-migrate.mjs`, `tests/db-check.test.ts` |
+| Connector token refresh | `lib/connectors/shared/access-token.ts`, `repository.withAdvisoryLock` (new) |
+| Connector OAuth state | `oauth-state.ts`, `oauth-callback-state.ts` (new), 10 install + 10 callback routes |
+| Connector ingest | `lib/connectors/shared/ingest.ts`, `oauth-callback.ts` |
+| Email | `lib/email/resend.ts`, `lib/security.ts` (HKDF subkeys) |
+| Auth | `lib/api-auth.ts` |
+| Knowledge import | `lib/services/knowledge.ts`, `app/api/knowledge/import/route.ts`, `package.json` (jszip pinned) |
+| Observability | `lib/observability/report.ts` (new), `sentry.ts` (now a shim) |
+| Tooling | `.githooks/pre-commit`, `scripts/lint-staged.mjs` (new) |
+| Tests | 5 files updated, 3 added (`observability-report`, `dev-runtime-drift`, plus rewritten `db-check`) |
+
+### Three things the next session must know
+
+1. **The OAuth state bind needs a staging install before production.** Strict
+   mode refuses a connector callback with no resolvable Clerk session. That
+   depends on the session cookie surviving the provider's redirect chain, which
+   has not been exercised against a real provider.
+   `NEXUS_CONNECTOR_CALLBACK_BIND=report-only` is the rollout hatch and
+   downgrades only the missing-session case, never a user mismatch.
+
+2. **The unsubscribe legacy window expires 2026-10-31.** `resend.ts` accepts
+   unsigned tokens and raw-secret-signed tokens until then, and logs
+   `unsubscribe_token_legacy_unsigned` on each. When that stops appearing,
+   delete the branch and the two tests that pin it. A test already asserts the
+   post-window rejection, so the deadline cannot pass unnoticed.
+
+3. **Lint is not a required status check on `main`.** This is why PR #14
+   existed. It cannot be fixed from the repository — see
+   `docs/ENGINEERING_GUARDRAILS.md` §11 for the GitHub setting.
+
+### Two review findings were wrong
+
+Corrected in place in the review doc, and worth reading before trusting the rest
+of it: §7.1 (dropping `context.extra` was a deliberate, tested PII decision, not
+a bug — the recommended patch reopened it) and §4 (lint *was* in CI; the gap was
+branch protection).
+
+### Not mine
+
+`tests/synthesis-cron.test.ts` is untracked and was mid-write during this
+session — it does not parse. Left untouched.
+
 ## 2026-08-06 — Connector Ops + Quorum + Meridian (Queen session, continued)
 
 **Commit range:** `48663ec` → `31078c6` on `main`
