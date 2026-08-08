@@ -110,13 +110,27 @@ export async function GET(request: Request) {
       : "DATABASE_URL does not appear to be a Neon connection. Verify backup configuration.",
   });
 
-  // R2 versioning — documented requirement for original-file recovery.
-  // Versioning must be enabled in the Cloudflare dashboard per bucket.
+  // Immutability for original evidence files.
+  //
+  // Renamed from r2_versioning 2026-08-08. The old check told operators to
+  // "enable versioning in bucket settings", which is not a control the R2
+  // dashboard exposes — following that instruction leads nowhere. R2's actual
+  // mechanism is Bucket Lock: a retention policy that prevents overwrites and
+  // deletions until the period ends.
+  //
+  // Still manual, and deliberately left as a DECISION rather than a
+  // recommendation. Bucket Lock is genuinely in tension with data protection:
+  // a locked object cannot be deleted before its retention expires, which
+  // conflicts directly with an erasure request under PDPL or GDPR Art. 17.
+  // Evidence immutability and the right to erasure pull in opposite
+  // directions, and picking a retention period is a legal call about which
+  // obligation dominates for a given client. This route flags it; it must not
+  // resolve it.
   checks.push({
-    name: "r2_versioning",
+    name: "r2_object_immutability",
     status: "manual_verification_required",
     detail:
-      "R2 bucket versioning must be enabled in Cloudflare Dashboard → R2 → bucket settings. This preserves original evidence files for recovery commitments.",
+      "Cloudflare R2 has no versioning toggle. The equivalent control is Bucket Lock (R2 → bucket → Settings → Bucket Lock Rules), which blocks overwrites and deletions for a chosen retention period. NOT enabled by default, so an overwrite currently destroys the original evidence file. Note the trade-off before setting one: a locked object cannot be deleted before its retention expires, which conflicts with a PDPL/GDPR erasure request. Decide the period against client obligations.",
   });
 
   const allConfigured = checks.every((c) => c.status !== "not_configured");
