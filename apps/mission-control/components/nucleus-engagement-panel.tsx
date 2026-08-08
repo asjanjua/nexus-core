@@ -35,6 +35,10 @@ const BUILT_ROUTES = new Set([
   "/nucleus/reviewer-console",
   "/nucleus/methodologies",
   "/nucleus/publish",
+  "/nucleus/engagement-intake",
+  "/nucleus/deliverable-builder",
+  "/nucleus/client-portal",
+  "/nucleus/evidence-room",
 ]);
 
 const ARC_SHORT: Record<NucleusEngagementArc, string> = {

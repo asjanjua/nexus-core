@@ -66,3 +66,64 @@ re-run.
 ## Next
 
 Push `feat/nucleus-deep-routes`, open a PR, let CI run the build gate.
+
+## 2026-08-08 — the four deferred routes, now built
+
+`engagement-intake`, `deliverable-builder`, `client-portal` and
+`evidence-room`. Two needed persistence; two did not and were built as derived
+views rather than given tables they do not need.
+
+**Migrations 0057 and 0058 — numbered to avoid a silent collision.** The
+sibling branch `feat/vantage-deep-routes` adds 0055 and 0056 concurrently. Two
+branches claiming one number is a conflict that gets resolved by renaming under
+time pressure, and the migration runner tracks filenames. Left a gap on
+purpose, and pinned it by test.
+
+**The load-bearing detail is three-valued caveats**, preserved from radio
+button to JSONB column:
+
+- `null` — nobody has answered
+- `[]` — checked, none outstanding
+- `[...]` — these are outstanding
+
+Collapsing `null` into `[]` anywhere in that chain converts an unreviewed
+deliverable into a positive assurance to a client. It is the most dangerous
+thing this record could misstate and the easiest invisible "tidy-up" for a
+future developer, so it is guarded at four layers: no column default, a
+nullable contract, an `!== undefined` check in the repository, and a mapper
+that will not coerce. The UI asks with a radio rather than a checkbox, because
+an unchecked box silently asserts the second value.
+
+**nucleus_engagements holds no billing, rates or utilisation.** The moment it
+does, Nucleus becomes the firm's system of record, and a governance platform
+that also owns the commercial record has a conflict when a caveat is
+inconvenient.
+
+**Partner is optional at intake, mandatory at release.** Work starts before a
+reviewing partner is assigned; forcing a name early produces a placeholder that
+later looks like accountability. The release endpoint closes the gap where it
+matters.
+
+**Evidence Room reports "likely match", never coverage.** A stage declares
+required objects in the firm's language; the classifier types documents in its
+own. Those are not one controlled list, so the page says so rather than
+implying readiness.
+
+**Client Portal renders the fixed layer from `PROTECTED_TRUST_ELEMENTS`**, the
+same constant the release API enforces, so the preview cannot drift from what
+is actually refused.
+
+**Verified against real Postgres** via PGlite: 52/55 applied (3 pgvector-only
+skips), 6 assertions including that an unanswered deliverable stores NULL and
+not `[]`, an explicit "none" stores `[]`, and there are no billing columns.
+
+**Verification:** tsc 0; 1197 tests / 146 files; eslint clean. Negative
+controls: added `NOT NULL DEFAULT '[]'` to the column and made the mapper
+coerce null to `[]` — both guards failed, both reverted.
+
+One test was wrong on first run: it scanned the whole migration for `DEFAULT`
+and matched the header comment explaining why the column is *not* defaulted — a
+test failing on its own rationale. Narrowed to the DDL with comment lines
+stripped.
+
+All eight Nucleus screens now exist.
