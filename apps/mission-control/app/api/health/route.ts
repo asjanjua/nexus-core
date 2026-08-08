@@ -1,6 +1,6 @@
 import { ok } from "@/lib/api";
 import { repository } from "@/lib/data/repository";
-import { isOriginalStorageEnabled } from "@/lib/services/object-storage";
+import { isOriginalStorageEnabled, r2ConfigProblem } from "@/lib/services/object-storage";
 
 export const runtime = "nodejs";
 
@@ -78,9 +78,26 @@ export async function GET() {
   const llm = llmHealth();
   const vectorSearch = vectorHealth();
   const originalsEnabled = process.env.NEXUS_R2_ORIGINALS === "enabled";
+  /**
+   * Say WHICH variable is wrong, not merely that something is.
+   *
+   * Production ran `degraded` with `originalsStorage.ok: false` and nothing
+   * else. R2 has four settings, so that is a four-way guess against a live
+   * service — and the answer was already computed: r2ConfigProblem() names the
+   * first structural fault it finds.
+   *
+   * Safe to expose unauthenticated. The codes name a VARIABLE, never a value:
+   * "malformed_account_id" tells an operator where to look and an attacker
+   * nothing they could not learn by observing that uploads are not retained.
+   * Withholding it costs far more than it protects.
+   */
+  const originalsProblem = originalsEnabled ? r2ConfigProblem() : null;
   const originalsStorage = {
     ok: !originalsEnabled || isOriginalStorageEnabled(),
-    enabled: originalsEnabled
+    enabled: originalsEnabled,
+    // Only present when there IS a problem, so a healthy payload stays clean
+    // and a reader never has to interpret `problem: null`.
+    ...(originalsProblem ? { problem: originalsProblem } : {})
   };
   const healthy = db.ok && llm.ok && vectorSearch.ok && originalsStorage.ok;
 
