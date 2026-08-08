@@ -26,6 +26,20 @@ import {
 
 const ARC_ORDER: VantageDDArc[] = ["dealroom", "coverage", "redflags", "memo"];
 
+/**
+ * Deep routes that now exist. Kept as an explicit set rather than probing the
+ * filesystem so the hub can never claim a route is live before it is: adding a
+ * page and forgetting this line understates, which is the safe direction.
+ */
+const BUILT_ROUTES = new Set([
+  "/vantage/coverage",
+  "/vantage/red-flags",
+  "/vantage/data-room",
+  "/vantage/evidence-depth",
+  "/vantage/ic-memo",
+  "/vantage/decision-handoff",
+]);
+
 const ARC_SHORT: Record<VantageDDArc, string> = {
   dealroom: "Deal room",
   coverage: "Coverage",
@@ -142,9 +156,27 @@ export function VantageDealRoomPanel() {
             return (
               <div key={screen.id} className="rounded-lg border border-white/10 bg-black/20 p-4">
                 <div className="flex items-start justify-between gap-3">
-                  <p className="text-sm font-semibold text-white">{screen.title}</p>
-                  <span className="shrink-0 rounded-md border border-[#D9834A]/25 px-2 py-0.5 text-[10px] text-[#F1B084]">
-                    planned deep route
+                  {/* A built route is a link. A chip saying "live" beside a
+                      title nobody can click is worse than saying nothing. */}
+                  {BUILT_ROUTES.has(screen.routeCandidate) ? (
+                    <Link
+                      href={screen.routeCandidate}
+                      className="text-sm font-semibold text-white hover:underline"
+                      prefetch={false}
+                    >
+                      {screen.title}
+                    </Link>
+                  ) : (
+                    <p className="text-sm font-semibold text-white">{screen.title}</p>
+                  )}
+                  <span
+                    className={`shrink-0 rounded-md border px-2 py-0.5 text-[10px] ${
+                      BUILT_ROUTES.has(screen.routeCandidate)
+                        ? "border-nexus-accent/30 bg-nexus-accent/10 text-nexus-accent"
+                        : "border-[#D9834A]/25 text-[#F1B084]"
+                    }`}
+                  >
+                    {BUILT_ROUTES.has(screen.routeCandidate) ? "live route" : "planned deep route"}
                   </span>
                 </div>
                 <p className="mt-2 text-xs leading-5 text-white/50">{screen.purpose}</p>
