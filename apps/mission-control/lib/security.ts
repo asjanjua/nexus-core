@@ -37,6 +37,32 @@ export function signHmacHex(input: string, secret = requireAuthSecret()): string
 }
 
 /**
+ * Derive a purpose-specific signing key from AUTH_SECRET.
+ *
+ * Everything that needed a signature used to HMAC with AUTH_SECRET directly,
+ * which coupled unrelated lifetimes: rotating AUTH_SECRET to invalidate
+ * sessions would also, silently, kill every outstanding unsubscribe link and
+ * every in-flight connector OAuth state. Deriving per purpose does not remove
+ * that coupling by itself — all subkeys still descend from AUTH_SECRET — but it
+ * lets a single purpose be rotated on its own by bumping its label, e.g.
+ * "unsubscribe-v1" to "unsubscribe-v2".
+ *
+ * HKDF with the label as `info` is the standard construction for this. The salt
+ * is empty on purpose: AUTH_SECRET is already high-entropy, and a fixed salt
+ * would have to be stored and rotated alongside it for no gain.
+ */
+export function derivedSigningKey(purpose: string, secret = requireAuthSecret()): Buffer {
+  return Buffer.from(
+    crypto.hkdfSync("sha256", Buffer.from(secret, "utf8"), Buffer.alloc(0), Buffer.from(purpose, "utf8"), 32)
+  );
+}
+
+/** HMAC-SHA256 under a purpose-derived subkey. See `derivedSigningKey`. */
+export function signHmacHexFor(purpose: string, input: string): string {
+  return crypto.createHmac("sha256", derivedSigningKey(purpose)).update(input).digest("hex");
+}
+
+/**
  * Whether a request carries the cron shared secret, via either
  * `Authorization: Bearer <secret>` or `x-cron-secret: <secret>`.
  *

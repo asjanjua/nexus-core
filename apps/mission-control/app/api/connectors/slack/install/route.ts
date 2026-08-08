@@ -41,7 +41,14 @@ export async function GET(request: Request) {
 
   const appUrl = connectorAppUrl();
   const redirectUri = `${appUrl}/api/connectors/slack/callback`;
-  const state = signConnectorState(ctx.workspaceId);
+  const state = signConnectorState(
+    ctx.workspaceId,
+    ctx.userId,
+    // A bearer caller's ctx.userId is an API key id, not a Clerk user, so the
+    // callback cannot bind it to a session. Recording which it is keeps the
+    // callback from comparing two identifiers that can never match.
+    ctx.authType === "bearer" ? "api-key" : "clerk"
+  );
 
   const slackAuthUrl = new URL("https://slack.com/oauth/v2/authorize");
   slackAuthUrl.searchParams.set("client_id", clientId);

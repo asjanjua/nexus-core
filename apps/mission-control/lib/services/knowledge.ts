@@ -25,8 +25,19 @@ export async function exportKnowledgeVault(workspaceId: string): Promise<Buffer>
  * trusting the uploaded file to be a real vault export.
  */
 export const MAX_IMPORT_ARCHIVE_BYTES = 25 * 1024 * 1024;
-const MAX_IMPORT_NOTE_BYTES = 1024 * 1024;
-const MAX_IMPORT_NOTES = 1000;
+export const MAX_IMPORT_NOTE_BYTES = 1024 * 1024;
+export const MAX_IMPORT_NOTES = 1000;
+
+/**
+ * Ceiling on the TOTAL uncompressed bytes an archive may expand to.
+ *
+ * The per-note and note-count caps alone allow 1000 x 1 MB = 1 GB of
+ * decompression and database writes from one upload. Peak memory stays bounded
+ * because entries are processed one at a time, so this is a throughput and cost
+ * bound rather than an OOM guard — but a single request should not be able to
+ * buy an hour of writes. See docs/PR_REVIEW_2026-08-08.md §6.4.
+ */
+export const MAX_IMPORT_TOTAL_UNCOMPRESSED_BYTES = 100 * 1024 * 1024;
 
 /**
  * Size an entry claims it will expand to, read from the zip central directory
@@ -34,8 +45,20 @@ const MAX_IMPORT_NOTES = 1000;
  * produce, so an archive within MAX_IMPORT_ARCHIVE_BYTES says nothing about
  * what a single entry costs to inflate; the declared size does, and rejecting
  * on it keeps oversized entries from ever becoming resident.
+ *
+ * FRAGILE BY NECESSITY. `_data` is not part of JSZip's public API, so a JSZip
+ * upgrade that renames or restructures it makes this return null and silently
+ * disables the guard — the worst property a security control can have. Two
+ * mitigations, both required:
+ *
+ *   1. package.json pins jszip to an exact version, not a caret range.
+ *   2. tests/knowledge.test.ts asserts this returns a number for a real
+ *      archive, so a dependency bump produces a red build rather than a
+ *      quietly disabled check.
+ *
+ * Exported solely so that test can reach it.
  */
-function declaredUncompressedSize(entry: JSZip.JSZipObject): number | null {
+export function declaredUncompressedSize(entry: JSZip.JSZipObject): number | null {
   const data = (entry as JSZip.JSZipObject & { _data?: { uncompressedSize?: unknown } })._data;
   return typeof data?.uncompressedSize === "number" ? data.uncompressedSize : null;
 }
@@ -51,6 +74,7 @@ export async function importKnowledgeVault(
   let skipped = 0;
   const notes: string[] = [];
   let considered = 0;
+  let totalUncompressed = 0;
 
   for (const [path, entry] of Object.entries(zip.files)) {
     if (entry.dir || !path.toLowerCase().endsWith(".md") || path.startsWith("__MACOSX/")) {
@@ -70,9 +94,18 @@ export async function importKnowledgeVault(
       continue;
     }
     const markdown = await entry.async("string");
-    if (Buffer.byteLength(markdown, "utf8") > MAX_IMPORT_NOTE_BYTES) {
+    const noteBytes = Buffer.byteLength(markdown, "utf8");
+    if (noteBytes > MAX_IMPORT_NOTE_BYTES) {
       skipped++;
       continue;
+    }
+    // Aggregate ceiling. Counted on actual inflated size rather than the
+    // declared one, so an archive that lies in its central directory still
+    // hits the bound. Stop outright rather than skipping: past this point the
+    // archive is not a plausible vault export.
+    totalUncompressed += noteBytes;
+    if (totalUncompressed > MAX_IMPORT_TOTAL_UNCOMPRESSED_BYTES) {
+      throw new Error("import_archive_expands_too_far");
     }
     const parsed = parseFrontmatter(markdown);
     const extracted = extractKnowledge(parsed.body, parsed.frontmatter);

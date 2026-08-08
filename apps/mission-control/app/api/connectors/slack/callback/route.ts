@@ -22,7 +22,7 @@ import {
   redirectWithConnectorError,
   redirectWithConnectorInstalled,
 } from "@/lib/connectors/shared/oauth-callback";
-import { verifyConnectorState } from "@/lib/connectors/shared/oauth-state";
+import { consumeConnectorCallbackState } from "@/lib/connectors/shared/oauth-callback-state";
 
 // ---------------------------------------------------------------------------
 // Slack token exchange
@@ -80,7 +80,9 @@ export async function GET(request: Request) {
   }
 
   // Validate state to prevent CSRF
-  const statePayload = verifyConnectorState(state);
+  // Binds the state to the signed-in caller and burns its nonce, so a
+  // captured state cannot be replayed or completed by a different user.
+  const statePayload = await consumeConnectorCallbackState(state, "slack");
   if (!statePayload) {
     return redirectWithConnectorError(appUrl, "invalid_state");
   }
