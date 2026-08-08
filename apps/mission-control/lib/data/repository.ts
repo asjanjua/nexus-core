@@ -909,8 +909,20 @@ export const repository = {
       return true;
     });
     if (!saved) return null;
+    // SCOPED READ-BACK. `id` can come from the request body on an update, and
+    // an unscoped select here returned another workspace's deliverable even
+    // though the UPDATE above correctly matched nothing — a cross-tenant READ
+    // dressed up as a successful write. Title, source coverage, reviewer status
+    // and caveats are exactly the client-confidential fields a competing firm
+    // would want.
     const rows = await runDb((db) =>
-      db.select().from(nucleusDeliverables).where(eq(nucleusDeliverables.id, id)).limit(1)
+      db
+        .select()
+        .from(nucleusDeliverables)
+        .where(
+          and(eq(nucleusDeliverables.id, id), eq(nucleusDeliverables.workspaceId, workspaceId))
+        )
+        .limit(1)
     );
     return rows && rows[0] ? toNucleusDeliverable(rows[0]) : null;
   },
