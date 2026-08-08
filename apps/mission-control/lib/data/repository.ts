@@ -921,8 +921,17 @@ export const repository = {
       return true;
     });
     if (!saved) return null;
+    // Scoped, though `id` here is generated above and never caller-supplied.
+    // The sibling Nucleus method had the same shape with a caller-supplied id
+    // and leaked another tenant's row through the read-back while the write
+    // correctly matched nothing. Cheap to make the predicate unconditional
+    // rather than rely on every future caller preserving that distinction.
     const rows = await runDb((db) =>
-      db.select().from(vantageJudgments).where(eq(vantageJudgments.id, id)).limit(1)
+      db
+        .select()
+        .from(vantageJudgments)
+        .where(and(eq(vantageJudgments.id, id), eq(vantageJudgments.workspaceId, workspaceId)))
+        .limit(1)
     );
     return rows && rows[0] ? toVantageJudgment(rows[0]) : null;
   },
