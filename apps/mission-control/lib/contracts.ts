@@ -1475,7 +1475,6 @@ export const activateRoomSchema = z.object({
   lifecycleState: z.enum(["active", "inactive"]).optional(),
 });
 export type ActivateRoomInput = z.infer<typeof activateRoomSchema>;
-
 /**
  * A named diligence scope. No approval state by design — see migration 0055.
  */
@@ -1536,3 +1535,53 @@ export const vantageJudgmentInputSchema = z.object({
   supersedes: z.string().min(1).max(120).optional()
 });
 export type VantageJudgmentInput = z.infer<typeof vantageJudgmentInputSchema>;
+export const nucleusEngagementSchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  reference: z.string(),
+  clientName: z.string(),
+  methodArc: z.enum(["profile", "package", "delivery", "assurance"]),
+  partner: z.string().nullable(),
+  scopeNote: z.string().nullable(),
+  archivedAt: z.string().nullable(),
+  createdAt: z.string()
+});
+export type NucleusEngagement = z.infer<typeof nucleusEngagementSchema>;
+
+export const nucleusEngagementInputSchema = z.object({
+  reference: z.string().min(1).max(200),
+  clientName: z.string().min(1).max(200),
+  methodArc: z.enum(["profile", "package", "delivery", "assurance"]).default("profile"),
+  /** Optional at intake; mandatory before anything is released to a client. */
+  partner: z.string().max(160).nullable().optional(),
+  scopeNote: z.string().max(4000).nullable().optional()
+});
+export type NucleusEngagementInput = z.infer<typeof nucleusEngagementInputSchema>;
+
+export const nucleusDeliverableSchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  engagementId: z.string(),
+  title: z.string(),
+  sourceCoverage: z.string().nullable(),
+  reviewerStatus: z.string().nullable(),
+  /**
+   * null = nobody answered. [] = checked, none outstanding. The distinction is
+   * load-bearing and must survive every layer.
+   */
+  unresolvedCaveats: z.array(z.string()).nullable(),
+  releasedAt: z.string().nullable(),
+  releasedByPartner: z.string().nullable(),
+  createdAt: z.string()
+});
+export type NucleusDeliverable = z.infer<typeof nucleusDeliverableSchema>;
+
+export const nucleusDeliverableInputSchema = z.object({
+  engagementId: z.string().min(1),
+  title: z.string().min(1).max(300),
+  sourceCoverage: z.string().max(4000).nullable().optional(),
+  reviewerStatus: z.string().max(400).nullable().optional(),
+  /** Explicit null is allowed and means unanswered; omit to leave unchanged. */
+  unresolvedCaveats: z.array(z.string().min(1).max(500)).max(100).nullable().optional()
+});
+export type NucleusDeliverableInput = z.infer<typeof nucleusDeliverableInputSchema>;

@@ -6,7 +6,7 @@ import { Pool } from "pg";
 import { verifyPassword } from "@/lib/auth";
 import { store } from "@/lib/data/store";
 import { evidenceSourceTypeSchema, ROOM_TEMPLATES, ROOM_TEMPLATE_DEFAULTS } from "@/lib/contracts";
-import type { Action, ActionInput, ActionStatus, ActivateRoomInput, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, DispatchJob, DispatchJobInput, DispatchJobStatus, Entity, EntityInput, EntityRelationship, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, KnowledgeLink, KnowledgeNote, KnowledgeNoteInput, KnowledgeSearchResult, KnowledgeSyncEvent, LearningSignal, LearningSignalInput, LearningSignalSummary, MeridianScope, MeridianScopeInput, NexusRoom, PilotOutcome, ProWaitlistEntry, PromptRegistryEntry, ReadinessSubmission, Recommendation, ReviewerSeat, ApprovalPolicy, ApprovalPolicyMode, RoomAuditEntry, RoomLifecycleState, RoomTemplate, TrialInvite, RecommendationStatus, StrategyProfile, StrategyProfileInput, SynthesisSchedule, SynthesisScheduleInput, SynthesisScheduleStatus, WorkflowTwin, WorkflowTwinInput, WorkflowTwinRun, WorkflowTwinRunInput, WorkflowTwinRunStatus, WorkflowTwinStatus, WorkflowTwinType, WorkspaceProfile, WorkspaceSettings, VantageDeal, VantageDealInput, VantageJudgment, VantageJudgmentInput } from "@/lib/contracts";
+import type { Action, ActionInput, ActionStatus, ActivateRoomInput, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, DispatchJob, DispatchJobInput, DispatchJobStatus, Entity, EntityInput, EntityRelationship, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, KnowledgeLink, KnowledgeNote, KnowledgeNoteInput, KnowledgeSearchResult, KnowledgeSyncEvent, LearningSignal, LearningSignalInput, LearningSignalSummary, MeridianScope, MeridianScopeInput, NexusRoom, PilotOutcome, ProWaitlistEntry, PromptRegistryEntry, ReadinessSubmission, Recommendation, ReviewerSeat, ApprovalPolicy, ApprovalPolicyMode, RoomAuditEntry, RoomLifecycleState, RoomTemplate, TrialInvite, RecommendationStatus, StrategyProfile, StrategyProfileInput, SynthesisSchedule, SynthesisScheduleInput, SynthesisScheduleStatus, WorkflowTwin, WorkflowTwinInput, WorkflowTwinRun, WorkflowTwinRunInput, WorkflowTwinRunStatus, WorkflowTwinStatus, WorkflowTwinType, WorkspaceProfile, WorkspaceSettings, VantageDeal, VantageDealInput, VantageJudgment, VantageJudgmentInput, NucleusEngagement, NucleusEngagementInput, NucleusDeliverable, NucleusDeliverableInput } from "@/lib/contracts";
 import { assertDbConfigured, isDbRequired } from "@/lib/data/db-policy";
 
 // In-memory idempotency cache for Stripe events (fallback when DB is unavailable).
@@ -64,6 +64,8 @@ import {
   boardMeetings,
   vantageDeals,
   vantageJudgments,
+  nucleusEngagements,
+  nucleusDeliverables,
   strategyProfiles,
   type recommendationStatusEnum,
   type ingestionStatusEnum
@@ -285,6 +287,43 @@ function toVantageJudgment(row: typeof vantageJudgments.$inferSelect): VantageJu
     supersededBy: row.supersededBy ?? null,
     createdBy: row.createdBy,
     createdAt: typeof row.createdAt === "string" ? row.createdAt : row.createdAt.toISOString()
+  };
+}
+
+function toNucleusEngagement(row: typeof nucleusEngagements.$inferSelect): NucleusEngagement {
+  const iso = (d: Date | string | null) => (d === null ? null : typeof d === "string" ? d : d.toISOString());
+  const arc = ["profile", "package", "delivery", "assurance"].includes(row.methodArc)
+    ? (row.methodArc as NucleusEngagement["methodArc"])
+    : "profile";
+  return {
+    id: row.id,
+    workspaceId: row.workspaceId,
+    reference: row.reference,
+    clientName: row.clientName,
+    methodArc: arc,
+    partner: row.partner ?? null,
+    scopeNote: row.scopeNote ?? null,
+    archivedAt: iso(row.archivedAt),
+    createdAt: iso(row.createdAt) ?? new Date().toISOString()
+  };
+}
+
+function toNucleusDeliverable(row: typeof nucleusDeliverables.$inferSelect): NucleusDeliverable {
+  const iso = (d: Date | string | null) => (d === null ? null : typeof d === "string" ? d : d.toISOString());
+  return {
+    id: row.id,
+    workspaceId: row.workspaceId,
+    engagementId: row.engagementId,
+    title: row.title,
+    sourceCoverage: row.sourceCoverage ?? null,
+    reviewerStatus: row.reviewerStatus ?? null,
+    // Preserved as null rather than coerced to []. null means nobody answered;
+    // [] means checked and none outstanding. Collapsing them would turn an
+    // unanswered deliverable into a positive assurance to a client.
+    unresolvedCaveats: row.unresolvedCaveats ?? null,
+    releasedAt: iso(row.releasedAt),
+    releasedByPartner: row.releasedByPartner ?? null,
+    createdAt: iso(row.createdAt) ?? new Date().toISOString()
   };
 }
 
@@ -934,6 +973,133 @@ export const repository = {
         .limit(1)
     );
     return rows && rows[0] ? toVantageJudgment(rows[0]) : null;
+  },
+
+  // -------------------------------------------------------------------------
+  // Nucleus engagements and deliverables
+  // -------------------------------------------------------------------------
+
+  async listNucleusEngagements(workspaceId: string): Promise<NucleusEngagement[]> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(nucleusEngagements)
+        .where(and(eq(nucleusEngagements.workspaceId, workspaceId), isNull(nucleusEngagements.archivedAt)))
+        .orderBy(desc(nucleusEngagements.createdAt))
+    );
+    if (!rows) return [];
+    return rows.map(toNucleusEngagement);
+  },
+
+  async getNucleusEngagement(workspaceId: string, id: string): Promise<NucleusEngagement | null> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(nucleusEngagements)
+        // Workspace in the predicate, not checked after. A guessed id from
+        // another firm must not resolve.
+        .where(and(eq(nucleusEngagements.id, id), eq(nucleusEngagements.workspaceId, workspaceId)))
+        .limit(1)
+    );
+    if (!rows || !rows[0]) return null;
+    return toNucleusEngagement(rows[0]);
+  },
+
+  async createNucleusEngagement(
+    workspaceId: string,
+    createdBy: string,
+    input: NucleusEngagementInput
+  ): Promise<NucleusEngagement | null> {
+    const id = `eng_${crypto.randomUUID()}`;
+    const saved = await runDb(async (db) => {
+      await db.insert(nucleusEngagements).values({
+        id,
+        workspaceId,
+        reference: input.reference.trim(),
+        clientName: input.clientName.trim(),
+        methodArc: input.methodArc,
+        partner: input.partner?.trim() || null,
+        scopeNote: input.scopeNote?.trim() || null,
+        createdBy
+      });
+      return true;
+    });
+    if (!saved) return null;
+    return this.getNucleusEngagement(workspaceId, id);
+  },
+
+  async listNucleusDeliverables(workspaceId: string, engagementId: string): Promise<NucleusDeliverable[]> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(nucleusDeliverables)
+        .where(
+          and(
+            eq(nucleusDeliverables.workspaceId, workspaceId),
+            eq(nucleusDeliverables.engagementId, engagementId)
+          )
+        )
+        .orderBy(desc(nucleusDeliverables.createdAt))
+    );
+    if (!rows) return [];
+    return rows.map(toNucleusDeliverable);
+  },
+
+  async upsertNucleusDeliverable(
+    workspaceId: string,
+    createdBy: string,
+    input: NucleusDeliverableInput & { id?: string }
+  ): Promise<NucleusDeliverable | null> {
+    const id = input.id ?? `del_${crypto.randomUUID()}`;
+    const saved = await runDb(async (db) => {
+      if (input.id) {
+        await db
+          .update(nucleusDeliverables)
+          .set({
+            title: input.title.trim(),
+            sourceCoverage: input.sourceCoverage ?? null,
+            reviewerStatus: input.reviewerStatus ?? null,
+            // `undefined` leaves it alone; explicit null clears it back to
+            // unanswered. Both are meaningful and neither may be guessed.
+            ...(input.unresolvedCaveats !== undefined
+              ? { unresolvedCaveats: input.unresolvedCaveats }
+              : {}),
+            updatedAt: new Date()
+          })
+          .where(
+            and(eq(nucleusDeliverables.id, id), eq(nucleusDeliverables.workspaceId, workspaceId))
+          );
+      } else {
+        await db.insert(nucleusDeliverables).values({
+          id,
+          workspaceId,
+          engagementId: input.engagementId,
+          title: input.title.trim(),
+          sourceCoverage: input.sourceCoverage ?? null,
+          reviewerStatus: input.reviewerStatus ?? null,
+          unresolvedCaveats: input.unresolvedCaveats ?? null,
+          createdBy
+        });
+      }
+      return true;
+    });
+    if (!saved) return null;
+    // SCOPED READ-BACK. `id` can come from the request body on an update, and
+    // an unscoped select here returned another workspace's deliverable even
+    // though the UPDATE above correctly matched nothing — a cross-tenant READ
+    // dressed up as a successful write. Title, source coverage, reviewer status
+    // and caveats are exactly the client-confidential fields a competing firm
+    // would want.
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(nucleusDeliverables)
+        .where(
+          and(eq(nucleusDeliverables.id, id), eq(nucleusDeliverables.workspaceId, workspaceId))
+        )
+        .limit(1)
+    );
+    return rows && rows[0] ? toNucleusDeliverable(rows[0]) : null;
   },
 
   async listEntities(

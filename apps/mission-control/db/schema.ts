@@ -897,7 +897,6 @@ export const approvalPolicies = pgTable("approval_policies", {
   createdAt:         timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt:         timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
-
 /**
  * Vantage deal scope. See migration 0055 for why there is no status column:
  * Vantage must not mark a deal approved, investable, or rejected.
@@ -932,4 +931,37 @@ export const vantageJudgments = pgTable("vantage_judgments", {
   supersededBy: text("superseded_by"),
   createdBy:    text("created_by").notNull(),
   createdAt:    timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+});
+/** A client assignment under a partner firm methodology. See migration 0057. */
+export const nucleusEngagements = pgTable("nucleus_engagements", {
+  id:          text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull(),
+  reference:   text("reference").notNull(),
+  clientName:  text("client_name").notNull(),
+  methodArc:   varchar("method_arc", { length: 32 }).notNull().default("profile"),
+  partner:     text("partner"),
+  scopeNote:   text("scope_note"),
+  archivedAt:  timestamp("archived_at", { withTimezone: true }),
+  createdBy:   text("created_by").notNull(),
+  createdAt:   timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:   timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+});
+
+/**
+ * Client deliverables. `unresolvedCaveats` is intentionally NOT defaulted:
+ * null means nobody answered, [] means checked and none. See migration 0058.
+ */
+export const nucleusDeliverables = pgTable("nucleus_deliverables", {
+  id:                text("id").primaryKey(),
+  workspaceId:       text("workspace_id").notNull(),
+  engagementId:      text("engagement_id").notNull(),
+  title:             text("title").notNull(),
+  sourceCoverage:    text("source_coverage"),
+  reviewerStatus:    text("reviewer_status"),
+  unresolvedCaveats: jsonb("unresolved_caveats").$type<string[]>(),
+  releasedAt:        timestamp("released_at", { withTimezone: true }),
+  releasedByPartner: text("released_by_partner"),
+  createdBy:         text("created_by").notNull(),
+  createdAt:         timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:         timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
 });

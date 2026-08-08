@@ -25,6 +25,22 @@ import {
 
 const ARC_ORDER: NucleusEngagementArc[] = ["profile", "package", "delivery", "assurance"];
 
+/**
+ * Deep routes that now exist. Explicit rather than filesystem-probed so the
+ * hub can never claim a route is live before it is; forgetting to add one
+ * understates, which is the safe direction.
+ */
+const BUILT_ROUTES = new Set([
+  "/nucleus/profile",
+  "/nucleus/reviewer-console",
+  "/nucleus/methodologies",
+  "/nucleus/publish",
+  "/nucleus/engagement-intake",
+  "/nucleus/deliverable-builder",
+  "/nucleus/client-portal",
+  "/nucleus/evidence-room",
+]);
+
 const ARC_SHORT: Record<NucleusEngagementArc, string> = {
   profile: "Profile",
   package: "Package",
@@ -154,9 +170,27 @@ export function NucleusEngagementPanel() {
             return (
               <div key={screen.id} className="rounded-lg border border-white/10 bg-black/20 p-4">
                 <div className="flex items-start justify-between gap-3">
-                  <p className="text-sm font-semibold text-white">{screen.title}</p>
-                  <span className="shrink-0 rounded-md border border-[#9AA6B8]/25 px-2 py-0.5 text-[10px] text-[#C8D1DE]">
-                    planned deep route
+                  {/* Built routes link; planned ones do not. A "live" chip on a
+                      title nobody can click is worse than saying nothing. */}
+                  {BUILT_ROUTES.has(screen.routeCandidate) ? (
+                    <Link
+                      href={screen.routeCandidate}
+                      className="text-sm font-semibold text-white hover:underline"
+                      prefetch={false}
+                    >
+                      {screen.title}
+                    </Link>
+                  ) : (
+                    <p className="text-sm font-semibold text-white">{screen.title}</p>
+                  )}
+                  <span
+                    className={`shrink-0 rounded-md border px-2 py-0.5 text-[10px] ${
+                      BUILT_ROUTES.has(screen.routeCandidate)
+                        ? "border-nexus-accent/30 bg-nexus-accent/10 text-nexus-accent"
+                        : "border-[#9AA6B8]/25 text-[#C8D1DE]"
+                    }`}
+                  >
+                    {BUILT_ROUTES.has(screen.routeCandidate) ? "live route" : "planned deep route"}
                   </span>
                 </div>
                 <p className="mt-2 text-xs leading-5 text-white/50">{screen.purpose}</p>
