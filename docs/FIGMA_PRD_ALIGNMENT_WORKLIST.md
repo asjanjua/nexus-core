@@ -1,5 +1,16 @@
 # Figma <-> PRD Alignment Worklist
 
+> **SUPERSEDED IN PART, 2026-08-06.** The inventory in §1 below ("a SINGLE
+> page") is contradicted by `NEXUS_ROOM_PORTFOLIO_ACTIVATION.md`,
+> `MERIDIAN_REGULATORY_WORKFLOW.md` and `NUCLEUS_ADVISORY_DELIVERY_WORKFLOW.md`,
+> which cite pages 28-33 with node IDs dated 2026-07-29. One of the two is
+> stale. Until that is settled in Figma, treat §1 and the FIGMA-ONLY rows in §2
+> as unverified.
+>
+> For the current code-derived debt list — 69 routes, 17 with no design record
+> — see `docs/FIGMA_DESIGN_DEBT_2026-08-06.md`. The work list in §3 below still
+> stands where it does not depend on the disputed inventory.
+
 Status: Working alignment ledger between the Figma file, the shipped routes, and the Master PRD screen register (`docs/PROMPT_MASTER_PRD.md` Deliverable 3).
 Figma file: `NcQ8F5a0hczwGwZua2gfun`.
 VERIFIED LIVE via Figma MCP (W0 pass): file `NcQ8F5a0hczwGwZua2gfun` now contains a SINGLE page. The previously recorded pages (01 Nexus System, 08 Quorum UI UX Build, 09 Quorum Governance Workflow V0.2, 11 Vertical Input Action Screens) are NOT in this file — restructured, moved to another file, or deleted. Locating them is OPEN item #0.

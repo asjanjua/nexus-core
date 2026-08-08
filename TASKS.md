@@ -40,6 +40,23 @@ C-suite teams across fintech, professional services, technology, physical busine
 digital-native companies in GCC, Pakistan, and emerging markets.
 **Stack:** Next.js 15, TypeScript, Clerk, Postgres/Drizzle/pgvector, R2, Render, LLM provider routing.
 
+## 2026-08-06 — Figma Design Debt (code-derived)
+
+Source: `docs/FIGMA_DESIGN_DEBT_2026-08-06.md`. 69 routes checked against every
+Figma node ID recorded in the repo. Live Figma file NOT read — the available
+MCP is the Dev Mode server and needs the desktop app.
+
+- [ ] **Item zero: resolve the inventory contradiction.** `FIGMA_PRD_ALIGNMENT_WORKLIST.md` says the file holds one page; three later docs cite pages 28-33 with node IDs. Every "recorded" row is unverified until someone opens Figma.
+- [ ] `/pricing` — publishes $49/$499/$2,500 and drives checkout, shipped 2026-08-04 with no design pass. Highest commercial exposure on the list.
+- [ ] Cold-start empty-state pattern — one frame applied to `/meridian`, `/vantage`, `/nucleus`, `/workflows`, `/knowledge`, `/evidence/review`, `/rooms`. `/meridian` empty was read as a broken page during a live check on 2026-08-05.
+- [ ] `/governance/trace` and `/evidence/review` — the provenance claim, both undesigned.
+- [ ] `/rooms` drift check — 18 frames exist (`213:2`-`218:527`); route shipped a week later. Verification, not new design.
+- [ ] Shared policy-page template — clears `/security`, `/privacy`, `/terms`, `/data-processing`, `/acceptable-use` with one frame.
+- [ ] `/sign-in` and `/sign-up` — hosted-Clerk handoff; the no-client-components constraint leaves little room to improvise in code.
+- [ ] `/compliance`, `/status`, `/pilot-sla`, `/support` — shipped 2026-08-06, buyer-facing, undesigned.
+- [ ] `/admin`, `/eval` — operator-only; acceptable at low polish, but record that as a decision.
+- [ ] Adopt the standing rule: a new buyer-facing route does not merge without either a frame or a written decision that it ships undesigned. `/pricing` shipped four days after that rule was already written in the worklist.
+
 ## 2026-08-05 — Evidence Classification Cache and Enforced Ceiling
 
 Ledger: `docs/agent-runs/2026-08-05/evidence-classification-cache-and-ceiling-claude.md`.
