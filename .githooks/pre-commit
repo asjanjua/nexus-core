@@ -6,3 +6,18 @@ cd "$ROOT"
 
 node scripts/preflight-commit.mjs
 node scripts/check-build-boundaries.mjs
+
+# Lint the staged TypeScript, and only the staged TypeScript.
+#
+# WHY THIS IS HERE. CI has always had a Lint step and eslint does error on
+# `@typescript-eslint/no-explicit-any` — that was verified, not assumed. PR #14
+# still had to exist, eight minutes after PR #13, purely to strip two `any`s
+# from a file #13 had just added. The gap is not the workflow, it is that the
+# lint job is not a REQUIRED status check in branch protection, so a squash
+# merge can land before CI reports. Nobody can fix that from a file in the
+# repository; see docs/ENGINEERING_GUARDRAILS.md §10 for the setting.
+#
+# What this does fix: the error never reaches CI in the first place. Scoped to
+# staged files so the hook stays sub-second on a normal commit rather than
+# linting the whole tree.
+node scripts/lint-staged.mjs

@@ -30,7 +30,7 @@
     "chokidar": "^4.0.3",
     "drizzle-orm": "^0.45.2",
     "imapflow": "^1.0.187",
-    "jszip": "^3.10.1",
+    "jszip": "3.10.1",
     "mailparser": "^3.7.4",
     "next": "^15.5.18",
     "pdf-parse": "^1.1.1",

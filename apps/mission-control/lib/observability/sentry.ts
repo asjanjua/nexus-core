@@ -1,54 +1,27 @@
 /**
- * Sentry reporting helper for error paths that are deliberately swallowed
- * at the call site (e.g. webhook handlers that must always return 200,
- * fire-and-forget background jobs, fully-exhausted LLM fallback chains).
+ * Compatibility shim. The implementation moved to ./report.ts.
  *
- * The Sentry runtime entrypoints are disabled in the demo build path because
- * Next 15 middleware builds were hanging while bundling Sentry/OpenTelemetry.
- * These helpers therefore do not report to Sentry — but they are no longer
- * silent. They write a structured line to stderr, which Render captures, so a
- * swallowed failure leaves a trace somewhere instead of vanishing entirely.
- * No Sentry import is involved, so the build path is unaffected.
+ * The old name was actively misleading: this module never reported to Sentry
+ * (the Sentry runtime entrypoints are disabled because Next 15 middleware
+ * builds hang while bundling Sentry/OpenTelemetry), yet it was called
+ * `sentry.ts` and exported `capture*` functions. Someone would eventually go
+ * looking in Sentry for events that were only ever in the Render log stream.
  *
- * Only route, errorType, workspaceId and the error message are logged. Payloads
- * are deliberately excluded: callers pass audit events and webhook bodies that
- * can carry customer PII, and this output goes to a plaintext log.
+ * Kept as a re-export rather than renamed at ~60 call sites in one pass, so
+ * the rename cannot itself become the change that breaks something. New code
+ * should import from "@/lib/observability/report". Migrate call sites
+ * opportunistically and delete this file when the last one is gone.
  *
- * Task #32 — production error tracking.
+ * See docs/PR_REVIEW_2026-08-08.md §7.1.
  */
 
-type ReportContext = {
-  route: string;
-  errorType: string;
-  workspaceId?: string;
-  extra?: Record<string, unknown>;
-};
+import { reportDegradedState, reportHandledError } from "@/lib/observability/report";
 
-function messageOf(err: unknown): string {
-  if (err instanceof Error) return err.message;
-  if (typeof err === "string") return err;
-  return "unknown_error";
-}
+export { reportDegradedState, reportHandledError };
+export type { ReportContext } from "@/lib/observability/report";
 
-function report(level: "error" | "warn", detail: string, context: ReportContext): void {
-  const parts = [
-    `[observability] ${context.errorType}`,
-    `route=${context.route}`,
-    context.workspaceId ? `workspace=${context.workspaceId}` : null,
-    `detail=${detail}`,
-  ].filter(Boolean);
-  console[level](parts.join(" "));
-}
+/** @deprecated Use `reportHandledError` from "@/lib/observability/report". */
+export const captureHandledError = reportHandledError;
 
-export function captureHandledError(err: unknown, context: ReportContext): void {
-  report("error", messageOf(err), context);
-}
-
-/**
- * For exhausted/degraded states that aren't a thrown JS error but are still
- * worth knowing about in production (e.g. every provider in an LLM fallback
- * chain failed). Reported as a message, not an exception.
- */
-export function captureDegradedState(message: string, context: ReportContext): void {
-  report("warn", message, context);
-}
+/** @deprecated Use `reportDegradedState` from "@/lib/observability/report". */
+export const captureDegradedState = reportDegradedState;

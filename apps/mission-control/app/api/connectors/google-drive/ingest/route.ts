@@ -86,7 +86,10 @@ export async function POST(request: Request) {
   // Compute hash for provenance
   const hash = evidenceHash(buffer);
 
-  const text = decodeDownloadedText(buffer);
+  // Pass the provider's declared content type: it is a stronger binary/text
+  // signal than the replacement-character heuristic, and it is already to
+  // hand for estimateExtractionConfidence two lines below.
+  const text = decodeDownloadedText(buffer, download.contentType);
 
   const extractionConfidence = estimateExtractionConfidence(
     download.contentType,
