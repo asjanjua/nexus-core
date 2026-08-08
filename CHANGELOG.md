@@ -1,5 +1,86 @@
 # Changelog
 
+## 2026-08-08 (infra, later) — R2 was never actually working; build OOM; two route fixes
+
+Continues the "Security review + infrastructure tier decisions" entry further
+down. That entry recorded the decisions; this one records what happened when
+they met production. Two of these were my own defects.
+
+### The build OOM was self-inflicted
+
+`NODE_OPTIONS=--max-old-space-size=400` was added to the service's `envVars`.
+Render applies service environment variables to the BUILD as well as the
+runtime, so the ceiling intended for the 512 MB instance also capped
+`next build`, which died with `Ineffective mark-compacts near heap limit -
+JavaScript heap out of memory`. Two deploys failed before the cause was found.
+
+Fixed in `660ac8f` by setting it inline on `startCommand`. The trap worth
+remembering: **removing it from the blueprint was not enough.** Render keeps env
+vars that a blueprint stops declaring, so it also had to be deleted in the
+dashboard before the build would pass.
+
+### R2 original evidence retention had never worked, and every check said it had
+
+`R2_ACCOUNT_ID` and `R2_BUCKET` in Render were set to the literal two characters
+`""`. Not empty values — a string containing two quote marks. The check was
+`Boolean(R2_ACCOUNT_ID && ...)`, and `Boolean('""')` is true. So
+`isOriginalStorageEnabled()` returned true, `/api/health` reported
+`originalsStorage.ok: true`, and the S3 client built
+`https://"".r2.cloudflarestorage.com`, which cannot resolve.
+
+Every upload threw, was caught by the ingestion route, recorded as
+`ingestion_original_storage_failed` in the audit log, and ingestion continued
+without retaining the original. No bucket existed in the Cloudflare account at
+all. Evidence provenance — the product's core claim — was off for the entire
+life of the deployment and no surface said so.
+
+`683e2a0`:
+- `r2ConfigProblem()` validates SHAPE, not presence: account id must be 32 hex
+  chars, bucket a valid DNS label, credentials containing a quote mark rejected.
+- Config is read at CALL time. Freezing it into module constants at import made
+  the module untestable without cache-busting and meant nothing could
+  re-evaluate the config to report on it. That coupling was part of the
+  invisibility.
+- `probeOriginalStorage()` does a real `HeadBucket` round trip, distinguishing
+  `NotFound` (bucket missing) from `Forbidden` (token wrong or wrongly scoped).
+  Wired into the platform-admin-gated admin route, deliberately NOT into public
+  `/api/health` — that is Render's `healthCheckPath` and would hit Cloudflare on
+  every request.
+
+`efa49ea` replaced the `r2_versioning` check, which told operators to enable a
+versioning toggle R2 does not expose; following it led nowhere. Now
+`r2_object_immutability`, pointing at Bucket Lock, and stated as a DECISION
+rather than a recommendation: a locked object cannot be deleted before its
+retention expires, which conflicts with a PDPL/GDPR Art. 17 erasure request.
+That is a legal call, so the route flags it and does not resolve it.
+
+Bucket `nexus-evidence` (Asia-Pacific) and an API token scoped to it now exist
+in Cloudflare. The four `R2_*` variables in Render still hold the `""`
+placeholders, so `/api/health` correctly reports `degraded` until they are
+replaced.
+
+### Two route fixes
+
+- `GET /api/prompts` called `syncPromptRegistry()`, a platform-wide upsert on
+  `prompt_registry`. The Prompts tab in `/settings` is customer-facing, so every
+  client admin opening it drove a write to a table no tenant owns. The write fed
+  nothing: the response is built from the in-memory registry and
+  `repository.listPromptRegistry()` is called nowhere. Removed (`013655e`);
+  response is byte-identical. Deliberately left on `requireScope("admin")` — the
+  manifest is a governance feature for regulated buyers, not platform data.
+- `PATCH /api/workspace/board-profile` had no schema, so over-long strings, wrong
+  types and unparseable timestamps reached Postgres and surfaced as one blanket
+  500. Now validated against the actual column bounds with per-field 400s
+  (`b550563`). Deliberately not an enum: `boardType` and `jurisdiction` are
+  free-text varchars and the UI renders whatever is stored.
+
+### My own test was part of the problem
+
+`infrastructure-health-route.test.ts` originally asserted "configured" from env
+presence — the same weak assumption that hid the outage. Rewritten to pin the
+probe contract, including that a malformed config and a missing bucket must not
+report identically, and to fail if the route stops calling the probe at all.
+
 ## 2026-08-08 — Adversarial review of the remediation itself
 
 The remediation below was reviewed as hostilely as the PRs it was fixing. Five
