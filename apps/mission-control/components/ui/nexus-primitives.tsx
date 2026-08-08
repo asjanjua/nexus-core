@@ -85,6 +85,72 @@ export function KpiHero({
 }
 
 // ---------------------------------------------------------------------------
+// Sample-data marking
+//
+// The Meridian, Vantage and Nucleus hubs show worked-example figures until a
+// buyer connects real evidence. Each already carried an honest banner saying
+// so. The banner was not enough: it is 12px muted text sitting above a 30px
+// bold number, so the invented value dominates and the caveat whispers.
+//
+// On a product sold on provenance, a regulated buyer who reads "72%
+// completeness" as their own figure — and later finds out it was invented —
+// does not lose faith in one number, they lose faith in the evidence claim
+// that is the entire pitch. The banner is disclosure; this is legibility.
+//
+// So the marker travels WITH the value instead of sitting above the section.
+// Two signals, neither of them colour alone: the word "Sample" against the
+// number, and the value rendered at muted weight so a real figure is always
+// visually louder than an invented one.
+// ---------------------------------------------------------------------------
+
+/** Inline "Sample" tag. Sits against the value it qualifies, never in a header. */
+export function SampleTag({ className = "" }: { className?: string }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1 rounded border border-nexus-warn/40 bg-nexus-warn/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-nexus-warn ${className}`}
+      title="Worked example. Not this workspace's data."
+    >
+      <svg viewBox="0 0 12 12" aria-hidden="true" className="h-2.5 w-2.5" fill="none" stroke="currentColor" strokeWidth="1.6">
+        <circle cx="6" cy="6" r="4.6" />
+        <path d="M6 3.6v2.8M6 8.2v.1" strokeLinecap="round" />
+      </svg>
+      Sample
+    </span>
+  );
+}
+
+/**
+ * A KPI whose value is a worked example.
+ *
+ * Deliberately NOT the same component as a real KPI. Keeping them separate
+ * means a developer has to choose "this number is invented" explicitly, rather
+ * than passing a boolean that is easy to forget — and a reviewer can find every
+ * fabricated figure in the product by grepping one component name.
+ */
+export function SampleKpi({
+  label,
+  value,
+  helper,
+}: {
+  label: string;
+  value: string;
+  helper: string;
+}) {
+  return (
+    <div className="rounded-lg border border-dashed border-nexus-warn/30 bg-nexus-panel p-4">
+      <p className="text-xs uppercase tracking-wide text-nexus-muted">{label}</p>
+      <div className="mt-2 flex items-baseline gap-2">
+        {/* Muted, not accent. A real figure must always outrank an invented one
+            in the visual hierarchy, whatever colour the room's brand uses. */}
+        <p className="text-[32px] font-bold leading-none text-nexus-muted">{value}</p>
+        <SampleTag />
+      </div>
+      <p className="mt-2 text-xs leading-4 text-nexus-muted">{helper}</p>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Status pill — colour + label + icon (colour is never the only signal)
 // ---------------------------------------------------------------------------
 

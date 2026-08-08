@@ -29,7 +29,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { MeridianScope } from "@/lib/contracts";
-import { GuidedActionCard, SkeletonLines } from "@/components/ui/nexus-primitives";
+import { GuidedActionCard, SampleKpi, SkeletonLines } from "@/components/ui/nexus-primitives";
 import {
   guidanceForMeridianScreen,
   meridianJurisdictionPackRequirements,
@@ -149,31 +149,36 @@ export function MeridianSubmissionPanel() {
         progress are a worked example until evidence is connected.
       </p>
 
-      {/* KPI strip — max four, each with a semantic colour and a label. */}
+      {/* KPI strip — max four.
+          THREE OF THESE FOUR ARE INVENTED and one is real, which is precisely
+          why the banner above is not sufficient on its own. Marking the section
+          rather than the value would tar the genuine regulator deadline with
+          the same brush, and leave the worked figures reading as live data.
+          Sample values use SampleKpi: muted weight, dashed border, and the word
+          "Sample" against the number. */}
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="panel">
-          <p className="text-xs uppercase tracking-wide text-white/40">Completeness</p>
-          <p className="mt-2 text-3xl font-bold text-nexus-accent">{pct(EXAMPLE.completeness)}</p>
-          <p className="mt-1 text-xs text-white/40">{scope.licenseType} · {scope.jurisdiction}</p>
-        </div>
-        <div className="panel">
-          <p className="text-xs uppercase tracking-wide text-white/40">Outstanding requirements</p>
-          <p className="mt-2 text-3xl font-bold text-nexus-warn">{EXAMPLE.outstanding}</p>
-          <p className="mt-1 text-xs text-white/40">blocking pre-submission sign-off</p>
-        </div>
+        <SampleKpi
+          label="Completeness"
+          value={pct(EXAMPLE.completeness)}
+          helper={`${scope.licenseType} · ${scope.jurisdiction}`}
+        />
+        <SampleKpi
+          label="Outstanding requirements"
+          value={String(EXAMPLE.outstanding)}
+          helper="blocking pre-submission sign-off"
+        />
+        {/* REAL. Derived from the scope this workspace actually set, so it keeps
+            full weight and the room's colour. */}
         <div className="panel">
           <p className="text-xs uppercase tracking-wide text-white/40">Regulator deadline</p>
-          <p className="mt-2 text-3xl font-bold text-white">{daysToDeadline ?? "—"}{daysToDeadline !== null ? "d" : ""}</p>
-          <p className="mt-1 text-xs text-white/40">{scope.regulator}</p>
+          <p className="mt-2 text-[32px] font-bold leading-none text-nexus-text">{daysToDeadline ?? "—"}{daysToDeadline !== null ? "d" : ""}</p>
+          <p className="mt-2 text-xs text-white/40">{scope.regulator}</p>
         </div>
-        <div className="panel">
-          <p className="text-xs uppercase tracking-wide text-white/40">Memo sections drafted</p>
-          <p className="mt-2 text-3xl font-bold text-nexus-sky">
-            {EXAMPLE.sectionsDrafted}
-            <span className="text-lg text-white/30">/{EXAMPLE.sectionsTotal}</span>
-          </p>
-          <p className="mt-1 text-xs text-white/40">{EXAMPLE.caveatsOpen} caveats open</p>
-        </div>
+        <SampleKpi
+          label="Memo sections drafted"
+          value={`${EXAMPLE.sectionsDrafted}/${EXAMPLE.sectionsTotal}`}
+          helper={`${EXAMPLE.caveatsOpen} caveats open`}
+        />
       </section>
 
       {/* Now / Next strip — current stage, next gate, owner. */}

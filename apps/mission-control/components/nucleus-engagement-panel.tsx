@@ -11,6 +11,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { SampleKpi } from "@/components/ui/nexus-primitives";
 import {
   guidanceForNucleusScreen,
   nucleusEngagementArcLabels,
@@ -57,27 +58,18 @@ export function NucleusEngagementPanel() {
         entry; figures and partner names are illustrative until a consulting partner workspace is connected.
       </p>
 
+      {/* All four were hardcoded literals, not derived from any registry, so
+          they could drift from the workflow definitions without anything
+          failing. "6 partner reviewers" is plainly fabricated for a workspace
+          that has none. Marked as sample until they are wired to real counts —
+          two of them plausibly map to nucleusWhiteLabelRequirements and
+          nucleusEngagementBoundaries, but the semantics are close enough to be
+          worth confirming rather than assuming. */}
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="panel">
-          <p className="text-xs uppercase tracking-wide text-white/40">Method packs</p>
-          <p className="mt-2 text-3xl font-bold text-[#C8D1DE]">4</p>
-          <p className="mt-1 text-xs text-white/40">readiness, compliance, diligence, operating model</p>
-        </div>
-        <div className="panel">
-          <p className="text-xs uppercase tracking-wide text-white/40">Partner reviewers</p>
-          <p className="mt-2 text-3xl font-bold text-nexus-accent">6</p>
-          <p className="mt-1 text-xs text-white/40">named humans before client output</p>
-        </div>
-        <div className="panel">
-          <p className="text-xs uppercase tracking-wide text-white/40">Brand overrides</p>
-          <p className="mt-2 text-3xl font-bold text-[#9AA6B8]">5</p>
-          <p className="mt-1 text-xs text-white/40">restricted to the brand layer</p>
-        </div>
-        <div className="panel">
-          <p className="text-xs uppercase tracking-wide text-white/40">Fixed trust controls</p>
-          <p className="mt-2 text-3xl font-bold text-nexus-sky">6</p>
-          <p className="mt-1 text-xs text-white/40">cannot be re-skinned away</p>
-        </div>
+        <SampleKpi label="Method packs" value="4" helper="readiness, compliance, diligence, operating model" />
+        <SampleKpi label="Partner reviewers" value="6" helper="named humans before client output" />
+        <SampleKpi label="Brand overrides" value="5" helper="restricted to the brand layer" />
+        <SampleKpi label="Fixed trust controls" value="6" helper="cannot be re-skinned away" />
       </section>
 
       <section className="panel">

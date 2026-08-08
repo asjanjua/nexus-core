@@ -12,6 +12,7 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { SampleKpi } from "@/components/ui/nexus-primitives";
 import {
   guidanceForVantageScreen,
   vantageDDArcLabels,
@@ -60,30 +61,31 @@ export function VantageDealRoomPanel() {
         deal figures below are illustrative until a buyer workspace is connected.
       </p>
 
+      {/* ALL FOUR ARE INVENTED. No deal data exists until a workspace connects
+          a data room, so every value here carries its own Sample marker rather
+          than relying on the banner above — "4 red flags" in danger red at 30px
+          is exactly the kind of figure a buyer repeats in a meeting. */}
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="panel">
-          <p className="text-xs uppercase tracking-wide text-white/40">Checklist coverage</p>
-          <p className="mt-2 text-3xl font-bold text-[#D9834A]">{pct(EXAMPLE.checklistCoverage)}</p>
-          <p className="mt-1 text-xs text-white/40">{EXAMPLE.deal}</p>
-        </div>
-        <div className="panel">
-          <p className="text-xs uppercase tracking-wide text-white/40">Critical diligence gaps</p>
-          <p className="mt-2 text-3xl font-bold text-nexus-warn">{EXAMPLE.criticalGaps}</p>
-          <p className="mt-1 text-xs text-white/40">must be assigned before IC pack</p>
-        </div>
-        <div className="panel">
-          <p className="text-xs uppercase tracking-wide text-white/40">Red flags</p>
-          <p className="mt-2 text-3xl font-bold text-nexus-danger">{EXAMPLE.redFlags}</p>
-          <p className="mt-1 text-xs text-white/40">across {EXAMPLE.workstreams} workstreams</p>
-        </div>
-        <div className="panel">
-          <p className="text-xs uppercase tracking-wide text-white/40">IC memo sections</p>
-          <p className="mt-2 text-3xl font-bold text-nexus-sky">
-            {EXAMPLE.memoSections}
-            <span className="text-lg text-white/30">/{EXAMPLE.memoTotal}</span>
-          </p>
-          <p className="mt-1 text-xs text-white/40">{EXAMPLE.daysToIc} days to committee</p>
-        </div>
+        <SampleKpi
+          label="Checklist coverage"
+          value={pct(EXAMPLE.checklistCoverage)}
+          helper={EXAMPLE.deal}
+        />
+        <SampleKpi
+          label="Critical diligence gaps"
+          value={String(EXAMPLE.criticalGaps)}
+          helper="must be assigned before IC pack"
+        />
+        <SampleKpi
+          label="Red flags"
+          value={String(EXAMPLE.redFlags)}
+          helper={`across ${EXAMPLE.workstreams} workstreams`}
+        />
+        <SampleKpi
+          label="IC memo sections"
+          value={`${EXAMPLE.memoSections}/${EXAMPLE.memoTotal}`}
+          helper={`${EXAMPLE.daysToIc} days to committee`}
+        />
       </section>
 
       <section className="panel">
