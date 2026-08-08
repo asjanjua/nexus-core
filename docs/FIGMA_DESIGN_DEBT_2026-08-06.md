@@ -7,11 +7,16 @@ frame recorded anywhere in this repository.
 from `git log --diff-filter=A`, then each route string matched against the 61
 documented Figma node IDs and the design docs that carry them.
 
-**What this is NOT.** The live Figma file was not read. The MCP available in
-this session is the Dev Mode server, which requires the Figma desktop app with
-"Enable Dev Mode MCP Server" switched on. So this measures *what the repository
-records about Figma*, not Figma itself. Where the two disagree, Figma wins and
-this document is wrong — see §5.
+**Figma WAS read (corrected 2026-08-08).** An earlier revision of this document
+said the live file could not be reached. That was my error: I tried one Figma
+MCP server, the Dev Mode one, and stopped. A second server was connected and
+working the whole time. The file has now been enumerated directly — see §5,
+which reverses what it previously said.
+
+**Still repo-derived.** The route-by-route mapping below is matched against the
+node IDs recorded in this repo, not against a frame-by-frame walk of all 38
+Figma pages. Page names and spot-checks support it; a full per-page audit is a
+separate pass.
 
 ---
 
@@ -99,30 +104,54 @@ the `none` signal state, so this is a sales surface, not a polish item.
 
 ---
 
-## 5. Contradiction to resolve before trusting any of this
+## 5. RESOLVED — the file has 38 pages, and the frames are all there
 
-`docs/FIGMA_PRD_ALIGNMENT_WORKLIST.md` states, marked VERIFIED LIVE via the
-Figma MCP, that file `NcQ8F5a0hczwGwZua2gfun` contains **a single page** and
-that pages 01, 08, 09 and 11 are absent.
+The earlier version of this section reported an unresolved contradiction
+between the worklist ("a SINGLE page") and three later docs citing pages 28-33.
+It is settled, and the worklist was wrong.
 
-But `NEXUS_ROOM_PORTFOLIO_ACTIVATION.md`, `MERIDIAN_REGULATORY_WORKFLOW.md` and
-`NUCLEUS_ADVISORY_DELIVERY_WORKFLOW.md` all cite pages 28–33 with specific node
-IDs, dated 2026-07-29.
+Read directly from `NcQ8F5a0hczwGwZua2gfun` on 2026-08-08:
 
-Both cannot be true of the same file at the same time. Either the worklist's
-verification predates the 07-29 work, or the frames live in a different file.
-**Until someone opens Figma and confirms, every "recorded" row above is a
-claim from a document, not an observation.** This is item zero.
+**38 pages.** Including every page the worklist recorded as missing:
+`01 Nexus System` (`0:1`), `08 Quorum UI UX Build` (`78:2`),
+`09 Quorum Governance Workflow V0.2` (`80:2`) and
+`11 Vertical Input Action Screens V0.2` (`87:2`). Nothing was deleted or moved.
 
----
+Frames spot-checked and confirmed intact across three unrelated families:
+`213:2` Nexus Rooms portfolio, `182:2` Meridian evidence-and-gap review (73
+child nodes, fully detailed), `222:3` the Quorum enhanced screen plan with all
+17 sub-frames present.
+
+**Why the false negative, and how to avoid repeating it.** Figma loads pages
+lazily. `get_metadata` with no `nodeId` returned exactly one page — the loaded
+one — and every unloaded page reports `children: 0`. Reading the whole document
+requires `figma.root.children` inside a `use_figma` script, which returns all
+38. The worklist's "VERIFIED LIVE" label was applied to an artefact of lazy
+loading, and this document then repeated it as fact.
+
+**Two pages exist that the repo docs never recorded:**
+`33 Evidence / Document type override / 2026-08-05` and
+`34 Vertical Trust + Failure States / 2026-07-29`. The evidence override work
+was designed after all — worth checking before treating `/evidence/review` as
+undesigned.
+
+**The lesson is about verification, not Figma.** A tool returning a plausible
+small answer is not the same as an empty result, and "VERIFIED" written next to
+a claim does not make it verified. Both the worklist and this document asserted
+a negative from a single call that had a benign explanation.
 
 ## 6. Suggested order
 
-1. **`/pricing`** — design-first, retro-fit the built page. It takes money.
-2. **Resolve §5** — one look in Figma; everything else is guesswork until then.
+1. ~~**`/pricing`**~~ — **DONE 2026-08-08.** Designed in Figma as page
+   `35 Pricing / 2026-08-08` (frame `246:3`), and the shipped route was brought
+   in line with it in the same pass. See §8.
+2. ~~Resolve the inventory contradiction~~ — **DONE**, see §5. The file has 38
+   pages and nothing is missing.
 3. **Cold-start pattern (§4)** — one frame, seven applications, removes the
-   "looks broken" problem across the product.
-4. **`/governance/trace` + `/evidence/review`** — the provenance claim.
+   "looks broken" problem across the product. Now the top item.
+4. **`/governance/trace`** — the provenance claim, undesigned. Check
+   `/evidence/review` against page `33 Evidence / Document type override`
+   first; it may already be covered.
 5. **`/rooms` drift check** — 18 frames already exist; only verification needed.
 6. **Shared policy-page template** — clears five legal routes with one frame.
 7. **`/sign-in` and `/sign-up`** — constrained, so design matters more.
@@ -140,3 +169,31 @@ A rule that only gets applied when someone remembers it is not a rule. **A new
 route under `app/` that is a conversion, trust, or buyer-facing surface should
 not merge without either a Figma frame or a written decision that it ships
 undesigned.** That belongs in the review checklist, not only here.
+
+---
+
+## 8. `/pricing` — closed 2026-08-08
+
+**Figma:** page `35 Pricing / 2026-08-08`, frame `246:3`
+(`Pricing / Public page / 1440`). Built from the locked tokens and the fixed
+type ramp, with the file's existing conventions matched — Inter, dark chrome
+top bar, authority-boundary strip at the foot.
+
+**Code:** `app/pricing/page.tsx` brought in line in the same pass. What the
+route actually had wrong, all of it invisible to the build:
+
+- two `btn-primary` actions, so nothing was primary;
+- `text-3xl` / `text-4xl` (30px / 36px), neither on the ramp;
+- `mt-10` (40px), off the spacing scale;
+- five different white opacities standing in for `nexus-muted`, with
+  `text-white/40` at 12px under the AA contrast floor;
+- the recommended tier signalled by border colour alone, so it disappeared
+  under the grayscale gate.
+
+The information architecture was already right — priced by team size, honest
+about exclusions, honest that checkout is not live — so the pass changed how it
+is expressed, not what it says.
+
+**Pinned:** `tests/pricing-page-design.test.ts` asserts the five rules that were
+actually broken here, not the whole design system. Negative control: each
+violation reintroduced, five tests failed, reverted.
