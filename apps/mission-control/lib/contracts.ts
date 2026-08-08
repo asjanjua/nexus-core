@@ -1475,3 +1475,64 @@ export const activateRoomSchema = z.object({
   lifecycleState: z.enum(["active", "inactive"]).optional(),
 });
 export type ActivateRoomInput = z.infer<typeof activateRoomSchema>;
+
+/**
+ * A named diligence scope. No approval state by design — see migration 0055.
+ */
+export const vantageDealSchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  name: z.string(),
+  dealType: z.enum(["fintech_ma", "generic_ma"]),
+  icDate: z.string().nullable(),
+  lead: z.string().nullable(),
+  notes: z.string().nullable(),
+  archivedAt: z.string().nullable(),
+  createdBy: z.string(),
+  createdAt: z.string()
+});
+export type VantageDeal = z.infer<typeof vantageDealSchema>;
+
+export const vantageDealInputSchema = z.object({
+  name: z.string().min(1).max(200),
+  dealType: z.enum(["fintech_ma", "generic_ma"]).default("fintech_ma"),
+  /** ISO date. Absent is honest; a fabricated committee date is not. */
+  icDate: z.string().max(40).nullable().optional(),
+  lead: z.string().max(160).nullable().optional(),
+  notes: z.string().max(4000).nullable().optional()
+});
+export type VantageDealInput = z.infer<typeof vantageDealInputSchema>;
+
+/** An advisor's recorded view. Append-only; revisions supersede. */
+export const vantageJudgmentSchema = z.object({
+  id: z.string(),
+  workspaceId: z.string(),
+  dealId: z.string(),
+  subject: z.string(),
+  advisor: z.string(),
+  position: z.string(),
+  caveats: z.string(),
+  evidenceRefs: z.array(z.string()),
+  supersededBy: z.string().nullable(),
+  createdBy: z.string(),
+  createdAt: z.string()
+});
+export type VantageJudgment = z.infer<typeof vantageJudgmentSchema>;
+
+export const vantageJudgmentInputSchema = z.object({
+  dealId: z.string().min(1),
+  subject: z.string().min(1).max(300),
+  /**
+   * Required, and not defaulted from the signed-in user. The person recording
+   * a judgment is often not the advisor who formed it, and quietly attributing
+   * it to whoever is at the keyboard is the exact misattribution the
+   * advisor-judgment-visible boundary exists to prevent.
+   */
+  advisor: z.string().min(1).max(160),
+  position: z.string().min(1).max(4000),
+  caveats: z.string().max(4000).default(""),
+  evidenceRefs: z.array(z.string().min(1).max(120)).max(50).default([]),
+  /** Set when this judgment replaces an earlier one on the same subject. */
+  supersedes: z.string().min(1).max(120).optional()
+});
+export type VantageJudgmentInput = z.infer<typeof vantageJudgmentInputSchema>;
