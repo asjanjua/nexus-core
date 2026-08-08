@@ -68,3 +68,53 @@ that means nothing. Recreated under `~/Developer/nx-vantage-wt` and re-verified.
 ## Next
 
 Push `feat/vantage-deep-routes`, open a PR, let CI run the build gate.
+
+## 2026-08-08 — the two deferred routes, now built
+
+`/vantage/dealroom` and `/vantage/judgment-log` needed persistence, which is
+why the first pass deferred them. Built properly rather than faked.
+
+**Migrations 0055 and 0056**, one table each per the repo's rollback-granularity
+convention.
+
+Two boundaries are encoded in the SHAPE of the data, not in a check somewhere:
+
+**`vantage_deals` has no status column.** The obvious field is
+approved / rejected / on hold, and that is precisely the investment decision
+the registry forbids. A column that cannot legally hold the value everyone
+expects is a trap for the next developer, so it does not exist. Archive is a
+filing action; lifecycle belongs to the committee, off-system.
+
+**`vantage_judgments` is append-only, with `advisor NOT NULL`.** An editable
+log cannot answer "what did the committee see", which is the entire point of
+recording advisor judgment. A changed view supersedes its predecessor inside a
+transaction — a superseded pointer with no successor, or a successor that never
+marked its predecessor, would both misrepresent the sequence. The superseded
+entry stays on screen, struck through: the change of mind is usually the most
+informative thing in the log.
+
+The advisor field is never seeded from the signed-in user. The person typing is
+frequently not the person whose judgment it is, and the audit payload records
+`advisor` separately from `actor` for the same reason.
+
+Position is free text, not an enum. proceed / hold / stop in a dropdown is the
+investment decision wearing a UI control.
+
+**Verified against real Postgres** via PGlite, 52/55 migrations applied (the 3
+skips are pgvector-only), 7 assertions: the new tables exist, no approval
+column is present, a duplicate live deal name is rejected case-insensitively,
+the name becomes reusable after archive, a judgment against a non-existent deal
+is rejected by the foreign key, and an unattributed judgment is rejected by the
+database rather than only by the API.
+
+**Verification:** tsc 0; 1199 tests / 146 files; eslint clean. Negative
+controls: added a `status` column to the migration and a `DELETE` handler to
+the judgment API — both guards failed, both reverted.
+
+One test was wrong on first run: it banned every `setAdvisor(` call, which also
+banned the correct behaviour of carrying the original advisor forward when
+revising. Narrowed to assert the initial state is empty and no session identity
+is read.
+
+All eight Vantage screens now exist. The hub claims six... then eight; the
+route-parity test covers both directions.

@@ -897,3 +897,39 @@ export const approvalPolicies = pgTable("approval_policies", {
   createdAt:         timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt:         timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
 });
+
+/**
+ * Vantage deal scope. See migration 0055 for why there is no status column:
+ * Vantage must not mark a deal approved, investable, or rejected.
+ */
+export const vantageDeals = pgTable("vantage_deals", {
+  id:          text("id").primaryKey(),
+  workspaceId: text("workspace_id").notNull(),
+  name:        text("name").notNull(),
+  dealType:    varchar("deal_type", { length: 32 }).notNull().default("fintech_ma"),
+  icDate:      timestamp("ic_date", { withTimezone: true }),
+  lead:        text("lead"),
+  notes:       text("notes"),
+  archivedAt:  timestamp("archived_at", { withTimezone: true }),
+  createdBy:   text("created_by").notNull(),
+  createdAt:   timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  updatedAt:   timestamp("updated_at", { withTimezone: true }).defaultNow().notNull()
+});
+
+/**
+ * Append-only advisor judgments. See migration 0056: rows are superseded, never
+ * updated, so the sequence of a changing view survives for the committee.
+ */
+export const vantageJudgments = pgTable("vantage_judgments", {
+  id:           text("id").primaryKey(),
+  workspaceId:  text("workspace_id").notNull(),
+  dealId:       text("deal_id").notNull(),
+  subject:      text("subject").notNull(),
+  advisor:      text("advisor").notNull(),
+  position:     text("position").notNull(),
+  caveats:      text("caveats").notNull().default(""),
+  evidenceRefs: jsonb("evidence_refs").$type<string[]>().default([]).notNull(),
+  supersededBy: text("superseded_by"),
+  createdBy:    text("created_by").notNull(),
+  createdAt:    timestamp("created_at", { withTimezone: true }).defaultNow().notNull()
+});

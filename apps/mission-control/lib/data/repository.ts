@@ -6,7 +6,7 @@ import { Pool } from "pg";
 import { verifyPassword } from "@/lib/auth";
 import { store } from "@/lib/data/store";
 import { evidenceSourceTypeSchema, ROOM_TEMPLATES, ROOM_TEMPLATE_DEFAULTS } from "@/lib/contracts";
-import type { Action, ActionInput, ActionStatus, ActivateRoomInput, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, DispatchJob, DispatchJobInput, DispatchJobStatus, Entity, EntityInput, EntityRelationship, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, KnowledgeLink, KnowledgeNote, KnowledgeNoteInput, KnowledgeSearchResult, KnowledgeSyncEvent, LearningSignal, LearningSignalInput, LearningSignalSummary, MeridianScope, MeridianScopeInput, NexusRoom, PilotOutcome, ProWaitlistEntry, PromptRegistryEntry, ReadinessSubmission, Recommendation, ReviewerSeat, ApprovalPolicy, ApprovalPolicyMode, RoomAuditEntry, RoomLifecycleState, RoomTemplate, TrialInvite, RecommendationStatus, StrategyProfile, StrategyProfileInput, SynthesisSchedule, SynthesisScheduleInput, SynthesisScheduleStatus, WorkflowTwin, WorkflowTwinInput, WorkflowTwinRun, WorkflowTwinRunInput, WorkflowTwinRunStatus, WorkflowTwinStatus, WorkflowTwinType, WorkspaceProfile, WorkspaceSettings } from "@/lib/contracts";
+import type { Action, ActionInput, ActionStatus, ActivateRoomInput, AgentKey, AgentKeyCreated, AgentOutput, AgentOutputInput, AgentScope, ConversationMessage, Decision, DecisionInput, DecisionStatus, DispatchJob, DispatchJobInput, DispatchJobStatus, Entity, EntityInput, EntityRelationship, EntityType, EvalRunSummary, EvidenceRecord, IngestionStatus, KnowledgeLink, KnowledgeNote, KnowledgeNoteInput, KnowledgeSearchResult, KnowledgeSyncEvent, LearningSignal, LearningSignalInput, LearningSignalSummary, MeridianScope, MeridianScopeInput, NexusRoom, PilotOutcome, ProWaitlistEntry, PromptRegistryEntry, ReadinessSubmission, Recommendation, ReviewerSeat, ApprovalPolicy, ApprovalPolicyMode, RoomAuditEntry, RoomLifecycleState, RoomTemplate, TrialInvite, RecommendationStatus, StrategyProfile, StrategyProfileInput, SynthesisSchedule, SynthesisScheduleInput, SynthesisScheduleStatus, WorkflowTwin, WorkflowTwinInput, WorkflowTwinRun, WorkflowTwinRunInput, WorkflowTwinRunStatus, WorkflowTwinStatus, WorkflowTwinType, WorkspaceProfile, WorkspaceSettings, VantageDeal, VantageDealInput, VantageJudgment, VantageJudgmentInput } from "@/lib/contracts";
 import { assertDbConfigured, isDbRequired } from "@/lib/data/db-policy";
 
 // In-memory idempotency cache for Stripe events (fallback when DB is unavailable).
@@ -62,6 +62,8 @@ import {
   rooms,
   boardProfiles,
   boardMeetings,
+  vantageDeals,
+  vantageJudgments,
   strategyProfiles,
   type recommendationStatusEnum,
   type ingestionStatusEnum
@@ -249,6 +251,40 @@ function toEvidenceRecord(row: typeof evidenceRecords.$inferSelect): EvidenceRec
             version: row.documentTypesVersion
           }
         : undefined
+  };
+}
+
+
+function toVantageDeal(row: typeof vantageDeals.$inferSelect): VantageDeal {
+  const iso = (d: Date | string | null) =>
+    d === null ? null : typeof d === "string" ? d : d.toISOString();
+  return {
+    id: row.id,
+    workspaceId: row.workspaceId,
+    name: row.name,
+    dealType: (row.dealType === "generic_ma" ? "generic_ma" : "fintech_ma"),
+    icDate: iso(row.icDate),
+    lead: row.lead ?? null,
+    notes: row.notes ?? null,
+    archivedAt: iso(row.archivedAt),
+    createdBy: row.createdBy,
+    createdAt: iso(row.createdAt) ?? new Date().toISOString()
+  };
+}
+
+function toVantageJudgment(row: typeof vantageJudgments.$inferSelect): VantageJudgment {
+  return {
+    id: row.id,
+    workspaceId: row.workspaceId,
+    dealId: row.dealId,
+    subject: row.subject,
+    advisor: row.advisor,
+    position: row.position,
+    caveats: row.caveats,
+    evidenceRefs: row.evidenceRefs ?? [],
+    supersededBy: row.supersededBy ?? null,
+    createdBy: row.createdBy,
+    createdAt: typeof row.createdAt === "string" ? row.createdAt : row.createdAt.toISOString()
   };
 }
 
@@ -758,6 +794,137 @@ export const repository = {
 
       return { examined: batch.length, updated, hasMore };
     });
+  },
+
+  // -------------------------------------------------------------------------
+  // Vantage deals and advisor judgments
+  // -------------------------------------------------------------------------
+
+  async listVantageDeals(workspaceId: string, includeArchived = false): Promise<VantageDeal[]> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(vantageDeals)
+        .where(
+          includeArchived
+            ? eq(vantageDeals.workspaceId, workspaceId)
+            : and(eq(vantageDeals.workspaceId, workspaceId), isNull(vantageDeals.archivedAt))
+        )
+        .orderBy(desc(vantageDeals.createdAt))
+    );
+    if (!rows) return [];
+    return rows.map(toVantageDeal);
+  },
+
+  async getVantageDeal(workspaceId: string, id: string): Promise<VantageDeal | null> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(vantageDeals)
+        // Workspace is part of the predicate, not checked afterwards. A deal id
+        // from another tenant must not be readable even when it is guessed.
+        .where(and(eq(vantageDeals.id, id), eq(vantageDeals.workspaceId, workspaceId)))
+        .limit(1)
+    );
+    if (!rows || !rows[0]) return null;
+    return toVantageDeal(rows[0]);
+  },
+
+  async createVantageDeal(
+    workspaceId: string,
+    createdBy: string,
+    input: VantageDealInput
+  ): Promise<VantageDeal | null> {
+    const id = `deal_${crypto.randomUUID()}`;
+    const saved = await runDb(async (db) => {
+      await db.insert(vantageDeals).values({
+        id,
+        workspaceId,
+        name: input.name.trim(),
+        dealType: input.dealType,
+        icDate: input.icDate ? new Date(input.icDate) : null,
+        lead: input.lead?.trim() || null,
+        notes: input.notes?.trim() || null,
+        createdBy
+      });
+      return true;
+    });
+    if (!saved) return null;
+    return this.getVantageDeal(workspaceId, id);
+  },
+
+  async archiveVantageDeal(workspaceId: string, id: string): Promise<boolean> {
+    // Soft close. Judgments and audit rows reference the deal, so a hard delete
+    // would orphan the trail this product exists to keep.
+    const done = await runDb(async (db) => {
+      await db
+        .update(vantageDeals)
+        .set({ archivedAt: new Date(), updatedAt: new Date() })
+        .where(and(eq(vantageDeals.id, id), eq(vantageDeals.workspaceId, workspaceId)));
+      return true;
+    });
+    return Boolean(done);
+  },
+
+  async listVantageJudgments(workspaceId: string, dealId: string): Promise<VantageJudgment[]> {
+    const rows = await runDb((db) =>
+      db
+        .select()
+        .from(vantageJudgments)
+        .where(and(eq(vantageJudgments.workspaceId, workspaceId), eq(vantageJudgments.dealId, dealId)))
+        .orderBy(desc(vantageJudgments.createdAt))
+    );
+    if (!rows) return [];
+    return rows.map(toVantageJudgment);
+  },
+
+  /**
+   * Append a judgment. Never updates one.
+   *
+   * When `supersedes` is given the predecessor is stamped rather than replaced,
+   * so a reader can follow how a view changed instead of only seeing where it
+   * landed. Both writes share a transaction: a superseded pointer with no
+   * successor, or a successor that never marked its predecessor, would both
+   * misrepresent the sequence.
+   */
+  async appendVantageJudgment(
+    workspaceId: string,
+    createdBy: string,
+    input: VantageJudgmentInput
+  ): Promise<VantageJudgment | null> {
+    const id = `vj_${crypto.randomUUID()}`;
+    const saved = await runDb(async (db) => {
+      await db.transaction(async (tx) => {
+        await tx.insert(vantageJudgments).values({
+          id,
+          workspaceId,
+          dealId: input.dealId,
+          subject: input.subject.trim(),
+          advisor: input.advisor.trim(),
+          position: input.position.trim(),
+          caveats: input.caveats ?? "",
+          evidenceRefs: input.evidenceRefs ?? [],
+          createdBy
+        });
+        if (input.supersedes) {
+          await tx
+            .update(vantageJudgments)
+            .set({ supersededBy: id })
+            .where(
+              and(
+                eq(vantageJudgments.id, input.supersedes),
+                eq(vantageJudgments.workspaceId, workspaceId)
+              )
+            );
+        }
+      });
+      return true;
+    });
+    if (!saved) return null;
+    const rows = await runDb((db) =>
+      db.select().from(vantageJudgments).where(eq(vantageJudgments.id, id)).limit(1)
+    );
+    return rows && rows[0] ? toVantageJudgment(rows[0]) : null;
   },
 
   async listEntities(

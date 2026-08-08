@@ -38,6 +38,8 @@ const BUILT_ROUTES = new Set([
   "/vantage/evidence-depth",
   "/vantage/ic-memo",
   "/vantage/decision-handoff",
+  "/vantage/dealroom",
+  "/vantage/judgment-log",
 ]);
 
 const ARC_SHORT: Record<VantageDDArc, string> = {
